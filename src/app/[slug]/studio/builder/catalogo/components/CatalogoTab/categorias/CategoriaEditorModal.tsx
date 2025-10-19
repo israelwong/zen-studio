@@ -3,7 +3,18 @@
 import React, { useState, useEffect } from "react";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/shadcn/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { toast } from "sonner";
+import { Trash2, Upload, Loader2 } from "lucide-react";
+
+interface MediaItem {
+    id: string;
+    url: string;
+    fileName: string;
+    size: number;
+    isUploading?: boolean;
+    progress?: number;
+}
 
 interface CategoriaEditorModalProps {
     isOpen: boolean;
@@ -26,6 +37,11 @@ export interface CategoriaFormData {
  * Modal para crear o editar una categoría del catálogo
  * Modo CREATE: categoria = null
  * Modo EDIT: categoria = { id, name, ... }
+ * 
+ * Estructura:
+ * - Tab 1: Datos (nombre, descripción)
+ * - Tab 2: Fotos (galería de imágenes)
+ * - Tab 3: Videos (galería de videos)
  */
 export function CategoriaEditorModal({
     isOpen,
@@ -39,6 +55,13 @@ export function CategoriaEditorModal({
     });
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [activeTab, setActiveTab] = useState("datos");
+
+    // Media states
+    const [fotos, setFotos] = useState<MediaItem[]>([]);
+    const [videos, setVideos] = useState<MediaItem[]>([]);
+    const [isDraggingFotos, setIsDraggingFotos] = useState(false);
+    const [isDraggingVideos, setIsDraggingVideos] = useState(false);
 
     const isEditMode = !!categoria;
 
@@ -57,11 +80,13 @@ export function CategoriaEditorModal({
             });
         }
         setErrors({});
+        setActiveTab("datos");
+        setFotos([]);
+        setVideos([]);
     }, [categoria, isOpen]);
 
     const handleChange = (field: keyof CategoriaFormData, value: string) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
-        // Limpiar error del campo
         if (errors[field]) {
             setErrors((prev) => {
                 const newErrors = { ...prev };
@@ -116,77 +141,288 @@ export function CategoriaEditorModal({
         }
     };
 
+    // Helper para formatear tamaño
+    const formatFileSize = (bytes: number): string => {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+    };
+
+    // Eliminar foto
+    const handleDeleteFoto = (id: string) => {
+        setFotos(fotos.filter(f => f.id !== id));
+        toast.success("Foto eliminada");
+    };
+
+    // Eliminar video
+    const handleDeleteVideo = (id: string) => {
+        setVideos(videos.filter(v => v.id !== id));
+        toast.success("Video eliminado");
+    };
+
+    // Componente: Thumbnail Grid
+    const MediaGrid = ({ items, onDelete, isDragging, setIsDragging, type }: {
+        items: MediaItem[];
+        onDelete: (id: string) => void;
+        isDragging: boolean;
+        setIsDragging: (value: boolean) => void;
+        type: 'foto' | 'video';
+    }) => (
+        <div
+            className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
+                ? "border-emerald-500 bg-emerald-500/10"
+                : "border-zinc-700 bg-zinc-800/30"
+                }`}
+            onDragEnter={() => setIsDragging(true)}
+            onDragLeave={() => setIsDragging(false)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={() => setIsDragging(false)}
+        >
+            {/* Slot: Subir */}
+            <button
+                type="button"
+                className="aspect-square bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-700 hover:border-zinc-600 transition-all group"
+            >
+                <div className="flex flex-col items-center gap-2">
+                    <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200" />
+                    <span className="text-xs text-zinc-500 group-hover:text-zinc-300 text-center">
+                        {type === 'foto' ? 'Subir Fotos' : 'Subir Videos'}
+                    </span>
+                </div>
+            </button>
+
+            {/* Thumbnails */}
+            {items.map((item) => (
+                <div
+                    key={item.id}
+                    className="aspect-square bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden group relative"
+                >
+                    {/* Preview placeholder */}
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                        {type === 'foto' ? (
+                            <span className="text-xs text-zinc-500">📸 {item.fileName}</span>
+                        ) : (
+                            <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
+                        )}
+                    </div>
+
+                    {/* Uploading indicator */}
+                    {item.isUploading && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+                        </div>
+                    )}
+
+                    {/* Delete button */}
+                    {!item.isUploading && (
+                        <button
+                            type="button"
+                            onClick={() => onDelete(item.id)}
+                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <Trash2 className="w-4 h-4 text-white" />
+                        </button>
+                    )}
+
+                    {/* Size info */}
+                    <div className="absolute bottom-1 left-1 right-1 bg-black/60 px-1 py-0.5 rounded text-xs text-zinc-300 truncate">
+                        {formatFileSize(item.size)}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[600px] bg-zinc-900 border-zinc-800">
+            <DialogContent className="sm:max-w-[700px] bg-zinc-900 border-zinc-800">
                 <DialogHeader>
                     <DialogTitle className="text-xl font-bold text-zinc-100">
                         {isEditMode ? "Editar Categoría" : "Nueva Categoría"}
                     </DialogTitle>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-                    {/* Nombre */}
-                    <div>
-                        <ZenInput
-                            label="Nombre de la categoría"
-                            name="name"
-                            value={formData.name}
-                            onChange={(e) => handleChange("name", e.target.value)}
-                            placeholder="Ej: Retratos"
-                            required
-                            error={errors.name}
-                            disabled={isSaving}
-                            maxLength={100}
-                        />
-                        <p className="text-xs text-zinc-500 mt-1">
-                            {formData.name.length}/100 caracteres
-                        </p>
-                    </div>
-
-                    {/* Descripción */}
-                    <div>
-                        <ZenTextarea
-                            label="Descripción"
-                            name="description"
-                            value={formData.description}
-                            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange("description", e.target.value)}
-                            placeholder="Describe esta categoría del catálogo..."
-                            minRows={3}
-                            maxLength={500}
-                            disabled={isSaving}
-                            hint="Describe brevemente qué tipo de servicios incluye esta categoría"
-                            error={errors.description}
-                        />
-                    </div>
-
-                    {/* Información adicional */}
-                    <ZenCard className="p-3 bg-zinc-800/50 border-zinc-700">
-                        <p className="text-xs text-zinc-400">
-                            💡 <strong>Tip:</strong> Las categorías te permiten agrupar servicios dentro de una sección
-                        </p>
-                    </ZenCard>
-
-                    {/* Botones de acción */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
-                        <ZenButton
-                            type="button"
-                            variant="secondary"
-                            onClick={handleClose}
-                            disabled={isSaving}
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    {/* Tab Navigation */}
+                    <TabsList className="grid w-full grid-cols-3 bg-zinc-800/50">
+                        <TabsTrigger
+                            value="datos"
+                            className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
                         >
-                            Cancelar
-                        </ZenButton>
-                        <ZenButton
-                            type="submit"
-                            variant="primary"
-                            loading={isSaving}
-                            loadingText={isEditMode ? "Actualizando..." : "Creando..."}
+                            Datos
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="fotos"
+                            className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
                         >
-                            {isEditMode ? "Actualizar" : "Crear Categoría"}
-                        </ZenButton>
-                    </div>
-                </form>
+                            Fotos
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="videos"
+                            className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400"
+                        >
+                            Videos
+                        </TabsTrigger>
+                    </TabsList>
+
+                    {/* Tab 1: Datos */}
+                    <TabsContent value="datos" className="space-y-6 mt-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Nombre */}
+                            <div>
+                                <ZenInput
+                                    label="Nombre de la categoría"
+                                    name="name"
+                                    value={formData.name}
+                                    onChange={(e) => handleChange("name", e.target.value)}
+                                    placeholder="Ej: Retratos"
+                                    required
+                                    error={errors.name}
+                                    disabled={isSaving}
+                                    maxLength={100}
+                                />
+                                <p className="text-xs text-zinc-500 mt-1">
+                                    {formData.name.length}/100 caracteres
+                                </p>
+                            </div>
+
+                            {/* Descripción */}
+                            <div>
+                                <ZenTextarea
+                                    label="Descripción"
+                                    name="description"
+                                    value={formData.description}
+                                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleChange("description", e.target.value)}
+                                    placeholder="Describe esta categoría del catálogo..."
+                                    minRows={3}
+                                    maxLength={500}
+                                    disabled={isSaving}
+                                    hint="Describe brevemente qué tipo de servicios incluye esta categoría"
+                                    error={errors.description}
+                                />
+                            </div>
+
+                            {/* Información adicional */}
+                            <ZenCard className="p-3 bg-zinc-800/50 border-zinc-700">
+                                <p className="text-xs text-zinc-400">
+                                    💡 <strong>Tip:</strong> Las categorías te permiten agrupar servicios dentro de una sección
+                                </p>
+                            </ZenCard>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                                <ZenButton
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleClose}
+                                    disabled={isSaving}
+                                >
+                                    Cancelar
+                                </ZenButton>
+                                <ZenButton
+                                    type="submit"
+                                    variant="primary"
+                                    loading={isSaving}
+                                    loadingText={isEditMode ? "Actualizando..." : "Creando..."}
+                                >
+                                    {isEditMode ? "Actualizar" : "Crear Categoría"}
+                                </ZenButton>
+                            </div>
+                        </form>
+                    </TabsContent>
+
+                    {/* Tab 2: Fotos */}
+                    <TabsContent value="fotos" className="space-y-6 mt-6">
+                        <div className="space-y-4">
+                            {/* Galería de Fotos */}
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-200 mb-3">
+                                    Galería de Fotos
+                                </label>
+                                <MediaGrid
+                                    items={fotos}
+                                    onDelete={handleDeleteFoto}
+                                    isDragging={isDraggingFotos}
+                                    setIsDragging={setIsDraggingFotos}
+                                    type="foto"
+                                />
+                            </div>
+
+                            {/* Info */}
+                            <ZenCard className="p-3 bg-blue-500/10 border-blue-500/30">
+                                <p className="text-xs text-blue-300">
+                                    📸 Soportados: JPG, PNG, GIF (máx. 5MB cada una)
+                                </p>
+                            </ZenCard>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                                <ZenButton
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleClose}
+                                    disabled={isSaving}
+                                >
+                                    Cancelar
+                                </ZenButton>
+                                <ZenButton
+                                    type="button"
+                                    variant="primary"
+                                    disabled={isSaving || fotos.length === 0}
+                                >
+                                    Guardar Fotos
+                                </ZenButton>
+                            </div>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab 3: Videos */}
+                    <TabsContent value="videos" className="space-y-6 mt-6">
+                        <div className="space-y-4">
+                            {/* Galería de Videos */}
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-200 mb-3">
+                                    Galería de Videos
+                                </label>
+                                <MediaGrid
+                                    items={videos}
+                                    onDelete={handleDeleteVideo}
+                                    isDragging={isDraggingVideos}
+                                    setIsDragging={setIsDraggingVideos}
+                                    type="video"
+                                />
+                            </div>
+
+                            {/* Info */}
+                            <ZenCard className="p-3 bg-blue-500/10 border-blue-500/30">
+                                <p className="text-xs text-blue-300">
+                                    🎬 Soportados: MP4, WebM (máx. 100MB cada uno)
+                                </p>
+                            </ZenCard>
+
+                            {/* Botones de acción */}
+                            <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                                <ZenButton
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleClose}
+                                    disabled={isSaving}
+                                >
+                                    Cancelar
+                                </ZenButton>
+                                <ZenButton
+                                    type="button"
+                                    variant="primary"
+                                    disabled={isSaving || videos.length === 0}
+                                >
+                                    Guardar Videos
+                                </ZenButton>
+                            </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </DialogContent>
         </Dialog>
     );
