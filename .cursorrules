@@ -1,10 +1,89 @@
-# ZENPro - Cursor Rules v2.0 (Modular Architecture)
+# ZENPro - Cursor Rules v2.1 (Haiku Optimizado)
 
 ## 🎯 PROYECTO CORE
 
 **Producto:** ZEN - Plataforma modular SaaS para estudios fotográficos  
 **Stack:** Next.js 15 + TypeScript 5 + React 19 + Prisma + Supabase + Tailwind 4  
 **Arquitectura:** Multi-tenant con sistema de módulos activables
+
+---
+
+## 🤖 MODO HAIKU - REGLAS DE EFICIENCIA
+
+**PRINCIPIO FUNDAMENTAL: Máxima utilidad, mínimos tokens**
+
+### Formato de Respuestas Haiku
+
+**✅ CORRECTO:**
+
+```typescript
+// Código refactorizado
+[código limpio y completo]
+// Cambios: extraje validación, agregué tipos
+```
+
+**❌ PROHIBIDO:**
+
+```
+Voy a analizar tu código...
+[explicación previa]
+[código]
+Resumen de cambios:
+- Punto 1
+- Punto 2
+Resumen ejecutivo: [repetir lo mismo]
+Mensaje de commit sugerido: [otro resumen]
+¿Necesitas algo más?
+```
+
+### Reglas por Tipo de Tarea
+
+**Refactoring:**
+
+- Solo código + 1 línea de cambios clave
+- NO resúmenes antes/después
+- NO commits automáticos
+
+**Server Actions:**
+
+```typescript
+// ✅ Entregar directo
+export async function crearLead(data: unknown) {
+  const validated = LeadSchema.parse(data);
+  return await prisma.platform_leads.create({ data: validated });
+}
+// Validación + create. Listo.
+
+// ❌ NO hacer
+("Primero valido con Zod, luego creo en DB, finalmente revalido...");
+```
+
+**Componentes ZEN:**
+
+- Código completo funcional
+- NO explicar props obvias
+- Comentarios solo para lógica compleja
+
+**Debugging:**
+
+- Ir directo al fix
+- Explicar SOLO si no es obvio
+- NO narrar proceso de análisis
+
+**Análisis/Review:**
+
+- Bullets directos: `Problema → Fix`
+- NO contexto repetido
+- NO resumen ejecutivo
+
+### Excepciones (SÍ dar detalle)
+
+- Arquitectura de módulos nuevos
+- Trade-offs importantes
+- Usuario pregunta "¿por qué?"
+- Cambios que rompen compatibilidad
+
+---
 
 ## 🧩 ARQUITECTURA MODULAR
 
@@ -21,15 +100,13 @@
 - ZEN Cloud (+$15 USD/mes)
 - ZEN Invitation (+$12 USD/mes)
 
-**Gestión de Módulos:**
+**Verificación de Módulos:**
 
 ```typescript
-// Verificar si módulo está activo para studio
 const hasModule = await checkStudioModule(studioId, "payment");
-
-// Activar módulo para studio
-await activateStudioModule(studioId, "payment", configData);
 ```
+
+---
 
 ## 🏗️ ESTRUCTURA DE DIRECTORIOS
 
@@ -40,117 +117,81 @@ src/
 │   ├── agente/             # Agentes CRM
 │   └── studio/[slug]/      # Suscriptores
 │       ├── manager/        # ZEN Manager
-│       ├── pages/           # ZEN Pages
 │       ├── magic/          # ZEN Magic
 │       ├── marketing/      # ZEN Marketing
-│       ├── payment/        # ZEN Payment (add-on)
-│       └── configuracion/  # Configuración cross-módulo
+│       └── payment/        # ZEN Payment (add-on)
 ├── components/ui/
 │   ├── zen/               # ZEN Design System (USAR PRIMERO)
 │   └── shadcn/            # Base components (fallback)
 ├── lib/
 │   ├── actions/           # Server Actions por módulo
-│   │   ├── admin/
-│   │   ├── agente/
-│   │   ├── studio/
-│   │   └── shared/
 │   └── modules/           # Lógica de gestión de módulos
 └── types/                 # TypeScript types
-
-**Portal de Clientes (parte de Manager):**
-`src/app/studio/[slug]/manager/eventos/[id]/portal/`
 ```
 
+---
+
 ## 🎨 DISEÑO ZEN (PRIORIDAD #1)
-
-**Tema Base:** Dark mode zinc (zinc-950/900/800)  
-**Variaciones por Rol:**
-
-- Admin: Emerald accent
-- Agente: Blue accent
-- Studio: Purple accent
-
-**Componentes Disponibles:**
-
-- Base: ZenButton, ZenInput, ZenCard, ZenBadge, ZenTextarea
-- Layout: ZenSidebar, ZenNavbar (próximos)
-- Forms: ZenFormSection, ZenSelect (próximo)
 
 **Imports OBLIGATORIOS:**
 
 ```typescript
-// ✅ SIEMPRE PRIMERO - ZEN Design System
+// ✅ SIEMPRE ZEN primero
 import { ZenButton, ZenInput, ZenCard } from "@/components/ui/zen";
-
-// ✅ Solo si NO existe en ZEN
-import { Dialog } from "@/components/ui/shadcn/dialog";
 
 // ❌ PROHIBIDO - Rutas directas
 import { ZenButton } from "@/components/ui/zen/base/ZenButton";
 ```
 
+**Tema:** Dark mode zinc con acentos por rol (emerald/blue/purple)
+
+---
+
 ## 🔧 CÓDIGO
 
 **TypeScript:**
 
-- Strict mode SIEMPRE enabled
-- NO usar `any` (usar `unknown` si es necesario)
-- Tipar TODAS las props y retornos
-- Preferir `interface` sobre `type` para objetos
+- Strict mode SIEMPRE
+- NO `any` (usar `unknown`)
+- Tipar props y retornos
+- `interface` sobre `type`
 
 **React:**
 
-- Componentes funcionales SIEMPRE
-- `"use client"` solo cuando necesario (eventos, hooks)
-- `useCallback` para funciones en deps
-- `useMemo` para cálculos costosos
+- Componentes funcionales
+- `"use client"` solo si necesario
 - Server Components por defecto
 
 **Next.js:**
 
 - Server Actions para mutaciones
-- API Routes SOLO para webhooks externos
-- Dynamic routes con `[slug]` o `[id]`
-- Metadata API para SEO
+- API Routes SOLO webhooks
+
+---
 
 ## 🗄️ BASE DE DATOS
 
-**Naming Convention (CRÍTICO):**
+**Naming (CRÍTICO):**
 
-- Tablas: `snake_case` plural (ej: `studio_modules`)
-- Columnas: `snake_case` (ej: `is_active`, `created_at`)
-- Relaciones: `{tabla_singular}_id` (ej: `studio_id`)
-- Idioma: Inglés técnico, español para enums de negocio
+- Tablas: `snake_case` plural (`studio_modules`)
+- Columnas: `snake_case` (`is_active`, `created_at`)
+- Relaciones: `{tabla}_id` (`studio_id`)
 
-**Prisma Best Practices:**
+**Prisma:**
 
 ```prisma
-// ✅ CORRECTO
 model studio_modules {
   id         String   @id @default(cuid())
   studio_id  String
-  module_id  String
   is_active  Boolean  @default(false)
   created_at DateTime @default(now())
-
-  studio studios @relation(fields: [studio_id], references: [id])
 
   @@unique([studio_id, module_id])
   @@index([studio_id, is_active])
 }
-
-// ❌ INCORRECTO
-model StudioModules {  // PascalCase
-  studioId String     // camelCase
-  ModuleId String     // Mixto
-}
 ```
 
-**Supabase:**
-
-- Auth con `@supabase/ssr`
-- RLS habilitado SIEMPRE
-- Client/Server separation estricta
+---
 
 ## 📝 CONVENCIONES
 
@@ -160,161 +201,90 @@ model StudioModules {  // PascalCase
 - Componentes: `PascalCase`
 - Variables: `camelCase`
 - Constantes: `UPPER_SNAKE_CASE`
-- Server Actions: `verbSustantivo` (ej: `crearLead`, `activarModulo`)
+- Server Actions: `verbSustantivo` (`crearLead`)
 
-**Imports (Orden estricto):**
+**Imports (Orden):**
 
 ```typescript
 // 1. React/Next
-import React from "react";
-import { NextResponse } from "next/server";
-
 // 2. Third-party
-import { PrismaClient } from "@prisma/client";
-
-// 3. ZEN Design System (SIEMPRE PRIMERO)
-import { ZenButton, ZenInput } from "@/components/ui/zen";
-
-// 4. Shadcn (solo fallback)
-import { Dialog } from "@/components/ui/shadcn/dialog";
-
+// 3. ZEN Design System
+// 4. Shadcn (fallback)
 // 5. Local (types → utils → components)
-import type { Lead } from "@/types/lead";
-import { formatDate } from "@/lib/utils";
-import { LeadForm } from "./components/LeadForm";
 ```
 
-## 🚨 PROHIBIDO (HARD RULES)
+---
 
-- ❌ Usar `any` en TypeScript (usar `unknown` + type guards)
-- ❌ Mutar props directamente
-- ❌ `useEffect` sin deps array correctas
-- ❌ Hardcodear strings repetidos (usar constantes)
-- ❌ Prisma queries en Client Components
-- ❌ Modificar archivos `.env*` (usar `.env.local`)
-- ❌ Usar Shadcn/ui si existe componente ZEN
-- ❌ Mezclar español e inglés en nombres técnicos
-- ❌ Queries sin índices en columnas filtradas
+## 🚨 PROHIBIDO
+
+- ❌ Usar `any`
+- ❌ Usar Shadcn si existe componente ZEN
+- ❌ Queries Prisma en Client Components
+- ❌ Hardcodear strings repetidos
+- ❌ **Resúmenes múltiples innecesarios**
+- ❌ **Explicar código autoexplicativo**
+
+---
 
 ## ✅ SIEMPRE HACER
 
-- ✅ Usar ZEN Design System como primera opción
-- ✅ Tipado fuerte TypeScript (interfaces explícitas)
-- ✅ Error handling con try/catch + logs
-- ✅ Loading states en TODAS las acciones async
-- ✅ Validación con Zod en Server Actions
-- ✅ Comentarios JSDoc para funciones públicas
-- ✅ Verificar permisos de módulo antes de renderizar
-- ✅ Índices en columnas usadas en WHERE/JOIN
+- ✅ ZEN Design System primero
+- ✅ Tipado fuerte TypeScript
+- ✅ Error handling + loading states
+- ✅ Validación Zod en Server Actions
+- ✅ Verificar permisos de módulo
+- ✅ **Respuestas concisas y directas**
+- ✅ **Código > Palabras**
 
-## 🎯 PATRONES POR MÓDULO
+---
 
-**Server Actions Pattern:**
+## 🎯 PATRONES RÁPIDOS
+
+**Server Action:**
 
 ```typescript
-// src/lib/actions/studio/manager/leads.actions.ts
 "use server";
-
-import { prisma } from "@/lib/prisma";
-import { checkStudioModule } from "@/lib/modules";
-import { LeadCreateSchema } from "./leads.schemas";
-
-export async function crearLead(
-  studioId: string,
-  studioSlug: string,
-  data: unknown
-) {
-  // 1. Verificar módulo activo
+export async function crearLead(studioId: string, data: unknown) {
   const hasModule = await checkStudioModule(studioId, "manager");
-  if (!hasModule) {
-    throw new Error("Módulo ZEN Manager no activo");
-  }
+  if (!hasModule) throw new Error("Módulo no activo");
 
-  // 2. Validar datos
-  const validatedData = LeadCreateSchema.parse(data);
+  const validated = LeadCreateSchema.parse(data);
+  const lead = await prisma.platform_leads.create({ data: validated });
 
-  // 3. Lógica de negocio
-  const lead = await prisma.platform_leads.create({
-    data: { ...validatedData },
-  });
-
-  // 4. Revalidar cache
-  revalidatePath(`/studio/${studioSlug}/manager/kanban`);
-
+  revalidatePath(`/studio/${slug}/manager/kanban`);
   return lead;
 }
 ```
 
-**Formularios ZEN:**
+**Formulario ZEN:**
 
 ```typescript
-<form onSubmit={handleSubmit} className="space-y-6">
-  <ZenInput
-    label="Nombre del Lead"
-    name="nombre"
-    required
-    error={errors.nombre}
-    hint="Nombre completo del prospecto"
-  />
-
-  <ZenButton
-    type="submit"
-    variant="primary"
-    loading={isSubmitting}
-    loadingText="Guardando..."
-  >
-    Guardar Lead
-  </ZenButton>
+<form onSubmit={handleSubmit}>
+  <ZenInput label="Nombre" name="nombre" required error={errors.nombre} />
+  <ZenButton type="submit" loading={isSubmitting}>Guardar</ZenButton>
 </form>
 ```
 
-## 🔒 SEGURIDAD
+---
 
-- Supabase Auth + JWT
-- Middleware para rutas protegidas
-- RLS en TODAS las tablas
-- Validación cliente + servidor (doble capa)
-- Rate limiting en API Routes críticas
-- Sanitización de inputs del usuario
+## 📦 DEPENDENCIAS
 
-## 📦 DEPENDENCIAS CLAVE
-
-```json
-{
-  "next": "15.5.2",
-  "react": "19.1.0",
-  "typescript": "5",
-  "@prisma/client": "6.15.0",
-  "@supabase/supabase-js": "2.57.4",
-  "tailwindcss": "4",
-  "lucide-react": "latest",
-  "sonner": "latest"
-}
-```
-
-## 🤖 USO DE CURSOR AI
-
-**Sonnet 4.5 (Composer/Agent):**
-
-- Arquitectura de módulos
-- Function Calling IA
-- Refactoring complejo
-- Code review crítico
-
-**Sonnet 3.5 (Chat):**
-
-- CRUD operations
-- Componentes UI
-- Documentación
-- Queries simples
-
-**Claude Code (Terminal):**
-
-- Migraciones DB
-- Scripts automatización
-- Análisis estático
+- Next.js 15.5.2
+- React 19.1.0
+- TypeScript 5
+- Prisma 6.15.0
+- Supabase 2.57.4
+- Tailwind 4
 
 ---
 
-**Mantén código limpio, modular y siguiendo ZEN Design System.**  
-**Prioriza experiencia del usuario (fotógrafo no-técnico, mobile-first).**
+## 🤖 DIVISIÓN DE MODELOS
+
+**Sonnet 4.5:** Arquitectura, refactoring complejo, code review crítico  
+**Haiku 4.5:** CRUD, componentes UI, queries, debugging (90% del trabajo)  
+**Claude Code:** Migraciones, scripts
+
+---
+
+**Prioriza eficiencia en tokens sin sacrificar calidad.**  
+**Código limpio, respuestas directas, fotógrafo mobile-first.**

@@ -223,8 +223,8 @@ export function ItemEditorModal({
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Campos básicos */}
-                    <ZenInput
+                    {/* Nombre del Item como Textarea */}
+                    <ZenTextarea
                         label="Nombre del Item"
                         name="name"
                         value={formData.name}
@@ -238,48 +238,53 @@ export function ItemEditorModal({
                         }}
                         error={errors.name}
                         placeholder="Ej: Fotografía de retrato"
+                        minRows={2}
+                        maxLength={200}
                         required
                     />
 
-                    <ZenInput
-                        label="Costo Base (MXN)"
-                        name="cost"
-                        type="number"
-                        value={formData.cost === 0 ? "" : formData.cost}
-                        onChange={(e) => {
-                            const value = e.target.value;
-                            const cost = value === "" ? 0 : parseFloat(value);
-                            if (!isNaN(cost)) {
-                                setFormData({ ...formData, cost });
-                                if (errors.cost) {
-                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                    const { cost: _, ...rest } = errors;
-                                    setErrors(rest);
+                    {/* Fila 1: Costo Base y Tipo de Utilidad (2 columnas) */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <ZenInput
+                            label="Costo Base (MXN)"
+                            name="cost"
+                            type="number"
+                            value={formData.cost === 0 ? "" : formData.cost}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                const cost = value === "" ? 0 : parseFloat(value);
+                                if (!isNaN(cost)) {
+                                    setFormData({ ...formData, cost });
+                                    if (errors.cost) {
+                                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                        const { cost: _, ...rest } = errors;
+                                        setErrors(rest);
+                                    }
                                 }
-                            }
-                        }}
-                        error={errors.cost}
-                        placeholder="0.00"
-                        step="0.01"
-                        min="0"
-                        required
-                    />
+                            }}
+                            error={errors.cost}
+                            placeholder="0.00"
+                            step="0.01"
+                            min="0"
+                            required
+                        />
 
-                    {/* Tipo de utilidad */}
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-200 mb-2">
-                            Tipo de Utilidad
-                        </label>
-                        <select
-                            value={formData.tipoUtilidad || "servicio"}
-                            onChange={(e) =>
-                                setFormData({ ...formData, tipoUtilidad: e.target.value as 'servicio' | 'producto' })
-                            }
-                            className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100"
-                        >
-                            <option value="servicio">Servicio (30%)</option>
-                            <option value="producto">Producto (40%)</option>
-                        </select>
+                        {/* Tipo de utilidad */}
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-200 mb-2">
+                                Tipo de Utilidad
+                            </label>
+                            <select
+                                value={formData.tipoUtilidad || "servicio"}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, tipoUtilidad: e.target.value as 'servicio' | 'producto' })
+                                }
+                                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-100"
+                            >
+                                <option value="servicio">Servicio (30%)</option>
+                                <option value="producto">Producto (40%)</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Gastos */}
