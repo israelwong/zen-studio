@@ -51,19 +51,19 @@ export async function obtenerMediaItem(itemId: string) {
 
 /**
  * Crea un nuevo archivo multimedia para un item
+ * El primer archivo automáticamente es portada (order=0)
  */
 export async function crearMediaItem(data: CreateMediaItemForm) {
   try {
     const validatedData = CreateMediaItemSchema.parse(data);
 
-    // Obtener el próximo order
-    const lastMedia = await prisma.studio_item_media.findFirst({
+    // Contar archivos existentes
+    const existingCount = await prisma.studio_item_media.count({
       where: { item_id: validatedData.itemId },
-      orderBy: { order: 'desc' },
-      select: { order: true },
     });
 
-    const nextOrder = (lastMedia?.order ?? -1) + 1;
+    // El primer archivo es portada (order=0), los demás se incrementan
+    const order = existingCount === 0 ? 0 : existingCount;
 
     const media = await prisma.studio_item_media.create({
       data: {
@@ -72,7 +72,7 @@ export async function crearMediaItem(data: CreateMediaItemForm) {
         file_name: validatedData.fileName,
         file_type: validatedData.fileType,
         file_size: validatedData.size,
-        order: nextOrder,
+        order,
       },
     });
 

@@ -51,19 +51,19 @@ export async function obtenerMediaCategoria(categoryId: string) {
 
 /**
  * Crea un nuevo archivo multimedia para una categoría
+ * El primer archivo automáticamente es portada (order=0)
  */
 export async function crearMediaCategoria(data: CreateMediaItemForm) {
   try {
     const validatedData = CreateMediaItemSchema.parse(data);
 
-    // Obtener el próximo order
-    const lastMedia = await prisma.studio_category_media.findFirst({
+    // Contar archivos existentes
+    const existingCount = await prisma.studio_category_media.count({
       where: { category_id: validatedData.categoryId },
-      orderBy: { order: 'desc' },
-      select: { order: true },
     });
 
-    const nextOrder = (lastMedia?.order ?? -1) + 1;
+    // El primer archivo es portada (order=0), los demás se incrementan
+    const order = existingCount === 0 ? 0 : existingCount;
 
     const media = await prisma.studio_category_media.create({
       data: {
@@ -72,7 +72,7 @@ export async function crearMediaCategoria(data: CreateMediaItemForm) {
         file_name: validatedData.fileName,
         file_type: validatedData.fileType,
         file_size: validatedData.size,
-        order: nextOrder,
+        order,
       },
     });
 

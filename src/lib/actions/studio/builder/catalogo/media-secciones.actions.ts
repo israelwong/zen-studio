@@ -12,28 +12,23 @@ const SeccionPortadaSchema = z.object({
   size: z.number().positive(),
 });
 
-const UpdateSeccionPortadaSchema = z.object({
-  sectionId: z.string(),
-  url: z.string().url().optional(),
-  fileName: z.string().optional(),
-  size: z.number().positive().optional(),
-});
-
 const DeleteSeccionPortadaSchema = z.object({
   sectionId: z.string(),
 });
 
 type CreateSeccionPortadaForm = z.infer<typeof SeccionPortadaSchema>;
-type UpdateSeccionPortadaForm = z.infer<typeof UpdateSeccionPortadaSchema>;
 type DeleteSeccionPortadaForm = z.infer<typeof DeleteSeccionPortadaSchema>;
 
 /**
- * Obtiene la portada de una sección
+ * Obtiene la portada de una sección (primer archivo con order=0)
  */
 export async function obtenerPortadaSeccion(sectionId: string) {
   try {
-    const portada = await prisma.studio_section_cover.findFirst({
-      where: { section_id: sectionId },
+    const portada = await prisma.studio_section_media.findFirst({
+      where: { 
+        section_id: sectionId,
+        order: 0 
+      },
     });
 
     return {
@@ -50,24 +45,30 @@ export async function obtenerPortadaSeccion(sectionId: string) {
 }
 
 /**
- * Crea o actualiza la portada de una sección (máx 1)
+ * Crea la portada de una sección (reemplaza la anterior si existe)
+ * Automáticamente se asigna order=0
  */
 export async function crearPortadaSeccion(data: CreateSeccionPortadaForm) {
   try {
     const validatedData = SeccionPortadaSchema.parse(data);
 
-    // Eliminar portada anterior si existe
-    await prisma.studio_section_cover.deleteMany({
-      where: { section_id: validatedData.sectionId },
+    // Eliminar portada anterior si existe (order=0)
+    await prisma.studio_section_media.deleteMany({
+      where: { 
+        section_id: validatedData.sectionId,
+        order: 0 
+      },
     });
 
-    // Crear nueva portada
-    const portada = await prisma.studio_section_cover.create({
+    // Crear nueva portada con order=0
+    const portada = await prisma.studio_section_media.create({
       data: {
         section_id: validatedData.sectionId,
         url: validatedData.url,
         file_name: validatedData.fileName,
+        file_type: 'image',
         file_size: validatedData.size,
+        order: 0,
       },
     });
 
@@ -89,51 +90,17 @@ export async function crearPortadaSeccion(data: CreateSeccionPortadaForm) {
 }
 
 /**
- * Actualiza la portada de una sección
- */
-export async function actualizarPortadaSeccion(data: UpdateSeccionPortadaForm) {
-  try {
-    const validatedData = UpdateSeccionPortadaSchema.parse(data);
-
-    const portada = await prisma.studio_section_cover.updateMany({
-      where: { section_id: validatedData.sectionId },
-      data: {
-        ...(validatedData.url && { url: validatedData.url }),
-        ...(validatedData.fileName && { file_name: validatedData.fileName }),
-        ...(validatedData.size && { file_size: validatedData.size }),
-      },
-    });
-
-    if (portada.count === 0) {
-      return {
-        success: false,
-        error: "Portada no encontrada",
-      };
-    }
-
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error actualizando portada:", error);
-    return {
-      success: false,
-      error: error instanceof z.ZodError
-        ? `Validación fallida: ${error.errors[0].message}`
-        : "Error al actualizar portada",
-    };
-  }
-}
-
-/**
- * Elimina la portada de una sección
+ * Elimina la portada de una sección (elimina el archivo con order=0)
  */
 export async function eliminarPortadaSeccion(data: DeleteSeccionPortadaForm) {
   try {
     const validatedData = DeleteSeccionPortadaSchema.parse(data);
 
-    await prisma.studio_section_cover.deleteMany({
-      where: { section_id: validatedData.sectionId },
+    await prisma.studio_section_media.deleteMany({
+      where: { 
+        section_id: validatedData.sectionId,
+        order: 0 
+      },
     });
 
     revalidatePath("/studio/[slug]/builder/catalogo", "layout");

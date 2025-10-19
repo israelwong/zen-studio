@@ -174,7 +174,7 @@ export function CategoriaEditorModal({
 
         const fileArray = Array.from(files);
         const uploadedFotos = await uploadFiles(fileArray, studioSlug, "categoria-fotos", formData.id);
-        
+
         // Persistir en BD
         for (const foto of uploadedFotos) {
             const result = await crearMediaCategoria({
@@ -184,12 +184,12 @@ export function CategoriaEditorModal({
                 fileType: 'image',
                 size: foto.size,
             });
-            
+
             if (!result.success) {
                 toast.error(`Error guardando ${foto.fileName}: ${result.error}`);
             }
         }
-        
+
         setFotos(prev => [...prev, ...uploadedFotos]);
     };
 
@@ -203,7 +203,7 @@ export function CategoriaEditorModal({
 
         const fileArray = Array.from(files);
         const uploadedVideos = await uploadFiles(fileArray, studioSlug, "categoria-videos", formData.id);
-        
+
         // Persistir en BD
         for (const video of uploadedVideos) {
             const result = await crearMediaCategoria({
@@ -213,12 +213,12 @@ export function CategoriaEditorModal({
                 fileType: 'video',
                 size: video.size,
             });
-            
+
             if (!result.success) {
                 toast.error(`Error guardando ${video.fileName}: ${result.error}`);
             }
         }
-        
+
         setVideos(prev => [...prev, ...uploadedVideos]);
     };
 
@@ -235,7 +235,7 @@ export function CategoriaEditorModal({
                 id: foto.id,
                 categoryId: formData.id,
             });
-            
+
             if (dbResult.success) {
                 setFotos(fotos.filter(f => f.id !== id));
             } else {
@@ -257,7 +257,7 @@ export function CategoriaEditorModal({
                 id: video.id,
                 categoryId: formData.id,
             });
-            
+
             if (dbResult.success) {
                 setVideos(videos.filter(v => v.id !== id));
             } else {
