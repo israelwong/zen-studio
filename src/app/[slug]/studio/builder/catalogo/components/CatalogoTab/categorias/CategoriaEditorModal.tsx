@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/shadcn/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { toast } from "sonner";
 import { Trash2, Upload, Loader2 } from "lucide-react";
+import { useMediaUpload } from "@/hooks/useMediaUpload";
+import {
+    crearMediaCategoria,
+    eliminarMediaCategoria,
+} from "@/lib/actions/studio/builder/catalogo/media-categorias.actions";
 
 interface MediaItem {
     id: string;
@@ -20,6 +25,7 @@ interface CategoriaEditorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (data: CategoriaFormData) => Promise<void>;
+    studioSlug?: string;
     categoria?: {
         id: string;
         name: string;
@@ -47,6 +53,7 @@ export function CategoriaEditorModal({
     isOpen,
     onClose,
     onSave,
+    studioSlug = "default",
     categoria,
 }: CategoriaEditorModalProps) {
     const [formData, setFormData] = useState<CategoriaFormData>({
@@ -62,6 +69,13 @@ export function CategoriaEditorModal({
     const [videos, setVideos] = useState<MediaItem[]>([]);
     const [isDraggingFotos, setIsDraggingFotos] = useState(false);
     const [isDraggingVideos, setIsDraggingVideos] = useState(false);
+
+    // File inputs refs
+    const fotosInputRef = useRef<HTMLInputElement>(null);
+    const videosInputRef = useRef<HTMLInputElement>(null);
+
+    // Media upload hook
+    const { uploadFiles, deleteFile, isUploading } = useMediaUpload();
 
     const isEditMode = !!categoria;
 
@@ -136,7 +150,7 @@ export function CategoriaEditorModal({
     };
 
     const handleClose = () => {
-        if (!isSaving) {
+        if (!isSaving && !isUploading) {
             onClose();
         }
     };
@@ -150,25 +164,141 @@ export function CategoriaEditorModal({
         return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
     };
 
+    // Manejar archivos seleccionados (fotos)
+    const handleFotosSelected = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        if (!formData.id) {
+            toast.error("Guarda la categoría primero antes de subir fotos");
+            return;
+        }
+
+        const fileArray = Array.from(files);
+        const uploadedFotos = await uploadFiles(fileArray, studioSlug, "categoria-fotos", formData.id);
+        
+        // Persistir en BD
+        for (const foto of uploadedFotos) {
+            const result = await crearMediaCategoria({
+                categoryId: formData.id,
+                url: foto.url,
+                fileName: foto.fileName,
+                fileType: 'image',
+                size: foto.size,
+            });
+            
+            if (!result.success) {
+                toast.error(`Error guardando ${foto.fileName}: ${result.error}`);
+            }
+        }
+        
+        setFotos(prev => [...prev, ...uploadedFotos]);
+    };
+
+    // Manejar archivos seleccionados (videos)
+    const handleVideosSelected = async (files: FileList | null) => {
+        if (!files || files.length === 0) return;
+        if (!formData.id) {
+            toast.error("Guarda la categoría primero antes de subir videos");
+            return;
+        }
+
+        const fileArray = Array.from(files);
+        const uploadedVideos = await uploadFiles(fileArray, studioSlug, "categoria-videos", formData.id);
+        
+        // Persistir en BD
+        for (const video of uploadedVideos) {
+            const result = await crearMediaCategoria({
+                categoryId: formData.id,
+                url: video.url,
+                fileName: video.fileName,
+                fileType: 'video',
+                size: video.size,
+            });
+            
+            if (!result.success) {
+                toast.error(`Error guardando ${video.fileName}: ${result.error}`);
+            }
+        }
+        
+        setVideos(prev => [...prev, ...uploadedVideos]);
+    };
+
     // Eliminar foto
-    const handleDeleteFoto = (id: string) => {
-        setFotos(fotos.filter(f => f.id !== id));
-        toast.success("Foto eliminada");
+    const handleDeleteFoto = async (id: string) => {
+        const foto = fotos.find(f => f.id === id);
+        if (!foto || !formData.id) return;
+
+        // Eliminar de Supabase
+        const success = await deleteFile(foto.url, studioSlug);
+        if (success) {
+            // Eliminar de BD
+            const dbResult = await eliminarMediaCategoria({
+                id: foto.id,
+                categoryId: formData.id,
+            });
+            
+            if (dbResult.success) {
+                setFotos(fotos.filter(f => f.id !== id));
+            } else {
+                toast.error(`Error eliminando foto: ${dbResult.error}`);
+            }
+        }
     };
 
     // Eliminar video
-    const handleDeleteVideo = (id: string) => {
-        setVideos(videos.filter(v => v.id !== id));
-        toast.success("Video eliminado");
+    const handleDeleteVideo = async (id: string) => {
+        const video = videos.find(v => v.id === id);
+        if (!video || !formData.id) return;
+
+        // Eliminar de Supabase
+        const success = await deleteFile(video.url, studioSlug);
+        if (success) {
+            // Eliminar de BD
+            const dbResult = await eliminarMediaCategoria({
+                id: video.id,
+                categoryId: formData.id,
+            });
+            
+            if (dbResult.success) {
+                setVideos(videos.filter(v => v.id !== id));
+            } else {
+                toast.error(`Error eliminando video: ${dbResult.error}`);
+            }
+        }
+    };
+
+    // Manejar drag & drop (fotos)
+    const handleFotosDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDraggingFotos(false);
+        const files = e.dataTransfer.files;
+        await handleFotosSelected(files);
+    };
+
+    // Manejar drag & drop (videos)
+    const handleVideosDrop = async (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDraggingVideos(false);
+        const files = e.dataTransfer.files;
+        await handleVideosSelected(files);
     };
 
     // Componente: Thumbnail Grid
-    const MediaGrid = ({ items, onDelete, isDragging, setIsDragging, type }: {
+    const MediaGrid = ({
+        items,
+        onDelete,
+        isDragging,
+        setIsDragging,
+        type,
+        onUploadClick,
+        onDrop
+    }: {
         items: MediaItem[];
         onDelete: (id: string) => void;
         isDragging: boolean;
         setIsDragging: (value: boolean) => void;
         type: 'foto' | 'video';
+        onUploadClick: () => void;
+        onDrop: (e: React.DragEvent) => void;
     }) => (
         <div
             className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
@@ -178,15 +308,21 @@ export function CategoriaEditorModal({
             onDragEnter={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={() => setIsDragging(false)}
+            onDrop={onDrop}
         >
             {/* Slot: Subir */}
             <button
                 type="button"
-                className="aspect-square bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-700 hover:border-zinc-600 transition-all group"
+                onClick={onUploadClick}
+                disabled={isUploading}
+                className="aspect-square bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-700 hover:border-zinc-600 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 <div className="flex flex-col items-center gap-2">
-                    <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200" />
+                    {isUploading ? (
+                        <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+                    ) : (
+                        <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200" />
+                    )}
                     <span className="text-xs text-zinc-500 group-hover:text-zinc-300 text-center">
                         {type === 'foto' ? 'Subir Fotos' : 'Subir Videos'}
                     </span>
@@ -220,7 +356,8 @@ export function CategoriaEditorModal({
                         <button
                             type="button"
                             onClick={() => onDelete(item.id)}
-                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            disabled={isUploading}
+                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Trash2 className="w-4 h-4 text-white" />
                         </button>
@@ -243,6 +380,24 @@ export function CategoriaEditorModal({
                         {isEditMode ? "Editar Categoría" : "Nueva Categoría"}
                     </DialogTitle>
                 </DialogHeader>
+
+                {/* Hidden file inputs */}
+                <input
+                    ref={fotosInputRef}
+                    type="file"
+                    multiple
+                    accept="image/jpeg,image/png,image/gif"
+                    onChange={(e) => handleFotosSelected(e.target.files)}
+                    className="hidden"
+                />
+                <input
+                    ref={videosInputRef}
+                    type="file"
+                    multiple
+                    accept="video/mp4,video/webm"
+                    onChange={(e) => handleVideosSelected(e.target.files)}
+                    className="hidden"
+                />
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     {/* Tab Navigation */}
@@ -280,7 +435,7 @@ export function CategoriaEditorModal({
                                     placeholder="Ej: Retratos"
                                     required
                                     error={errors.name}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isUploading}
                                     maxLength={100}
                                 />
                                 <p className="text-xs text-zinc-500 mt-1">
@@ -298,7 +453,7 @@ export function CategoriaEditorModal({
                                     placeholder="Describe esta categoría del catálogo..."
                                     minRows={3}
                                     maxLength={500}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isUploading}
                                     hint="Describe brevemente qué tipo de servicios incluye esta categoría"
                                     error={errors.description}
                                 />
@@ -317,7 +472,7 @@ export function CategoriaEditorModal({
                                     type="button"
                                     variant="secondary"
                                     onClick={handleClose}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isUploading}
                                 >
                                     Cancelar
                                 </ZenButton>
@@ -326,6 +481,7 @@ export function CategoriaEditorModal({
                                     variant="primary"
                                     loading={isSaving}
                                     loadingText={isEditMode ? "Actualizando..." : "Creando..."}
+                                    disabled={isUploading}
                                 >
                                     {isEditMode ? "Actualizar" : "Crear Categoría"}
                                 </ZenButton>
@@ -347,6 +503,8 @@ export function CategoriaEditorModal({
                                     isDragging={isDraggingFotos}
                                     setIsDragging={setIsDraggingFotos}
                                     type="foto"
+                                    onUploadClick={() => fotosInputRef.current?.click()}
+                                    onDrop={handleFotosDrop}
                                 />
                             </div>
 
@@ -363,14 +521,14 @@ export function CategoriaEditorModal({
                                     type="button"
                                     variant="secondary"
                                     onClick={handleClose}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isUploading}
                                 >
                                     Cancelar
                                 </ZenButton>
                                 <ZenButton
                                     type="button"
                                     variant="primary"
-                                    disabled={isSaving || fotos.length === 0}
+                                    disabled={isSaving || isUploading || fotos.length === 0}
                                 >
                                     Guardar Fotos
                                 </ZenButton>
@@ -392,6 +550,8 @@ export function CategoriaEditorModal({
                                     isDragging={isDraggingVideos}
                                     setIsDragging={setIsDraggingVideos}
                                     type="video"
+                                    onUploadClick={() => videosInputRef.current?.click()}
+                                    onDrop={handleVideosDrop}
                                 />
                             </div>
 
@@ -408,14 +568,14 @@ export function CategoriaEditorModal({
                                     type="button"
                                     variant="secondary"
                                     onClick={handleClose}
-                                    disabled={isSaving}
+                                    disabled={isSaving || isUploading}
                                 >
                                     Cancelar
                                 </ZenButton>
                                 <ZenButton
                                     type="button"
                                     variant="primary"
-                                    disabled={isSaving || videos.length === 0}
+                                    disabled={isSaving || isUploading || videos.length === 0}
                                 >
                                     Guardar Videos
                                 </ZenButton>
