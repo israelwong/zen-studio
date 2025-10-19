@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/shadcn/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
@@ -287,11 +288,11 @@ export function CategoriaEditorModal({
     };
 
     // Componente: Thumbnail Grid
-    const MediaGrid = ({
-        items,
-        onDelete,
-        isDragging,
-        setIsDragging,
+    const MediaGrid = ({ 
+        items, 
+        onDelete, 
+        isDragging, 
+        setIsDragging, 
         type,
         onUploadClick,
         onDrop
@@ -305,10 +306,11 @@ export function CategoriaEditorModal({
         onDrop: (e: React.DragEvent) => void;
     }) => (
         <div
-            className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
-                ? "border-emerald-500 bg-emerald-500/10"
-                : "border-zinc-700 bg-zinc-800/30"
-                }`}
+            className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${
+                isDragging
+                    ? "border-emerald-500 bg-emerald-500/10"
+                    : "border-zinc-700 bg-zinc-800/30"
+            }`}
             onDragEnter={() => setIsDragging(true)}
             onDragLeave={() => setIsDragging(false)}
             onDragOver={(e) => e.preventDefault()}
@@ -339,14 +341,19 @@ export function CategoriaEditorModal({
                     key={item.id}
                     className="aspect-square bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden group relative"
                 >
-                    {/* Preview placeholder */}
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                        {type === 'foto' ? (
-                            <span className="text-xs text-zinc-500">📸 {item.fileName}</span>
-                        ) : (
+                    {/* Preview - Show actual image */}
+                    {type === 'foto' ? (
+                        <Image
+                            src={item.url}
+                            alt={item.fileName}
+                            layout="fill"
+                            objectFit="cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
                             <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Uploading indicator */}
                     {item.isUploading && (
@@ -527,14 +534,7 @@ export function CategoriaEditorModal({
                                     onClick={handleClose}
                                     disabled={isSaving || isUploading}
                                 >
-                                    Cancelar
-                                </ZenButton>
-                                <ZenButton
-                                    type="button"
-                                    variant="primary"
-                                    disabled={isSaving || isUploading || fotos.length === 0}
-                                >
-                                    Guardar Fotos
+                                    Cerrar
                                 </ZenButton>
                             </div>
                         </div>
@@ -574,14 +574,7 @@ export function CategoriaEditorModal({
                                     onClick={handleClose}
                                     disabled={isSaving || isUploading}
                                 >
-                                    Cancelar
-                                </ZenButton>
-                                <ZenButton
-                                    type="button"
-                                    variant="primary"
-                                    disabled={isSaving || isUploading || videos.length === 0}
-                                >
-                                    Guardar Videos
+                                    Cerrar
                                 </ZenButton>
                             </div>
                         </div>
