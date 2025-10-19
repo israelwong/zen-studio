@@ -51,28 +51,43 @@ export async function obtenerMediaItem(itemId: string) {
 
 /**
  * Crea un nuevo archivo multimedia para un item
- * El primer archivo automáticamente es portada (order=0)
+ * El primer archivo automáticamente es portada (display_order=0)
  */
 export async function crearMediaItem(data: CreateMediaItemForm) {
   try {
     const validatedData = CreateMediaItemSchema.parse(data);
+
+    // Obtener studio_id por slug
+    const studio = await prisma.studios.findUnique({
+      where: { slug: validatedData.studioId },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: `Studio "${validatedData.studioId}" no encontrado`,
+      };
+    }
 
     // Contar archivos existentes
     const existingCount = await prisma.studio_item_media.count({
       where: { item_id: validatedData.itemId },
     });
 
-    // El primer archivo es portada (order=0), los demás se incrementan
-    const order = existingCount === 0 ? 0 : existingCount;
+    // El primer archivo es portada (display_order=0), los demás se incrementan
+    const displayOrder = existingCount === 0 ? 0 : existingCount;
 
     const media = await prisma.studio_item_media.create({
       data: {
         item_id: validatedData.itemId,
-        url: validatedData.url,
-        file_name: validatedData.fileName,
-        file_type: validatedData.fileType,
-        file_size: validatedData.size,
-        order,
+        studio_id: studio.id,
+        file_url: validatedData.url,
+        filename: validatedData.fileName,
+        file_type: validatedData.fileType.toUpperCase(),
+        storage_bytes: BigInt(validatedData.size),
+        mime_type: validatedData.mimeType || "application/octet-stream",
+        display_order: displayOrder,
       },
     });
 

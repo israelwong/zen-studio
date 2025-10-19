@@ -59,6 +59,19 @@ export async function crearMediaCategoria(data: CreateMediaItemForm) {
   try {
     const validatedData = CreateMediaItemSchema.parse(data);
 
+    // Obtener studio_id por slug
+    const studio = await prisma.studios.findUnique({
+      where: { slug: validatedData.studioId },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: `Studio "${validatedData.studioId}" no encontrado`,
+      };
+    }
+
     // Contar archivos existentes
     const existingCount = await prisma.studio_category_media.count({
       where: { category_id: validatedData.categoryId },
@@ -70,7 +83,7 @@ export async function crearMediaCategoria(data: CreateMediaItemForm) {
     const media = await prisma.studio_category_media.create({
       data: {
         category_id: validatedData.categoryId,
-        studio_id: validatedData.studioId,
+        studio_id: studio.id,
         file_url: validatedData.url,
         filename: validatedData.fileName,
         file_type: validatedData.fileType.toUpperCase(),

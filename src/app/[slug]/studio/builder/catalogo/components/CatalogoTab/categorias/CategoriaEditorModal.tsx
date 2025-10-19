@@ -186,7 +186,7 @@ export function CategoriaEditorModal({
                 size: foto.size,
                 mimeType: 'image/jpeg',
             });
-            
+
             if (!result.success) {
                 toast.error(`Error guardando ${foto.fileName}: ${result.error}`);
             }
@@ -217,7 +217,7 @@ export function CategoriaEditorModal({
                 size: video.size,
                 mimeType: 'video/mp4',
             });
-            
+
             if (!result.success) {
                 toast.error(`Error guardando ${video.fileName}: ${result.error}`);
             }

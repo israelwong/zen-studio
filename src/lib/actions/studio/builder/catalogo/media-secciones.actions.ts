@@ -7,9 +7,11 @@ import { revalidatePath } from "next/cache";
 // Esquemas de validación
 const SeccionPortadaSchema = z.object({
   sectionId: z.string(),
+  studioId: z.string(),
   url: z.string().url(),
   fileName: z.string(),
   size: z.number().positive(),
+  mimeType: z.string().optional(),
 });
 
 const DeleteSeccionPortadaSchema = z.object({
@@ -46,29 +48,44 @@ export async function obtenerPortadaSeccion(sectionId: string) {
 
 /**
  * Crea la portada de una sección (reemplaza la anterior si existe)
- * Automáticamente se asigna order=0
+ * Automáticamente se asigna display_order=0
  */
 export async function crearPortadaSeccion(data: CreateSeccionPortadaForm) {
   try {
     const validatedData = SeccionPortadaSchema.parse(data);
 
-    // Eliminar portada anterior si existe (order=0)
+    // Obtener studio_id por slug
+    const studio = await prisma.studios.findUnique({
+      where: { slug: validatedData.studioId },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: `Studio "${validatedData.studioId}" no encontrado`,
+      };
+    }
+
+    // Eliminar portada anterior si existe (display_order=0)
     await prisma.studio_section_media.deleteMany({
       where: { 
         section_id: validatedData.sectionId,
-        order: 0 
+        display_order: 0 
       },
     });
 
-    // Crear nueva portada con order=0
+    // Crear nueva portada con display_order=0
     const portada = await prisma.studio_section_media.create({
       data: {
         section_id: validatedData.sectionId,
-        url: validatedData.url,
-        file_name: validatedData.fileName,
-        file_type: 'image',
-        file_size: validatedData.size,
-        order: 0,
+        studio_id: studio.id,
+        file_url: validatedData.url,
+        filename: validatedData.fileName,
+        file_type: 'IMAGE',
+        storage_bytes: BigInt(validatedData.size),
+        mime_type: validatedData.mimeType || "image/jpeg",
+        display_order: 0,
       },
     });
 
@@ -90,7 +107,7 @@ export async function crearPortadaSeccion(data: CreateSeccionPortadaForm) {
 }
 
 /**
- * Elimina la portada de una sección (elimina el archivo con order=0)
+ * Elimina la portada de una sección (elimina el archivo con display_order=0)
  */
 export async function eliminarPortadaSeccion(data: DeleteSeccionPortadaForm) {
   try {
@@ -99,7 +116,7 @@ export async function eliminarPortadaSeccion(data: DeleteSeccionPortadaForm) {
     await prisma.studio_section_media.deleteMany({
       where: { 
         section_id: validatedData.sectionId,
-        order: 0 
+        display_order: 0 
       },
     });
 
