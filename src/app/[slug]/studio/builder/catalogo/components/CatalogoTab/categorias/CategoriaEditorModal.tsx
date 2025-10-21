@@ -5,9 +5,11 @@ import Image from "next/image";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/shadcn/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
-import { MediaLightbox } from "@/components/ui/zen/modals/MediaLightbox";
+import Lightbox from "yet-another-react-lightbox";
+import Video from "yet-another-react-lightbox/plugins/video";
+import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2, GripVertical } from "lucide-react";
+import { Trash2, Upload, Loader2, GripVertical, Play } from "lucide-react";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { useStorageTracking } from "@/hooks/useStorageTracking";
 import {
@@ -92,17 +94,18 @@ export function CategoriaEditorModal({
     const [isDraggingFotos, setIsDraggingFotos] = useState(false);
     const [isDraggingVideos, setIsDraggingVideos] = useState(false);
 
-    // Lightbox states - completely independent from Sheet
-    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
-    const [lightboxType, setLightboxType] = useState<'foto' | 'video'>('foto');
+    // Lightbox states - completamente independiente del Sheet
+    const [isImageLightboxOpen, setIsImageLightboxOpen] = useState(false);
+    const [isVideoLightboxOpen, setIsVideoLightboxOpen] = useState(false);
+    const [imageSlides, setImageSlides] = useState<Array<{ src: string; alt: string }>>([]);
+    const [videoSlides, setVideoSlides] = useState<Array<{
+        type: 'video';
+        width: number;
+        height: number;
+        poster: string;
+        sources: Array<{ src: string; type: string }>;
+    }>>([]);
     const [lightboxIndex, setLightboxIndex] = useState(0);
-
-    // Reset lightbox when sheet opens (not when it closes!)
-    useEffect(() => {
-        if (isOpen) {
-            setIsLightboxOpen(false);
-        }
-    }, [isOpen]);
 
     // File inputs refs
     const fotosInputRef = useRef<HTMLInputElement>(null);
@@ -428,12 +431,37 @@ export function CategoriaEditorModal({
         };
 
         const handleOpenLightbox = () => {
-            setLightboxType(type);
-            const index = type === 'foto'
-                ? fotos.findIndex(f => f.id === item.id)
-                : videos.findIndex(v => v.id === item.id);
-            setLightboxIndex(Math.max(0, index));
-            setIsLightboxOpen(true);
+            if (type === 'foto') {
+                // Lightbox para imágenes
+                const slides = fotos.map(f => ({
+                    src: f.url,
+                    alt: f.fileName
+                }));
+                const index = fotos.findIndex(f => f.id === item.id);
+
+                setImageSlides(slides);
+                setLightboxIndex(Math.max(0, index));
+                setIsImageLightboxOpen(true);
+            } else {
+                // Lightbox para videos
+                const slides = videos.map(v => ({
+                    type: 'video' as const,
+                    width: 800,
+                    height: 450,
+                    poster: v.url, // Usar el video como poster temporal
+                    sources: [
+                        {
+                            src: v.url,
+                            type: 'video/mp4'
+                        }
+                    ]
+                }));
+                const index = videos.findIndex(v => v.id === item.id);
+
+                setVideoSlides(slides);
+                setLightboxIndex(Math.max(0, index));
+                setIsVideoLightboxOpen(true);
+            }
         };
 
         return (
@@ -461,8 +489,29 @@ export function CategoriaEditorModal({
                         objectFit="cover"
                     />
                 ) : (
-                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                        <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center relative">
+                        <video
+                            src={item.url}
+                            className="w-full h-full object-cover"
+                            muted
+                            preload="metadata"
+                            onError={(e) => {
+                                // Si el video no se puede cargar, mostrar fallback
+                                const target = e.target as HTMLVideoElement;
+                                target.style.display = 'none';
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                            }}
+                        />
+                        <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center" style={{ display: 'none' }}>
+                            <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
+                        </div>
+                        {/* Play icon overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                <Play className="w-4 h-4 text-white ml-0.5" />
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -584,14 +633,19 @@ export function CategoriaEditorModal({
 
     return (
         <>
-            <Sheet open={isOpen} onOpenChange={(open) => {
-                // Only handle close (when open = false), let parent handle open
-                if (!open) {
-                    onClose();
-                }
-            }} modal={false}>
-                <SheetContent className="w-full max-w-md bg-zinc-900 border-zinc-800 overflow-y-auto">
-                    <SheetHeader>
+            <Sheet
+                open={isOpen}
+                onOpenChange={(open) => {
+                    // Only handle close (when open = false), let parent handle open
+                    // Don't close Sheet if lightbox is open
+                    if (!open && !isImageLightboxOpen && !isVideoLightboxOpen) {
+                        onClose();
+                    }
+                }}
+                modal={false}
+            >
+                <SheetContent className="w-full max-w-md bg-zinc-900 border-zinc-800 overflow-y-auto p-0">
+                    <SheetHeader className="p-6 pb-4">
                         <SheetTitle className="text-xl font-bold text-zinc-100">
                             {isEditMode ? "Editar Categoría" : "Nueva Categoría"}
                         </SheetTitle>
@@ -615,7 +669,7 @@ export function CategoriaEditorModal({
                         className="hidden"
                     />
 
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full px-6">
                         {/* Tab Navigation */}
                         <TabsList className="grid w-full grid-cols-3 bg-zinc-800/50">
                             <TabsTrigger
@@ -639,8 +693,8 @@ export function CategoriaEditorModal({
                         </TabsList>
 
                         {/* Tab 1: Datos */}
-                        <TabsContent value="datos" className="space-y-6 mt-6">
-                            <form onSubmit={handleSubmit} className="space-y-6 p-5">
+                        <TabsContent value="datos" className="space-y-6 mt-6 pb-6">
+                            <form onSubmit={handleSubmit} className="space-y-6">
                                 {/* Nombre */}
                                 <div>
                                     <ZenInput
@@ -706,7 +760,7 @@ export function CategoriaEditorModal({
                         </TabsContent>
 
                         {/* Tab 2: Fotos */}
-                        <TabsContent value="fotos" className="space-y-6 mt-6">
+                        <TabsContent value="fotos" className="space-y-6 mt-6 pb-6">
                             <div className="space-y-4">
                                 {/* Galería de Fotos */}
                                 <div>
@@ -749,7 +803,7 @@ export function CategoriaEditorModal({
                         </TabsContent>
 
                         {/* Tab 3: Videos */}
-                        <TabsContent value="videos" className="space-y-6 mt-6">
+                        <TabsContent value="videos" className="space-y-6 mt-6 pb-6">
                             <div className="space-y-4">
                                 {/* Galería de Videos */}
                                 <div>
@@ -794,15 +848,28 @@ export function CategoriaEditorModal({
                 </SheetContent>
             </Sheet>
 
-            {/* Lightbox for viewing media - OUTSIDE Sheet */}
-            <MediaLightbox
-                isOpen={isLightboxOpen}
-                onClose={() => setIsLightboxOpen(false)}
-                items={lightboxType === 'foto'
-                    ? fotos.map(f => ({ id: f.id, url: f.url, fileName: f.fileName, type: 'foto' as const }))
-                    : videos.map(v => ({ id: v.id, url: v.url, fileName: v.fileName, type: 'video' as const }))
-                }
-                initialIndex={lightboxIndex}
+            {/* Lightbox para imágenes */}
+            <Lightbox
+                open={isImageLightboxOpen}
+                close={() => setIsImageLightboxOpen(false)}
+                slides={imageSlides}
+                index={lightboxIndex}
+                on={{
+                    view: ({ index }) => setLightboxIndex(index),
+                }}
+            />
+
+            {/* Lightbox para videos */}
+            <Lightbox
+                open={isVideoLightboxOpen}
+                close={() => setIsVideoLightboxOpen(false)}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                slides={videoSlides as any}
+                index={lightboxIndex}
+                plugins={[Video]}
+                on={{
+                    view: ({ index }) => setLightboxIndex(index),
+                }}
             />
         </>
     );
