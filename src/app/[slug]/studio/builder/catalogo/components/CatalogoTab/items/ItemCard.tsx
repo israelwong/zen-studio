@@ -72,6 +72,14 @@ export function ItemCard({ item, onEdit, onDelete, precioPublico }: ItemCardProp
         }).format(amount);
     };
 
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return "0 B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB", "TB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+    };
+
     // Usar precio público calculado si está disponible, sino usar el costo
     const displayPrice = precioPublico !== undefined ? precioPublico : (item.cost || 0);
 
@@ -89,10 +97,19 @@ export function ItemCard({ item, onEdit, onDelete, precioPublico }: ItemCardProp
                         <GripVertical className="h-4 w-4" />
                     </button>
 
-                    {/* Nombre del item */}
-                    <span className="text-sm text-zinc-200 flex-1 min-w-0">
-                        {item.name}
-                    </span>
+                    {/* Contenido principal */}
+                    <div className="flex-1 min-w-0">
+                        {/* Nombre del item */}
+                        <div className="text-sm text-zinc-200">
+                            {item.name}
+                        </div>
+                        {/* Conteo de bytes */}
+                        {item.mediaSize !== undefined && item.mediaSize > 0 && (
+                            <div className="text-xs text-zinc-500 mt-0.5">
+                                {formatBytes(item.mediaSize)}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Precio público calculado */}
                     <div className="text-sm font-semibold text-zinc-100 min-w-[80px] text-right flex-shrink-0">
