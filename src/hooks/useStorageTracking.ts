@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  obtenerStorageUsage, 
+import {
+  obtenerStorageUsage,
   actualizarStorageUsage,
-  type StorageUsage 
+  type StorageUsage
 } from '@/lib/actions/studio/builder/catalogo/storage.actions';
 
 export function useStorageTracking(studioSlug: string) {

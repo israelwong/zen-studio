@@ -3,16 +3,35 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/shadcn/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/shadcn/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
+import { MediaLightbox } from "@/components/ui/zen/modals/MediaLightbox";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2 } from "lucide-react";
+import { Trash2, Upload, Loader2, GripVertical } from "lucide-react";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { useStorageTracking } from "@/hooks/useStorageTracking";
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
     crearMediaCategoria,
     eliminarMediaCategoria,
     obtenerMediaCategoria,
+    reordenarMediaCategoria,
 } from "@/lib/actions/studio/builder/catalogo/media-categorias.actions";
 
 interface MediaItem {
@@ -72,6 +91,20 @@ export function CategoriaEditorModal({
     const [videos, setVideos] = useState<MediaItem[]>([]);
     const [isDraggingFotos, setIsDraggingFotos] = useState(false);
     const [isDraggingVideos, setIsDraggingVideos] = useState(false);
+
+    // Lightbox states
+    const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+    const [lightboxType, setLightboxType] = useState<'foto' | 'video'>('foto');
+    const [lightboxIndex, setLightboxIndex] = useState(0);
+
+    // Reset lightbox state when modal opens/closes
+    useEffect(() => {
+        if (isOpen) {
+            setIsLightboxOpen(false);
+            setLightboxType('foto');
+            setLightboxIndex(0);
+        }
+    }, [isOpen]);
 
     // File inputs refs
     const fotosInputRef = useRef<HTMLInputElement>(null);
@@ -337,7 +370,127 @@ export function CategoriaEditorModal({
         await handleVideosSelected(files);
     };
 
-    // Componente: Thumbnail Grid
+    // Reordenar fotos y persistir en BD
+    const handleReorderFotos = async (newFotos: typeof fotos) => {
+        setFotos(newFotos);
+
+        // Persistir nuevo orden en BD
+        if (formData.id) {
+            const mediaIds = newFotos.map(f => f.id);
+            const result = await reordenarMediaCategoria(formData.id, mediaIds);
+
+            if (!result.success) {
+                toast.error(`Error reordenando fotos: ${result.error}`);
+                // Revertir cambios locales
+                await cargarMediaExistente(formData.id);
+            } else {
+                toast.success('Fotos reordenadas correctamente');
+            }
+        }
+    };
+
+    // Reordenar videos y persistir en BD
+    const handleReorderVideos = async (newVideos: typeof videos) => {
+        setVideos(newVideos);
+
+        // Persistir nuevo orden en BD
+        if (formData.id) {
+            const mediaIds = newVideos.map(v => v.id);
+            const result = await reordenarMediaCategoria(formData.id, mediaIds);
+
+            if (!result.success) {
+                toast.error(`Error reordenando videos: ${result.error}`);
+                // Revertir cambios locales
+                await cargarMediaExistente(formData.id);
+            } else {
+                toast.success('Videos reordenados correctamente');
+            }
+        }
+    };
+
+    // Componente: Thumbnail Grid con Drag-and-Drop
+    const SortableMediaItem = ({ item, type, onDelete }: any) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging,
+        } = useSortable({ id: item.id });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.5 : 1,
+        };
+
+        const handleOpenLightbox = () => {
+            setLightboxType(type);
+            const index = type === 'foto'
+                ? fotos.findIndex(f => f.id === item.id)
+                : videos.findIndex(v => v.id === item.id);
+            setLightboxIndex(Math.max(0, index));
+            setIsLightboxOpen(true);
+        };
+
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className="aspect-square bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden group relative cursor-pointer"
+                onClick={handleOpenLightbox}
+            >
+                {/* Drag handle */}
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="absolute top-1 left-1 bg-zinc-800/80 hover:bg-zinc-700 p-1 rounded cursor-grab active:cursor-grabbing z-10"
+                >
+                    <GripVertical className="w-4 h-4 text-zinc-400" />
+                </div>
+
+                {/* Preview - Show actual image */}
+                {type === 'foto' ? (
+                    <Image
+                        src={item.url}
+                        alt={item.fileName}
+                        layout="fill"
+                        objectFit="cover"
+                    />
+                ) : (
+                    <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+                        <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
+                    </div>
+                )}
+
+                {/* Uploading indicator */}
+                {item.isUploading && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
+                    </div>
+                )}
+
+                {/* Delete button */}
+                {!item.isUploading && (
+                    <button
+                        type="button"
+                        onClick={() => onDelete(item.id)}
+                        disabled={isUploading}
+                        className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <Trash2 className="w-4 h-4 text-white" />
+                    </button>
+                )}
+
+                {/* Size info */}
+                <div className="absolute bottom-1 left-1 right-1 bg-black/60 px-1 py-0.5 rounded text-xs text-zinc-300 truncate">
+                    {formatFileSize(item.size)}
+                </div>
+            </div>
+        );
+    };
+
     const MediaGrid = ({
         items,
         onDelete,
@@ -345,7 +498,8 @@ export function CategoriaEditorModal({
         setIsDragging,
         type,
         onUploadClick,
-        onDrop
+        onDrop,
+        onReorder,
     }: {
         items: MediaItem[];
         onDelete: (id: string) => void;
@@ -354,92 +508,86 @@ export function CategoriaEditorModal({
         type: 'foto' | 'video';
         onUploadClick: () => void;
         onDrop: (e: React.DragEvent) => void;
-    }) => (
-        <div
-            className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
-                ? "border-emerald-500 bg-emerald-500/10"
-                : "border-zinc-700 bg-zinc-800/30"
-                }`}
-            onDragEnter={() => setIsDragging(true)}
-            onDragLeave={() => setIsDragging(false)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={onDrop}
-        >
-            {/* Slot: Subir */}
-            <button
-                type="button"
-                onClick={onUploadClick}
-                disabled={isUploading}
-                className="aspect-square bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-700 hover:border-zinc-600 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+        onReorder: (newItems: MediaItem[]) => void;
+    }) => {
+        const sensors = useSensors(
+            useSensor(PointerSensor),
+            useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        );
+
+        const handleDragEnd = (event: DragEndEvent) => {
+            const { active, over } = event;
+
+            if (over && active.id !== over.id) {
+                const oldIndex = items.findIndex(item => item.id === active.id);
+                const newIndex = items.findIndex(item => item.id === over.id);
+
+                if (oldIndex !== -1 && newIndex !== -1) {
+                    const newItems = arrayMove(items, oldIndex, newIndex);
+                    onReorder(newItems);
+                }
+            }
+        };
+
+        return (
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
             >
-                <div className="flex flex-col items-center gap-2">
-                    {isUploading ? (
-                        <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
-                    ) : (
-                        <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200" />
-                    )}
-                    <span className="text-xs text-zinc-500 group-hover:text-zinc-300 text-center">
-                        {type === 'foto' ? 'Subir Fotos' : 'Subir Videos'}
-                    </span>
-                </div>
-            </button>
-
-            {/* Thumbnails */}
-            {items.map((item) => (
                 <div
-                    key={item.id}
-                    className="aspect-square bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden group relative"
+                    className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
+                        ? "border-emerald-500 bg-emerald-500/10"
+                        : "border-zinc-700 bg-zinc-800/30"
+                        }`}
+                    onDragEnter={() => setIsDragging(true)}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={onDrop}
                 >
-                    {/* Preview - Show actual image */}
-                    {type === 'foto' ? (
-                        <Image
-                            src={item.url}
-                            alt={item.fileName}
-                            layout="fill"
-                            objectFit="cover"
-                        />
-                    ) : (
-                        <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
-                            <span className="text-xs text-zinc-500">🎬 {item.fileName}</span>
+                    {/* Slot: Subir */}
+                    <button
+                        type="button"
+                        onClick={onUploadClick}
+                        disabled={isUploading}
+                        className="aspect-square bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg flex items-center justify-center cursor-pointer hover:bg-zinc-700 hover:border-zinc-600 transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        <div className="flex flex-col items-center gap-2">
+                            {isUploading ? (
+                                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin" />
+                            ) : (
+                                <Upload className="w-6 h-6 text-zinc-400 group-hover:text-zinc-200" />
+                            )}
+                            <span className="text-xs text-zinc-500 group-hover:text-zinc-300 text-center">
+                                {type === 'foto' ? 'Subir Fotos' : 'Subir Videos'}
+                            </span>
                         </div>
-                    )}
+                    </button>
 
-                    {/* Uploading indicator */}
-                    {item.isUploading && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
-                        </div>
-                    )}
-
-                    {/* Delete button */}
-                    {!item.isUploading && (
-                        <button
-                            type="button"
-                            onClick={() => onDelete(item.id)}
-                            disabled={isUploading}
-                            className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Trash2 className="w-4 h-4 text-white" />
-                        </button>
-                    )}
-
-                    {/* Size info */}
-                    <div className="absolute bottom-1 left-1 right-1 bg-black/60 px-1 py-0.5 rounded text-xs text-zinc-300 truncate">
-                        {formatFileSize(item.size)}
-                    </div>
+                    {/* Sortable Thumbnails */}
+                    <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                        {items.map((item) => (
+                            <SortableMediaItem
+                                key={item.id}
+                                item={item}
+                                type={type}
+                                onDelete={onDelete}
+                            />
+                        ))}
+                    </SortableContext>
                 </div>
-            ))}
-        </div>
-    );
+            </DndContext>
+        );
+    };
 
     return (
-        <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[700px] bg-zinc-900 border-zinc-800">
-                <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-zinc-100">
+        <Sheet open={isOpen} onOpenChange={handleClose}>
+            <SheetContent className="sm:max-w-[700px] bg-zinc-900 border-zinc-800">
+                <SheetHeader>
+                    <SheetTitle className="text-xl font-bold text-zinc-100">
                         {isEditMode ? "Editar Categoría" : "Nueva Categoría"}
-                    </DialogTitle>
-                </DialogHeader>
+                    </SheetTitle>
+                </SheetHeader>
 
                 {/* Hidden file inputs */}
                 <input
@@ -565,6 +713,7 @@ export function CategoriaEditorModal({
                                     type="foto"
                                     onUploadClick={() => fotosInputRef.current?.click()}
                                     onDrop={handleFotosDrop}
+                                    onReorder={handleReorderFotos}
                                 />
                             </div>
 
@@ -605,6 +754,7 @@ export function CategoriaEditorModal({
                                     type="video"
                                     onUploadClick={() => videosInputRef.current?.click()}
                                     onDrop={handleVideosDrop}
+                                    onReorder={handleReorderVideos}
                                 />
                             </div>
 
@@ -629,7 +779,18 @@ export function CategoriaEditorModal({
                         </div>
                     </TabsContent>
                 </Tabs>
-            </DialogContent>
-        </Dialog>
+            </SheetContent>
+
+            {/* Lightbox for viewing media */}
+            <MediaLightbox
+                isOpen={isLightboxOpen}
+                onClose={() => setIsLightboxOpen(false)}
+                items={lightboxType === 'foto'
+                    ? fotos.map(f => ({ id: f.id, url: f.url, fileName: f.fileName, type: 'foto' as const }))
+                    : videos.map(v => ({ id: v.id, url: v.url, fileName: v.fileName, type: 'video' as const }))
+                }
+                initialIndex={lightboxIndex}
+            />
+        </Sheet>
     );
 }
