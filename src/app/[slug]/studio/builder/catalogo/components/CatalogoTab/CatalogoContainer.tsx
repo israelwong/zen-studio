@@ -830,9 +830,9 @@ export function CatalogoContainer({
             setIsItemModalOpen(false);
             setItemToEdit(null);
           }}
-          onSave={handleSaveItem}
           item={itemToEdit}
-          preciosConfig={preciosConfig || undefined}
+          studioSlug={studioSlug}
+          categoriaId={selectedCategoria?.id || ""}
         />
 
         {/* Modal de confirmación de eliminación de item */}
