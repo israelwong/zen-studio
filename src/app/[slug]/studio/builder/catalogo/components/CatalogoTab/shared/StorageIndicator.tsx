@@ -1,35 +1,51 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ZenCard } from "@/components/ui/zen";
 import { AlertCircle, HardDrive } from "lucide-react";
+import { calcularStorageCompleto, type StorageStats } from "@/lib/actions/studio/builder/catalogo/calculate-storage.actions";
 
 interface StorageIndicatorProps {
-    totalBytes: number;
-    quotaLimitBytes: number;
-    sectionMediaBytes?: number;
-    categoryMediaBytes?: number;
-    itemMediaBytes?: number;
+    studioSlug: string;
+    quotaLimitBytes?: number;
     className?: string;
 }
 
 /**
  * Componente que muestra el uso de almacenamiento del studio
- * Incluye barra de progreso con colores según porcentaje
- * Verde: < 70%, Amarillo: 70-90%, Rojo: > 90%
+ * Obtiene datos en tiempo real calculados desde tablas de media
+ * FUENTE ÚNICA DE VERDAD: calcularStorageCompleto
  */
 export function StorageIndicator({
-    totalBytes,
-    quotaLimitBytes,
-    sectionMediaBytes = 0,
-    categoryMediaBytes = 0,
-    itemMediaBytes = 0,
+    studioSlug,
+    quotaLimitBytes = 10 * 1024 * 1024 * 1024, // 10GB default
     className = "",
 }: StorageIndicatorProps) {
-    // Calcular porcentaje
+    const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
+
+    const cargarStorage = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            const result = await calcularStorageCompleto(studioSlug);
+            if (result.success && result.data) {
+                setStorageStats(result.data);
+            }
+        } catch (error) {
+            console.error("Error cargando storage:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [studioSlug]);
+
+    useEffect(() => {
+        cargarStorage();
+    }, [cargarStorage]);
+
+    const totalBytes = storageStats?.totalBytes || 0;
     const percentageUsed = (totalBytes / quotaLimitBytes) * 100;
 
-    // Determinar color según porcentaje
     const getProgressColor = () => {
         if (percentageUsed > 90) return "bg-red-500";
         if (percentageUsed > 70) return "bg-yellow-500";
@@ -42,7 +58,6 @@ export function StorageIndicator({
         return "bg-green-100";
     };
 
-    // Formatear bytes a readable format (KB, MB, GB)
     const formatBytes = (bytes: number): string => {
         if (bytes === 0) return "0 B";
         const k = 1024;
@@ -55,9 +70,23 @@ export function StorageIndicator({
     const quotaFormatted = formatBytes(quotaLimitBytes);
     const percentageFormatted = Math.round(percentageUsed * 10) / 10;
 
+    if (isLoading) {
+        return (
+            <ZenCard className={`p-4 ${className}`}>
+                <div className="animate-pulse space-y-4">
+                    <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+                    <div className="h-2 bg-zinc-800 rounded"></div>
+                </div>
+            </ZenCard>
+        );
+    }
+
     return (
-        <ZenCard className={`p-4 ${className}`}>
-            <div className="space-y-4">
+        <ZenCard
+            className={`p-4 ${className} cursor-pointer transition-colors hover:bg-zinc-800/50`}
+            onClick={() => storageStats && storageStats.sections.length > 0 && setIsBreakdownOpen(!isBreakdownOpen)}
+        >
+            <div className="space-y-2">
                 {/* Encabezado */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -71,56 +100,63 @@ export function StorageIndicator({
                     )}
                 </div>
 
-                {/* Barra de progreso */}
-                <div>
-                    <div className={`w-full h-2 rounded-full overflow-hidden ${getProgressBgColor()}`}>
-                        <div
-                            className={`h-full rounded-full transition-all duration-300 ${getProgressColor()}`}
-                            style={{ width: `${Math.min(percentageUsed, 100)}%` }}
-                        />
-                    </div>
-                </div>
-
-                {/* Texto info */}
-                <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">
-                        {usedFormatted} / {quotaFormatted}
-                    </span>
-                    <span
-                        className={`font-medium ${percentageUsed > 90
+                {/* Barra de progreso + Botón colapsable en una fila */}
+                <div className="space-y-2">
+                    {/* Info text */}
+                    <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-400">
+                            {usedFormatted} / {quotaFormatted}
+                        </span>
+                        <span
+                            className={`font-medium ${percentageUsed > 90
                                 ? "text-red-400"
                                 : percentageUsed > 70
                                     ? "text-yellow-400"
                                     : "text-green-400"
-                            }`}
-                    >
-                        {percentageFormatted}%
-                    </span>
+                                }`}
+                        >
+                            {percentageFormatted}%
+                        </span>
+                    </div>
+
+                    {/* Progress bar + Collapse chevron same row */}
+                    <div className="flex items-center gap-2">
+                        <div className={`flex-1 h-2 rounded-full overflow-hidden ${getProgressBgColor()}`}>
+                            <div
+                                className={`h-full rounded-full transition-all duration-300 ${getProgressColor()}`}
+                                style={{ width: `${Math.min(percentageUsed, 100)}%` }}
+                            />
+                        </div>
+
+                        {/* Chevron icono */}
+                        {storageStats && storageStats.sections.length > 0 && (
+                            <span className="flex-shrink-0 text-zinc-400 text-sm">
+                                ▼
+                            </span>
+                        )}
+                    </div>
                 </div>
 
-                {/* Breakdown por tipo (opcional) */}
-                {(sectionMediaBytes > 0 || categoryMediaBytes > 0 || itemMediaBytes > 0) && (
-                    <div className="pt-2 space-y-2 border-t border-zinc-800">
-                        <div className="text-xs text-zinc-500 font-medium">Desglose:</div>
-                        <div className="space-y-1 text-xs text-zinc-400">
-                            {sectionMediaBytes > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Secciones:</span>
-                                    <span>{formatBytes(sectionMediaBytes)}</span>
+                {/* Desglose expandible */}
+                {storageStats && storageStats.sections.length > 0 && isBreakdownOpen && (
+                    <div className="space-y-2 p-3 rounded border border-zinc-700 bg-zinc-800/30">
+                        <div className="space-y-1">
+                            {storageStats.sections.map((section) => (
+                                <div key={section.sectionId} className="flex justify-between text-xs">
+                                    <span className="truncate text-zinc-400">{section.sectionName}</span>
+                                    <span className="flex-shrink-0 text-zinc-300">{formatBytes(section.subtotal)}</span>
                                 </div>
-                            )}
-                            {categoryMediaBytes > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Categorías:</span>
-                                    <span>{formatBytes(categoryMediaBytes)}</span>
-                                </div>
-                            )}
-                            {itemMediaBytes > 0 && (
-                                <div className="flex justify-between">
-                                    <span>Items:</span>
-                                    <span>{formatBytes(itemMediaBytes)}</span>
-                                </div>
-                            )}
+                            ))}
+                        </div>
+                        <div className="pt-2 border-t border-zinc-700">
+                            <div className="flex justify-between text-xs text-zinc-300 mb-1">
+                                <span>Total Categorías:</span>
+                                <span>{formatBytes(storageStats.categoriesGlobalBytes)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs text-zinc-300">
+                                <span>Total Items:</span>
+                                <span>{formatBytes(storageStats.itemsGlobalBytes)}</span>
+                            </div>
                         </div>
                     </div>
                 )}

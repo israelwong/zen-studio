@@ -94,6 +94,7 @@ export async function crearMediaCategoria(data: CreateMediaItemForm) {
     });
 
     revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/storage", "layout");
 
     return {
       success: true,
@@ -183,6 +184,7 @@ export async function eliminarMediaCategoria(data: DeleteMediaItemForm) {
     });
 
     revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/storage", "layout");
 
     return { success: true };
   } catch (error) {

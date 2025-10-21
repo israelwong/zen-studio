@@ -43,6 +43,15 @@ interface SeccionesListViewProps {
     isLoading?: boolean;
 }
 
+// Helper para formatear bytes
+const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
+
 /**
  * Componente NIVEL 1 de navegación
  * Lista de todas las secciones del catálogo con Drag & Drop
@@ -88,14 +97,6 @@ function SeccionCard({
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [seccion.id]);
-
-    const formatBytes = (bytes: number): string => {
-        if (bytes === 0) return "0 KB";
-        const k = 1024;
-        const sizes = ["B", "KB", "MB", "GB"];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
-    };
 
     return (
         <div

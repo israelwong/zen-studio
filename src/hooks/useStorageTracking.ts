@@ -4,7 +4,6 @@ import {
   actualizarStorageUsage,
   type StorageUsage 
 } from '@/lib/actions/studio/builder/catalogo/storage.actions';
-import { toast } from 'sonner';
 
 export function useStorageTracking(studioSlug: string) {
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
@@ -29,6 +28,14 @@ export function useStorageTracking(studioSlug: string) {
     }
   };
 
+  // Función pública para refrescar datos
+  const refreshStorageUsage = useCallback(async () => {
+    const result = await obtenerStorageUsage(studioSlug);
+    if (result.success && result.data) {
+      setStorageUsage(result.data);
+    }
+  }, [studioSlug]);
+
   // Agregar tamaño cuando sube media
   const addMediaSize = useCallback(
     async (bytes: number) => {
@@ -40,16 +47,15 @@ export function useStorageTracking(studioSlug: string) {
             if (!prev) return null;
             return {
               ...prev,
-              media_bytes: prev.media_bytes + BigInt(bytes),
-              total_bytes: prev.total_bytes + BigInt(bytes),
+              media_bytes: (prev.media_bytes as bigint) + BigInt(bytes),
+              total_bytes: (prev.total_bytes as bigint) + BigInt(bytes),
             };
           });
         } else {
-          toast.error(result.error || "Error al actualizar almacenamiento");
+          console.warn("Storage tracking warning:", result.error);
         }
       } catch (error) {
         console.error("Error agregando tamaño:", error);
-        toast.error("Error al registrar archivo");
       }
     },
     [studioSlug]
@@ -66,16 +72,15 @@ export function useStorageTracking(studioSlug: string) {
             if (!prev) return null;
             return {
               ...prev,
-              media_bytes: prev.media_bytes - BigInt(bytes),
-              total_bytes: prev.total_bytes - BigInt(bytes),
+              media_bytes: (prev.media_bytes as bigint) - BigInt(bytes),
+              total_bytes: (prev.total_bytes as bigint) - BigInt(bytes),
             };
           });
         } else {
-          toast.error(result.error || "Error al actualizar almacenamiento");
+          console.warn("Storage tracking warning:", result.error);
         }
       } catch (error) {
         console.error("Error removiendo tamaño:", error);
-        toast.error("Error al eliminar archivo");
       }
     },
     [studioSlug]
@@ -86,5 +91,6 @@ export function useStorageTracking(studioSlug: string) {
     isLoading,
     addMediaSize,
     removeMediaSize,
+    refreshStorageUsage,
   };
 }

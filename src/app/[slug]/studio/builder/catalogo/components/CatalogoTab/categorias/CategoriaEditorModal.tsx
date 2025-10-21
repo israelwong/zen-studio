@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn
 import { toast } from "sonner";
 import { Trash2, Upload, Loader2 } from "lucide-react";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { useStorageTracking } from "@/hooks/useStorageTracking";
 import {
     crearMediaCategoria,
     eliminarMediaCategoria,
@@ -76,8 +77,19 @@ export function CategoriaEditorModal({
     const fotosInputRef = useRef<HTMLInputElement>(null);
     const videosInputRef = useRef<HTMLInputElement>(null);
 
+    // Storage tracking hook
+    const { addMediaSize, removeMediaSize, refreshStorageUsage } = useStorageTracking(studioSlug);
+
     // Media upload hook
-    const { uploadFiles, deleteFile, isUploading } = useMediaUpload();
+    const { uploadFiles, deleteFile, isUploading } = useMediaUpload(
+        (bytes, operation) => {
+            if (operation === 'add') {
+                addMediaSize(bytes);
+            } else {
+                removeMediaSize(bytes);
+            }
+        }
+    );
 
     const isEditMode = !!categoria;
 
@@ -226,6 +238,8 @@ export function CategoriaEditorModal({
             }
         }
 
+        // Refrescar storage después de guardar
+        await refreshStorageUsage();
         setFotos(prev => [...prev, ...uploadedFotos]);
     };
 
@@ -258,6 +272,7 @@ export function CategoriaEditorModal({
         }
 
         setVideos(prev => [...prev, ...uploadedVideos]);
+        await refreshStorageUsage();
     };
 
     // Eliminar foto
@@ -266,7 +281,7 @@ export function CategoriaEditorModal({
         if (!foto || !formData.id) return;
 
         // Eliminar de Supabase
-        const success = await deleteFile(foto.url, studioSlug);
+        const success = await deleteFile(foto.url, studioSlug, foto.size);
         if (success) {
             // Eliminar de BD
             const dbResult = await eliminarMediaCategoria({
@@ -276,6 +291,7 @@ export function CategoriaEditorModal({
 
             if (dbResult.success) {
                 setFotos(fotos.filter(f => f.id !== id));
+                await refreshStorageUsage();
             } else {
                 toast.error(`Error eliminando foto: ${dbResult.error}`);
             }
@@ -288,7 +304,7 @@ export function CategoriaEditorModal({
         if (!video || !formData.id) return;
 
         // Eliminar de Supabase
-        const success = await deleteFile(video.url, studioSlug);
+        const success = await deleteFile(video.url, studioSlug, video.size);
         if (success) {
             // Eliminar de BD
             const dbResult = await eliminarMediaCategoria({
@@ -298,6 +314,7 @@ export function CategoriaEditorModal({
 
             if (dbResult.success) {
                 setVideos(videos.filter(v => v.id !== id));
+                await refreshStorageUsage();
             } else {
                 toast.error(`Error eliminando video: ${dbResult.error}`);
             }

@@ -6,9 +6,9 @@ import { revalidatePath } from "next/cache";
 export interface StorageUsage {
   id: string;
   studio_id: string;
-  total_bytes: bigint;
-  media_bytes: bigint;
-  updated_at: Date;
+  total_storage_bytes: bigint;
+  section_media_bytes: bigint;
+  last_calculated_at: Date;
 }
 
 /**
@@ -16,6 +16,14 @@ export interface StorageUsage {
  */
 export async function obtenerStorageUsage(studioId: string) {
   try {
+    if (!studioId || studioId === "default") {
+      return {
+        success: false,
+        error: "Studio slug inválido",
+        data: null,
+      };
+    }
+
     const studio = await prisma.studios.findUnique({
       where: { slug: studioId },
       select: { id: true },
@@ -38,9 +46,9 @@ export async function obtenerStorageUsage(studioId: string) {
       data: usage || {
         id: "",
         studio_id: studio.id,
-        total_bytes: BigInt(0),
-        media_bytes: BigInt(0),
-        updated_at: new Date(),
+        total_storage_bytes: BigInt(0),
+        section_media_bytes: BigInt(0),
+        last_calculated_at: new Date(),
       },
     };
   } catch (error) {
@@ -63,6 +71,13 @@ export async function actualizarStorageUsage(
   operation: "add" | "remove"
 ) {
   try {
+    if (!studioId || studioId === "default") {
+      return {
+        success: false,
+        error: "Studio slug inválido",
+      };
+    }
+
     const studio = await prisma.studios.findUnique({
       where: { slug: studioId },
       select: { id: true },
@@ -81,13 +96,18 @@ export async function actualizarStorageUsage(
       where: { studio_id: studio.id },
       create: {
         studio_id: studio.id,
-        total_bytes: BigInt(operation === "add" ? bytes : 0),
-        media_bytes: BigInt(operation === "add" ? bytes : 0),
+        total_storage_bytes: BigInt(operation === "add" ? bytes : 0),
+        section_media_bytes: BigInt(operation === "add" ? bytes : 0),
+        category_media_bytes: BigInt(0),
+        item_media_bytes: BigInt(0),
+        portfolio_media_bytes: BigInt(0),
+        page_media_bytes: BigInt(0),
+        quota_limit_bytes: BigInt(10737418240), // 10GB default
       },
       update: {
-        media_bytes: { increment: BigInt(change) },
-        total_bytes: { increment: BigInt(change) },
-        updated_at: new Date(),
+        total_storage_bytes: { increment: BigInt(change) },
+        section_media_bytes: { increment: BigInt(change) },
+        last_calculated_at: new Date(),
       },
     });
 

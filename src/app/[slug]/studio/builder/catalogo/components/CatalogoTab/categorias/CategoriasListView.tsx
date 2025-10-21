@@ -42,6 +42,15 @@ interface CategoriasListViewProps {
     isLoading?: boolean;
 }
 
+// Helper para formatear bytes
+const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return "0 B";
+    const k = 1024;
+    const sizes = ["B", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
+};
+
 function CategoriaCard({
     categoria,
     onSelectCategoria,
@@ -118,8 +127,15 @@ function CategoriaCard({
                                 {categoria.description}
                             </p>
                         )}
-                        <div className="text-xs text-zinc-500">
-                            {categoria.items ?? 0} item{categoria.items !== 1 ? "s" : ""}
+                        <div className="text-xs text-zinc-500 space-y-1">
+                            <div>
+                                {categoria.items ?? 0} item{categoria.items !== 1 ? "s" : ""}
+                            </div>
+                            {categoria.mediaSize !== undefined && categoria.mediaSize > 0 && (
+                                <div className="text-zinc-400">
+                                    {formatBytes(categoria.mediaSize)}
+                                </div>
+                            )}
                         </div>
                     </div>
 

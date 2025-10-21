@@ -26,6 +26,7 @@ import {
   obtenerItemsConStats,
 } from "@/lib/actions/studio/builder/catalogo";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
+import { calcularStorageCompleto, type StorageStats } from "@/lib/actions/studio/builder/catalogo/calculate-storage.actions";
 
 type NavigationLevel = 1 | 2 | 3 | 4;
 
@@ -56,14 +57,6 @@ interface Item {
   mediaSize?: number;
 }
 
-interface StorageUsage {
-  totalBytes: number;
-  quotaLimitBytes: number;
-  sectionMediaBytes: number;
-  categoryMediaBytes: number;
-  itemMediaBytes: number;
-}
-
 interface CatalogoContainerProps {
   studioSlug: string;
   secciones: Seccion[];
@@ -91,7 +84,7 @@ export function CatalogoContainer({
   // Datos de navegación
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [items, setItems] = useState<Item[]>([]);
-  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [storageUsage, setStorageUsage] = useState<StorageStats | null>(null);
   const [preciosConfig, setPreciosConfig] = useState<ConfiguracionPrecios | null>(null);
 
   // Estados de carga
@@ -134,10 +127,36 @@ export function CatalogoContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studioSlug]);
 
+  // Cargar datos de almacenamiento al montar
+  useEffect(() => {
+    const loadStorageData = async () => {
+      try {
+        const result = await calcularStorageCompleto(studioSlug);
+        if (result.success && result.data) {
+          setStorageUsage(result.data);
+          
+          // Actualizar secciones con mediaSize
+          const seccionesActualizadas = secciones.map(sec => {
+            const storageSection = result.data!.sections.find(s => s.sectionId === sec.id);
+            return {
+              ...sec,
+              mediaSize: storageSection?.subtotal || 0,
+            };
+          });
+          setSecciones(seccionesActualizadas);
+        }
+      } catch (error) {
+        console.error("Error loading storage data:", error);
+      }
+    };
+    loadStorageData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioSlug]);
+
   const loadStorageUsage = async () => {
     try {
       // TODO: Implementar llamada a server action para obtener storage usage
-      const usage: StorageUsage = {
+      const usage: StorageStats = {
         totalBytes: 0,
         quotaLimitBytes: 100 * 1024 * 1024 * 1024, // 100GB default
         sectionMediaBytes: 0,
@@ -662,15 +681,10 @@ export function CatalogoContainer({
   if (currentLevel === 1) {
     return (
       <div className="space-y-6">
-        {storageUsage && (
-          <StorageIndicator
-            totalBytes={storageUsage.totalBytes}
-            quotaLimitBytes={storageUsage.quotaLimitBytes}
-            sectionMediaBytes={storageUsage.sectionMediaBytes}
-            categoryMediaBytes={storageUsage.categoryMediaBytes}
-            itemMediaBytes={storageUsage.itemMediaBytes}
-          />
-        )}
+        <StorageIndicator
+          studioSlug={studioSlug}
+          quotaLimitBytes={storageUsage?.quotaLimitBytes}
+        />
         <SeccionesListView
           secciones={secciones}
           onSelectSeccion={handleSelectSeccion}
@@ -728,15 +742,10 @@ export function CatalogoContainer({
   if (currentLevel === 2 && selectedSeccion) {
     return (
       <div className="space-y-6">
-        {storageUsage && (
-          <StorageIndicator
-            totalBytes={storageUsage.totalBytes}
-            quotaLimitBytes={storageUsage.quotaLimitBytes}
-            sectionMediaBytes={storageUsage.sectionMediaBytes}
-            categoryMediaBytes={storageUsage.categoryMediaBytes}
-            itemMediaBytes={storageUsage.itemMediaBytes}
-          />
-        )}
+        <StorageIndicator
+          studioSlug={studioSlug}
+          quotaLimitBytes={storageUsage?.quotaLimitBytes}
+        />
         <CategoriasListView
           seccionName={selectedSeccion.name}
           categorias={categorias}
@@ -758,6 +767,7 @@ export function CatalogoContainer({
           }}
           onSave={handleSaveCategoria}
           categoria={categoriaToEdit}
+          studioSlug={studioSlug}
         />
 
         {/* Modal de confirmación de eliminación de categoría */}
@@ -796,15 +806,10 @@ export function CatalogoContainer({
   if (currentLevel === 3 && selectedCategoria) {
     return (
       <div className="space-y-6">
-        {storageUsage && (
-          <StorageIndicator
-            totalBytes={storageUsage.totalBytes}
-            quotaLimitBytes={storageUsage.quotaLimitBytes}
-            sectionMediaBytes={storageUsage.sectionMediaBytes}
-            categoryMediaBytes={storageUsage.categoryMediaBytes}
-            itemMediaBytes={storageUsage.itemMediaBytes}
-          />
-        )}
+        <StorageIndicator
+          studioSlug={studioSlug}
+          quotaLimitBytes={storageUsage?.quotaLimitBytes}
+        />
         <ItemsListView
           categoriaNombre={selectedCategoria.name}
           items={items}

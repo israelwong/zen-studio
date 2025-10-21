@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { uploadFileStorage, deleteFileStorage } from '@/lib/actions/shared/media.actions';
+import { createClient } from '@supabase/supabase-js';
 import { optimizeImage, analyzeVideo, validateFileSize, formatBytes } from '@/lib/utils/image-optimizer';
+import { deleteFileStorage } from '@/lib/actions/shared/media.actions';
 import { toast } from 'sonner';
 
 interface UploadedFile {
@@ -13,11 +14,57 @@ interface UploadedFile {
   compressionRatio?: number;
 }
 
-export function useMediaUpload() {
+// Supabase client para uploads directo
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
+
+const BUCKET_NAME = 'Studio';
+
+/**
+ * Genera la ruta del archivo en Supabase
+ */
+function generateSupabasePath(
+  studioSlug: string,
+  category: string,
+  subcategory: string | undefined,
+  filename: string
+): string {
+  const timestamp = Date.now();
+  const randomId = Math.random().toString(36).substring(2, 8);
+
+  let path = `studios/${studioSlug}/${category}`;
+
+  if (subcategory) {
+    path += `/${subcategory}`;
+  }
+
+  const cleanFilename = filename
+    .toLowerCase()
+    .replace(/[^a-z0-9.]/g, '-')
+    .replace(/-+/g, '-');
+
+  const extension = cleanFilename.split('.').pop();
+  const nameWithoutExt = cleanFilename.replace(`.${extension}`, '');
+
+  path += `/${nameWithoutExt}-${timestamp}-${randomId}.${extension}`;
+
+  return path;
+}
+
+export function useMediaUpload(onMediaSizeChange?: (bytes: number, operation: 'add' | 'remove') => void) {
   const [isUploading, setIsUploading] = useState(false);
 
   const uploadFiles = useCallback(
     async (files: File[], studioSlug: string, category: string, subcategory?: string): Promise<UploadedFile[]> => {
+      if (!supabase) {
+        toast.error("Cliente Supabase no configurado");
+        return [];
+      }
+
       setIsUploading(true);
       const uploadedFiles: UploadedFile[] = [];
 
@@ -48,34 +95,67 @@ export function useMediaUpload() {
                 );
               } catch (error) {
                 console.warn(`No se pudo optimizar ${file.name}, usando original:`, error);
-                // Continuar con archivo original si la optimización falla
               }
             } else if (file.type.startsWith('video/')) {
-              // Videos se cargan tal cual (compresión server-side con ffmpeg si es necesario)
               await analyzeVideo(file);
             }
 
-            // Subir a Supabase
-            const result = await uploadFileStorage({
-              file: fileToUpload,
-              studioSlug,
-              category,
-              subcategory
+            // Generar ruta
+            const filePath = generateSupabasePath(studioSlug, category, subcategory, file.name);
+
+            // Subir directamente a Supabase desde cliente
+            const { data, error: uploadError } = await supabase.storage
+              .from(BUCKET_NAME)
+              .upload(filePath, fileToUpload, {
+                cacheControl: '3600',
+                upsert: true,
+                contentType: fileToUpload.type,
+              });
+
+            if (uploadError) {
+              console.error(`Error subiendo ${file.name}:`, uploadError);
+              const errorMsg = uploadError.message || 'Error desconocido';
+
+              // Detectar errores RLS
+              if (errorMsg.includes('row level security') || errorMsg.includes('policy')) {
+                toast.error(`Permiso denegado: No tienes permisos para subir archivos. ${errorMsg}`);
+              } else {
+                toast.error(`Error subiendo ${file.name}: ${errorMsg}`);
+              }
+              continue;
+            }
+
+            if (!data?.path) {
+              toast.error(`Error subiendo ${file.name}: No se obtuvo ruta`);
+              continue;
+            }
+
+            // Obtener URL pública
+            const { data: { publicUrl } } = supabase.storage
+              .from(BUCKET_NAME)
+              .getPublicUrl(data.path);
+
+            if (!publicUrl) {
+              toast.error(`Error obteniendo URL de ${file.name}`);
+              continue;
+            }
+
+            const finalSize = fileToUpload.size;
+            uploadedFiles.push({
+              id: `${Date.now()}-${Math.random()}`,
+              url: `${publicUrl}?t=${Date.now()}`,
+              fileName: file.name,
+              size: finalSize,
+              originalSize: originalSize !== finalSize ? originalSize : undefined,
+              compressionRatio: compressionRatio > 0 ? compressionRatio : undefined,
             });
 
-            if (result.success && result.publicUrl) {
-              uploadedFiles.push({
-                id: `${Date.now()}-${Math.random()}`,
-                url: result.publicUrl,
-                fileName: file.name,
-                size: fileToUpload.size,
-                originalSize: originalSize !== fileToUpload.size ? originalSize : undefined,
-                compressionRatio: compressionRatio > 0 ? compressionRatio : undefined,
-              });
-              toast.success(`${file.name} subido correctamente`);
-            } else {
-              toast.error(`Error subiendo ${file.name}: ${result.error}`);
+            // Notificar cambio de tamaño
+            if (onMediaSizeChange) {
+              onMediaSizeChange(finalSize, 'add');
             }
+
+            toast.success(`${file.name} subido correctamente`);
           } catch (error) {
             toast.error(`Error subiendo ${file.name}`);
             console.error(error);
@@ -86,11 +166,11 @@ export function useMediaUpload() {
         setIsUploading(false);
       }
     },
-    []
+    [onMediaSizeChange]
   );
 
   const deleteFile = useCallback(
-    async (publicUrl: string, studioSlug: string): Promise<boolean> => {
+    async (publicUrl: string, studioSlug: string, fileSize?: number): Promise<boolean> => {
       try {
         const result = await deleteFileStorage({
           publicUrl,
@@ -98,6 +178,11 @@ export function useMediaUpload() {
         });
 
         if (result.success) {
+          // Notificar cambio de tamaño
+          if (onMediaSizeChange && fileSize) {
+            onMediaSizeChange(fileSize, 'remove');
+          }
+
           toast.success('Archivo eliminado correctamente');
           return true;
         } else {
@@ -110,7 +195,7 @@ export function useMediaUpload() {
         return false;
       }
     },
-    []
+    [onMediaSizeChange]
   );
 
   return {

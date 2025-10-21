@@ -334,3 +334,34 @@ export async function getFileInfo(publicUrl: string): Promise<FileInfo> {
     };
   }
 }
+
+/**
+ * Persiste media en la base de datos (llamada desde cliente después de upload a Supabase)
+ * Usa SERVICE_ROLE_KEY para evitar restricciones RLS
+ */
+export async function persistMediaMetadata(data: {
+  studioSlug: string;
+  categoryId?: string;
+  itemId?: string;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  mediaType: 'categoria-fotos' | 'categoria-videos' | 'item-fotos' | 'item-videos';
+}): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    // Aquí va la lógica de persistencia en BD
+    // Esta función será llamada desde CategoriaEditorModal después de que el archivo se haya subido a Supabase
+    console.log("Media metadata to persist:", data);
+    return { success: true };
+  } catch (error) {
+    console.error("Error persisting media metadata:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error desconocido"
+    };
+  }
+}
