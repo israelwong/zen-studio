@@ -203,6 +203,13 @@ export function CategoriaEditorModal({
         }
     };
 
+    // Handle Sheet close (only Sheet, not Lightbox)
+    const handleSheetOpenChange = (open: boolean) => {
+        if (!open) {
+            handleClose();
+        }
+    };
+
     // Cargar media existente desde BD
     const cargarMediaExistente = async (categoryId: string) => {
         try {
@@ -581,8 +588,8 @@ export function CategoriaEditorModal({
     };
 
     return (
-        <Sheet open={isOpen} onOpenChange={handleClose}>
-            <SheetContent className="sm:max-w-[700px] bg-zinc-900 border-zinc-800">
+        <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
+            <SheetContent className="w-full max-w-md bg-zinc-900 border-zinc-800 overflow-y-auto">
                 <SheetHeader>
                     <SheetTitle className="text-xl font-bold text-zinc-100">
                         {isEditMode ? "Editar Categoría" : "Nueva Categoría"}
