@@ -24,11 +24,8 @@ export function MediaLightbox({
 }: MediaLightboxProps) {
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const touchStartX = useRef(0);
-    const touchStartY = useRef(0);
-    const touchTrackingRef = useRef(false);
 
     useEffect(() => {
-        // Ensure index is within valid range
         const validIndex = Math.max(0, Math.min(initialIndex, items.length - 1));
         setCurrentIndex(validIndex);
     }, [initialIndex, items.length, isOpen]);
@@ -49,8 +46,6 @@ export function MediaLightbox({
     if (!isOpen || items.length === 0) return null;
 
     const currentItem = items[currentIndex];
-
-    // Double check currentItem exists
     if (!currentItem) return null;
 
     const handleNext = () => {
@@ -61,49 +56,27 @@ export function MediaLightbox({
         setCurrentIndex((prev) => (prev - 1 + items.length) % items.length);
     };
 
-    const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (e.touches.length === 1) {
-            touchTrackingRef.current = true;
-            touchStartX.current = e.touches[0].clientX;
-            touchStartY.current = e.touches[0].clientY;
-        }
+    const handleTouchStart = (e: React.TouchEvent) => {
+        touchStartX.current = e.touches[0].clientX;
     };
 
-    const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
-        if (!touchTrackingRef.current || e.changedTouches.length === 0) return;
-
-        touchTrackingRef.current = false;
+    const handleTouchEnd = (e: React.TouchEvent) => {
         const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-
         const deltaX = touchEndX - touchStartX.current;
-        const deltaY = Math.abs(touchEndY - touchStartY.current);
 
-        // Swipe threshold: 50px horizontal movement, primarily horizontal (not vertical)
-        if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > deltaY) {
-            e.preventDefault();
-            if (deltaX > 0) {
-                // Swipe right = previous
-                handlePrevious();
-            } else {
-                // Swipe left = next
-                handleNext();
-            }
+        // Swipe left (negative delta) = next
+        if (deltaX < -30) {
+            handleNext();
         }
-    };
-
-    const handleBackdropClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        // Only close if clicking directly on backdrop, not on content
-        if (e.target === e.currentTarget) {
-            onClose();
+        // Swipe right (positive delta) = previous
+        else if (deltaX > 30) {
+            handlePrevious();
         }
     };
 
     return (
         <div
-            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center overflow-hidden"
-            onClick={handleBackdropClick}
-            style={{ touchAction: 'none' }}
+            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
         >
             {/* Close Button */}
             <button
@@ -111,79 +84,65 @@ export function MediaLightbox({
                     e.stopPropagation();
                     onClose();
                 }}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 transition-colors z-[10000]"
+                className="absolute top-4 right-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 z-[10000]"
                 aria-label="Close"
             >
                 <X className="w-6 h-6 text-white" />
             </button>
 
-            {/* Main Content - Swipe enabled */}
-            <div
-                className="w-full h-full flex items-center justify-center relative select-none"
-                onClick={(e) => e.stopPropagation()}
+            {/* Media Display */}
+            <div 
+                className="w-full h-full flex items-center justify-center relative"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
-                style={{ touchAction: 'pan-y pinch-zoom' }}
             >
-                {/* Media Display */}
                 {currentItem.type === 'foto' ? (
-                    <div className="relative w-full h-full flex items-center justify-center pointer-events-none">
-                        <Image
-                            src={currentItem.url}
-                            alt={currentItem.fileName}
-                            layout="fill"
-                            objectFit="contain"
-                            priority
-                            draggable={false}
-                        />
-                    </div>
+                    <Image
+                        src={currentItem.url}
+                        alt={currentItem.fileName}
+                        layout="fill"
+                        objectFit="contain"
+                        priority
+                    />
                 ) : (
-                    <div className="pointer-events-auto">
-                        <video
-                            src={currentItem.url}
-                            controls
-                            autoPlay
-                            className="max-w-full max-h-full"
-                            onClick={(e) => e.stopPropagation()}
-                            onTouchStart={(e) => e.stopPropagation()}
-                            onTouchEnd={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                )}
-
-                {/* Navigation Buttons */}
-                {items.length > 1 && (
-                    <>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handlePrevious();
-                            }}
-                            className="absolute left-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 transition-colors z-10 pointer-events-auto"
-                            aria-label="Previous"
-                        >
-                            <ChevronLeft className="w-6 h-6 text-white" />
-                        </button>
-
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleNext();
-                            }}
-                            className="absolute right-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 transition-colors z-10 pointer-events-auto"
-                            aria-label="Next"
-                        >
-                            <ChevronRight className="w-6 h-6 text-white" />
-                        </button>
-                    </>
+                    <video
+                        src={currentItem.url}
+                        controls
+                        autoPlay
+                        className="max-w-full max-h-full"
+                    />
                 )}
             </div>
 
+            {/* Navigation Buttons */}
+            {items.length > 1 && (
+                <>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handlePrevious();
+                        }}
+                        className="absolute left-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 z-10"
+                        aria-label="Previous"
+                    >
+                        <ChevronLeft className="w-6 h-6 text-white" />
+                    </button>
+
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleNext();
+                        }}
+                        className="absolute right-4 p-2 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 z-10"
+                        aria-label="Next"
+                    >
+                        <ChevronRight className="w-6 h-6 text-white" />
+                    </button>
+                </>
+            )}
+
             {/* Bottom Info Bar */}
-            <div
-                className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 z-10 pointer-events-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
                 <div className="flex items-center justify-between max-w-2xl mx-auto">
                     <div>
                         <p className="text-white font-medium">{currentItem.fileName}</p>
@@ -200,10 +159,11 @@ export function MediaLightbox({
                                         e.stopPropagation();
                                         setCurrentIndex(idx);
                                     }}
-                                    className={`w-2 h-2 rounded-full transition-all pointer-events-auto ${idx === currentIndex
+                                    className={`w-2 h-2 rounded-full transition-all ${
+                                        idx === currentIndex
                                             ? "bg-emerald-500 w-6"
                                             : "bg-zinc-600 hover:bg-zinc-500"
-                                        }`}
+                                    }`}
                                     aria-label={`Go to item ${idx + 1}`}
                                 />
                             ))}
