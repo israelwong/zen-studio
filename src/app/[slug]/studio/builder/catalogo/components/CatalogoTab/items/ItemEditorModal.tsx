@@ -99,7 +99,7 @@ export function ItemEditorModal({
 
     // Hooks
     const { uploadFiles } = useMediaUpload();
-    const { addMediaSize } = useStorageTracking(studioSlug);
+    const { } = useStorageTracking(studioSlug);
 
     // Reset form when modal opens/closes
     useEffect(() => {
@@ -224,7 +224,15 @@ export function ItemEditorModal({
         setIsDraggingFotos(false);
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            handleFotosUpload(files);
+            // Filtrar solo archivos de imagen
+            const imageFiles = Array.from(files).filter(file => 
+                file.type.startsWith('image/')
+            );
+            if (imageFiles.length > 0) {
+                handleFotosUpload(imageFiles as FileList);
+            } else {
+                toast.error("Solo se permiten archivos de imagen en la pestaña de fotos");
+            }
         }
     };
 
@@ -233,7 +241,15 @@ export function ItemEditorModal({
         setIsDraggingVideos(false);
         const files = e.dataTransfer.files;
         if (files.length > 0) {
-            handleVideosUpload(files);
+            // Filtrar solo archivos de video
+            const videoFiles = Array.from(files).filter(file => 
+                file.type.startsWith('video/')
+            );
+            if (videoFiles.length > 0) {
+                handleVideosUpload(videoFiles as FileList);
+            } else {
+                toast.error("Solo se permiten archivos de video en la pestaña de videos");
+            }
         }
     };
 
@@ -685,7 +701,7 @@ export function ItemEditorModal({
             <input
                 ref={fotosInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/gif,image/webp"
                 multiple
                 onChange={(e) => e.target.files && handleFotosUpload(e.target.files)}
                 className="hidden"
@@ -693,7 +709,7 @@ export function ItemEditorModal({
             <input
                 ref={videosInputRef}
                 type="file"
-                accept="video/*"
+                accept="video/mp4,video/webm,video/quicktime"
                 multiple
                 onChange={(e) => e.target.files && handleVideosUpload(e.target.files)}
                 className="hidden"

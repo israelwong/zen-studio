@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import { ZenButton, ZenInput, ZenCard, ZenTextarea } from "@/components/ui/zen";
+import { ZenButton, ZenCard, ZenTextarea } from "@/components/ui/zen";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/shadcn/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import Lightbox from "yet-another-react-lightbox";
@@ -360,7 +360,17 @@ export function CategoriaEditorModal({
         e.preventDefault();
         setIsDraggingFotos(false);
         const files = e.dataTransfer.files;
-        await handleFotosSelected(files);
+        if (files.length > 0) {
+            // Filtrar solo archivos de imagen
+            const imageFiles = Array.from(files).filter(file => 
+                file.type.startsWith('image/')
+            );
+            if (imageFiles.length > 0) {
+                await handleFotosSelected(imageFiles as FileList);
+            } else {
+                toast.error("Solo se permiten archivos de imagen en la pestaña de fotos");
+            }
+        }
     };
 
     // Manejar drag & drop (videos)
@@ -368,7 +378,17 @@ export function CategoriaEditorModal({
         e.preventDefault();
         setIsDraggingVideos(false);
         const files = e.dataTransfer.files;
-        await handleVideosSelected(files);
+        if (files.length > 0) {
+            // Filtrar solo archivos de video
+            const videoFiles = Array.from(files).filter(file => 
+                file.type.startsWith('video/')
+            );
+            if (videoFiles.length > 0) {
+                await handleVideosSelected(videoFiles as FileList);
+            } else {
+                toast.error("Solo se permiten archivos de video en la pestaña de videos");
+            }
+        }
     };
 
     // Reordenar fotos y persistir en BD
