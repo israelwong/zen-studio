@@ -1430,6 +1430,7 @@ model studio_paquete_items {
   quantity            Int                       @default(1)
   position            Int                       @default(0)
   visible_to_client   Boolean                   @default(true)
+  precio_personalizado Float?                   // Precio personalizado del item en este paquete
   status              String                    @default("active")
   created_at          DateTime                  @default(now())
   updated_at          DateTime                  @updatedAt

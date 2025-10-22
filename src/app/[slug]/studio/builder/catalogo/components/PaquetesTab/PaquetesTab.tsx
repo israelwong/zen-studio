@@ -1,39 +1,94 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { PaquetesList } from './PaquetesList';
+import { TiposEventoList } from './TiposEventoList';
+import { PaquetesPorTipo } from './PaquetesPorTipo';
+import { PaqueteModal } from './PaqueteModal';
+import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import { obtenerPaquetes } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
+import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
+
+type NavigationLevel = 1 | 2 | 3;
 
 interface PaquetesTabProps {
     studioSlug: string;
 }
 
 export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
-    const [loading, setLoading] = useState(true);
+    // Estado de navegación
+    const [currentLevel, setCurrentLevel] = useState<NavigationLevel>(1);
+    const [selectedTipoEvento, setSelectedTipoEvento] = useState<TipoEventoData | null>(null);
+    const [selectedPaquete, setSelectedPaquete] = useState<PaqueteFromDB | null>(null);
+
+    // Datos
+    const [tiposEvento, setTiposEvento] = useState<TipoEventoData[]>([]);
     const [paquetes, setPaquetes] = useState<PaqueteFromDB[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        cargarPaquetes();
-    }, [studioSlug]);
-
-    const cargarPaquetes = async () => {
+    const cargarDatos = useCallback(async () => {
         try {
             setLoading(true);
-            const result = await obtenerPaquetes(studioSlug);
 
-            if (result.success && result.data) {
-                setPaquetes(result.data);
+            // Cargar tipos de evento y paquetes en paralelo
+            const [tiposResult, paquetesResult] = await Promise.all([
+                obtenerTiposEvento(studioSlug),
+                obtenerPaquetes(studioSlug)
+            ]);
+
+            if (tiposResult.success && tiposResult.data) {
+                setTiposEvento(tiposResult.data);
             } else {
-                toast.error(result.error || 'Error al cargar paquetes');
+                toast.error(tiposResult.error || 'Error al cargar tipos de evento');
+            }
+
+            if (paquetesResult.success && paquetesResult.data) {
+                setPaquetes(paquetesResult.data);
+            } else {
+                toast.error(paquetesResult.error || 'Error al cargar paquetes');
             }
         } catch (error) {
-            console.error('Error cargando paquetes:', error);
-            toast.error('Error al cargar paquetes');
+            console.error('Error cargando datos:', error);
+            toast.error('Error al cargar datos');
         } finally {
             setLoading(false);
         }
+    }, [studioSlug]);
+
+    useEffect(() => {
+        cargarDatos();
+    }, [cargarDatos]);
+
+    // Navegación entre niveles
+    const navigateToTipoEvento = (tipoEvento: TipoEventoData) => {
+        setSelectedTipoEvento(tipoEvento);
+        setCurrentLevel(2);
+    };
+
+    const navigateToPaquete = (paquete: PaqueteFromDB) => {
+        setSelectedPaquete(paquete);
+        setCurrentLevel(3);
+    };
+
+    const navigateBack = () => {
+        if (currentLevel === 3) {
+            setCurrentLevel(2);
+            setSelectedPaquete(null);
+        } else if (currentLevel === 2) {
+            setCurrentLevel(1);
+            setSelectedTipoEvento(null);
+        }
+    };
+
+
+    // Handlers para actualizar datos
+    const handlePaquetesChange = (newPaquetes: PaqueteFromDB[]) => {
+        setPaquetes(newPaquetes);
+    };
+
+    const handleTipoEventoChange = (newTiposEvento: TipoEventoData[]) => {
+        setTiposEvento(newTiposEvento);
     };
 
     if (loading) {
@@ -52,11 +107,49 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
         );
     }
 
-    return (
-        <PaquetesList
-            studioSlug={studioSlug}
-            initialPaquetes={paquetes}
-            onPaquetesChange={setPaquetes}
-        />
-    );
+    // Renderizar según el nivel de navegación
+    if (currentLevel === 1) {
+        return (
+            <TiposEventoList
+                studioSlug={studioSlug}
+                tiposEvento={tiposEvento}
+                paquetes={paquetes}
+                onNavigateToTipoEvento={navigateToTipoEvento}
+                onTiposEventoChange={handleTipoEventoChange}
+                onPaquetesChange={handlePaquetesChange}
+            />
+        );
+    }
+
+    if (currentLevel === 2 && selectedTipoEvento) {
+        return (
+            <PaquetesPorTipo
+                studioSlug={studioSlug}
+                tipoEvento={selectedTipoEvento}
+                paquetes={paquetes.filter(p => p.event_types?.name === selectedTipoEvento.nombre)}
+                onNavigateToPaquete={navigateToPaquete}
+                onNavigateBack={navigateBack}
+                onPaquetesChange={handlePaquetesChange}
+            />
+        );
+    }
+
+    if (currentLevel === 3 && selectedPaquete) {
+        return (
+            <PaqueteModal
+                studioSlug={studioSlug}
+                paquete={selectedPaquete}
+                onClose={() => navigateBack()}
+                onSave={(updatedPaquete) => {
+                    const newPaquetes = paquetes.map(p =>
+                        p.id === updatedPaquete.id ? updatedPaquete : p
+                    );
+                    setPaquetes(newPaquetes);
+                    navigateBack();
+                }}
+            />
+        );
+    }
+
+    return null;
 }
