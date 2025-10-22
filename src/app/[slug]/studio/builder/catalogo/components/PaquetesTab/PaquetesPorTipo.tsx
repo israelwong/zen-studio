@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { ArrowLeft, Plus, Search, Filter, Edit, Copy, Trash2, GripVertical } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { ArrowLeft, Plus, Search, Edit, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import { ZenCard, ZenButton, ZenInput, ZenBadge } from '@/components/ui/zen';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
-import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
+import { PaqueteFormularioAvanzado, type PaqueteFormularioRef } from './PaqueteFormularioAvanzado';
 import { formatearMoneda } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
@@ -28,9 +28,12 @@ export function PaquetesPorTipo({
 }: PaquetesPorTipoProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [loading, setLoading] = useState(false);
+    const [loading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingPaquete, setEditingPaquete] = useState<PaqueteFromDB | null>(null);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [pendingClose, setPendingClose] = useState(false);
+    const formRef = useRef<PaqueteFormularioRef>(null);
 
     // Filtrar paquetes
     const filteredPaquetes = paquetes.filter(paquete => {
@@ -65,21 +68,54 @@ export function PaquetesPorTipo({
         setEditingPaquete(null);
     };
 
+    // Manejar intento de cierre del modal
+    const handleModalClose = (open: boolean) => {
+        if (!open && !pendingClose) {
+            // Verificar si hay items seleccionados
+            if (formRef.current?.hasSelectedItems()) {
+                setShowConfirmDialog(true);
+                return; // No cerrar el modal
+            }
+        }
+
+        if (pendingClose) {
+            setPendingClose(false);
+        }
+
+        setShowForm(open);
+        if (!open) {
+            setEditingPaquete(null);
+        }
+    };
+
+    // Confirmar cierre
+    const handleConfirmClose = () => {
+        setShowConfirmDialog(false);
+        setPendingClose(true);
+        setShowForm(false);
+        setEditingPaquete(null);
+    };
+
+    // Cancelar cierre
+    const handleCancelClose = () => {
+        setShowConfirmDialog(false);
+    };
+
     const handleEditPaquete = (paquete: PaqueteFromDB) => {
         onNavigateToPaquete(paquete);
     };
 
     const handleDuplicatePaquete = async (paquete: PaqueteFromDB) => {
         // TODO: Implementar duplicación
-        console.log('Duplicar paquete:', paquete.nombre);
+        console.log('Duplicar paquete:', paquete.name);
     };
 
     const handleDeletePaquete = async (paquete: PaqueteFromDB) => {
-        if (!confirm(`¿Estás seguro de que quieres eliminar el paquete "${paquete.nombre}"?`)) {
+        if (!confirm(`¿Estás seguro de que quieres eliminar el paquete "${paquete.name}"?`)) {
             return;
         }
         // TODO: Implementar eliminación
-        console.log('Eliminar paquete:', paquete.nombre);
+        console.log('Eliminar paquete:', paquete.name);
     };
 
     return (
@@ -188,13 +224,9 @@ export function PaquetesPorTipo({
                                 <div className="flex items-start justify-between mb-4">
                                     <div className="flex-1">
                                         <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                                            {paquete.nombre}
+                                            {paquete.name}
                                         </h3>
-                                        {paquete.descripcion && (
-                                            <p className="text-sm text-zinc-400 mt-1">
-                                                {paquete.descripcion}
-                                            </p>
-                                        )}
+                                        {/* TODO: Agregar descripción cuando esté disponible en el schema */}
                                     </div>
                                     <ZenBadge
                                         variant={paquete.status === 'active' ? 'default' : 'secondary'}
@@ -226,7 +258,7 @@ export function PaquetesPorTipo({
                                     <div className="flex items-center justify-between">
                                         <span className="text-sm text-zinc-400">Servicios</span>
                                         <span className="text-sm font-medium text-zinc-300">
-                                            {paquete.paquete_servicios?.length || 0} servicios
+                                            {paquete.paquete_items?.length || 0} servicios
                                         </span>
                                     </div>
                                 </div>
@@ -272,7 +304,7 @@ export function PaquetesPorTipo({
             )}
 
             {/* Modal de formulario */}
-            <Dialog open={showForm} onOpenChange={setShowForm}>
+            <Dialog open={showForm} onOpenChange={handleModalClose}>
                 <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-700">
                     <DialogHeader>
                         <DialogTitle className="text-white">
@@ -280,11 +312,43 @@ export function PaquetesPorTipo({
                         </DialogTitle>
                     </DialogHeader>
                     <PaqueteFormularioAvanzado
+                        ref={formRef}
                         studioSlug={studioSlug}
                         paquete={editingPaquete}
                         onSave={handleSave}
                         onCancel={handleCancel}
                     />
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmación de cierre */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            ¿Estás seguro de cerrar?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Se perderán todos los cambios realizados. Los items seleccionados y la configuración del paquete no se guardarán.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={handleCancelClose}
+                            className="flex-1"
+                        >
+                            Continuar editando
+                        </ZenButton>
+                        <ZenButton
+                            variant="destructive"
+                            onClick={handleConfirmClose}
+                            className="flex-1"
+                        >
+                            Sí, cerrar
+                        </ZenButton>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>

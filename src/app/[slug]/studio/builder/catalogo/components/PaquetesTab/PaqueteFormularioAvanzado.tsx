@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
-import { X } from 'lucide-react';
-import { ZenButton, ZenInput, ZenTextarea, ZenCard, ZenBadge } from '@/components/ui/zen';
+import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ZenButton, ZenInput, ZenTextarea, ZenBadge } from '@/components/ui/zen';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
@@ -18,12 +19,16 @@ interface PaqueteFormularioAvanzadoProps {
     onCancel: () => void;
 }
 
-export function PaqueteFormularioAvanzado({
+export interface PaqueteFormularioRef {
+    hasSelectedItems: () => boolean;
+}
+
+export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, PaqueteFormularioAvanzadoProps>(({
     studioSlug,
     paquete,
     onSave,
     onCancel
-}: PaqueteFormularioAvanzadoProps) {
+}, ref) => {
     // Estado del formulario
     const [nombre, setNombre] = useState(paquete?.name || '');
     const [descripcion, setDescripcion] = useState('');
@@ -34,6 +39,10 @@ export function PaqueteFormularioAvanzado({
     const [loading, setLoading] = useState(false);
     const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
     const [filtroServicio, setFiltroServicio] = useState('');
+    const [seccionExpandida, setSeccionExpandida] = useState<string | null>(null);
+    const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const summaryRef = useRef<HTMLDivElement>(null);
 
     // Cargar catálogo y configuración al montar
     useEffect(() => {
@@ -47,25 +56,6 @@ export function PaqueteFormularioAvanzado({
 
                 if (catalogoResult.success && catalogoResult.data) {
                     setCatalogo(catalogoResult.data);
-
-                    // // Log para debug - ver estructura de datos
-                    // console.log('=== CATÁLOGO DATA DEBUG ===');
-                    // catalogoResult.data.forEach(seccion => {
-                    //     console.log(`Sección: ${seccion.nombre}`);
-                    //     seccion.categorias.forEach(categoria => {
-                    //         console.log(`  Categoría: ${categoria.nombre}`);
-                    //         categoria.servicios.forEach(servicio => {
-                    //             console.log(`    Servicio: ${servicio.nombre}`);
-                    //             console.log(`    tipo_utilidad: "${servicio.tipo_utilidad}"`);
-                    //             console.log(`    type: "${servicio.type}"`);
-                    //             console.log(`    costo: ${servicio.costo}, gasto: ${servicio.gasto}`);
-                    //             console.log('    ---');
-                    //         });
-                    //     });
-                    // });
-                    // console.log('=== END DEBUG ===');
-                    console.log('=== CATÁLOGO DATA DEBUG ===', catalogoResult.data);
-
                     // Inicializar items con cantidad 0
                     const initialItems: { [id: string]: number } = {};
                     catalogoResult.data.forEach(seccion => {
@@ -76,6 +66,11 @@ export function PaqueteFormularioAvanzado({
                         });
                     });
                     setItems(initialItems);
+
+                    // Expandir la primera sección por defecto
+                    if (catalogoResult.data.length > 0) {
+                        setSeccionExpandida(catalogoResult.data[0].id);
+                    }
                 }
 
                 if (configResult) {
@@ -96,6 +91,7 @@ export function PaqueteFormularioAvanzado({
 
         cargarDatos();
     }, [studioSlug]);
+
 
     // Crear mapa de servicios para acceso rápido
     const servicioMap = useMemo(() => {
@@ -121,6 +117,71 @@ export function PaqueteFormularioAvanzado({
         });
         return map;
     }, [catalogo, configuracionPrecios]);
+
+    // Calcular servicios seleccionados por sección y categoría
+    const serviciosSeleccionados = useMemo(() => {
+        const resumen: {
+            secciones: { [seccionId: string]: { total: number; categorias: { [categoriaId: string]: number } } }
+        } = { secciones: {} };
+
+        catalogo.forEach(seccion => {
+            let totalSeccion = 0;
+            const categorias: { [categoriaId: string]: number } = {};
+
+            seccion.categorias.forEach(categoria => {
+                let totalCategoria = 0;
+                categoria.servicios.forEach(servicio => {
+                    const cantidad = items[servicio.id] || 0;
+                    if (cantidad > 0) {
+                        totalCategoria += cantidad;
+                        totalSeccion += cantidad;
+                    }
+                });
+                if (totalCategoria > 0) {
+                    categorias[categoria.id] = totalCategoria;
+                }
+            });
+
+            if (totalSeccion > 0) {
+                resumen.secciones[seccion.id] = {
+                    total: totalSeccion,
+                    categorias
+                };
+            }
+        });
+
+        return resumen;
+    }, [catalogo, items]);
+
+    // Verificar si hay items seleccionados
+    const hasSelectedItems = useMemo(() => {
+        return Object.values(items).some(cantidad => cantidad > 0);
+    }, [items]);
+
+    // Exponer función al componente padre
+    useImperativeHandle(ref, () => ({
+        hasSelectedItems: () => hasSelectedItems
+    }), [hasSelectedItems]);
+
+    // Manejar intento de cierre
+    const handleCancelClick = () => {
+        if (hasSelectedItems) {
+            setShowConfirmDialog(true);
+        } else {
+            onCancel();
+        }
+    };
+
+    // Confirmar cierre
+    const handleConfirmClose = () => {
+        setShowConfirmDialog(false);
+        onCancel();
+    };
+
+    // Cancelar cierre
+    const handleCancelClose = () => {
+        setShowConfirmDialog(false);
+    };
 
     // Cálculo dinámico del precio
     const calculoPrecio = useMemo(() => {
@@ -189,6 +250,25 @@ export function PaqueteFormularioAvanzado({
             utilidadNeta: Number(utilidadNeta.toFixed(2)) || 0
         };
     }, [items, servicioMap, precioPersonalizado, configuracionPrecios]);
+
+    // Handlers para toggles (accordion behavior)
+    const toggleSeccion = (seccionId: string) => {
+        if (seccionExpandida === seccionId) {
+            setSeccionExpandida(null);
+            setCategoriaExpandida(null); // Cerrar también la categoría
+        } else {
+            setSeccionExpandida(seccionId);
+            setCategoriaExpandida(null); // Cerrar categoría anterior
+        }
+    };
+
+    const toggleCategoria = (categoriaId: string) => {
+        if (categoriaExpandida === categoriaId) {
+            setCategoriaExpandida(null);
+        } else {
+            setCategoriaExpandida(categoriaId);
+        }
+    };
 
     // Handlers
     const updateQuantity = (servicioId: string, cantidad: number) => {
@@ -271,7 +351,7 @@ export function PaqueteFormularioAvanzado({
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 h-full">
             {/* Columna 1: Servicios Disponibles */}
             <div className="lg:col-span-2">
                 <div className="mb-4">
@@ -281,7 +361,7 @@ export function PaqueteFormularioAvanzado({
                             {catalogo.reduce((acc, seccion) =>
                                 acc + seccion.categorias.reduce((catAcc, categoria) =>
                                     catAcc + categoria.servicios.length, 0), 0
-                            )} servicios
+                            )} items
                         </ZenBadge>
                     </h2>
 
@@ -307,118 +387,154 @@ export function PaqueteFormularioAvanzado({
                     </div>
                 </div>
 
-                <div className="space-y-4">
-                    {catalogo.map((seccion) => (
-                        <ZenCard key={seccion.id} className="border-l-2 border-blue-500">
-                            <div className="p-4">
-                                <h4 className="font-semibold text-white mb-3 flex items-center gap-2">
-                                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                    {seccion.nombre}
-                                </h4>
+                <div className="space-y-2">
+                    {catalogo
+                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                        .map((seccion) => {
+                            const isSeccionExpandida = seccionExpandida === seccion.id;
 
-                                {seccion.categorias.map((categoria) => (
-                                    <div key={categoria.id} className="mb-4 last:mb-0 bg-zinc-800/50 rounded-lg p-3">
-                                        <h5 className="text-sm font-medium text-zinc-300 mb-2 flex items-center gap-2">
-                                            <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                            {categoria.nombre}
-                                        </h5>
-
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full">
-                                                <thead>
-                                                    <tr className="border-b border-zinc-600/50">
-                                                        <th className="text-left py-2 px-3 text-sm font-medium text-zinc-400">Servicio</th>
-                                                        <th className="text-right py-2 px-3 text-sm font-medium text-zinc-400">Precio</th>
-                                                        <th className="text-center py-2 px-3 text-sm font-medium text-zinc-400">Cantidad</th>
-                                                        <th className="text-right py-2 px-3 text-sm font-medium text-zinc-400">Subtotal</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {categoria.servicios
-                                                        .filter(servicio =>
-                                                            filtroServicio === '' ||
-                                                            servicio.nombre.toLowerCase().includes(filtroServicio.toLowerCase())
-                                                        )
-                                                        .map((servicio) => {
-                                                            // Mapear tipo_utilidad de la BD a formato esperado por calcularPrecio
-                                                            const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
-                                                            const precios = configuracionPrecios ? calcularPrecio(
-                                                                servicio.costo,
-                                                                servicio.gasto,
-                                                                tipoUtilidad,
-                                                                configuracionPrecios
-                                                            ) : { precio_final: 0 };
-                                                            const cantidad = items[servicio.id] || 0;
-                                                            const subtotal = precios.precio_final * cantidad;
-
-                                                            return (
-                                                                <tr
-                                                                    key={servicio.id}
-                                                                    className={`border-b border-zinc-700/30 hover:bg-zinc-700/20 transition-colors ${cantidad > 0 ? 'bg-emerald-900/20 border-emerald-800/30' : ''
-                                                                        }`}
-                                                                >
-                                                                    <td className="py-3 px-3">
-                                                                        <div className="font-medium text-white">
-                                                                            {servicio.nombre}
-                                                                        </div>
-                                                                        <div className="text-xs text-zinc-500 flex items-center gap-1">
-                                                                            <span className={`px-2 py-1 rounded text-xs font-medium ${servicio.tipo_utilidad === 'service'
-                                                                                ? 'bg-blue-900/50 text-blue-300'
-                                                                                : 'bg-green-900/50 text-green-300'
-                                                                                }`}>
-                                                                                {servicio.tipo_utilidad === 'service' ? 'Servicio' : 'Producto'}
-                                                                            </span>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="py-3 px-3 text-right">
-                                                                        <div className="font-medium text-white">
-                                                                            {formatearMoneda(precios.precio_final)}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="py-3 px-3 text-center">
-                                                                        <div className="flex items-center justify-center gap-1">
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => updateQuantity(servicio.id, Math.max(0, cantidad - 1))}
-                                                                                className="w-6 h-6 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors"
-                                                                            >
-                                                                                -
-                                                                            </button>
-                                                                            <span className={`w-8 text-center font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-white'
-                                                                                }`}>
-                                                                                {cantidad}
-                                                                            </span>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => updateQuantity(servicio.id, cantidad + 1)}
-                                                                                className="w-6 h-6 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors"
-                                                                            >
-                                                                                +
-                                                                            </button>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td className="py-3 px-3 text-right">
-                                                                        <div className={`font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-zinc-500'
-                                                                            }`}>
-                                                                            {formatearMoneda(subtotal)}
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                </tbody>
-                                            </table>
+                            return (
+                                <div key={seccion.id} className="border border-zinc-700 rounded-lg overflow-hidden">
+                                    {/* Nivel 1: Sección */}
+                                    <button
+                                        onClick={() => toggleSeccion(seccion.id)}
+                                        className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            <h4 className="font-semibold text-white">{seccion.nombre}</h4>
+                                            {serviciosSeleccionados.secciones[seccion.id] ? (
+                                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-1 rounded">
+                                                    {serviciosSeleccionados.secciones[seccion.id].total} {serviciosSeleccionados.secciones[seccion.id].total === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].total === 1 ? '' : 's'}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-1 rounded">
+                                                    {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0)} {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? 'item' : 'items'} disponible{seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? '' : 's'}
+                                                </span>
+                                            )}
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </ZenCard>
-                    ))}
+                                        {isSeccionExpandida ? (
+                                            <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                        ) : (
+                                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                                        )}
+                                    </button>
+
+                                    {isSeccionExpandida && (
+                                        <div className="bg-zinc-900/50">
+                                            {seccion.categorias
+                                                .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                                                .map((categoria, categoriaIndex) => {
+                                                    const isCategoriaExpandida = categoriaExpandida === categoria.id;
+
+                                                    return (
+                                                        <div key={categoria.id} className={`${categoriaIndex > 0 ? 'border-t border-zinc-700/50' : ''}`}>
+                                                            {/* Nivel 2: Categoría */}
+                                                            <button
+                                                                onClick={() => toggleCategoria(categoria.id)}
+                                                                className="w-full flex items-center justify-between p-3 pl-8 hover:bg-zinc-800/30 transition-colors"
+                                                            >
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                                                                    <h5 className="text-sm font-medium text-zinc-300">{categoria.nombre}</h5>
+                                                                    {serviciosSeleccionados.secciones[seccion.id]?.categorias[categoria.id] ? (
+                                                                        <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded">
+                                                                            {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id]} {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? '' : 's'}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-0.5 rounded">
+                                                                            {categoria.servicios.length} {categoria.servicios.length === 1 ? 'item' : 'items'} disponible{categoria.servicios.length === 1 ? '' : 's'}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {isCategoriaExpandida ? (
+                                                                    <ChevronDown className="w-3 h-3 text-zinc-400" />
+                                                                ) : (
+                                                                    <ChevronRight className="w-3 h-3 text-zinc-400" />
+                                                                )}
+                                                            </button>
+
+                                                            {isCategoriaExpandida && (
+                                                                <div className="bg-zinc-800/20 border-l-2 border-zinc-700/30 ml-8">
+                                                                    {categoria.servicios
+                                                                        .filter(servicio =>
+                                                                            filtroServicio === '' ||
+                                                                            servicio.nombre.toLowerCase().includes(filtroServicio.toLowerCase())
+                                                                        )
+                                                                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                                                                        .map((servicio, servicioIndex) => {
+                                                                            const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
+                                                                            const precios = configuracionPrecios ? calcularPrecio(
+                                                                                servicio.costo,
+                                                                                servicio.gasto,
+                                                                                tipoUtilidad,
+                                                                                configuracionPrecios
+                                                                            ) : { precio_final: 0 };
+                                                                            const cantidad = items[servicio.id] || 0;
+                                                                            const subtotal = precios.precio_final * cantidad;
+
+                                                                            return (
+                                                                                <div
+                                                                                    key={servicio.id}
+                                                                                    className={`flex items-center justify-between p-2 pl-6 ${servicioIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors ${cantidad > 0 ? 'bg-emerald-900/10 border-l-2 border-emerald-500/50' : ''}`}
+                                                                                >
+                                                                                    {/* Nivel 3: Servicio */}
+                                                                                    <div className="flex-1">
+                                                                                        <div className="text-sm font-medium text-white leading-tight">{servicio.nombre}</div>
+                                                                                        <div className="text-xs text-zinc-500 mt-1">
+                                                                                            {servicio.tipo_utilidad === 'service' ? 'Servicio' : 'Producto'}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        <div className="text-right w-20">
+                                                                                            <div className="text-sm font-medium text-white">{formatearMoneda(precios.precio_final)}</div>
+                                                                                        </div>
+
+                                                                                        <div className="flex items-center gap-1 w-16 justify-center">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => updateQuantity(servicio.id, Math.max(0, cantidad - 1))}
+                                                                                                className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                            >
+                                                                                                -
+                                                                                            </button>
+                                                                                            <span className={`w-6 text-center text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-white'}`}>
+                                                                                                {cantidad}
+                                                                                            </span>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => updateQuantity(servicio.id, cantidad + 1)}
+                                                                                                className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                            >
+                                                                                                +
+                                                                                            </button>
+                                                                                        </div>
+
+                                                                                        <div className="text-right w-20">
+                                                                                            <div className={`text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                                                                                {formatearMoneda(subtotal)}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                 </div>
             </div>
 
             {/* Columna 2: Configuración del Paquete */}
-            <div className="space-y-6">
+            <div className="space-y-6 h-full">
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <h3 className="text-lg font-semibold text-white mb-4">Configuración</h3>
@@ -439,9 +555,11 @@ export function PaqueteFormularioAvanzado({
                         />
                     </div>
 
-                    {/* Columna 3: Resumen Financiero */}
-                    <div>
-                        <h3 className="text-lg font-semibold text-white mb-4">Resumen Financiero</h3>
+                    {/* Resumen Financiero */}
+                    <div ref={summaryRef} className=" self-start">
+                        <h3 className="text-lg font-semibold text-white mb-4">
+                            Resumen Financiero
+                        </h3>
                         <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
                             <div className="flex justify-between text-sm">
                                 <span className="text-zinc-400">Subtotal:</span>
@@ -470,42 +588,80 @@ export function PaqueteFormularioAvanzado({
                                     {formatearMoneda(calculoPrecio.utilidadNeta)}
                                 </span>
                             </div>
-                        </div>
 
-                        <ZenInput
-                            label="Precio personalizado (opcional)"
-                            type="number"
-                            value={precioPersonalizado}
-                            onChange={(e) => setPrecioPersonalizado(Number(e.target.value))}
-                            placeholder="0"
-                            hint="Deja en 0 para usar el precio calculado automáticamente"
-                        />
+                            {/* Precio personalizado dentro del resumen */}
+                            <div className="border-t border-zinc-700 pt-3">
+                                <ZenInput
+                                    label="Precio personalizado (opcional)"
+                                    type="number"
+                                    value={precioPersonalizado}
+                                    onChange={(e) => setPrecioPersonalizado(Number(e.target.value))}
+                                    placeholder="0"
+                                    hint="Deja en 0 para usar el precio calculado automáticamente"
+                                />
+                            </div>
 
-                        {/* Botones */}
-                        <div className="flex gap-2 pt-4">
-                            <ZenButton
-                                type="button"
-                                variant="secondary"
-                                onClick={onCancel}
-                                disabled={loading}
-                                className="flex-1"
-                            >
-                                Cancelar
-                            </ZenButton>
-                            <ZenButton
-                                type="submit"
-                                variant="primary"
-                                loading={loading}
-                                loadingText="Guardando..."
-                                disabled={loading}
-                                className="flex-1"
-                            >
-                                {paquete?.id ? 'Actualizar' : 'Crear'} Paquete
-                            </ZenButton>
+                            {/* Botones dentro del resumen */}
+                            <div className="border-t border-zinc-700 pt-3">
+                                <div className="flex gap-2">
+                                    <ZenButton
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={handleCancelClick}
+                                        disabled={loading}
+                                        className="flex-1"
+                                    >
+                                        Cancelar
+                                    </ZenButton>
+                                    <ZenButton
+                                        type="submit"
+                                        variant="primary"
+                                        loading={loading}
+                                        loadingText="Guardando..."
+                                        disabled={loading}
+                                        className="flex-1"
+                                    >
+                                        {paquete?.id ? 'Actualizar' : 'Crear'} Paquete
+                                    </ZenButton>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
+
+            {/* Modal de confirmación de cierre */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <AlertTriangle className="w-5 h-5 text-amber-500" />
+                            ¿Estás seguro de cerrar?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Se perderán todos los cambios realizados. Los items seleccionados y la configuración del paquete no se guardarán.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={handleCancelClose}
+                            className="flex-1"
+                        >
+                            Continuar editando
+                        </ZenButton>
+                        <ZenButton
+                            variant="destructive"
+                            onClick={handleConfirmClose}
+                            className="flex-1"
+                        >
+                            Sí, cerrar
+                        </ZenButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
-}
+});
+
+PaqueteFormularioAvanzado.displayName = 'PaqueteFormularioAvanzado';
