@@ -47,7 +47,7 @@ export async function obtenerTiposEvento(
             return { success: false, error: 'Estudio no encontrado' };
         }
 
-        const tiposEvento = await prisma.studio_evento_tipos.findMany({
+        const tiposEvento = await prisma.studio_event_types.findMany({
             where: { studio_id },
             include: {
                 paquetes: {
@@ -107,7 +107,7 @@ export async function crearTipoEvento(
         const validatedData = TipoEventoSchema.parse(data);
 
         // Obtener el siguiente número de posición
-        const ultimoTipo = await prisma.studio_evento_tipos.findFirst({
+        const ultimoTipo = await prisma.studio_event_types.findFirst({
             where: { studio_id },
             orderBy: { orden: 'desc' },
             select: { orden: true },
@@ -115,7 +115,7 @@ export async function crearTipoEvento(
 
         const nuevaPosicion = ultimoTipo ? ultimoTipo.orden + 1 : 0;
 
-        const tipoEvento = await prisma.studio_evento_tipos.create({
+        const tipoEvento = await prisma.studio_event_types.create({
             data: {
                 studio_id,
                 nombre: validatedData.nombre,
@@ -165,7 +165,7 @@ export async function actualizarTipoEvento(
     try {
         const validatedData = ActualizarTipoEventoSchema.parse(data);
 
-        const tipoEvento = await prisma.studio_evento_tipos.update({
+        const tipoEvento = await prisma.studio_event_types.update({
             where: { id: tipoId },
             data: {
                 nombre: validatedData.nombre,
@@ -230,7 +230,7 @@ export async function eliminarTipoEvento(
             };
         }
 
-        const tipoEvento = await prisma.studio_evento_tipos.delete({
+        const tipoEvento = await prisma.studio_event_types.delete({
             where: { id: tipoId },
         });
 
@@ -278,7 +278,7 @@ export async function actualizarOrdenTiposEvento(
         // Actualizar ordenes en una transacción
         await prisma.$transaction(
             validatedData.tipos.map((tipo) =>
-                prisma.studio_evento_tipos.update({
+                prisma.studio_event_types.update({
                     where: { id: tipo.id },
                     data: { orden: tipo.orden },
                 })
@@ -307,7 +307,7 @@ export async function obtenerTipoEventoPorId(
     tipoId: string
 ): Promise<ActionResponse<TipoEventoData>> {
     try {
-        const tipoEvento = await prisma.studio_evento_tipos.findUnique({
+        const tipoEvento = await prisma.studio_event_types.findUnique({
             where: { id: tipoId },
             include: {
                 paquetes: {
