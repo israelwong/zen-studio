@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Plus, Package } from 'lucide-react';
-import { ZenButton, ZenInput, ZenCard } from '@/components/ui/zen';
+import { ZenButton, ZenCard } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { PaqueteItem } from './PaqueteItem';
 import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';

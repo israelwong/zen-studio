@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { Plus, ArrowRight, Package, GripVertical } from 'lucide-react';
-import { ZenCard, ZenButton, ZenBadge } from '@/components/ui/zen';
+import { ZenCard, ZenButton } from '@/components/ui/zen';
 import { formatearMoneda } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import { actualizarOrdenTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import { toast } from 'sonner';
@@ -21,15 +21,12 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
-import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 
 interface TiposEventoListProps {
     studioSlug: string;
     tiposEvento: TipoEventoData[];
-    paquetes: PaqueteFromDB[];
     onNavigateToTipoEvento: (tipoEvento: TipoEventoData) => void;
     onTiposEventoChange: (tiposEvento: TipoEventoData[]) => void;
-    onPaquetesChange: (paquetes: PaqueteFromDB[]) => void;
 }
 
 // Componente para tipo de evento arrastrable
@@ -123,12 +120,9 @@ function SortableTipoEventoCard({ tipo, onNavigateToTipoEvento }: SortableTipoEv
 export function TiposEventoList({
     studioSlug,
     tiposEvento,
-    paquetes,
     onNavigateToTipoEvento,
-    onTiposEventoChange,
-    onPaquetesChange
+    onTiposEventoChange
 }: TiposEventoListProps) {
-    const [loading, setLoading] = useState(false);
     const [localTiposEvento, setLocalTiposEvento] = useState<TipoEventoData[]>(tiposEvento);
 
     // Configurar sensores para drag & drop
@@ -196,19 +190,12 @@ export function TiposEventoList({
         [localTiposEvento, studioSlug, onTiposEventoChange]
     );
 
-    // Calcular estadísticas por tipo de evento
-    const tiposConStats = localTiposEvento.map(tipo => {
-        const paquetesDelTipo = paquetes.filter(p => p.event_types?.name === tipo.nombre);
-        const precioPromedio = paquetesDelTipo.length > 0
-            ? paquetesDelTipo.reduce((sum, p) => sum + (p.precio || 0), 0) / paquetesDelTipo.length
-            : 0;
-
-        return {
-            ...tipo,
-            paquetesCount: paquetesDelTipo.length,
-            precioPromedio
-        };
-    });
+    // Mostrar tipos de evento sin filtrado de paquetes
+    const tiposConStats = localTiposEvento.map(tipo => ({
+        ...tipo,
+        paquetesCount: 0,
+        precioPromedio: 0
+    }));
 
     const handleCrearTipoEvento = () => {
         // TODO: Implementar modal de creación de tipo de evento
@@ -220,7 +207,7 @@ export function TiposEventoList({
         <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
+                <div className="pr-4">
                     <h2 className="text-2xl font-bold text-zinc-100">Tipos de Evento</h2>
                     <p className="text-sm text-zinc-400 mt-1">
                         Organiza tus paquetes según el tipo de evento (arrastra para reordenar)

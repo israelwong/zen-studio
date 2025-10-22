@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { ArrowLeft, Plus, Search, Edit, Copy, Trash2, AlertTriangle } from 'lucide-react';
-import { ZenCard, ZenButton, ZenInput, ZenBadge } from '@/components/ui/zen';
+import { ArrowLeft, Plus, Edit, Copy, Trash2, AlertTriangle } from 'lucide-react';
+import { ZenCard, ZenButton, ZenBadge } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { PaqueteFormularioAvanzado, type PaqueteFormularioRef } from './PaqueteFormularioAvanzado';
 import { formatearMoneda } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
@@ -26,8 +26,6 @@ export function PaquetesPorTipo({
     onNavigateBack,
     onPaquetesChange
 }: PaquetesPorTipoProps) {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('all');
     const [loading] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [editingPaquete, setEditingPaquete] = useState<PaqueteFromDB | null>(null);
@@ -35,12 +33,8 @@ export function PaquetesPorTipo({
     const [pendingClose, setPendingClose] = useState(false);
     const formRef = useRef<PaqueteFormularioRef>(null);
 
-    // Filtrar paquetes
-    const filteredPaquetes = paquetes.filter(paquete => {
-        const matchesSearch = paquete.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'all' || paquete.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
+    // Mostrar todos los paquetes sin filtrado
+    const filteredPaquetes = paquetes;
 
     const handleCrearPaquete = () => {
         setEditingPaquete(null);
@@ -153,9 +147,6 @@ export function PaquetesPorTipo({
                             <p className="text-zinc-400 mt-1">{tipoEvento.descripcion}</p>
                         )}
                     </div>
-                    <ZenBadge variant="secondary">
-                        {paquetes.length} {paquetes.length === 1 ? 'paquete' : 'paquetes'}
-                    </ZenBadge>
                 </div>
 
                 <ZenButton onClick={handleCrearPaquete}>
@@ -164,26 +155,6 @@ export function PaquetesPorTipo({
                 </ZenButton>
             </div>
 
-            {/* Filtros y búsqueda */}
-            <div className="flex flex-col sm:flex-row gap-4">
-                <ZenInput
-                    placeholder="Buscar paquetes..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-1"
-                    icon={Search}
-                />
-
-                <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 min-w-[160px]"
-                >
-                    <option value="all">Todos los estados</option>
-                    <option value="active">Activos</option>
-                    <option value="inactive">Inactivos</option>
-                </select>
-            </div>
 
             {/* Lista de paquetes */}
             {filteredPaquetes.length === 0 ? (
@@ -193,23 +164,15 @@ export function PaquetesPorTipo({
                             <Plus className="w-8 h-8 text-zinc-600" />
                         </div>
                         <h3 className="text-lg font-semibold text-white mb-2">
-                            {searchTerm || statusFilter !== 'all'
-                                ? 'No se encontraron paquetes'
-                                : 'No hay paquetes configurados'
-                            }
+                            No hay paquetes configurados
                         </h3>
                         <p className="text-zinc-400 mb-6">
-                            {searchTerm || statusFilter !== 'all'
-                                ? 'Intenta ajustar los filtros de búsqueda'
-                                : `Crea tu primer paquete para ${tipoEvento.nombre}`
-                            }
+                            Crea tu primer paquete para {tipoEvento.nombre}
                         </p>
-                        {!searchTerm && statusFilter === 'all' && (
-                            <ZenButton onClick={handleCrearPaquete}>
-                                <Plus className="w-4 h-4 mr-2" />
-                                Crear Primer Paquete
-                            </ZenButton>
-                        )}
+                        <ZenButton onClick={handleCrearPaquete}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Crear Primer Paquete
+                        </ZenButton>
                     </div>
                 </ZenCard>
             ) : (
