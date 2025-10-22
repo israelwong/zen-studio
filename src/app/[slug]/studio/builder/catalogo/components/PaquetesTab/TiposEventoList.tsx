@@ -219,7 +219,7 @@ export function TiposEventoList({
 
     // Calcular estadísticas por tipo de evento
     const tiposConStats = localTiposEvento.map(tipo => {
-        const paquetesDelTipo = paquetes.filter(p => p.event_types?.name === tipo.nombre);
+        const paquetesDelTipo = paquetes.filter(p => p.event_types?.name === tipo.name);
         const precioPromedio = paquetesDelTipo.length > 0 
             ? paquetesDelTipo.reduce((sum, p) => sum + (p.precio || 0), 0) / paquetesDelTipo.length
             : 0;

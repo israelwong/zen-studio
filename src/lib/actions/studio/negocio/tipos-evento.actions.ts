@@ -50,7 +50,7 @@ export async function obtenerTiposEvento(
         const tiposEvento = await prisma.studio_event_types.findMany({
             where: { studio_id },
             include: {
-                paquetes: {
+                packages: {
                     select: {
                         id: true,
                         name: true,
@@ -73,7 +73,7 @@ export async function obtenerTiposEvento(
             orden: tipo.order,
             createdAt: tipo.createdAt,
             updatedAt: tipo.updatedAt,
-            paquetes: tipo.paquetes.map((p) => ({
+            paquetes: tipo.packages.map((p) => ({
                 id: p.id,
                 nombre: p.name,
                 precio: p.precio || 0,
@@ -310,7 +310,7 @@ export async function obtenerTipoEventoPorId(
         const tipoEvento = await prisma.studio_event_types.findUnique({
             where: { id: tipoId },
             include: {
-                paquetes: {
+                packages: {
                     select: {
                         id: true,
                         name: true,
