@@ -67,26 +67,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         });
                     });
 
-                    // Si estamos editando un paquete, cargar sus datos
-                    console.log('🔍 Paquete recibido en formulario:', paquete);
-                    console.log('🔍 Tiene paquete_items?', paquete?.paquete_items);
-                    if (paquete?.id && paquete.paquete_items) {
-                        console.log('✅ Cargando datos del paquete para editar');
-                        setNombre(paquete.name || '');
-                        setDescripcion(paquete.descripcion || '');
-                        setPrecioPersonalizado(paquete.precio || 0);
-
-                        // Cargar items del paquete
-                        const paqueteItems: { [id: string]: number } = {};
-                        paquete.paquete_items.forEach(item => {
-                            if (item.item_id) {
-                                paqueteItems[item.item_id] = item.quantity;
-                            }
-                        });
-                        setItems({ ...initialItems, ...paqueteItems });
-                    } else {
-                        setItems(initialItems);
-                    }
+                    // Solo inicializar items vacíos aquí, la carga de datos del paquete
+                    // se maneja en el useEffect separado
+                    setItems(initialItems);
 
                     // Expandir la primera sección por defecto
                     if (catalogoResult.data.length > 0) {
@@ -111,7 +94,41 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         };
 
         cargarDatos();
-    }, [studioSlug, paquete]);
+    }, [studioSlug]);
+
+    // Cargar datos del paquete cuando cambie el prop paquete
+    useEffect(() => {
+        if (paquete?.id) {
+            console.log('🔍 Cargando datos del paquete para editar:', paquete);
+            console.log('🔍 Tiene paquete_items?', paquete.paquete_items);
+            
+            setNombre(paquete.name || '');
+            setDescripcion(''); // No hay descripcion en PaqueteFromDB
+            setPrecioPersonalizado(paquete.precio || 0);
+
+            // Cargar items del paquete si existen
+            if (paquete.paquete_items && paquete.paquete_items.length > 0) {
+                console.log('✅ Cargando items del paquete:', paquete.paquete_items);
+                const paqueteItems: { [id: string]: number } = {};
+                paquete.paquete_items.forEach(item => {
+                    if (item.item_id) {
+                        paqueteItems[item.item_id] = item.quantity;
+                    }
+                });
+                console.log('✅ Items procesados:', paqueteItems);
+                setItems(paqueteItems);
+            } else {
+                console.log('⚠️ No hay paquete_items o está vacío');
+                setItems({});
+            }
+        } else {
+            // Si no hay paquete, limpiar el formulario
+            setNombre('');
+            setDescripcion('');
+            setPrecioPersonalizado(0);
+            setItems({});
+        }
+    }, [paquete]);
 
 
     // Crear mapa de servicios para acceso rápido
