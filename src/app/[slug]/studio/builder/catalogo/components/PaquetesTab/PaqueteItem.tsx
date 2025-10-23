@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { Edit, Trash2, Copy } from 'lucide-react';
+import { Edit, Trash2, Copy, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
+import { ZenButton } from '@/components/ui/zen';
 import {
     eliminarPaquete,
     duplicarPaquete,
@@ -33,18 +35,12 @@ export function PaqueteItem({
 }: PaqueteItemProps) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [isDuplicating, setIsDuplicating] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
     const precioFormateado = formatearMoneda(paquete.precio || 0);
 
     const handleEliminar = async () => {
-        if (
-            !confirm(
-                `¿Estás seguro de que quieres eliminar "${paquete.name}"? Esta acción no se puede deshacer.`
-            )
-        ) {
-            return;
-        }
-
         setIsDeleting(true);
         try {
             const result = await eliminarPaquete(studioSlug, paquete.id);
@@ -52,6 +48,7 @@ export function PaqueteItem({
             if (result.success) {
                 toast.success('Paquete eliminado correctamente');
                 onDelete(paquete.id);
+                setShowDeleteModal(false);
             } else {
                 toast.error(result.error || 'Error al eliminar el paquete');
             }
@@ -71,6 +68,7 @@ export function PaqueteItem({
             if (result.success && result.data) {
                 toast.success('Paquete duplicado correctamente');
                 onDuplicate(result.data.id);
+                setShowDuplicateModal(false);
             } else {
                 toast.error(result.error || 'Error al duplicar el paquete');
             }
@@ -105,7 +103,7 @@ export function PaqueteItem({
                         <Edit className="w-3.5 h-3.5" />
                     </button>
                     <button
-                        onClick={handleDuplicar}
+                        onClick={() => setShowDuplicateModal(true)}
                         disabled={isDuplicating}
                         className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors disabled:opacity-50"
                         title="Duplicar"
@@ -113,7 +111,7 @@ export function PaqueteItem({
                         <Copy className="w-3.5 h-3.5" />
                     </button>
                     <button
-                        onClick={handleEliminar}
+                        onClick={() => setShowDeleteModal(true)}
                         disabled={isDeleting}
                         className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
                         title="Eliminar"
@@ -122,6 +120,70 @@ export function PaqueteItem({
                     </button>
                 </div>
             </div>
+
+            {/* Modal de confirmación para eliminar */}
+            <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            ¿Eliminar paquete?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            ¿Estás seguro de que quieres eliminar &ldquo;{paquete.name}&rdquo;? Esta acción no se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={() => setShowDeleteModal(false)}
+                            className="flex-1"
+                        >
+                            Cancelar
+                        </ZenButton>
+                        <ZenButton
+                            variant="destructive"
+                            onClick={handleEliminar}
+                            disabled={isDeleting}
+                            className="flex-1"
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                        </ZenButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmación para duplicar */}
+            <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <Copy className="w-5 h-5 text-blue-500" />
+                            ¿Duplicar paquete?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Se creará una copia del paquete &ldquo;{paquete.name}&rdquo; con el nombre &ldquo;{paquete.name} (Copia)&rdquo;.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={() => setShowDuplicateModal(false)}
+                            className="flex-1"
+                        >
+                            Cancelar
+                        </ZenButton>
+                        <ZenButton
+                            variant="primary"
+                            onClick={handleDuplicar}
+                            disabled={isDuplicating}
+                            className="flex-1"
+                        >
+                            {isDuplicating ? 'Duplicando...' : 'Duplicar'}
+                        </ZenButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
