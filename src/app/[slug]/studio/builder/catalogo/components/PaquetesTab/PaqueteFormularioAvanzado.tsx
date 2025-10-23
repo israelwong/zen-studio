@@ -427,7 +427,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     const servicio = servicioMap.get(servicioId);
                     console.log('🔍 Servicio encontrado:', servicio);
                     console.log('🔍 service_category_id:', servicio?.service_category_id);
-                    
+
                     return {
                         servicioId,
                         cantidad,
