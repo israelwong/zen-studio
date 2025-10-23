@@ -39,8 +39,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const [loading, setLoading] = useState(false);
     const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
     const [filtroServicio, setFiltroServicio] = useState('');
-    const [seccionExpandida, setSeccionExpandida] = useState<string | null>(null);
-    const [categoriaExpandida, setCategoriaExpandida] = useState<string | null>(null);
+    const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
+    const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const summaryRef = useRef<HTMLDivElement>(null);
 
@@ -69,7 +69,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
                     // Expandir la primera sección por defecto
                     if (catalogoResult.data.length > 0) {
-                        setSeccionExpandida(catalogoResult.data[0].id);
+                        setSeccionesExpandidas(new Set([catalogoResult.data[0].id]));
                     }
                 }
 
@@ -125,7 +125,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         if (!filtroServicio.trim()) return catalogo;
 
         const filtro = filtroServicio.toLowerCase();
-        
+
         return catalogo.map(seccion => {
             const categoriasFiltradas = seccion.categorias.map(categoria => {
                 const serviciosFiltrados = categoria.servicios.filter(servicio => {
@@ -191,18 +191,26 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     // Auto-expandir secciones y categorías cuando hay filtros
     useEffect(() => {
         if (filtroServicio.trim() && catalogoFiltrado.length > 0) {
-            // Expandir la primera sección que tenga resultados
-            const primeraSeccion = catalogoFiltrado[0];
-            if (primeraSeccion && !seccionExpandida) {
-                setSeccionExpandida(primeraSeccion.id);
-            }
+            // Expandir todas las secciones que tengan resultados
+            const seccionesConResultados = new Set(catalogoFiltrado.map(seccion => seccion.id));
+            setSeccionesExpandidas(seccionesConResultados);
             
-            // Si la sección expandida tiene categorías, expandir la primera
-            if (primeraSeccion && primeraSeccion.categorias.length > 0 && !categoriaExpandida) {
-                setCategoriaExpandida(primeraSeccion.categorias[0].id);
-            }
+            // Expandir todas las categorías que tengan resultados
+            const categoriasConResultados = new Set<string>();
+            catalogoFiltrado.forEach(seccion => {
+                seccion.categorias.forEach(categoria => {
+                    if (categoria.servicios.length > 0) {
+                        categoriasConResultados.add(categoria.id);
+                    }
+                });
+            });
+            setCategoriasExpandidas(categoriasConResultados);
+        } else if (!filtroServicio.trim()) {
+            // Cuando se limpia el filtro, colapsar todo
+            setSeccionesExpandidas(new Set());
+            setCategoriasExpandidas(new Set());
         }
-    }, [filtroServicio, catalogoFiltrado, seccionExpandida, categoriaExpandida]);
+    }, [filtroServicio, catalogoFiltrado]);
 
     // Verificar si hay items seleccionados
     const hasSelectedItems = useMemo(() => {
@@ -304,21 +312,35 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
     // Handlers para toggles (accordion behavior)
     const toggleSeccion = (seccionId: string) => {
-        if (seccionExpandida === seccionId) {
-            setSeccionExpandida(null);
-            setCategoriaExpandida(null); // Cerrar también la categoría
-        } else {
-            setSeccionExpandida(seccionId);
-            setCategoriaExpandida(null); // Cerrar categoría anterior
-        }
+        setSeccionesExpandidas(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(seccionId)) {
+                newSet.delete(seccionId);
+                // También cerrar todas las categorías de esta sección
+                setCategoriasExpandidas(prevCats => {
+                    const newCats = new Set(prevCats);
+                    catalogo.find(s => s.id === seccionId)?.categorias.forEach(cat => {
+                        newCats.delete(cat.id);
+                    });
+                    return newCats;
+                });
+            } else {
+                newSet.add(seccionId);
+            }
+            return newSet;
+        });
     };
 
     const toggleCategoria = (categoriaId: string) => {
-        if (categoriaExpandida === categoriaId) {
-            setCategoriaExpandida(null);
-        } else {
-            setCategoriaExpandida(categoriaId);
-        }
+        setCategoriasExpandidas(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(categoriaId)) {
+                newSet.delete(categoriaId);
+            } else {
+                newSet.add(categoriaId);
+            }
+            return newSet;
+        });
     };
 
     // Handlers
@@ -409,11 +431,11 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         Servicios Disponibles
                         <ZenBadge variant="secondary">
-                            {filtroServicio.trim() ? 
+                            {filtroServicio.trim() ?
                                 catalogoFiltrado.reduce((acc, seccion) =>
                                     acc + seccion.categorias.reduce((catAcc, categoria) =>
                                         catAcc + categoria.servicios.length, 0), 0
-                                ) : 
+                                ) :
                                 catalogo.reduce((acc, seccion) =>
                                     acc + seccion.categorias.reduce((catAcc, categoria) =>
                                         catAcc + categoria.servicios.length, 0), 0
@@ -458,141 +480,141 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         catalogoFiltrado
                             .sort((a, b) => (a.orden || 0) - (b.orden || 0))
                             .map((seccion) => {
-                            const isSeccionExpandida = seccionExpandida === seccion.id;
+                            const isSeccionExpandida = seccionesExpandidas.has(seccion.id);
 
-                            return (
-                                <div key={seccion.id} className="border border-zinc-700 rounded-lg overflow-hidden">
-                                    {/* Nivel 1: Sección */}
-                                    <button
-                                        onClick={() => toggleSeccion(seccion.id)}
-                                        className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30"
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                            <h4 className="font-semibold text-white">{seccion.nombre}</h4>
-                                            {serviciosSeleccionados.secciones[seccion.id] ? (
-                                                <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-1 rounded">
-                                                    {serviciosSeleccionados.secciones[seccion.id].total} {serviciosSeleccionados.secciones[seccion.id].total === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].total === 1 ? '' : 's'}
-                                                </span>
+                                return (
+                                    <div key={seccion.id} className="border border-zinc-700 rounded-lg overflow-hidden">
+                                        {/* Nivel 1: Sección */}
+                                        <button
+                                            onClick={() => toggleSeccion(seccion.id)}
+                                            className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                                <h4 className="font-semibold text-white">{seccion.nombre}</h4>
+                                                {serviciosSeleccionados.secciones[seccion.id] ? (
+                                                    <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-1 rounded">
+                                                        {serviciosSeleccionados.secciones[seccion.id].total} {serviciosSeleccionados.secciones[seccion.id].total === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].total === 1 ? '' : 's'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-1 rounded">
+                                                        {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0)} {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? 'item' : 'items'} disponible{seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? '' : 's'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {isSeccionExpandida ? (
+                                                <ChevronDown className="w-4 h-4 text-zinc-400" />
                                             ) : (
-                                                <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-1 rounded">
-                                                    {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0)} {seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? 'item' : 'items'} disponible{seccion.categorias.reduce((acc, cat) => acc + cat.servicios.length, 0) === 1 ? '' : 's'}
-                                                </span>
+                                                <ChevronRight className="w-4 h-4 text-zinc-400" />
                                             )}
-                                        </div>
-                                        {isSeccionExpandida ? (
-                                            <ChevronDown className="w-4 h-4 text-zinc-400" />
-                                        ) : (
-                                            <ChevronRight className="w-4 h-4 text-zinc-400" />
-                                        )}
-                                    </button>
+                                        </button>
 
-                                    {isSeccionExpandida && (
-                                        <div className="bg-zinc-900/50">
-                                            {seccion.categorias
-                                                .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                                        {isSeccionExpandida && (
+                                            <div className="bg-zinc-900/50">
+                                                {seccion.categorias
+                                                    .sort((a, b) => (a.orden || 0) - (b.orden || 0))
                                                 .map((categoria, categoriaIndex) => {
-                                                    const isCategoriaExpandida = categoriaExpandida === categoria.id;
+                                                    const isCategoriaExpandida = categoriasExpandidas.has(categoria.id);
 
-                                                    return (
-                                                        <div key={categoria.id} className={`${categoriaIndex > 0 ? 'border-t border-zinc-700/50' : ''}`}>
-                                                            {/* Nivel 2: Categoría */}
-                                                            <button
-                                                                onClick={() => toggleCategoria(categoria.id)}
-                                                                className="w-full flex items-center justify-between p-3 pl-8 hover:bg-zinc-800/30 transition-colors"
-                                                            >
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                                                                    <h5 className="text-sm font-medium text-zinc-300">{categoria.nombre}</h5>
-                                                                    {serviciosSeleccionados.secciones[seccion.id]?.categorias[categoria.id] ? (
-                                                                        <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded">
-                                                                            {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id]} {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? '' : 's'}
-                                                                        </span>
+                                                        return (
+                                                            <div key={categoria.id} className={`${categoriaIndex > 0 ? 'border-t border-zinc-700/50' : ''}`}>
+                                                                {/* Nivel 2: Categoría */}
+                                                                <button
+                                                                    onClick={() => toggleCategoria(categoria.id)}
+                                                                    className="w-full flex items-center justify-between p-3 pl-8 hover:bg-zinc-800/30 transition-colors"
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                                                                        <h5 className="text-sm font-medium text-zinc-300">{categoria.nombre}</h5>
+                                                                        {serviciosSeleccionados.secciones[seccion.id]?.categorias[categoria.id] ? (
+                                                                            <span className="text-xs bg-emerald-900/50 text-emerald-300 px-2 py-0.5 rounded">
+                                                                                {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id]} {serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? 'item' : 'items'} seleccionado{serviciosSeleccionados.secciones[seccion.id].categorias[categoria.id] === 1 ? '' : 's'}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-0.5 rounded">
+                                                                                {categoria.servicios.length} {categoria.servicios.length === 1 ? 'item' : 'items'} disponible{categoria.servicios.length === 1 ? '' : 's'}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {isCategoriaExpandida ? (
+                                                                        <ChevronDown className="w-3 h-3 text-zinc-400" />
                                                                     ) : (
-                                                                        <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-0.5 rounded">
-                                                                            {categoria.servicios.length} {categoria.servicios.length === 1 ? 'item' : 'items'} disponible{categoria.servicios.length === 1 ? '' : 's'}
-                                                                        </span>
+                                                                        <ChevronRight className="w-3 h-3 text-zinc-400" />
                                                                     )}
-                                                                </div>
-                                                                {isCategoriaExpandida ? (
-                                                                    <ChevronDown className="w-3 h-3 text-zinc-400" />
-                                                                ) : (
-                                                                    <ChevronRight className="w-3 h-3 text-zinc-400" />
-                                                                )}
-                                                            </button>
+                                                                </button>
 
-                                                            {isCategoriaExpandida && (
-                                                                <div className="bg-zinc-800/20 border-l-2 border-zinc-700/30 ml-8">
-                                                                    {categoria.servicios
-                                                                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                                                                        .map((servicio, servicioIndex) => {
-                                                                            const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
-                                                                            const precios = configuracionPrecios ? calcularPrecio(
-                                                                                servicio.costo,
-                                                                                servicio.gasto,
-                                                                                tipoUtilidad,
-                                                                                configuracionPrecios
-                                                                            ) : { precio_final: 0 };
-                                                                            const cantidad = items[servicio.id] || 0;
-                                                                            const subtotal = precios.precio_final * cantidad;
+                                                                {isCategoriaExpandida && (
+                                                                    <div className="bg-zinc-800/20 border-l-2 border-zinc-700/30 ml-8">
+                                                                        {categoria.servicios
+                                                                            .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                                                                            .map((servicio, servicioIndex) => {
+                                                                                const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
+                                                                                const precios = configuracionPrecios ? calcularPrecio(
+                                                                                    servicio.costo,
+                                                                                    servicio.gasto,
+                                                                                    tipoUtilidad,
+                                                                                    configuracionPrecios
+                                                                                ) : { precio_final: 0 };
+                                                                                const cantidad = items[servicio.id] || 0;
+                                                                                const subtotal = precios.precio_final * cantidad;
 
-                                                                            return (
-                                                                                <div
-                                                                                    key={servicio.id}
-                                                                                    className={`flex items-center justify-between p-2 pl-6 ${servicioIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors ${cantidad > 0 ? 'bg-emerald-900/10 border-l-2 border-emerald-500/50' : ''}`}
-                                                                                >
-                                                                                    {/* Nivel 3: Servicio */}
-                                                                                    <div className="flex-1">
-                                                                                        <div className="text-sm font-medium text-white leading-tight">{servicio.nombre}</div>
-                                                                                        <div className="text-xs text-zinc-500 mt-1">
-                                                                                            {servicio.tipo_utilidad === 'service' ? 'Servicio' : 'Producto'}
-                                                                                        </div>
-                                                                                    </div>
-
-                                                                                    <div className="flex items-center gap-3">
-                                                                                        <div className="text-right w-20">
-                                                                                            <div className="text-sm font-medium text-white">{formatearMoneda(precios.precio_final)}</div>
+                                                                                return (
+                                                                                    <div
+                                                                                        key={servicio.id}
+                                                                                        className={`flex items-center justify-between p-2 pl-6 ${servicioIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors ${cantidad > 0 ? 'bg-emerald-900/10 border-l-2 border-emerald-500/50' : ''}`}
+                                                                                    >
+                                                                                        {/* Nivel 3: Servicio */}
+                                                                                        <div className="flex-1">
+                                                                                            <div className="text-sm font-medium text-white leading-tight">{servicio.nombre}</div>
+                                                                                            <div className="text-xs text-zinc-500 mt-1">
+                                                                                                {servicio.tipo_utilidad === 'service' ? 'Servicio' : 'Producto'}
+                                                                                            </div>
                                                                                         </div>
 
-                                                                                        <div className="flex items-center gap-1 w-16 justify-center">
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => updateQuantity(servicio.id, Math.max(0, cantidad - 1))}
-                                                                                                className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
-                                                                                            >
-                                                                                                -
-                                                                                            </button>
-                                                                                            <span className={`w-6 text-center text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-white'}`}>
-                                                                                                {cantidad}
-                                                                                            </span>
-                                                                                            <button
-                                                                                                type="button"
-                                                                                                onClick={() => updateQuantity(servicio.id, cantidad + 1)}
-                                                                                                className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
-                                                                                            >
-                                                                                                +
-                                                                                            </button>
-                                                                                        </div>
+                                                                                        <div className="flex items-center gap-3">
+                                                                                            <div className="text-right w-20">
+                                                                                                <div className="text-sm font-medium text-white">{formatearMoneda(precios.precio_final)}</div>
+                                                                                            </div>
 
-                                                                                        <div className="text-right w-20">
-                                                                                            <div className={`text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>
-                                                                                                {formatearMoneda(subtotal)}
+                                                                                            <div className="flex items-center gap-1 w-16 justify-center">
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateQuantity(servicio.id, Math.max(0, cantidad - 1))}
+                                                                                                    className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                                >
+                                                                                                    -
+                                                                                                </button>
+                                                                                                <span className={`w-6 text-center text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-white'}`}>
+                                                                                                    {cantidad}
+                                                                                                </span>
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateQuantity(servicio.id, cantidad + 1)}
+                                                                                                    className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                                >
+                                                                                                    +
+                                                                                                </button>
+                                                                                            </div>
+
+                                                                                            <div className="text-right w-20">
+                                                                                                <div className={`text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                                                                                                    {formatearMoneda(subtotal)}
+                                                                                                </div>
                                                                                             </div>
                                                                                         </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            );
-                                                                        })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
+                                                                                );
+                                                                            })}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })
                     )}
                 </div>
             </div>
