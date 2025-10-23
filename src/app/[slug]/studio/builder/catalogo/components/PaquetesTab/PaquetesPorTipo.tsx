@@ -175,92 +175,48 @@ export function PaquetesPorTipo({
                     </div>
                 </ZenCard>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
+                <div className="space-y-2">
                     {filteredPaquetes.map((paquete) => (
-                        <ZenCard
-                            key={paquete.id}
-                            className="hover:scale-105 transition-transform group"
-                        >
-                            <div className="p-6">
-                                {/* Header del paquete */}
-                                <div className="flex items-start justify-between mb-4">
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors">
-                                            {paquete.name}
-                                        </h3>
-                                        {/* TODO: Agregar descripción cuando esté disponible en el schema */}
-                                    </div>
-                                    <ZenBadge
-                                        variant={paquete.status === 'active' ? 'default' : 'secondary'}
-                                        className="ml-2"
-                                    >
-                                        {paquete.status === 'active' ? 'Activo' : 'Inactivo'}
-                                    </ZenBadge>
+                        <div key={paquete.id} className="group relative bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 hover:bg-zinc-800/70 hover:border-zinc-600/50 transition-all duration-200">
+                            <div className="flex items-center justify-between">
+                                {/* Información principal */}
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-medium text-white truncate">
+                                        {paquete.name}
+                                    </h3>
+                                    <p className="text-xs text-zinc-400 mt-0.5">
+                                        {formatearMoneda(paquete.precio || 0)}
+                                    </p>
                                 </div>
 
-                                {/* Información financiera */}
-                                <div className="space-y-3 mb-4">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-zinc-400">Precio</span>
-                                        <span className="text-lg font-bold text-emerald-400">
-                                            {formatearMoneda(paquete.precio || 0)}
-                                        </span>
-                                    </div>
-
-                                    {paquete.utilidad !== null && (
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm text-zinc-400">Utilidad</span>
-                                            <span className={`text-sm font-medium ${(paquete.utilidad || 0) > 0 ? 'text-emerald-400' : 'text-red-400'
-                                                }`}>
-                                                {formatearMoneda(paquete.utilidad || 0)}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-zinc-400">Servicios</span>
-                                        <span className="text-sm font-medium text-zinc-300">
-                                            {paquete.paquete_items?.length || 0} servicios
-                                        </span>
-                                    </div>
-                                </div>
-
-                                {/* Acciones */}
-                                <div className="flex flex-col sm:flex-row gap-2 pt-4 border-t border-zinc-800">
-                                    <ZenButton
-                                        variant="secondary"
-                                        size="sm"
+                                {/* Acciones minimalistas */}
+                                <div className="flex items-center gap-1 ml-3">
+                                    <button
                                         onClick={() => handleEditPaquete(paquete)}
-                                        className="flex-1"
+                                        className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors"
+                                        title="Editar"
                                     >
-                                        <Edit className="w-4 h-4 mr-1" />
-                                        <span className="hidden sm:inline">Editar</span>
-                                    </ZenButton>
-
-                                    <div className="flex gap-2">
-                                        <ZenButton
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => handleDuplicatePaquete(paquete)}
-                                            disabled={loading}
-                                            className="flex-1 sm:flex-none"
-                                        >
-                                            <Copy className="w-4 h-4" />
-                                        </ZenButton>
-
-                                        <ZenButton
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => handleDeletePaquete(paquete)}
-                                            disabled={loading}
-                                            className="flex-1 sm:flex-none"
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </ZenButton>
-                                    </div>
+                                        <Edit className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDuplicatePaquete(paquete)}
+                                        disabled={loading}
+                                        className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors disabled:opacity-50"
+                                        title="Duplicar"
+                                    >
+                                        <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeletePaquete(paquete)}
+                                        disabled={loading}
+                                        className="p-1.5 text-zinc-400 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors disabled:opacity-50"
+                                        title="Eliminar"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
                             </div>
-                        </ZenCard>
+                        </div>
                     ))}
                 </div>
             )}
