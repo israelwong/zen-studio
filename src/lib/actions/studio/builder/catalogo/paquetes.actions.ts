@@ -92,6 +92,11 @@ export async function crearPaquete(
             expense?: number;
             utilidad?: number;
             precio?: number;
+            servicios?: Array<{
+                servicioId: string;
+                cantidad: number;
+                servicioCategoriaId: string;
+            }>;
         };
 
         // Validar campos requeridos
@@ -148,6 +153,17 @@ export async function crearPaquete(
                 precio: paqueteData.precio,
                 position: newPosition,
                 status: "active",
+                // Crear paquete_items si existen servicios
+                paquete_items: paqueteData.servicios && paqueteData.servicios.length > 0 ? {
+                    create: paqueteData.servicios.map((servicio, index) => ({
+                        item_id: servicio.servicioId,
+                        service_category_id: servicio.servicioCategoriaId,
+                        quantity: servicio.cantidad,
+                        position: index,
+                        visible_to_client: true,
+                        status: "active"
+                    }))
+                } : undefined
             },
             include: {
                 event_types: true,
@@ -217,7 +233,33 @@ export async function actualizarPaquete(
             expense?: number;
             utilidad?: number;
             precio?: number;
+            servicios?: Array<{
+                servicioId: string;
+                cantidad: number;
+                servicioCategoriaId: string;
+            }>;
         };
+
+        // Si hay servicios, actualizar paquete_items
+        if (paqueteData.servicios && paqueteData.servicios.length > 0) {
+            // Eliminar items existentes
+            await prisma.studio_paquete_items.deleteMany({
+                where: { paquete_id: paqueteId }
+            });
+
+            // Crear nuevos items
+            await prisma.studio_paquete_items.createMany({
+                data: paqueteData.servicios.map((servicio, index) => ({
+                    paquete_id: paqueteId,
+                    item_id: servicio.servicioId,
+                    service_category_id: servicio.servicioCategoriaId,
+                    quantity: servicio.cantidad,
+                    position: index,
+                    visible_to_client: true,
+                    status: "active"
+                }))
+            });
+        }
 
         const updatedPaquete = await prisma.studio_paquetes.update({
             where: { id: paqueteId },

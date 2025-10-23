@@ -101,7 +101,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         if (paquete?.id) {
             console.log('🔍 Cargando datos del paquete para editar:', paquete);
             console.log('🔍 Tiene paquete_items?', paquete.paquete_items);
-            
+
             setNombre(paquete.name || '');
             setDescripcion(''); // No hay descripcion en PaqueteFromDB
             setPrecioPersonalizado(paquete.precio || 0);
