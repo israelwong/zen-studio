@@ -2,8 +2,10 @@
 
 import { useState, useRef } from 'react';
 import { ArrowLeft, Plus, Edit, Copy, Trash2, AlertTriangle } from 'lucide-react';
-import { ZenCard, ZenButton, ZenBadge } from '@/components/ui/zen';
+import { ZenCard, ZenButton } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
+import { toast } from 'sonner';
+import { eliminarPaquete, duplicarPaquete } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
 import { PaqueteFormularioAvanzado, type PaqueteFormularioRef } from './PaqueteFormularioAvanzado';
 import { formatearMoneda } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
@@ -29,6 +31,11 @@ export function PaquetesPorTipo({
     const [editingPaquete, setEditingPaquete] = useState<PaqueteFromDB | null>(null);
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const [pendingClose, setPendingClose] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [selectedPaquete, setSelectedPaquete] = useState<PaqueteFromDB | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isDuplicating, setIsDuplicating] = useState(false);
     const formRef = useRef<PaqueteFormularioRef>(null);
 
     // Mostrar todos los paquetes sin filtrado
@@ -98,17 +105,60 @@ export function PaquetesPorTipo({
         setShowForm(true);
     };
 
-    const handleDuplicatePaquete = async (paquete: PaqueteFromDB) => {
-        // TODO: Implementar duplicación
-        console.log('Duplicar paquete:', paquete.name);
+    const handleDuplicatePaquete = (paquete: PaqueteFromDB) => {
+        setSelectedPaquete(paquete);
+        setShowDuplicateModal(true);
     };
 
-    const handleDeletePaquete = async (paquete: PaqueteFromDB) => {
-        if (!confirm(`¿Estás seguro de que quieres eliminar el paquete "${paquete.name}"?`)) {
-            return;
+    const handleDeletePaquete = (paquete: PaqueteFromDB) => {
+        setSelectedPaquete(paquete);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDuplicate = async () => {
+        if (!selectedPaquete) return;
+        
+        setIsDuplicating(true);
+        try {
+            const result = await duplicarPaquete(studioSlug, selectedPaquete.id);
+
+            if (result.success && result.data) {
+                toast.success('Paquete duplicado correctamente');
+                const newPaquetes = [...paquetes, result.data];
+                onPaquetesChange(newPaquetes);
+                setShowDuplicateModal(false);
+            } else {
+                toast.error(result.error || 'Error al duplicar el paquete');
+            }
+        } catch (error) {
+            toast.error('Error al duplicar el paquete');
+            console.error(error);
+        } finally {
+            setIsDuplicating(false);
         }
-        // TODO: Implementar eliminación
-        console.log('Eliminar paquete:', paquete.name);
+    };
+
+    const confirmDelete = async () => {
+        if (!selectedPaquete) return;
+        
+        setIsDeleting(true);
+        try {
+            const result = await eliminarPaquete(studioSlug, selectedPaquete.id);
+
+            if (result.success) {
+                toast.success('Paquete eliminado correctamente');
+                const newPaquetes = paquetes.filter(p => p.id !== selectedPaquete.id);
+                onPaquetesChange(newPaquetes);
+                setShowDeleteModal(false);
+            } else {
+                toast.error(result.error || 'Error al eliminar el paquete');
+            }
+        } catch (error) {
+            toast.error('Error al eliminar el paquete');
+            console.error(error);
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     return (
@@ -265,6 +315,70 @@ export function PaquetesPorTipo({
                             className="flex-1"
                         >
                             Sí, cerrar
+                        </ZenButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmación para eliminar */}
+            <Dialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            ¿Eliminar paquete?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            ¿Estás seguro de que quieres eliminar &ldquo;{selectedPaquete?.name}&rdquo;? Esta acción no se puede deshacer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={() => setShowDeleteModal(false)}
+                            className="flex-1"
+                        >
+                            Cancelar
+                        </ZenButton>
+                        <ZenButton
+                            variant="destructive"
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="flex-1"
+                        >
+                            {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                        </ZenButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de confirmación para duplicar */}
+            <Dialog open={showDuplicateModal} onOpenChange={setShowDuplicateModal}>
+                <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-white">
+                            <Copy className="w-5 h-5 text-blue-500" />
+                            ¿Duplicar paquete?
+                        </DialogTitle>
+                        <DialogDescription className="text-zinc-400">
+                            Se creará una copia del paquete &ldquo;{selectedPaquete?.name}&rdquo; con el nombre &ldquo;{selectedPaquete?.name} (Copia)&rdquo;.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex gap-2">
+                        <ZenButton
+                            variant="secondary"
+                            onClick={() => setShowDuplicateModal(false)}
+                            className="flex-1"
+                        >
+                            Cancelar
+                        </ZenButton>
+                        <ZenButton
+                            variant="primary"
+                            onClick={confirmDuplicate}
+                            disabled={isDuplicating}
+                            className="flex-1"
+                        >
+                            {isDuplicating ? 'Duplicando...' : 'Duplicar'}
                         </ZenButton>
                     </DialogFooter>
                 </DialogContent>
