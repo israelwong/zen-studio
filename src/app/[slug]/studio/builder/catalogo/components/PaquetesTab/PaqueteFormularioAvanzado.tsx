@@ -440,7 +440,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             let result;
             if (paquete?.id) {
                 // Actualizar paquete existente
-                result = await actualizarPaquete(paquete.id, data);
+                result = await actualizarPaquete(studioSlug, paquete.id, data);
                 if (result.success && result.data) {
                     toast.success('Paquete actualizado exitosamente');
                     onSave(result.data);
