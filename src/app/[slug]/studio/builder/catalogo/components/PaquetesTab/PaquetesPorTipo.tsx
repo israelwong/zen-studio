@@ -169,7 +169,7 @@ export function PaquetesPorTipo({
 
     const confirmDelete = async () => {
         if (!selectedPaquete) return;
-        
+
         setIsDeleting(true);
         try {
             const result = await eliminarPaquete(studioSlug, selectedPaquete.id);
@@ -263,18 +263,8 @@ export function PaquetesPorTipo({
                 className="group relative bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 hover:bg-zinc-800/70 hover:border-zinc-600/50 transition-all duration-200"
             >
                 <div className="flex items-center justify-between">
-                    {/* Información principal */}
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium text-white truncate">
-                            {paquete.name}
-                        </h3>
-                        <p className="text-xs text-zinc-400 mt-0.5">
-                            {formatearMoneda(paquete.precio || 0)}
-                        </p>
-                    </div>
-
-                    {/* Acciones minimalistas */}
-                    <div className="flex items-center gap-1 ml-3">
+                    {/* Drag handle e información principal */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                         <div
                             {...attributes}
                             {...listeners}
@@ -283,6 +273,18 @@ export function PaquetesPorTipo({
                         >
                             <GripVertical className="w-3.5 h-3.5" />
                         </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-medium text-white truncate">
+                                {paquete.name}
+                            </h3>
+                            <p className="text-xs text-zinc-400 mt-0.5">
+                                {formatearMoneda(paquete.precio || 0)}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Acciones minimalistas */}
+                    <div className="flex items-center gap-1 ml-3">
                         <button
                             onClick={() => handleEditPaquete(paquete)}
                             className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded transition-colors"
@@ -382,18 +384,20 @@ export function PaquetesPorTipo({
                         {filteredPaquetes.map((paquete) => (
                             <div key={paquete.id} className="group relative bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3 hover:bg-zinc-800/70 hover:border-zinc-600/50 transition-all duration-200">
                                 <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm font-medium text-white truncate">
-                                            {paquete.name}
-                                        </h3>
-                                        <p className="text-xs text-zinc-400 mt-0.5">
-                                            {formatearMoneda(paquete.precio || 0)}
-                                        </p>
-                                    </div>
-                                    <div className="flex items-center gap-1 ml-3">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <div className="p-1.5 text-zinc-400">
                                             <GripVertical className="w-3.5 h-3.5" />
                                         </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-sm font-medium text-white truncate">
+                                                {paquete.name}
+                                            </h3>
+                                            <p className="text-xs text-zinc-400 mt-0.5">
+                                                {formatearMoneda(paquete.precio || 0)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-1 ml-3">
                                         <button className="p-1.5 text-zinc-400">
                                             <Edit className="w-3.5 h-3.5" />
                                         </button>
