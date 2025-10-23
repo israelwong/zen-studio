@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { TiposEventoList } from './TiposEventoList';
 import { PaquetesPorTipo } from './PaquetesPorTipo';
-import { PaqueteModal } from './PaqueteModal';
+import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
+import { ArrowLeft } from 'lucide-react';
 import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import { obtenerPaquetes } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
@@ -145,18 +146,33 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
 
     if (currentLevel === 3 && selectedPaquete) {
         return (
-            <PaqueteModal
-                studioSlug={studioSlug}
-                paquete={selectedPaquete}
-                onClose={() => navigateBack()}
-                onSave={(updatedPaquete) => {
-                    const newPaquetes = paquetes.map(p =>
-                        p.id === updatedPaquete.id ? updatedPaquete : p
-                    );
-                    setPaquetes(newPaquetes);
-                    navigateBack();
-                }}
-            />
+            <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={navigateBack}
+                        className="flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Volver
+                    </button>
+                    <h2 className="text-2xl font-bold text-zinc-100">
+                        Editar Paquete
+                    </h2>
+                </div>
+                
+                <PaqueteFormularioAvanzado
+                    studioSlug={studioSlug}
+                    paquete={selectedPaquete}
+                    onSave={(updatedPaquete) => {
+                        const newPaquetes = paquetes.map(p =>
+                            p.id === updatedPaquete.id ? updatedPaquete : p
+                        );
+                        setPaquetes(newPaquetes);
+                        navigateBack();
+                    }}
+                    onCancel={navigateBack}
+                />
+            </div>
         );
     }
 

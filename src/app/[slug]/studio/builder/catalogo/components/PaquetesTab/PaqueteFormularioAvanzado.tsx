@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
-import { crearPaquete } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
+import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 
@@ -56,7 +56,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
                 if (catalogoResult.success && catalogoResult.data) {
                     setCatalogo(catalogoResult.data);
-                    // Inicializar items con cantidad 0
+                    
+                    // Inicializar items
                     const initialItems: { [id: string]: number } = {};
                     catalogoResult.data.forEach(seccion => {
                         seccion.categorias.forEach(categoria => {
@@ -65,7 +66,24 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             });
                         });
                     });
-                    setItems(initialItems);
+
+                    // Si estamos editando un paquete, cargar sus datos
+                    if (paquete?.id && paquete.paquete_items) {
+                        setNombre(paquete.name || '');
+                        setDescripcion(paquete.descripcion || '');
+                        setPrecioPersonalizado(paquete.precio || 0);
+                        
+                        // Cargar items del paquete
+                        const paqueteItems: { [id: string]: number } = {};
+                        paquete.paquete_items.forEach(item => {
+                            if (item.item_id) {
+                                paqueteItems[item.item_id] = item.quantity;
+                            }
+                        });
+                        setItems({ ...initialItems, ...paqueteItems });
+                    } else {
+                        setItems(initialItems);
+                    }
 
                     // Expandir la primera sección por defecto
                     if (catalogoResult.data.length > 0) {
@@ -90,7 +108,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         };
 
         cargarDatos();
-    }, [studioSlug]);
+    }, [studioSlug, paquete]);
 
 
     // Crear mapa de servicios para acceso rápido
@@ -399,12 +417,25 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 servicios: serviciosData
             };
 
-            const result = await crearPaquete(studioSlug, data);
-            if (result.success && result.data) {
-                toast.success('Paquete creado exitosamente');
-                onSave(result.data);
+            let result;
+            if (paquete?.id) {
+                // Actualizar paquete existente
+                result = await actualizarPaquete(paquete.id, data);
+                if (result.success && result.data) {
+                    toast.success('Paquete actualizado exitosamente');
+                    onSave(result.data);
+                } else {
+                    toast.error(result.error || 'Error al actualizar el paquete');
+                }
             } else {
-                toast.error(result.error || 'Error al crear el paquete');
+                // Crear nuevo paquete
+                result = await crearPaquete(studioSlug, data);
+                if (result.success && result.data) {
+                    toast.success('Paquete creado exitosamente');
+                    onSave(result.data);
+                } else {
+                    toast.error(result.error || 'Error al crear el paquete');
+                }
             }
         } catch (error) {
             console.error('Error creando paquete:', error);
