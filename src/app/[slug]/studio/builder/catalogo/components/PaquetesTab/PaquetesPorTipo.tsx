@@ -231,9 +231,11 @@ export function PaquetesPorTipo({
                 } else {
                     // Actualizar la lista de paquetes en el componente padre
                     onPaquetesChange(newPaquetes);
+                    toast.success('Orden de paquetes actualizado correctamente');
                 }
             } catch (error) {
                 console.error('Error reordering paquetes:', error);
+                toast.error('Error inesperado al reordenar paquetes');
                 // Revertir el cambio local si falla
                 setLocalPaquetes(paquetes);
             } finally {
