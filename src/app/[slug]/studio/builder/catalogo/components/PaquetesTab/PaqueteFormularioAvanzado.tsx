@@ -102,7 +102,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             console.log('🔍 Cargando datos del paquete para editar:', paquete);
             console.log('🔍 Tiene paquete_items?', paquete.paquete_items);
             console.log('🔍 Catálogo disponible:', catalogo.length, 'secciones');
-            
+
             setNombre(paquete.name || '');
             setDescripcion(''); // No hay descripcion en PaqueteFromDB
             setPrecioPersonalizado(paquete.precio || 0);
@@ -426,12 +426,12 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 .filter(([, cantidad]) => cantidad > 0)
                 .map(([servicioId, cantidad]) => {
                     const servicio = servicioMap.get(servicioId);
-                    
+
                     if (!servicio?.servicioCategoriaId) {
                         console.error('❌ Servicio sin servicioCategoriaId:', servicio);
                         throw new Error(`Servicio ${servicioId} no tiene categoría asociada`);
                     }
-                    
+
                     return {
                         servicioId,
                         cantidad,

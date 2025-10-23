@@ -261,10 +261,36 @@ export async function actualizarPaquete(
             });
         }
 
+        // Manejar event_type_id si es 'temp'
+        let eventTypeId = paqueteData.event_type_id;
+        
+        if (!eventTypeId || eventTypeId === 'temp') {
+            // Buscar un tipo de evento existente
+            const existingEventType = await prisma.studio_event_types.findFirst({
+                where: { studio_id: studio.id, status: 'active' },
+                select: { id: true },
+            });
+
+            if (existingEventType) {
+                eventTypeId = existingEventType.id;
+            } else {
+                // Crear un tipo de evento por defecto
+                const defaultEventType = await prisma.studio_event_types.create({
+                    data: {
+                        studio_id: studio.id,
+                        name: 'Evento General',
+                        status: 'active',
+                        order: 0,
+                    },
+                });
+                eventTypeId = defaultEventType.id;
+            }
+        }
+
         const updatedPaquete = await prisma.studio_paquetes.update({
             where: { id: paqueteId },
             data: {
-                ...(paqueteData.event_type_id && { event_type_id: paqueteData.event_type_id }),
+                ...(eventTypeId && { event_type_id: eventTypeId }),
                 ...(paqueteData.name && { name: paqueteData.name }),
                 ...(typeof paqueteData.cost === "number" && { cost: paqueteData.cost }),
                 ...(typeof paqueteData.expense === "number" && { expense: paqueteData.expense }),
