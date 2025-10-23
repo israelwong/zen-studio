@@ -85,14 +85,21 @@ export function PaquetesList({
             </div>
 
             {/* Modal de formulario */}
-            {showForm && (
-                <PaqueteFormularioAvanzado
-                    studioSlug={studioSlug}
-                    paquete={editingPaquete}
-                    onSave={handleSave}
-                    onCancel={handleCancel}
-                />
-            )}
+            <Dialog open={showForm} onOpenChange={setShowForm}>
+                <DialogContent className="sm:max-w-6xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-700">
+                    <DialogHeader>
+                        <DialogTitle className="text-white">
+                            {editingPaquete ? 'Editar Paquete' : 'Nuevo Paquete'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <PaqueteFormularioAvanzado
+                        studioSlug={studioSlug}
+                        paquete={editingPaquete}
+                        onSave={handleSave}
+                        onCancel={handleCancel}
+                    />
+                </DialogContent>
+            </Dialog>
 
             {/* Lista de paquetes */}
             {paquetes.length > 0 ? (
