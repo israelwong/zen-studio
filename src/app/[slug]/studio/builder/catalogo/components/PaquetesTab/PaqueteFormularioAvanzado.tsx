@@ -394,7 +394,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             const data = {
                 name: nombre,
                 descripcion,
-                event_type_id: 'temp', // TODO: Obtener del contexto
+                event_type_id: 'temp', // Se manejará automáticamente en la acción
                 precio: calculoPrecio.total,
                 servicios: serviciosData
             };

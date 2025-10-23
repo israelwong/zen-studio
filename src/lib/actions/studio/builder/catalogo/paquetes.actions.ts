@@ -110,6 +110,32 @@ export async function crearPaquete(
             };
         }
 
+        // Obtener o crear un tipo de evento por defecto
+        let eventTypeId = paqueteData.event_type_id;
+        
+        if (!eventTypeId || eventTypeId === 'temp') {
+            // Buscar un tipo de evento existente
+            const existingEventType = await prisma.studio_event_types.findFirst({
+                where: { studio_id: studio.id, status: 'active' },
+                select: { id: true },
+            });
+
+            if (existingEventType) {
+                eventTypeId = existingEventType.id;
+            } else {
+                // Crear un tipo de evento por defecto
+                const defaultEventType = await prisma.studio_event_types.create({
+                    data: {
+                        studio_id: studio.id,
+                        name: 'Evento General',
+                        status: 'active',
+                        order: 0,
+                    },
+                });
+                eventTypeId = defaultEventType.id;
+            }
+        }
+
         // Obtener la posición máxima actual
         const maxPosition = await prisma.studio_paquetes.findFirst({
             where: { studio_id: studio.id },
@@ -122,7 +148,7 @@ export async function crearPaquete(
         const paquete = await prisma.studio_paquetes.create({
             data: {
                 studio_id: studio.id,
-                event_type_id: paqueteData.event_type_id,
+                event_type_id: eventTypeId,
                 name: paqueteData.name,
                 cost: paqueteData.cost,
                 expense: paqueteData.expense,
