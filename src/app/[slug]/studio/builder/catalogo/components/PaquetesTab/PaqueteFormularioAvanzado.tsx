@@ -56,7 +56,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
                 if (catalogoResult.success && catalogoResult.data) {
                     setCatalogo(catalogoResult.data);
-                    
+
                     // Inicializar items
                     const initialItems: { [id: string]: number } = {};
                     catalogoResult.data.forEach(seccion => {
@@ -68,11 +68,14 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     });
 
                     // Si estamos editando un paquete, cargar sus datos
+                    console.log('🔍 Paquete recibido en formulario:', paquete);
+                    console.log('🔍 Tiene paquete_items?', paquete?.paquete_items);
                     if (paquete?.id && paquete.paquete_items) {
+                        console.log('✅ Cargando datos del paquete para editar');
                         setNombre(paquete.name || '');
                         setDescripcion(paquete.descripcion || '');
                         setPrecioPersonalizado(paquete.precio || 0);
-                        
+
                         // Cargar items del paquete
                         const paqueteItems: { [id: string]: number } = {};
                         paquete.paquete_items.forEach(item => {

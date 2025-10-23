@@ -25,6 +25,8 @@ export function PaquetesList({
 
     const handleEdit = (paqueteId: string) => {
         const paquete = paquetes.find((p) => p.id === paqueteId);
+        console.log('🔍 Paquete encontrado para editar:', paquete);
+        console.log('🔍 Tiene paquete_items?', paquete?.paquete_items);
         if (paquete) {
             setEditingPaquete(paquete);
             setShowForm(true);
