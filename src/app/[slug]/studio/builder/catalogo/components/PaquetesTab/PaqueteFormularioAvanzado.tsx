@@ -110,7 +110,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             servicio.gasto,
                             tipoUtilidad,
                             configuracionPrecios
-                        ).precio_final
+                        ).precio_final,
+                        seccionNombre: seccion.nombre,
+                        categoriaNombre: categoria.nombre
                     });
                 });
             });
@@ -118,13 +120,46 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         return map;
     }, [catalogo, configuracionPrecios]);
 
+    // Filtrar catálogo basado en el filtro de texto
+    const catalogoFiltrado = useMemo(() => {
+        if (!filtroServicio.trim()) return catalogo;
+
+        const filtro = filtroServicio.toLowerCase();
+        
+        return catalogo.map(seccion => {
+            const categoriasFiltradas = seccion.categorias.map(categoria => {
+                const serviciosFiltrados = categoria.servicios.filter(servicio => {
+                    const servicioData = servicioMap.get(servicio.id);
+                    if (!servicioData) return false;
+
+                    return (
+                        servicio.nombre.toLowerCase().includes(filtro) ||
+                        categoria.nombre.toLowerCase().includes(filtro) ||
+                        seccion.nombre.toLowerCase().includes(filtro) ||
+                        (servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto').toLowerCase().includes(filtro)
+                    );
+                });
+
+                return {
+                    ...categoria,
+                    servicios: serviciosFiltrados
+                };
+            }).filter(categoria => categoria.servicios.length > 0);
+
+            return {
+                ...seccion,
+                categorias: categoriasFiltradas
+            };
+        }).filter(seccion => seccion.categorias.length > 0);
+    }, [catalogo, filtroServicio, servicioMap]);
+
     // Calcular servicios seleccionados por sección y categoría
     const serviciosSeleccionados = useMemo(() => {
         const resumen: {
             secciones: { [seccionId: string]: { total: number; categorias: { [categoriaId: string]: number } } }
         } = { secciones: {} };
 
-        catalogo.forEach(seccion => {
+        catalogoFiltrado.forEach(seccion => {
             let totalSeccion = 0;
             const categorias: { [categoriaId: string]: number } = {};
 
@@ -151,7 +186,23 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         });
 
         return resumen;
-    }, [catalogo, items]);
+    }, [catalogoFiltrado, items]);
+
+    // Auto-expandir secciones y categorías cuando hay filtros
+    useEffect(() => {
+        if (filtroServicio.trim() && catalogoFiltrado.length > 0) {
+            // Expandir la primera sección que tenga resultados
+            const primeraSeccion = catalogoFiltrado[0];
+            if (primeraSeccion && !seccionExpandida) {
+                setSeccionExpandida(primeraSeccion.id);
+            }
+            
+            // Si la sección expandida tiene categorías, expandir la primera
+            if (primeraSeccion && primeraSeccion.categorias.length > 0 && !categoriaExpandida) {
+                setCategoriaExpandida(primeraSeccion.categorias[0].id);
+            }
+        }
+    }, [filtroServicio, catalogoFiltrado, seccionExpandida, categoriaExpandida]);
 
     // Verificar si hay items seleccionados
     const hasSelectedItems = useMemo(() => {
@@ -358,10 +409,21 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                         Servicios Disponibles
                         <ZenBadge variant="secondary">
-                            {catalogo.reduce((acc, seccion) =>
-                                acc + seccion.categorias.reduce((catAcc, categoria) =>
-                                    catAcc + categoria.servicios.length, 0), 0
-                            )} items
+                            {filtroServicio.trim() ? 
+                                catalogoFiltrado.reduce((acc, seccion) =>
+                                    acc + seccion.categorias.reduce((catAcc, categoria) =>
+                                        catAcc + categoria.servicios.length, 0), 0
+                                ) : 
+                                catalogo.reduce((acc, seccion) =>
+                                    acc + seccion.categorias.reduce((catAcc, categoria) =>
+                                        catAcc + categoria.servicios.length, 0), 0
+                                )
+                            } items
+                            {filtroServicio.trim() && (
+                                <span className="ml-1 text-xs text-zinc-400">
+                                    (filtrados)
+                                </span>
+                            )}
                         </ZenBadge>
                     </h2>
 
@@ -369,7 +431,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     <div className="mt-3">
                         <div className="relative w-full">
                             <ZenInput
-                                placeholder="Buscar servicios..."
+                                placeholder="Buscar por nombre, categoría, sección o tipo..."
                                 value={filtroServicio}
                                 onChange={(e) => setFiltroServicio(e.target.value)}
                                 className="w-full pr-10"
@@ -388,9 +450,14 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 </div>
 
                 <div className="space-y-2">
-                    {catalogo
-                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                        .map((seccion) => {
+                    {catalogoFiltrado.length === 0 && filtroServicio.trim() ? (
+                        <div className="text-center py-8 text-zinc-400">
+                            <p>No se encontraron servicios que coincidan con &quot;{filtroServicio}&quot;</p>
+                        </div>
+                    ) : (
+                        catalogoFiltrado
+                            .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                            .map((seccion) => {
                             const isSeccionExpandida = seccionExpandida === seccion.id;
 
                             return (
@@ -457,10 +524,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                                             {isCategoriaExpandida && (
                                                                 <div className="bg-zinc-800/20 border-l-2 border-zinc-700/30 ml-8">
                                                                     {categoria.servicios
-                                                                        .filter(servicio =>
-                                                                            filtroServicio === '' ||
-                                                                            servicio.nombre.toLowerCase().includes(filtroServicio.toLowerCase())
-                                                                        )
                                                                         .sort((a, b) => (a.orden || 0) - (b.orden || 0))
                                                                         .map((servicio, servicioIndex) => {
                                                                             const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
@@ -529,7 +592,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                     )}
                                 </div>
                             );
-                        })}
+                        })
+                    )}
                 </div>
             </div>
 
