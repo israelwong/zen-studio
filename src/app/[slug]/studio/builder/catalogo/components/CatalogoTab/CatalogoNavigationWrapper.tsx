@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { LayoutGrid, List, TreePine } from "lucide-react";
+import { LayoutGrid, List } from "lucide-react";
 import { ZenButton } from "@/components/ui/zen";
 import { CatalogoContainer } from "./CatalogoContainer";
 import { CatalogoAcordeonNavigation } from "./CatalogoAcordeonNavigation";
-import { CatalogoHierarchyView } from "./CatalogoHierarchyView";
 
 interface Seccion {
     id: string;
@@ -23,7 +22,7 @@ interface CatalogoNavigationWrapperProps {
     onNavigateToUtilidad?: () => void;
 }
 
-type NavigationMode = "accordion" | "navigator" | "hierarchy";
+type NavigationMode = "accordion" | "navigator";
 
 export function CatalogoNavigationWrapper({
     studioSlug,
@@ -57,24 +56,13 @@ export function CatalogoNavigationWrapper({
                             <List className="w-4 h-4" />
                             Navegador
                         </ZenButton>
-                        <ZenButton
-                            onClick={() => setNavigationMode("hierarchy")}
-                            variant={navigationMode === "hierarchy" ? "primary" : "ghost"}
-                            size="sm"
-                            className="flex items-center gap-2"
-                        >
-                            <TreePine className="w-4 h-4" />
-                            Jerárquica
-                        </ZenButton>
                     </div>
                 </div>
 
                 <div className="text-xs text-zinc-500">
                     {navigationMode === "accordion"
                         ? "Vista expandible con drag & drop"
-                        : navigationMode === "navigator"
-                        ? "Navegación por niveles con breadcrumbs"
-                        : "Vista jerárquica con todos los niveles visibles"
+                        : "Navegación por niveles con breadcrumbs"
                     }
                 </div>
             </div>
@@ -86,14 +74,8 @@ export function CatalogoNavigationWrapper({
                     secciones={secciones}
                     onNavigateToUtilidad={onNavigateToUtilidad}
                 />
-            ) : navigationMode === "navigator" ? (
-                <CatalogoContainer
-                    studioSlug={studioSlug}
-                    secciones={secciones}
-                    onNavigateToUtilidad={onNavigateToUtilidad}
-                />
             ) : (
-                <CatalogoHierarchyView
+                <CatalogoContainer
                     studioSlug={studioSlug}
                     secciones={secciones}
                     onNavigateToUtilidad={onNavigateToUtilidad}

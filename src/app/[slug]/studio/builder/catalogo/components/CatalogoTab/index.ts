@@ -2,7 +2,6 @@
 export { CatalogoContainer } from "./CatalogoContainer";
 export { CatalogoNavigationWrapper } from "./CatalogoNavigationWrapper";
 export { CatalogoAcordeonNavigation } from "./CatalogoAcordeonNavigation";
-export { CatalogoHierarchyView } from "./CatalogoHierarchyView";
 
 // Storage & UI Components
 
