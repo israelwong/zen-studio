@@ -40,6 +40,7 @@ const CreateItemSchema = z.object({
     cost: z.number().min(0, "El costo no puede ser negativo"),
     description: z.string().optional(),
     categoriaeId: z.string(),
+    studioSlug: z.string(),
     gastos: z.array(GastoSchema).optional().default([]),
 });
 
@@ -146,20 +147,26 @@ export async function crearItem(
         // Validar datos
         const validated = CreateItemSchema.parse(data);
 
-        // Verificar que la categoría existe y obtener studio_id a través de la sección
-        const categoria = await prisma.studio_service_categories.findUnique({
-            where: { id: validated.categoriaeId },
-            select: { 
-                id: true, 
-                section_categories: {
-                    select: {
-                        studio_id: true
-                    }
-                }
-            },
+        // 1. Obtener studio_id desde slug
+        const studio = await prisma.studios.findUnique({
+            where: { slug: validated.studioSlug },
+            select: { id: true },
         });
 
-        if (!categoria || !categoria.section_categories) {
+        if (!studio) {
+            return {
+                success: false,
+                error: "Studio no encontrado",
+            };
+        }
+
+        // 2. Verificar que la categoría existe
+        const categoria = await prisma.studio_service_categories.findUnique({
+            where: { id: validated.categoriaeId },
+            select: { id: true },
+        });
+
+        if (!categoria) {
             return {
                 success: false,
                 error: "Categoría no encontrada",
@@ -182,7 +189,7 @@ export async function crearItem(
                 service_category_id: validated.categoriaeId,
                 order: itemCount,
                 status: "active",
-                studio_id: categoria.section_categories.studio_id,
+                studio_id: studio.id,
                 item_expenses: {
                     create: validated.gastos?.map(gasto => ({
                         name: gasto.nombre,
