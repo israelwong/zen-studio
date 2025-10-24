@@ -105,6 +105,23 @@ export async function getBuilderProfileData(studioSlug: string) {
                         },
                         orderBy: { order: 'asc' }
                     },
+                    // Paquetes for packages section
+                    paquetes: {
+                        where: { status: 'active' },
+                        select: {
+                            id: true,
+                            name: true,
+                            cost: true,
+                            precio: true,
+                            order: true,
+                            event_types: {
+                                select: {
+                                    name: true,
+                                }
+                            }
+                        },
+                        orderBy: { order: 'asc' }
+                    },
                     plan: {
                         select: {
                             name: true,
@@ -199,6 +216,19 @@ export async function getBuilderProfileData(studioSlug: string) {
                         item_type: item.item_type as 'PHOTO' | 'VIDEO',
                         order: item.order,
                     })),
+                })),
+                // Paquetes
+                paquetes: studio.paquetes.map(paquete => ({
+                    id: paquete.id,
+                    nombre: paquete.name,
+                    descripcion: undefined, // Campo no disponible en schema actual
+                    precio: paquete.precio || paquete.cost || 0,
+                    tipo_evento: paquete.event_types?.name || undefined,
+                    duracion_horas: undefined, // Campo no disponible en schema actual
+                    incluye: undefined, // Campo no disponible en schema actual
+                    no_incluye: undefined, // Campo no disponible en schema actual
+                    condiciones: undefined, // Campo no disponible en schema actual
+                    order: paquete.order,
                 })),
             };
 

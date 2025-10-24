@@ -89,10 +89,24 @@ export interface BuilderPortfolio {
     items: BuilderPortfolioItem[];
 }
 
+export interface BuilderPaquete {
+    id: string;
+    nombre: string;
+    descripcion?: string;
+    precio: number;
+    tipo_evento?: string;
+    duracion_horas?: number;
+    incluye?: string[];
+    no_incluye?: string[];
+    condiciones?: string;
+    order: number;
+}
+
 export interface BuilderProfileData {
     studio: BuilderStudioProfile;
     socialNetworks: BuilderSocialNetwork[];
     contactInfo: BuilderContactInfo;
     items: BuilderCatalogItem[];
     portfolios: BuilderPortfolio[];
+    paquetes: BuilderPaquete[];
 }

@@ -53,4 +53,4 @@ export interface CatalogoTabsData {
     };
 }
 
-export type TabValue = "items" | "paquetes" | "utilidad";
+export type TabValue = "items" | "utilidad";

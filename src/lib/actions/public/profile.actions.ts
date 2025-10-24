@@ -14,7 +14,8 @@ import {
     PublicSocialNetwork,
     PublicContactInfo,
     PublicCatalogItem,
-    PublicPortfolio
+    PublicPortfolio,
+    PublicPaquete
 } from "@/types/public-profile";
 
 /**
@@ -233,12 +234,42 @@ export async function getStudioProfileBySlug(
                 })),
             }));
 
+            // Obtener paquetes del estudio
+            const paquetes = await prisma.studio_paquetes.findMany({
+                where: {
+                    studio_id: studio.id,
+                    status: "active",
+                },
+                include: {
+                    event_types: {
+                        select: {
+                            name: true,
+                        },
+                    },
+                },
+                orderBy: { order: "asc" },
+            });
+
+            const publicPaquetes: PublicPaquete[] = paquetes.map(paquete => ({
+                id: paquete.id,
+                nombre: paquete.nombre,
+                descripcion: paquete.descripcion || undefined,
+                precio: paquete.precio,
+                tipo_evento: paquete.event_types?.name || undefined,
+                duracion_horas: paquete.duracion_horas || undefined,
+                incluye: paquete.incluye || undefined,
+                no_incluye: paquete.no_incluye || undefined,
+                condiciones: paquete.condiciones || undefined,
+                order: paquete.order,
+            }));
+
             const profileData: PublicProfileData = {
                 studio: studioProfile,
                 socialNetworks,
                 contactInfo,
                 items,
                 portfolios,
+                paquetes: publicPaquetes,
             };
 
             console.log('✅ [getStudioProfileBySlug] Profile data fetched successfully');

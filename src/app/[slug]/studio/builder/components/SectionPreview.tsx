@@ -66,6 +66,20 @@ function CatalogoPreview({ data, loading = false }: { data?: Record<string, unkn
     );
 }
 
+// Componente PaquetesPreview integrado
+function PaquetesPreview({ data, loading = false }: { data?: Record<string, unknown>; loading?: boolean }) {
+    return (
+        <MobilePreviewContainer
+            data={data}
+            loading={loading}
+            showNavbar={true}
+            showContent={true}
+            activeTab="paquetes"
+            contentVariant="paquetes"
+        />
+    );
+}
+
 // Componente InicioPreview integrado
 function InicioPreview({ data, loading = false }: { data?: Record<string, unknown>; loading?: boolean }) {
     return (
@@ -95,6 +109,8 @@ export function SectionPreview({ section, studioSlug, data, loading = false }: S
             return <PortafolioPreview data={data} loading={loading} />;
         case 'catalogo':
             return <CatalogoPreview data={data} loading={loading} />;
+        case 'paquetes':
+            return <PaquetesPreview data={data} loading={loading} />;
         default:
             return <div className="w-full max-w-sm mx-auto p-4 text-center text-zinc-500">
                 <p>Preview no disponible para la sección: {section}</p>

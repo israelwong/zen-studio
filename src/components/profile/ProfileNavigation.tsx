@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Home, Grid3X3, Store, Phone } from 'lucide-react';
+import { Home, Grid3X3, Store, Phone, Package } from 'lucide-react';
 
 interface ProfileNavigationProps {
     activeSection?: string;
@@ -19,6 +19,7 @@ export function ProfileNavigation({ activeSection }: ProfileNavigationProps) {
         { id: 'inicio', label: 'Inicio', icon: Home },
         { id: 'portafolio', label: 'Portafolio', icon: Grid3X3 },
         { id: 'catalogo', label: 'Catálogo', icon: Store },
+        { id: 'paquetes', label: 'Paquetes', icon: Package },
         { id: 'contacto', label: 'Contacto', icon: Phone }
     ];
 

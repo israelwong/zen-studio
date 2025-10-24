@@ -4,6 +4,7 @@
  * Secciones principales (visibles en menú):
  * - Inicio/Portafolio: MainSection
  * - Catálogo: CatalogSection  
+ * - Paquetes: PaquetesSection
  * - Contacto: ContactSection
  * 
  * Secciones adicionales (rutas específicas):
@@ -14,6 +15,7 @@
 // Secciones principales
 export { MainSection } from './MainSection';
 export { PortfolioSection } from './PortfolioSection';
+export { PaquetesSection } from './PaquetesSection';
 export { CatalogSection } from './CatalogSection';
 export { ContactSection } from './ContactSection';
 export { ProductCard } from './ProductCard';

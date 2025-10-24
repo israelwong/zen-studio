@@ -1,11 +1,11 @@
 'use client';
 
 import React from 'react';
-import { MainSection, PortfolioSection, CatalogSection, ContactSection } from './sections';
-import { PublicPortfolio, PublicCatalogItem, PublicStudioProfile, PublicContactInfo, PublicSocialNetwork } from '@/types/public-profile';
+import { MainSection, PortfolioSection, CatalogSection, ContactSection, PaquetesSection } from './sections';
+import { PublicPortfolio, PublicCatalogItem, PublicStudioProfile, PublicContactInfo, PublicSocialNetwork, PublicPaquete } from '@/types/public-profile';
 
 interface ProfileContentProps {
-    variant?: 'skeleton' | 'posts' | 'portfolio' | 'shop' | 'info';
+    variant?: 'skeleton' | 'posts' | 'portfolio' | 'shop' | 'info' | 'paquetes';
     data?: Record<string, unknown>;
     loading?: boolean;
 }
@@ -75,6 +75,12 @@ export function ProfileContent({
     if (variant === 'shop') {
         const items = data?.items as PublicCatalogItem[] || [];
         return <CatalogSection items={items} />;
+    }
+
+    // Paquetes content
+    if (variant === 'paquetes') {
+        const paquetes = data?.paquetes as PublicPaquete[] || [];
+        return <PaquetesSection paquetes={paquetes} />;
     }
 
     // Info/Contact content

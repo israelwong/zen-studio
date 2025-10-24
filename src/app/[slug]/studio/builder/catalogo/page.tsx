@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
-import { Store, Package, Layers, DollarSign } from 'lucide-react';
+import { Store, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
-import { SectionLayout } from '../components';
-import { PaquetesTab, UtilidadTab } from './components';
+import { SectionLayout, StorageIndicator } from '../components';
+import { UtilidadTab } from './components';
 import { CatalogoContainer, CatalogoTabSkeletonContainer } from './components/CatalogoTab';
 import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
 import { obtenerSeccionesConStats } from '@/lib/actions/studio/builder/catalogo';
@@ -62,7 +62,7 @@ export default function CatalogoPage() {
     // Inicializar tab desde hash después de hidratación
     useEffect(() => {
         const hash = window.location.hash.replace('#', '');
-        if (hash === 'paquetes' || hash === 'utilidad' || hash === 'items') {
+        if (hash === 'utilidad' || hash === 'items') {
             setActiveTab(hash as TabValue);
         }
     }, []);
@@ -71,7 +71,7 @@ export default function CatalogoPage() {
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.replace('#', '');
-            if (hash === 'paquetes' || hash === 'utilidad' || hash === 'items') {
+            if (hash === 'utilidad' || hash === 'items') {
                 setActiveTab(hash as TabValue);
             }
         };
@@ -178,55 +178,50 @@ export default function CatalogoPage() {
                 </ZenCardHeader>
 
                 <ZenCardContent className="p-6">
-                    <Tabs value={activeTab} onValueChange={(v) => {
-                        setActiveTab(v as TabValue);
-                        // Actualizar URL hash
-                        window.location.hash = v;
-                    }}>
-                        <TabsList className="grid w-full grid-cols-3 mb-6 bg-zinc-800/50 p-1 rounded-lg">
-                            <TabsTrigger
-                                value="items"
-                                className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
-                            >
-                                <Package className="h-4 w-4" />
-                                <span>Catálogo</span>
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="paquetes"
-                                className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
-                            >
-                                <Layers className="h-4 w-4" />
-                                <span>Paquetes</span>
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="utilidad"
-                                className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
-                            >
-                                <DollarSign className="h-4 w-4" />
-                                <span>Utilidad</span>
-                            </TabsTrigger>
-                        </TabsList>
+                    <div className="space-y-6">
+                        {/* Storage Indicator */}
+                        <StorageIndicator studioSlug={studioSlug} />
 
-                        <TabsContent value="items">
-                            {!studioConfig ? (
-                                <CatalogoTabSkeletonContainer />
-                            ) : (
-                                <CatalogoContainer
-                                    studioSlug={studioSlug}
-                                    secciones={secciones}
-                                    onNavigateToUtilidad={() => setActiveTab('utilidad')}
-                                />
-                            )}
-                        </TabsContent>
+                        {/* Tabs */}
+                        <Tabs value={activeTab} onValueChange={(v) => {
+                            setActiveTab(v as TabValue);
+                            // Actualizar URL hash
+                            window.location.hash = v;
+                        }}>
+                            <TabsList className="grid w-full grid-cols-2 mb-6 bg-zinc-800/50 p-1 rounded-lg">
+                                <TabsTrigger
+                                    value="items"
+                                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
+                                >
+                                    <Store className="h-4 w-4" />
+                                    <span>Catálogo</span>
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value="utilidad"
+                                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
+                                >
+                                    <DollarSign className="h-4 w-4" />
+                                    <span>Utilidad</span>
+                                </TabsTrigger>
+                            </TabsList>
 
-                        <TabsContent value="paquetes">
-                            <PaquetesTab studioSlug={studioSlug} />
-                        </TabsContent>
+                            <TabsContent value="items">
+                                {!studioConfig ? (
+                                    <CatalogoTabSkeletonContainer />
+                                ) : (
+                                    <CatalogoContainer
+                                        studioSlug={studioSlug}
+                                        secciones={secciones}
+                                        onNavigateToUtilidad={() => setActiveTab('utilidad')}
+                                    />
+                                )}
+                            </TabsContent>
 
-                        <TabsContent value="utilidad">
-                            <UtilidadTab studioSlug={studioSlug} />
-                        </TabsContent>
-                    </Tabs>
+                            <TabsContent value="utilidad">
+                                <UtilidadTab studioSlug={studioSlug} />
+                            </TabsContent>
+                        </Tabs>
+                    </div>
                 </ZenCardContent>
             </ZenCard>
         </SectionLayout>

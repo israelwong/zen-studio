@@ -25,19 +25,24 @@ export function StorageIndicator({
     const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isBreakdownOpen, setIsBreakdownOpen] = useState(false);
-    
+
     // Suscribirse a cambios de storage
     const refreshTrigger = useStorageRefreshListener(studioSlug);
 
     const cargarStorage = useCallback(async () => {
         try {
+            console.log('🔍 StorageIndicator: Iniciando carga de storage para:', studioSlug);
             setIsLoading(true);
             const result = await calcularStorageCompleto(studioSlug);
+            console.log('🔍 StorageIndicator: Resultado del cálculo:', result);
             if (result.success && result.data) {
                 setStorageStats(result.data);
+                console.log('🔍 StorageIndicator: Storage stats actualizados:', result.data);
+            } else {
+                console.warn('⚠️ StorageIndicator: Error en el cálculo:', result.error);
             }
         } catch (error) {
-            console.error("Error cargando storage:", error);
+            console.error("❌ StorageIndicator: Error cargando storage:", error);
         } finally {
             setIsLoading(false);
         }

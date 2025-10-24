@@ -7,7 +7,6 @@ import { CategoriasListView, CategoriaEditorModal, CategoriaFormData } from "./c
 import { ItemsListView, ItemEditorModal, ItemFormData } from "./items";
 import { SeccionEditorModal, SeccionFormData } from "./secciones";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
-import { StorageIndicator } from "./shared";
 import { ConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
 import {
   crearSeccion,
@@ -694,10 +693,6 @@ export function CatalogoContainer({
   if (currentLevel === 1) {
     return (
       <div className="space-y-6">
-        <StorageIndicator
-          studioSlug={studioSlug}
-          quotaLimitBytes={100 * 1024 * 1024 * 1024}
-        />
         <SeccionesListView
           secciones={secciones}
           onSelectSeccion={handleSelectSeccion}
@@ -755,10 +750,6 @@ export function CatalogoContainer({
   if (currentLevel === 2 && selectedSeccion) {
     return (
       <div className="space-y-6">
-        <StorageIndicator
-          studioSlug={studioSlug}
-          quotaLimitBytes={100 * 1024 * 1024 * 1024}
-        />
         <CategoriasListView
           seccionName={selectedSeccion.name}
           categorias={categorias}
@@ -819,10 +810,6 @@ export function CatalogoContainer({
   if (currentLevel === 3 && selectedCategoria) {
     return (
       <div className="space-y-6">
-        <StorageIndicator
-          studioSlug={studioSlug}
-          quotaLimitBytes={100 * 1024 * 1024 * 1024}
-        />
         <ItemsListView
           categoriaNombre={selectedCategoria.name}
           items={items}

@@ -46,6 +46,19 @@ export interface PublicCatalogItem {
     order: number;
 }
 
+export interface PublicPaquete {
+    id: string;
+    nombre: string;
+    descripcion?: string;
+    precio: number;
+    tipo_evento?: string;
+    duracion_horas?: number;
+    incluye?: string[];
+    no_incluye?: string[];
+    condiciones?: string;
+    order: number;
+}
+
 export interface PublicPortfolioItem {
     id: string;
     title: string;
@@ -101,6 +114,7 @@ export interface PublicProfileData {
     contactInfo: PublicContactInfo;
     items: PublicCatalogItem[];
     portfolios: PublicPortfolio[];
+    paquetes: PublicPaquete[];
 }
 
 // Stats for hardcoded demo values
