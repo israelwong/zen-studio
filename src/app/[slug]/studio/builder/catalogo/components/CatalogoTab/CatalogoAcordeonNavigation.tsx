@@ -33,6 +33,7 @@ import {
     useSensors,
     DragEndEvent,
     DragStartEvent,
+    DragOverEvent,
     DragOverlay,
     useDroppable,
 } from '@dnd-kit/core';
@@ -279,6 +280,25 @@ export function CatalogoAcordeonNavigation({
     const handleDragStart = (event: DragStartEvent) => {
         setActiveId(event.active.id as string);
     };
+
+    // Función para manejar drag over - expandir categorías automáticamente
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        const { over } = event;
+        if (!over) return;
+
+        const overId = String(over.id);
+        
+        // Si se está arrastrando sobre una categoría contraída, expandirla
+        if (overId.startsWith("categoria-")) {
+            const categoriaId = overId.replace("categoria-", "");
+            
+            // Verificar si la categoría está contraída
+            if (!categoriasExpandidas.has(categoriaId)) {
+                console.log("🔍 Expandiendo categoría automáticamente:", categoriaId);
+                setCategoriasExpandidas(prev => new Set([...prev, categoriaId]));
+            }
+        }
+    }, [categoriasExpandidas]);
 
     // Nueva función unificada de drag & drop siguiendo la guía
     const handleDragEnd = useCallback(
@@ -1204,6 +1224,7 @@ export function CatalogoAcordeonNavigation({
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
                 onDragEnd={handleDragEnd}
             >
                 <SortableContext
