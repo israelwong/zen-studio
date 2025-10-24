@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy } from "lucide-react";
 import { ZenButton } from "@/components/ui/zen";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { SeccionEditorModal, SeccionFormData } from "./secciones";
@@ -69,11 +69,13 @@ interface Item {
     id: string;
     name: string;
     cost: number;
+    description?: string;
     tipoUtilidad?: 'servicio' | 'producto';
     order?: number;
     isNew?: boolean;
     isFeatured?: boolean;
     mediaSize?: number;
+    categoriaId?: string;
     gastos?: Array<{
         nombre: string;
         costo: number;
@@ -254,6 +256,7 @@ export function CatalogoAcordeonNavigation({
                             isNew: false,
                             isFeatured: false,
                             mediaSize: item.mediaSize,
+                            categoriaId: categoriaId,
                             gastos: item.gastos,
                         }));
 
@@ -325,6 +328,7 @@ export function CatalogoAcordeonNavigation({
                             isNew: false,
                             isFeatured: false,
                             mediaSize: item.mediaSize,
+                            categoriaId: categoriaId,
                             gastos: item.gastos,
                         }));
                         setItemsData(prev => ({ ...prev, [categoriaId]: items }));
@@ -870,6 +874,15 @@ export function CatalogoAcordeonNavigation({
                         <ZenButton
                             variant="ghost"
                             size="sm"
+                            onClick={() => handleDuplicateItem(item)}
+                            className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
+                            title="Duplicar item"
+                        >
+                            <Copy className="h-4 w-4" />
+                        </ZenButton>
+                        <ZenButton
+                            variant="ghost"
+                            size="sm"
                             onClick={() => handleDeleteItem(item)}
                             className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
                         >
@@ -1076,6 +1089,66 @@ export function CatalogoAcordeonNavigation({
     const handleDeleteItem = (item: Item) => {
         setItemToDelete(item);
         setIsDeleteItemModalOpen(true);
+    };
+
+    const handleDuplicateItem = async (item: Item) => {
+        try {
+            setIsLoading(true);
+            
+            // Crear el item duplicado con nombre modificado
+            const duplicatedItemData = {
+                name: `${item.name} (Copia)`,
+                cost: item.cost,
+                description: item.description,
+                categoriaId: item.categoriaId || '',
+                gastos: item.gastos || [],
+            };
+
+            const response = await crearItem(duplicatedItemData);
+            
+            if (response.success && response.data) {
+                // Actualizar el estado local
+                const newItem = {
+                    id: response.data.id,
+                    name: response.data.name,
+                    cost: response.data.cost,
+                    tipoUtilidad: response.data.tipoUtilidad,
+                    order: response.data.order,
+                    isNew: false,
+                    isFeatured: false,
+                    mediaSize: response.data.mediaSize,
+                    gastos: response.data.gastos,
+                };
+
+                setItemsData(prev => ({
+                    ...prev,
+                    [item.categoriaId || '']: [...(prev[item.categoriaId || ''] || []), newItem]
+                }));
+
+                // Actualizar contador de categoría
+                setCategoriasData(prev => {
+                    const newData = { ...prev };
+                    Object.keys(newData).forEach(seccionId => {
+                        newData[seccionId] = newData[seccionId].map(cat => {
+                            if (cat.id === item.categoriaId) {
+                                return { ...cat, items: (cat.items || 0) + 1 };
+                            }
+                            return cat;
+                        });
+                    });
+                    return newData;
+                });
+
+                toast.success("Item duplicado exitosamente");
+            } else {
+                throw new Error(response.error || "Error al duplicar item");
+            }
+        } catch (error) {
+            console.error("Error duplicando item:", error);
+            toast.error("Error al duplicar item");
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleSaveItem = async (data: ItemFormData) => {
