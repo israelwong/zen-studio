@@ -307,7 +307,12 @@ export function CatalogoAcordeonNavigation({
 
             // Actualizar estado local inmediatamente (optimistic update)
             const newSecciones = arrayMove(secciones, oldIndex, newIndex);
-            setSecciones(newSecciones);
+            // Actualizar el campo order para reflejar el nuevo orden
+            const seccionesConOrder = newSecciones.map((seccion, index) => ({
+                ...seccion,
+                order: index
+            }));
+            setSecciones(seccionesConOrder);
 
             // Actualizar en el backend
             const seccionIds = newSecciones.map(s => s.id);
@@ -353,9 +358,14 @@ export function CatalogoAcordeonNavigation({
 
             // Actualizar estado local inmediatamente (optimistic update)
             const newCategorias = arrayMove(categorias, oldIndex, newIndex);
+            // Actualizar el campo order para reflejar el nuevo orden
+            const categoriasConOrder = newCategorias.map((categoria, index) => ({
+                ...categoria,
+                order: index
+            }));
             setCategoriasData(prev => ({
                 ...prev,
-                [seccionId]: newCategorias
+                [seccionId]: categoriasConOrder
             }));
 
             // Actualizar en el backend
@@ -405,9 +415,14 @@ export function CatalogoAcordeonNavigation({
 
             // Actualizar estado local inmediatamente (optimistic update)
             const newItems = arrayMove(items, oldIndex, newIndex);
+            // Actualizar el campo order para reflejar el nuevo orden
+            const itemsConOrder = newItems.map((item, index) => ({
+                ...item,
+                order: index
+            }));
             setItemsData(prev => ({
                 ...prev,
-                [categoriaId]: newItems
+                [categoriaId]: itemsConOrder
             }));
 
             // Actualizar en el backend
