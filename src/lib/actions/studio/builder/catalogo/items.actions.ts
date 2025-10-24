@@ -146,9 +146,10 @@ export async function crearItem(
         // Validar datos
         const validated = CreateItemSchema.parse(data);
 
-        // Verificar que la categoría existe
+        // Verificar que la categoría existe y obtener studio_id
         const categoria = await prisma.studio_service_categories.findUnique({
             where: { id: validated.categoriaeId },
+            select: { id: true, studio_id: true },
         });
 
         if (!categoria) {
@@ -174,7 +175,7 @@ export async function crearItem(
                 service_category_id: validated.categoriaeId,
                 order: itemCount,
                 status: "active",
-                studio_id: "", // Será llenado por el trigger o middleware
+                studio_id: categoria.studio_id,
                 item_expenses: {
                     create: validated.gastos?.map(gasto => ({
                         name: gasto.nombre,
