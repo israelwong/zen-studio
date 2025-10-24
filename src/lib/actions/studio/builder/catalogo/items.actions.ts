@@ -146,13 +146,20 @@ export async function crearItem(
         // Validar datos
         const validated = CreateItemSchema.parse(data);
 
-        // Verificar que la categoría existe y obtener studio_id
+        // Verificar que la categoría existe y obtener studio_id a través de la sección
         const categoria = await prisma.studio_service_categories.findUnique({
             where: { id: validated.categoriaeId },
-            select: { id: true, studio_id: true },
+            select: { 
+                id: true, 
+                section_categories: {
+                    select: {
+                        studio_id: true
+                    }
+                }
+            },
         });
 
-        if (!categoria) {
+        if (!categoria || !categoria.section_categories) {
             return {
                 success: false,
                 error: "Categoría no encontrada",
@@ -175,7 +182,7 @@ export async function crearItem(
                 service_category_id: validated.categoriaeId,
                 order: itemCount,
                 status: "active",
-                studio_id: categoria.studio_id,
+                studio_id: categoria.section_categories.studio_id,
                 item_expenses: {
                     create: validated.gastos?.map(gasto => ({
                         name: gasto.nombre,
