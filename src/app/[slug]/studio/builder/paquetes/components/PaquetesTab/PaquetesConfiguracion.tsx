@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Eye, EyeOff, UserCheck, UserX, List, Grid } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
-import { ZenSwitch } from '@/components/ui/zen';
+import { Switch } from '@/components/ui/shadcn/switch';
 
 interface PaquetesConfiguracionProps {
     studioSlug: string;
@@ -36,7 +36,7 @@ export function PaquetesConfiguracion({ studioSlug }: PaquetesConfiguracionProps
                                 Los paquetes aparecerán en el menú principal del sitio
                             </p>
                         </div>
-                        <ZenSwitch
+                        <Switch
                             checked={visibleEnMenu}
                             onCheckedChange={setVisibleEnMenu}
                         />
@@ -67,7 +67,7 @@ export function PaquetesConfiguracion({ studioSlug }: PaquetesConfiguracionProps
                                 Solo las personas que llenen un lead form podrán ver los paquetes
                             </p>
                         </div>
-                        <ZenSwitch
+                        <Switch
                             checked={requiereRegistro}
                             onCheckedChange={setRequiereRegistro}
                         />
@@ -99,7 +99,7 @@ export function PaquetesConfiguracion({ studioSlug }: PaquetesConfiguracionProps
                                     Los paquetes se muestran en formato de lista vertical
                                 </p>
                             </div>
-                            <ZenSwitch
+                            <Switch
                                 checked={vistaEnPantalla === 'lista'}
                                 onCheckedChange={(checked) => checked && setVistaEnPantalla('lista')}
                             />
@@ -112,7 +112,7 @@ export function PaquetesConfiguracion({ studioSlug }: PaquetesConfiguracionProps
                                     Los paquetes se muestran en formato de cuadrícula
                                 </p>
                             </div>
-                            <ZenSwitch
+                            <Switch
                                 checked={vistaEnPantalla === 'reticula'}
                                 onCheckedChange={(checked) => checked && setVistaEnPantalla('reticula')}
                             />
