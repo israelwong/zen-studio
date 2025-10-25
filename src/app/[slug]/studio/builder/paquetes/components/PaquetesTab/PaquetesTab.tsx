@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Package, Settings } from 'lucide-react';
-import { ZenButton } from '@/components/ui/zen';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { TiposEventoList } from './TiposEventoList';
 import { PaquetesPorTipo } from './PaquetesPorTipo';
 import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
@@ -96,9 +96,9 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
         return (
             <div className="space-y-6">
                 {/* Tabs skeleton */}
-                <div className="flex space-x-1 bg-zinc-800 p-1 rounded-lg w-fit">
-                    <div className="h-10 bg-zinc-700 rounded w-24 animate-pulse"></div>
-                    <div className="h-10 bg-zinc-700 rounded w-32 animate-pulse"></div>
+                <div className="grid w-full grid-cols-2 bg-zinc-800/50 p-1 rounded-lg">
+                    <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
+                    <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
                 </div>
                 
                 {/* Content skeleton */}
@@ -122,59 +122,51 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
     }
 
     return (
-        <div className="space-y-6">
-            {/* Tabs Navigation */}
-            <div className="flex space-x-1 bg-zinc-800 p-1 rounded-lg w-fit">
-                <ZenButton
-                    variant={activeTab === 'paquetes' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('paquetes')}
-                    className="flex items-center gap-2"
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)}>
+            <TabsList className="grid w-full grid-cols-2 mb-6 bg-zinc-800/50 p-1 rounded-lg">
+                <TabsTrigger
+                    value="paquetes"
+                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
                 >
                     <Package className="h-4 w-4" />
-                    Paquetes
-                </ZenButton>
-                <ZenButton
-                    variant={activeTab === 'configuracion' ? 'default' : 'ghost'}
-                    size="sm"
-                    onClick={() => setActiveTab('configuracion')}
-                    className="flex items-center gap-2"
+                    <span>Paquetes</span>
+                </TabsTrigger>
+                <TabsTrigger
+                    value="configuracion"
+                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
                 >
                     <Settings className="h-4 w-4" />
-                    Configuración
-                </ZenButton>
-            </div>
+                    <span>Configuración</span>
+                </TabsTrigger>
+            </TabsList>
 
-            {/* Tab Content */}
-            {activeTab === 'paquetes' && (
-                <>
-                    {/* Renderizar según el nivel de navegación */}
-                    {currentLevel === 1 && (
-                        <TiposEventoList
-                            studioSlug={studioSlug}
-                            tiposEvento={tiposEvento}
-                            paquetes={paquetes}
-                            onNavigateToTipoEvento={navigateToTipoEvento}
-                            onTiposEventoChange={handleTipoEventoChange}
-                            onPaquetesChange={handlePaquetesChange}
-                        />
-                    )}
+            <TabsContent value="paquetes">
+                {/* Renderizar según el nivel de navegación */}
+                {currentLevel === 1 && (
+                    <TiposEventoList
+                        studioSlug={studioSlug}
+                        tiposEvento={tiposEvento}
+                        paquetes={paquetes}
+                        onNavigateToTipoEvento={navigateToTipoEvento}
+                        onTiposEventoChange={handleTipoEventoChange}
+                        onPaquetesChange={handlePaquetesChange}
+                    />
+                )}
 
-                    {currentLevel === 2 && selectedTipoEvento && (
-                        <PaquetesPorTipo
-                            studioSlug={studioSlug}
-                            tipoEvento={selectedTipoEvento}
-                            paquetes={paquetes.filter(p => p.event_types?.name === selectedTipoEvento.nombre)}
-                            onNavigateBack={navigateBack}
-                            onPaquetesChange={handlePaquetesChange}
-                        />
-                    )}
-                </>
-            )}
+                {currentLevel === 2 && selectedTipoEvento && (
+                    <PaquetesPorTipo
+                        studioSlug={studioSlug}
+                        tipoEvento={selectedTipoEvento}
+                        paquetes={paquetes.filter(p => p.event_types?.name === selectedTipoEvento.nombre)}
+                        onNavigateBack={navigateBack}
+                        onPaquetesChange={handlePaquetesChange}
+                    />
+                )}
+            </TabsContent>
 
-            {activeTab === 'configuracion' && (
+            <TabsContent value="configuracion">
                 <PaquetesConfiguracion studioSlug={studioSlug} />
-            )}
-        </div>
+            </TabsContent>
+        </Tabs>
     );
 }
