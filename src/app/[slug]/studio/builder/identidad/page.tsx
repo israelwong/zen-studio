@@ -76,6 +76,17 @@ export default function IdentidadPage() {
                 };
             }
 
+            // Manejar FAQ si están en updateData
+            if ('faq' in updateData) {
+                const faqData = updateData.faq as Array<{ id: string, pregunta: string, respuesta: string, orden: number, is_active: boolean }>;
+                console.log('🔄 [IdentidadPage] Updating FAQ data:', faqData);
+                return {
+                    ...prev,
+                    studio: { ...prev.studio, ...studioUpdate },
+                    faq: faqData
+                };
+            }
+
             return {
                 ...prev,
                 studio: { ...prev.studio, ...studioUpdate }
