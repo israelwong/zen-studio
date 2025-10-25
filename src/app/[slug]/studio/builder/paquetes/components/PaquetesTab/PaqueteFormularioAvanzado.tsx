@@ -268,6 +268,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
     // Cálculo dinámico del precio
     const calculoPrecio = useMemo(() => {
+        console.log('🔄 Recalculando precio - items:', items, 'precioPersonalizado:', precioPersonalizado);
+        
         if (!configuracionPrecios) {
             return {
                 subtotal: 0,
@@ -322,17 +324,20 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             totalGasto += (s.gasto || 0) * s.cantidad;
         });
 
-        const precioPersonalizadoNum = Number(precioPersonalizado) || 0;
+        const precioPersonalizadoNum = precioPersonalizado === '' ? 0 : Number(precioPersonalizado) || 0;
         const total = precioPersonalizadoNum > 0 ? precioPersonalizadoNum : subtotal;
         const utilidadNeta = total - (totalCosto + totalGasto);
 
-        return {
+        const resultado = {
             subtotal: Number(subtotal.toFixed(2)) || 0,
             totalCosto: Number(totalCosto.toFixed(2)) || 0,
             totalGasto: Number(totalGasto.toFixed(2)) || 0,
             total: Number(total.toFixed(2)) || 0,
             utilidadNeta: Number(utilidadNeta.toFixed(2)) || 0
         };
+
+        console.log('💰 Resultado cálculo:', resultado);
+        return resultado;
     }, [items, servicioMap, precioPersonalizado, configuracionPrecios]);
 
     // Handlers para toggles (accordion behavior)
