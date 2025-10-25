@@ -24,7 +24,7 @@ interface PaquetesTabProps {
 export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
     // Estado de pestañas
     const [activeTab, setActiveTab] = useState<TabType>('paquetes');
-    
+
     // Estado de navegación (solo para pestaña paquetes)
     const [currentLevel, setCurrentLevel] = useState<NavigationLevel>(1);
     const [selectedTipoEvento, setSelectedTipoEvento] = useState<TipoEventoData | null>(null);
@@ -100,7 +100,7 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
                     <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
                     <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
                 </div>
-                
+
                 {/* Content skeleton */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {Array.from({ length: 6 }).map((_, i) => (
