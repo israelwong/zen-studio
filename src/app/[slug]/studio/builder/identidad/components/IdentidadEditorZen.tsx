@@ -129,7 +129,6 @@ export function IdentidadEditorZen({
 
                 {activeTab === 'faq' && (
                     <FAQSection
-                        data={data}
                         onLocalUpdate={onLocalUpdate}
                         loading={loading}
                         onSave={handleSave}

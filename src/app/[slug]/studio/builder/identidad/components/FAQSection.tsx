@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
 import { ZenCard, ZenCardContent } from '@/components/ui/zen';
-import { Plus, X, Save, Check, Edit, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Save, Check, Edit, Trash2, GripVertical } from 'lucide-react';
 import { IdentidadData, FAQItem } from '../types';
 import {
     obtenerFAQ,
@@ -33,7 +33,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 interface FAQSectionProps {
-    data: IdentidadData;
     onLocalUpdate: (data: Partial<IdentidadData>) => void;
     loading?: boolean;
     onSave: () => Promise<void>;
@@ -43,7 +42,6 @@ interface FAQSectionProps {
 }
 
 export function FAQSection({
-    data,
     onLocalUpdate,
     loading = false,
     onSave,
@@ -116,25 +114,45 @@ export function FAQSection({
     const handleAddFAQ = async () => {
         if (nuevaPregunta.trim() && nuevaRespuesta.trim()) {
             try {
-                setLoadingFAQ(true);
-                const newFAQ = await crearFAQ(studioSlug, {
+                // Crear FAQ optimista local
+                const tempFAQ: FAQItem = {
+                    id: `temp-${Date.now()}`, // ID temporal
                     pregunta: nuevaPregunta.trim(),
-                    respuesta: nuevaRespuesta.trim()
-                });
+                    respuesta: nuevaRespuesta.trim(),
+                    orden: faqItems.length,
+                    is_active: true
+                };
 
-                const updatedFAQ = [...faqItems, newFAQ];
+                const updatedFAQ = [...faqItems, tempFAQ];
                 setFaqItems(updatedFAQ);
                 onLocalUpdate({ faq: updatedFAQ });
 
+                // Limpiar formulario inmediatamente
                 setNuevaPregunta('');
                 setNuevaRespuesta('');
                 setShowFAQModal(false);
+
+                // Crear en servidor
+                const newFAQ = await crearFAQ(studioSlug, {
+                    pregunta: tempFAQ.pregunta,
+                    respuesta: tempFAQ.respuesta
+                });
+
+                // Reemplazar FAQ temporal con la real
+                const finalFAQ = updatedFAQ.map(faq => 
+                    faq.id === tempFAQ.id ? newFAQ : faq
+                );
+                setFaqItems(finalFAQ);
+                onLocalUpdate({ faq: finalFAQ });
+
                 toast.success('FAQ creada correctamente');
             } catch (error) {
                 console.error('Error creando FAQ:', error);
+                // Revertir cambio en caso de error
+                const revertedFAQ = faqItems.filter(faq => faq.id !== `temp-${Date.now()}`);
+                setFaqItems(revertedFAQ);
+                onLocalUpdate({ faq: revertedFAQ });
                 toast.error('Error al crear la FAQ');
-            } finally {
-                setLoadingFAQ(false);
             }
         }
     };
@@ -176,18 +194,27 @@ export function FAQSection({
     };
 
     const handleDeleteFAQ = async (faqId: string) => {
+        // Guardar FAQ original para rollback
+        const originalFAQ = faqItems.find(faq => faq.id === faqId);
+        
         try {
-            setLoadingFAQ(true);
-            await eliminarFAQ(faqId);
+            // Eliminación optimista local
             const updatedFAQ = faqItems.filter(faq => faq.id !== faqId);
             setFaqItems(updatedFAQ);
             onLocalUpdate({ faq: updatedFAQ });
+
+            // Eliminar en servidor
+            await eliminarFAQ(faqId);
             toast.success('FAQ eliminada correctamente');
         } catch (error) {
             console.error('Error eliminando FAQ:', error);
+            // Revertir cambio en caso de error
+            if (originalFAQ) {
+                const revertedFAQ = [...faqItems, originalFAQ].sort((a, b) => a.orden - b.orden);
+                setFaqItems(revertedFAQ);
+                onLocalUpdate({ faq: revertedFAQ });
+            }
             toast.error('Error al eliminar la FAQ');
-        } finally {
-            setLoadingFAQ(false);
         }
     };
 
