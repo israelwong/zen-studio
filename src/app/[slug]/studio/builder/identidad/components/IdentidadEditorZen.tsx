@@ -131,9 +131,6 @@ export function IdentidadEditorZen({
                     <FAQSection
                         onLocalUpdate={onLocalUpdate}
                         loading={loading}
-                        onSave={handleSave}
-                        isSaving={isSaving}
-                        saveSuccess={saveSuccess}
                         studioSlug={studioSlug}
                     />
                 )}

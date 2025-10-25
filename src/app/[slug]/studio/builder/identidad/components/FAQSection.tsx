@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
 import { ZenCard, ZenCardContent } from '@/components/ui/zen';
-import { Plus, Save, Check, Edit, Trash2, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, GripVertical } from 'lucide-react';
 import { IdentidadData, FAQItem } from '../types';
 import {
     obtenerFAQ,
@@ -35,18 +35,12 @@ import { CSS } from '@dnd-kit/utilities';
 interface FAQSectionProps {
     onLocalUpdate: (data: Partial<IdentidadData>) => void;
     loading?: boolean;
-    onSave: () => Promise<void>;
-    isSaving: boolean;
-    saveSuccess: boolean;
     studioSlug: string;
 }
 
 export function FAQSection({
     onLocalUpdate,
     loading = false,
-    onSave,
-    isSaving,
-    saveSuccess,
     studioSlug
 }: FAQSectionProps) {
     const [showFAQModal, setShowFAQModal] = useState(false);
@@ -56,6 +50,8 @@ export function FAQSection({
     const [faqItems, setFaqItems] = useState<FAQItem[]>([]);
     const [loadingFAQ, setLoadingFAQ] = useState(true);
     const [togglingItems, setTogglingItems] = useState<Set<string>>(new Set());
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [faqToDelete, setFaqToDelete] = useState<FAQItem | null>(null);
 
     // Sensores para drag and drop
     const sensors = useSensors(
@@ -139,7 +135,7 @@ export function FAQSection({
                 });
 
                 // Reemplazar FAQ temporal con la real
-                const finalFAQ = updatedFAQ.map(faq => 
+                const finalFAQ = updatedFAQ.map(faq =>
                     faq.id === tempFAQ.id ? newFAQ : faq
                 );
                 setFaqItems(finalFAQ);
@@ -215,7 +211,20 @@ export function FAQSection({
                 onLocalUpdate({ faq: revertedFAQ });
             }
             toast.error('Error al eliminar la FAQ');
+        } finally {
+            setShowDeleteModal(false);
+            setFaqToDelete(null);
         }
+    };
+
+    const handleConfirmDelete = (faq: FAQItem) => {
+        setFaqToDelete(faq);
+        setShowDeleteModal(true);
+    };
+
+    const handleCancelDelete = () => {
+        setShowDeleteModal(false);
+        setFaqToDelete(null);
     };
 
     const handleToggleActive = async (faqId: string) => {
@@ -344,7 +353,7 @@ export function FAQSection({
                                 <ZenButton
                                     size="sm"
                                     variant="ghost"
-                                    onClick={() => handleDeleteFAQ(faq.id)}
+                                    onClick={() => handleConfirmDelete(faq)}
                                     disabled={loading || loadingFAQ}
                                     className="p-2 text-red-400 hover:text-red-300"
                                 >
@@ -501,33 +510,62 @@ export function FAQSection({
                 </div>
             )}
 
-            {/* Botón de Guardar */}
-            {faqItems.length > 0 && (
-                <div className="pt-4">
-                    <div className="flex justify-end">
-                        <ZenButton
-                            onClick={onSave}
-                            disabled={loading || isSaving}
-                            loading={isSaving}
-                            loadingText="Guardando..."
-                            variant="primary"
-                            size="sm"
-                        >
-                            {saveSuccess ? (
-                                <>
-                                    <Check className="h-4 w-4 mr-2" />
-                                    Guardado
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="h-4 w-4 mr-2" />
-                                    Guardar Cambios
-                                </>
-                            )}
-                        </ZenButton>
+            {/* Modal de confirmación para eliminar FAQ */}
+            {showDeleteModal && faqToDelete && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-md mx-4">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 rounded-full bg-red-900/20 flex items-center justify-center">
+                                <Trash2 className="h-5 w-5 text-red-400" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">
+                                    Eliminar FAQ
+                                </h3>
+                                <p className="text-sm text-zinc-400">
+                                    Esta acción no se puede deshacer
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="mb-6">
+                            <p className="text-zinc-300 mb-2">
+                                ¿Estás seguro de que quieres eliminar esta pregunta frecuente?
+                            </p>
+                            <div className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50">
+                                <p className="text-white font-medium text-sm">
+                                    {faqToDelete.pregunta}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <ZenButton
+                                onClick={() => handleDeleteFAQ(faqToDelete.id)}
+                                disabled={loadingFAQ}
+                                loading={loadingFAQ}
+                                loadingText="Eliminando..."
+                                variant="destructive"
+                                size="sm"
+                                className="flex-1"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Eliminar
+                            </ZenButton>
+                            <ZenButton
+                                variant="outline"
+                                onClick={handleCancelDelete}
+                                disabled={loadingFAQ}
+                                size="sm"
+                                className="flex-1"
+                            >
+                                Cancelar
+                            </ZenButton>
+                        </div>
                     </div>
                 </div>
             )}
+
         </div>
     );
 }
