@@ -8,6 +8,7 @@ import { TiposEventoList } from './TiposEventoList';
 import { PaquetesPorTipo } from './PaquetesPorTipo';
 import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
 import { PaquetesConfiguracion } from './PaquetesConfiguracion';
+import { PaquetesNavigationWrapper } from './PaquetesNavigationWrapper';
 import { ArrowLeft } from 'lucide-react';
 import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import { obtenerPaquetes } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
@@ -141,27 +142,14 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
             </TabsList>
 
             <TabsContent value="paquetes">
-                {/* Renderizar según el nivel de navegación */}
-                {currentLevel === 1 && (
-                    <TiposEventoList
-                        studioSlug={studioSlug}
-                        tiposEvento={tiposEvento}
-                        paquetes={paquetes}
-                        onNavigateToTipoEvento={navigateToTipoEvento}
-                        onTiposEventoChange={handleTipoEventoChange}
-                        onPaquetesChange={handlePaquetesChange}
-                    />
-                )}
-
-                {currentLevel === 2 && selectedTipoEvento && (
-                    <PaquetesPorTipo
-                        studioSlug={studioSlug}
-                        tipoEvento={selectedTipoEvento}
-                        paquetes={paquetes.filter(p => p.event_types?.name === selectedTipoEvento.nombre)}
-                        onNavigateBack={navigateBack}
-                        onPaquetesChange={handlePaquetesChange}
-                    />
-                )}
+                <PaquetesNavigationWrapper
+                    studioSlug={studioSlug}
+                    tiposEvento={tiposEvento}
+                    paquetes={paquetes}
+                    onNavigateToTipoEvento={navigateToTipoEvento}
+                    onTiposEventoChange={handleTipoEventoChange}
+                    onPaquetesChange={handlePaquetesChange}
+                />
             </TabsContent>
 
             <TabsContent value="configuracion">
