@@ -43,7 +43,6 @@ interface PaquetesAcordeonNavigationProps {
     studioSlug: string;
     tiposEvento: TipoEventoData[];
     paquetes: PaqueteFromDB[];
-    onNavigateToTipoEvento: (tipoEvento: TipoEventoData) => void;
     onTiposEventoChange: (newTiposEvento: TipoEventoData[]) => void;
     onPaquetesChange: (newPaquetes: PaqueteFromDB[]) => void;
 }
@@ -52,7 +51,6 @@ export function PaquetesAcordeonNavigation({
     studioSlug,
     tiposEvento: initialTiposEvento,
     paquetes: initialPaquetes,
-    onNavigateToTipoEvento,
     onTiposEventoChange,
     onPaquetesChange,
 }: PaquetesAcordeonNavigationProps) {
@@ -61,13 +59,11 @@ export function PaquetesAcordeonNavigation({
 
     // Datos
     const [tiposEvento, setTiposEvento] = useState<TipoEventoData[]>(initialTiposEvento);
-    const [paquetes, setPaquetes] = useState<PaqueteFromDB[]>(initialPaquetes);
     const [paquetesData, setPaquetesData] = useState<Record<string, PaqueteFromDB[]>>({});
 
     // Estados de carga
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
-    const [loadingPaquetes, setLoadingPaquetes] = useState<Set<string>>(new Set());
 
     // Estados para drag & drop
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -158,6 +154,57 @@ export function PaquetesAcordeonNavigation({
             const overId = String(over.id);
 
             if (activeId === overId) return;
+
+            // Verificar si se está arrastrando un tipo de evento
+            const activeTipoEvento = tiposEvento.find(tipo => tipo.id === activeId);
+            if (activeTipoEvento) {
+                // Reordenamiento de tipos de evento
+                const overTipoEvento = tiposEvento.find(tipo => tipo.id === overId);
+                if (!overTipoEvento) return;
+
+                const activeIndex = tiposEvento.findIndex(tipo => tipo.id === activeId);
+                const overIndex = tiposEvento.findIndex(tipo => tipo.id === overId);
+
+                if (activeIndex === -1 || overIndex === -1) return;
+
+                const newTiposEvento = arrayMove(tiposEvento, activeIndex, overIndex);
+                const tiposConOrden = newTiposEvento.map((tipo, index) => ({
+                    ...tipo,
+                    orden: index
+                }));
+
+                setTiposEvento(tiposConOrden);
+                onTiposEventoChange(tiposConOrden);
+
+                // Actualizar en el backend
+                try {
+                    const { actualizarOrdenTiposEvento } = await import('@/lib/actions/studio/negocio/tipos-evento.actions');
+                    const result = await actualizarOrdenTiposEvento(studioSlug, {
+                        tipos: tiposConOrden.map(tipo => ({
+                            id: tipo.id,
+                            orden: tipo.orden || 0
+                        }))
+                    });
+
+                    if (result.success) {
+                        toast.success("Orden de tipos de evento actualizado");
+                    } else {
+                        toast.error(result.error || "Error al actualizar el orden");
+                        // Revertir cambios si falla el backend
+                        setTiposEvento(tiposEvento);
+                        onTiposEventoChange(tiposEvento);
+                    }
+                } catch (error) {
+                    console.error("Error actualizando orden de tipos:", error);
+                    toast.error("Error al actualizar el orden");
+                    // Revertir cambios si falla el backend
+                    setTiposEvento(tiposEvento);
+                    onTiposEventoChange(tiposEvento);
+                }
+
+                setActiveId(null);
+                return;
+            }
 
             // Buscar el paquete que se está arrastrando
             let activePaquete = null;
@@ -314,7 +361,7 @@ export function PaquetesAcordeonNavigation({
 
             setActiveId(null);
         },
-        [paquetesData, initialPaquetes, onPaquetesChange, tiposEvento, studioSlug]
+        [paquetesData, initialPaquetes, onPaquetesChange, tiposEvento, studioSlug, onTiposEventoChange]
     );
 
     // Handlers para tipos de evento - usar las mismas funciones que el sistema existente
@@ -416,16 +463,15 @@ export function PaquetesAcordeonNavigation({
         setShowForm(true);
     };
 
-    const handleCrearPaquete = (tipoEventoId: string) => {
+    const handleCrearPaquete = () => {
         setEditingPaquete(null);
         setShowForm(true);
-        // TODO: Pasar el tipoEventoId al formulario
     };
 
     const handleSavePaquete = (savedPaquete: PaqueteFromDB) => {
         if (editingPaquete) {
             // Actualizar paquete existente
-            const newPaquetes = paquetes.map((p) =>
+            const newPaquetes = initialPaquetes.map((p) =>
                 p.id === editingPaquete.id ? savedPaquete : p
             );
             onPaquetesChange(newPaquetes);
@@ -447,7 +493,7 @@ export function PaquetesAcordeonNavigation({
             });
         } else {
             // Crear nuevo paquete
-            const newPaquetes = [...paquetes, savedPaquete];
+            const newPaquetes = [...initialPaquetes, savedPaquete];
             onPaquetesChange(newPaquetes);
 
             // Agregar también al estado local paquetesData
@@ -552,6 +598,45 @@ export function PaquetesAcordeonNavigation({
                 className={`border border-zinc-700 rounded-lg overflow-hidden transition-colors ${isOver ? 'border-purple-500 bg-purple-500/10' : ''
                     }`}
             >
+                {children}
+            </div>
+        );
+    };
+
+    // Componente sortable para tipos de evento
+    const SortableTipoEvento = ({ tipoEvento, children }: { tipoEvento: TipoEventoData; children: React.ReactNode }) => {
+        const {
+            attributes,
+            listeners,
+            setNodeRef,
+            transform,
+            transition,
+            isDragging,
+        } = useSortable({ id: tipoEvento.id });
+
+        const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+            opacity: isDragging ? 0.5 : 1,
+        };
+
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className="border border-zinc-700 rounded-lg overflow-hidden transition-colors"
+            >
+                <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800/30 border-b border-zinc-700/50">
+                    <button
+                        {...attributes}
+                        {...listeners}
+                        className="p-1 hover:bg-zinc-600 rounded cursor-grab active:cursor-grabbing"
+                        title="Arrastrar para reordenar tipos de evento"
+                    >
+                        <GripVertical className="h-4 w-4 text-zinc-500" />
+                    </button>
+                    <span className="text-xs text-zinc-400">Arrastra para reordenar</span>
+                </div>
                 {children}
             </div>
         );
@@ -691,120 +776,127 @@ export function PaquetesAcordeonNavigation({
                 </div>
 
                 {/* Lista de tipos de evento con acordeón */}
-                <div className="space-y-2">
-                    {tiposEvento
-                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                        .map((tipoEvento) => {
-                            const isTipoEventoExpandido = tiposEventoExpandidos.has(tipoEvento.id);
-                            const paquetesDelTipo = paquetesData[tipoEvento.id] || [];
+                <SortableContext
+                    items={tiposEvento.map(t => t.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <div className="space-y-2">
+                        {tiposEvento
+                            .sort((a, b) => (a.orden || 0) - (b.orden || 0))
+                            .map((tipoEvento) => {
+                                const isTipoEventoExpandido = tiposEventoExpandidos.has(tipoEvento.id);
+                                const paquetesDelTipo = paquetesData[tipoEvento.id] || [];
 
-                            return (
-                                <DroppableTipoEvento key={tipoEvento.id} tipoEvento={tipoEvento}>
-                                    {/* Header del tipo de evento */}
-                                    <div className="flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30">
-                                        <div className="flex items-center gap-3 flex-1 text-left">
-                                            <button
-                                                onClick={() => toggleTipoEvento(tipoEvento.id)}
-                                                className="flex items-center gap-3 flex-1 text-left"
-                                            >
-                                                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                                <div>
-                                                    <h4 className="font-semibold text-white">{tipoEvento.nombre}</h4>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-1 rounded">
-                                                            {paquetesDelTipo.length} {paquetesDelTipo.length === 1 ? 'paquete' : 'paquetes'}
-                                                        </span>
-                                                    </div>
+                                return (
+                                    <SortableTipoEvento key={tipoEvento.id} tipoEvento={tipoEvento}>
+                                        <DroppableTipoEvento tipoEvento={tipoEvento}>
+                                            {/* Header del tipo de evento */}
+                                            <div className="flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30">
+                                                <div className="flex items-center gap-3 flex-1 text-left">
+                                                    <button
+                                                        onClick={() => toggleTipoEvento(tipoEvento.id)}
+                                                        className="flex items-center gap-3 flex-1 text-left"
+                                                    >
+                                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                                        <div>
+                                                            <h4 className="font-semibold text-white">{tipoEvento.nombre}</h4>
+                                                            <div className="flex items-center gap-2 mt-1">
+                                                                <span className="text-xs bg-zinc-700 text-zinc-400 px-2 py-1 rounded">
+                                                                    {paquetesDelTipo.length} {paquetesDelTipo.length === 1 ? 'paquete' : 'paquetes'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {isTipoEventoExpandido ? (
+                                                            <ChevronDown className="w-4 h-4 text-zinc-400" />
+                                                        ) : (
+                                                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                                                        )}
+                                                    </button>
                                                 </div>
-                                                {isTipoEventoExpandido ? (
-                                                    <ChevronDown className="w-4 h-4 text-zinc-400" />
-                                                ) : (
-                                                    <ChevronRight className="w-4 h-4 text-zinc-400" />
-                                                )}
-                                            </button>
-                                        </div>
-                                        <div className="flex items-center gap-1">
-                                            <ZenButton
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleCrearPaquete(tipoEvento.id);
-                                                }}
-                                                variant="ghost"
-                                                size="sm"
-                                                className="w-8 h-8 p-0"
-                                                title="Agregar paquete"
-                                            >
-                                                <Plus className="w-4 h-4" />
-                                            </ZenButton>
-                                            <ZenDropdownMenu>
-                                                <ZenDropdownMenuTrigger asChild>
+                                                <div className="flex items-center gap-1">
                                                     <ZenButton
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCrearPaquete();
+                                                        }}
                                                         variant="ghost"
                                                         size="sm"
                                                         className="w-8 h-8 p-0"
-                                                        onClick={(e) => e.stopPropagation()}
+                                                        title="Agregar paquete"
                                                     >
-                                                        <MoreHorizontal className="w-4 h-4" />
+                                                        <Plus className="w-4 h-4" />
                                                     </ZenButton>
-                                                </ZenDropdownMenuTrigger>
-                                                <ZenDropdownMenuContent align="end" className="w-48">
-                                                    <ZenDropdownMenuItem onClick={() => handleEditTipoEvento(tipoEvento)}>
-                                                        <Edit2 className="h-4 w-4 mr-2" />
-                                                        Editar tipo de evento
-                                                    </ZenDropdownMenuItem>
-                                                    <ZenDropdownMenuSeparator />
-                                                    <ZenDropdownMenuItem
-                                                        onClick={() => handleDeleteTipoEvento(tipoEvento)}
-                                                        className="text-red-400 focus:text-red-300"
-                                                    >
-                                                        <Trash2 className="h-4 w-4 mr-2" />
-                                                        Eliminar tipo de evento
-                                                    </ZenDropdownMenuItem>
-                                                </ZenDropdownMenuContent>
-                                            </ZenDropdownMenu>
-                                        </div>
-                                    </div>
-
-                                    {/* Contenido del tipo de evento */}
-                                    {isTipoEventoExpandido && (
-                                        <div className="bg-zinc-900/50">
-                                            {paquetesDelTipo.length === 0 ? (
-                                                <div className="p-8 text-center text-zinc-500">
-                                                    <p>No hay paquetes en este tipo de evento</p>
-                                                    <ZenButton
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => handleCrearPaquete(tipoEvento.id)}
-                                                        className="mt-2"
-                                                    >
-                                                        <Plus className="h-4 w-4 mr-2" />
-                                                        Crear paquete
-                                                    </ZenButton>
+                                                    <ZenDropdownMenu>
+                                                        <ZenDropdownMenuTrigger asChild>
+                                                            <ZenButton
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="w-8 h-8 p-0"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                <MoreHorizontal className="w-4 h-4" />
+                                                            </ZenButton>
+                                                        </ZenDropdownMenuTrigger>
+                                                        <ZenDropdownMenuContent align="end" className="w-48">
+                                                            <ZenDropdownMenuItem onClick={() => handleEditTipoEvento(tipoEvento)}>
+                                                                <Edit2 className="h-4 w-4 mr-2" />
+                                                                Editar tipo de evento
+                                                            </ZenDropdownMenuItem>
+                                                            <ZenDropdownMenuSeparator />
+                                                            <ZenDropdownMenuItem
+                                                                onClick={() => handleDeleteTipoEvento(tipoEvento)}
+                                                                className="text-red-400 focus:text-red-300"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                                Eliminar tipo de evento
+                                                            </ZenDropdownMenuItem>
+                                                        </ZenDropdownMenuContent>
+                                                    </ZenDropdownMenu>
                                                 </div>
-                                            ) : (
-                                                <SortableContext
-                                                    items={paquetesDelTipo.map(p => p.id)}
-                                                    strategy={verticalListSortingStrategy}
-                                                >
-                                                    <div className="space-y-1">
-                                                        {paquetesDelTipo
-                                                            .sort((a, b) => (a.position || 0) - (b.position || 0))
-                                                            .map((paquete, paqueteIndex) => (
-                                                                <SortablePaquete
-                                                                    key={paquete.id}
-                                                                    paquete={paquete}
-                                                                    paqueteIndex={paqueteIndex}
-                                                                />
-                                                            ))}
-                                                    </div>
-                                                </SortableContext>
+                                            </div>
+
+                                            {/* Contenido del tipo de evento */}
+                                            {isTipoEventoExpandido && (
+                                                <div className="bg-zinc-900/50">
+                                                    {paquetesDelTipo.length === 0 ? (
+                                                        <div className="p-8 text-center text-zinc-500">
+                                                            <p>No hay paquetes en este tipo de evento</p>
+                                                            <ZenButton
+                                                                variant="outline"
+                                                                size="sm"
+                                                                onClick={() => handleCrearPaquete()}
+                                                                className="mt-2"
+                                                            >
+                                                                <Plus className="h-4 w-4 mr-2" />
+                                                                Crear paquete
+                                                            </ZenButton>
+                                                        </div>
+                                                    ) : (
+                                                        <SortableContext
+                                                            items={paquetesDelTipo.map(p => p.id)}
+                                                            strategy={verticalListSortingStrategy}
+                                                        >
+                                                            <div className="space-y-1">
+                                                                {paquetesDelTipo
+                                                                    .sort((a, b) => (a.position || 0) - (b.position || 0))
+                                                                    .map((paquete, paqueteIndex) => (
+                                                                        <SortablePaquete
+                                                                            key={paquete.id}
+                                                                            paquete={paquete}
+                                                                            paqueteIndex={paqueteIndex}
+                                                                        />
+                                                                    ))}
+                                                            </div>
+                                                        </SortableContext>
+                                                    )}
+                                                </div>
                                             )}
-                                        </div>
-                                    )}
-                                </DroppableTipoEvento>
-                            );
-                        })}
-                </div>
+                                        </DroppableTipoEvento>
+                                    </SortableTipoEvento>
+                                );
+                            })}
+                    </div>
+                </SortableContext>
             </div>
 
             <DragOverlay>
