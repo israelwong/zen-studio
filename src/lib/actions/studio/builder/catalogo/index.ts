@@ -14,9 +14,12 @@ export * from "./categorias.actions";
 // Items (Servicios, Secciones, Categorías)
 export * from "./items.actions";
 
-// Paquetes
-export * from "./paquetes.actions";
+// Paquetes - Movido a /paquetes/
+// export * from "./paquetes.actions";
 
 // Utilidad (Configuración de precios)
 export * from "./utilidad.actions";
+
+// Configuración de paquetes
+export * from "./configuracion.actions";
 

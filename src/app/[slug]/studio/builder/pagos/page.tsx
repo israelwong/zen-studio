@@ -2,15 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Package } from 'lucide-react';
+import { CreditCard, Banknote } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { SectionLayout, StorageIndicator } from '../components';
-import { PaquetesWrapper } from './components';
+import { PagosWrapper } from './components';
 import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
 import type { BuilderProfileData } from '@/types/builder-profile';
 import { toast } from 'sonner';
 
-export default function PaquetesPage() {
+export default function PagosPage() {
     const params = useParams();
     const studioSlug = params.slug as string;
 
@@ -45,7 +45,7 @@ export default function PaquetesPage() {
         studio_name: builderData.studio.studio_name,
         logo_url: builderData.studio.logo_url,
         slogan: builderData.studio.slogan,
-        // Para ProfileContent (sección paquetes)
+        // Para ProfileContent (sección pagos)
         studio: builderData.studio,
         items: builderData.items,
         paquetes: builderData.paquetes,
@@ -69,7 +69,7 @@ export default function PaquetesPage() {
 
     return (
         <SectionLayout
-            section="paquetes"
+            section="pagos"
             studioSlug={studioSlug}
             data={previewData as unknown as Record<string, unknown>}
             loading={loading}
@@ -77,13 +77,13 @@ export default function PaquetesPage() {
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-600/20 rounded-lg">
-                            <Package className="h-5 w-5 text-purple-400" />
+                        <div className="p-2 bg-green-600/20 rounded-lg">
+                            <CreditCard className="h-5 w-5 text-green-400" />
                         </div>
                         <div>
-                            <ZenCardTitle>Paquetes</ZenCardTitle>
+                            <ZenCardTitle>Pagos</ZenCardTitle>
                             <ZenCardDescription>
-                                Gestiona tus paquetes de servicios y eventos
+                                Configura los métodos de pago para tus servicios
                             </ZenCardDescription>
                         </div>
                     </div>
@@ -94,8 +94,8 @@ export default function PaquetesPage() {
                         {/* Storage Indicator */}
                         <StorageIndicator studioSlug={studioSlug} />
 
-                        {/* Paquetes Wrapper */}
-                        <PaquetesWrapper studioSlug={studioSlug} />
+                        {/* Pagos Wrapper */}
+                        <PagosWrapper studioSlug={studioSlug} />
                     </div>
                 </ZenCardContent>
             </ZenCard>

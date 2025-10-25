@@ -1,6 +1,6 @@
 // Container principal
 export { CatalogoContainer } from "./CatalogoContainer";
-export { CatalogoNavigationWrapper } from "./CatalogoNavigationWrapper";
+// CatalogoNavigationWrapper movido a CatalogoWrapper.tsx
 export { CatalogoAcordeonNavigation } from "./CatalogoAcordeonNavigation";
 
 // Storage & UI Components

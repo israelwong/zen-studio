@@ -1,3 +1,5 @@
 // Tabs architecture exports
 export { UtilidadTab } from './UtilidadTab';
-export { CatalogoContainer, CatalogoNavigationWrapper } from './CatalogoTab';
+export { CatalogoWrapper } from './CatalogoWrapper';
+export { CatalogoContainer, CatalogoTabSkeletonContainer } from './CatalogoTab';
+export { ConfiguracionTab } from './ConfiguracionTab';

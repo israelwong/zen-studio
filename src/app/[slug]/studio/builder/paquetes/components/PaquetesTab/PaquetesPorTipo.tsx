@@ -5,7 +5,7 @@ import { ArrowLeft, Plus, Edit, Copy, Trash2, AlertTriangle, GripVertical } from
 import { ZenCard, ZenButton } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { toast } from 'sonner';
-import { eliminarPaquete, duplicarPaquete, reorderPaquetes } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
+import { eliminarPaquete, duplicarPaquete, reorderPaquetes } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
 import {
     DndContext,
     closestCenter,

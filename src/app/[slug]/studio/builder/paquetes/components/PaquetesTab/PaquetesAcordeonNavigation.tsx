@@ -36,7 +36,7 @@ import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { TipoEventoForm } from "@/app/[slug]/studio/configuracion/operacion/tipos/components/TipoEventoFormSimple";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/shadcn/dialog";
 import { PaqueteFormularioAvanzado } from "./PaqueteFormularioAvanzado";
-import { reorderPaquetes } from "@/lib/actions/studio/builder/catalogo/paquetes.actions";
+import { reorderPaquetes } from "@/lib/actions/studio/builder/paquetes/paquetes.actions";
 import type { TipoEventoData } from "@/lib/actions/schemas/tipos-evento-schemas";
 import type { PaqueteFromDB } from "@/lib/actions/schemas/paquete-schemas";
 
@@ -388,7 +388,7 @@ export function PaquetesAcordeonNavigation({
                 // Actualizar en el backend
                 try {
                     // Actualizar el paquete con el nuevo event_type_id y posición
-                    const { actualizarPaquete } = await import('@/lib/actions/studio/builder/catalogo/paquetes.actions');
+                    const { actualizarPaquete } = await import('@/lib/actions/studio/builder/paquetes/paquetes.actions');
                     const result = await actualizarPaquete(studioSlug, activeId, {
                         event_type_id: overTipoEventoId,
                         position: paquetesDestino.length
@@ -581,7 +581,7 @@ export function PaquetesAcordeonNavigation({
         try {
             setIsLoading(true);
             // Importar la función de duplicación existente
-            const { duplicarPaquete } = await import('@/lib/actions/studio/builder/catalogo/paquetes.actions');
+            const { duplicarPaquete } = await import('@/lib/actions/studio/builder/paquetes/paquetes.actions');
 
             const result = await duplicarPaquete(studioSlug, paquete.id);
 
@@ -618,7 +618,7 @@ export function PaquetesAcordeonNavigation({
         try {
             setIsLoading(true);
             // Importar la función de eliminación existente
-            const { eliminarPaquete } = await import('@/lib/actions/studio/builder/catalogo/paquetes.actions');
+            const { eliminarPaquete } = await import('@/lib/actions/studio/builder/paquetes/paquetes.actions');
 
             const result = await eliminarPaquete(studioSlug, paqueteToDelete.id);
 

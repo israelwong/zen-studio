@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { LayoutGrid, List } from "lucide-react";
 import { ZenButton } from "@/components/ui/zen";
-import { CatalogoContainer } from "./CatalogoContainer";
-import { CatalogoAcordeonNavigation } from "./CatalogoAcordeonNavigation";
+import { CatalogoContainer } from "./CatalogoTab/CatalogoContainer";
+import { CatalogoAcordeonNavigation } from "./CatalogoTab/CatalogoAcordeonNavigation";
 
 interface Seccion {
     id: string;
@@ -16,7 +16,7 @@ interface Seccion {
     mediaSize?: number;
 }
 
-interface CatalogoNavigationWrapperProps {
+interface CatalogoWrapperProps {
     studioSlug: string;
     secciones: Seccion[];
     onNavigateToUtilidad?: () => void;
@@ -24,11 +24,11 @@ interface CatalogoNavigationWrapperProps {
 
 type NavigationMode = "accordion" | "navigator";
 
-export function CatalogoNavigationWrapper({
+export function CatalogoWrapper({
     studioSlug,
     secciones,
     onNavigateToUtilidad,
-}: CatalogoNavigationWrapperProps) {
+}: CatalogoWrapperProps) {
     const [navigationMode, setNavigationMode] = useState<NavigationMode>("accordion");
 
     return (

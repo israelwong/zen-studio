@@ -4,20 +4,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Package, Settings } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
-import { PaquetesConfiguracion } from './PaquetesConfiguracion';
-import { PaquetesAcordeonNavigation } from './PaquetesAcordeonNavigation';
+import { ConfiguracionTab } from './ConfiguracionTab';
+import { PaquetesAcordeonNavigation } from './PaquetesTab/PaquetesAcordeonNavigation';
 import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
-import { obtenerPaquetes } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
+import { obtenerPaquetes } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 
 type TabType = 'paquetes' | 'configuracion';
 
-interface PaquetesTabProps {
+interface PaquetesWrapperProps {
     studioSlug: string;
 }
 
-export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
+export function PaquetesWrapper({ studioSlug }: PaquetesWrapperProps) {
     // Estado de pestañas
     const [activeTab, setActiveTab] = useState<TabType>('paquetes');
 
@@ -129,7 +129,7 @@ export function PaquetesTab({ studioSlug }: PaquetesTabProps) {
             </TabsContent>
 
             <TabsContent value="configuracion">
-                <PaquetesConfiguracion studioSlug={studioSlug} />
+                <ConfiguracionTab studioSlug={studioSlug} />
             </TabsContent>
         </Tabs>
     );

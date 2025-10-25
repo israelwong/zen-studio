@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
-import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/catalogo/paquetes.actions';
+import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 

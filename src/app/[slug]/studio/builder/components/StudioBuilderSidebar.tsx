@@ -40,11 +40,11 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
         },
         {
             id: 'tabs',
-            title: 'Navegación',
+            title: 'Navegación Pública',
             icon: Camera,
             items: [
-                { id: 'inicio', name: 'Inicio', href: `/inicio`, icon: Home },
-                { id: 'portafolio', name: 'Portafolio', href: `/portafolio`, icon: Grid3X3 },
+                { id: 'inicio', name: 'Inicio*', href: `/inicio`, icon: Home },
+                { id: 'portafolio', name: 'Portafolio*', href: `/portafolio`, icon: Grid3X3 },
                 { id: 'catalogo', name: 'Catálogo', href: `/catalogo`, icon: Store },
                 { id: 'paquetes', name: 'Paquetes', href: `/paquetes`, icon: Package },
                 { id: 'contacto', name: 'Contacto', href: `/contacto`, icon: Phone },
@@ -52,13 +52,13 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
         },
         {
             id: 'addons',
-            title: 'Addons',
+            title: 'Navegación Privada',
             icon: Zap,
             items: [
-                { id: 'agendamiento', name: 'Agendamiento', href: `/agendamiento`, icon: Calendar },
-                { id: 'zona-pago', name: 'Zona de pago', href: `/zona-pago`, icon: CreditCard },
-                { id: 'cotizaciones', name: 'Cotizaciones', href: `/cotizaciones`, icon: File },
-                { id: 'portal-cliente', name: 'Portal cliente', href: `/portal-cliente`, icon: User },
+                { id: 'agendamiento', name: 'Agendamiento*', href: `/agendamiento`, icon: Calendar },
+                { id: 'pagos', name: 'Pagos*', href: `/pagos`, icon: CreditCard },
+                { id: 'cotizaciones', name: 'Cotizaciones*', href: `/cotizaciones`, icon: File },
+                { id: 'portal-cliente', name: 'Portal cliente*', href: `/portal-cliente`, icon: User },
             ],
         },
     ];
