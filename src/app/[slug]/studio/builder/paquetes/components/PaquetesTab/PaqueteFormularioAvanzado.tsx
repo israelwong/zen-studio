@@ -277,8 +277,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
     // Cálculo dinámico del precio usando useEffect
     useEffect(() => {
-        console.log('🔄 Recalculando precio - items:', items, 'precioPersonalizado:', precioPersonalizado);
-        
         if (!configuracionPrecios) {
             setCalculoPrecio({
                 subtotal: 0,
@@ -347,7 +345,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             utilidadNeta: Number(utilidadNeta.toFixed(2)) || 0
         };
 
-        console.log('💰 Resultado cálculo:', resultado);
         setCalculoPrecio(resultado);
     }, [items, servicioMap, precioPersonalizado, configuracionPrecios]);
 
@@ -714,9 +711,15 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         </h3>
                         <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
                             <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Subtotal:</span>
+                                <span className="text-zinc-400">Subtotal calculado:</span>
                                 <span className="text-white">{formatearMoneda(calculoPrecio.subtotal)}</span>
                             </div>
+                            {precioPersonalizado && Number(precioPersonalizado) > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-zinc-400">Precio personalizado:</span>
+                                    <span className="text-blue-400">{formatearMoneda(Number(precioPersonalizado))}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between text-sm">
                                 <span className="text-zinc-400">Costo total:</span>
                                 <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalCosto)}</span>
@@ -727,7 +730,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             </div>
                             <div className="border-t border-zinc-700 pt-3">
                                 <div className="flex justify-between">
-                                    <span className="text-white font-semibold">Total:</span>
+                                    <span className="text-white font-semibold">Total final:</span>
                                     <span className="text-emerald-400 font-semibold text-lg">
                                         {formatearMoneda(calculoPrecio.total)}
                                     </span>
