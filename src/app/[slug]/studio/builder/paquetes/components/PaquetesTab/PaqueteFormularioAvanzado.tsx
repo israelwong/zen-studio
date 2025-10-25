@@ -266,18 +266,28 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         setShowConfirmDialog(false);
     };
 
-    // Cálculo dinámico del precio
-    const calculoPrecio = useMemo(() => {
+    // Estado para el cálculo de precios
+    const [calculoPrecio, setCalculoPrecio] = useState({
+        subtotal: 0,
+        totalCosto: 0,
+        totalGasto: 0,
+        total: 0,
+        utilidadNeta: 0
+    });
+
+    // Cálculo dinámico del precio usando useEffect
+    useEffect(() => {
         console.log('🔄 Recalculando precio - items:', items, 'precioPersonalizado:', precioPersonalizado);
         
         if (!configuracionPrecios) {
-            return {
+            setCalculoPrecio({
                 subtotal: 0,
                 totalCosto: 0,
                 totalGasto: 0,
                 total: 0,
                 utilidadNeta: 0
-            };
+            });
+            return;
         }
 
         const serviciosSeleccionados = Object.entries(items)
@@ -305,13 +315,14 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             .filter(Boolean);
 
         if (serviciosSeleccionados.length === 0) {
-            return {
+            setCalculoPrecio({
                 subtotal: 0,
                 totalCosto: 0,
                 totalGasto: 0,
                 total: 0,
                 utilidadNeta: 0
-            };
+            });
+            return;
         }
 
         let subtotal = 0;
@@ -337,7 +348,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         };
 
         console.log('💰 Resultado cálculo:', resultado);
-        return resultado;
+        setCalculoPrecio(resultado);
     }, [items, servicioMap, precioPersonalizado, configuracionPrecios]);
 
     // Handlers para toggles (accordion behavior)
