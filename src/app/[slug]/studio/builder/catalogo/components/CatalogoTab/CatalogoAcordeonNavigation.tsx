@@ -2,8 +2,15 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal } from "lucide-react";
 import { ZenButton } from "@/components/ui/zen";
+import {
+    ZenDropdownMenu,
+    ZenDropdownMenuContent,
+    ZenDropdownMenuItem,
+    ZenDropdownMenuTrigger,
+    ZenDropdownMenuSeparator,
+} from "@/components/ui/zen";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { SeccionEditorModal, SeccionFormData } from "./secciones";
 import { CategoriaEditorModal, CategoriaFormData } from "./categorias";
@@ -615,31 +622,36 @@ export function CatalogoAcordeonNavigation({
                                 variant="ghost"
                                 size="sm"
                                 className="w-8 h-8 p-0"
+                                title="Agregar categoría"
                             >
                                 <Plus className="w-4 h-4" />
                             </ZenButton>
-                            <ZenButton
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleEditSeccion(seccion);
-                                }}
-                                variant="ghost"
-                                size="sm"
-                                className="w-8 h-8 p-0"
-                            >
-                                <Edit2 className="w-4 h-4" />
-                            </ZenButton>
-                            <ZenButton
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteSeccion(seccion);
-                                }}
-                                variant="ghost"
-                                size="sm"
-                                className="w-8 h-8 p-0 text-red-400 hover:text-red-300"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </ZenButton>
+                            <ZenDropdownMenu>
+                                <ZenDropdownMenuTrigger asChild>
+                                    <ZenButton
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-8 h-8 p-0"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <MoreHorizontal className="w-4 h-4" />
+                                    </ZenButton>
+                                </ZenDropdownMenuTrigger>
+                                <ZenDropdownMenuContent align="end" className="w-48">
+                                    <ZenDropdownMenuItem onClick={() => handleEditSeccion(seccion)}>
+                                        <Edit2 className="h-4 w-4 mr-2" />
+                                        Editar sección
+                                    </ZenDropdownMenuItem>
+                                    <ZenDropdownMenuSeparator />
+                                    <ZenDropdownMenuItem
+                                        onClick={() => handleDeleteSeccion(seccion)}
+                                        className="text-red-400 focus:text-red-300"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Eliminar sección
+                                    </ZenDropdownMenuItem>
+                                </ZenDropdownMenuContent>
+                            </ZenDropdownMenu>
                         </div>
                     </div>
 
@@ -748,31 +760,36 @@ export function CatalogoAcordeonNavigation({
                             variant="ghost"
                             size="sm"
                             className="w-8 h-8 p-0"
+                            title="Agregar item"
                         >
                             <Plus className="w-4 h-4" />
                         </ZenButton>
-                        <ZenButton
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditCategoria(categoria);
-                            }}
-                            variant="ghost"
-                            size="sm"
-                            className="w-8 h-8 p-0"
-                        >
-                            <Edit2 className="w-4 h-4" />
-                        </ZenButton>
-                        <ZenButton
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteCategoria(categoria);
-                            }}
-                            variant="ghost"
-                            size="sm"
-                            className="w-8 h-8 p-0 text-red-400 hover:text-red-300"
-                        >
-                            <Trash2 className="w-4 h-4" />
-                        </ZenButton>
+                        <ZenDropdownMenu>
+                            <ZenDropdownMenuTrigger asChild>
+                                <ZenButton
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-8 h-8 p-0"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                </ZenButton>
+                            </ZenDropdownMenuTrigger>
+                            <ZenDropdownMenuContent align="end" className="w-48">
+                                <ZenDropdownMenuItem onClick={() => handleEditCategoria(categoria)}>
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Editar categoría
+                                </ZenDropdownMenuItem>
+                                <ZenDropdownMenuSeparator />
+                                <ZenDropdownMenuItem
+                                    onClick={() => handleDeleteCategoria(categoria)}
+                                    className="text-red-400 focus:text-red-300"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Eliminar categoría
+                                </ZenDropdownMenuItem>
+                            </ZenDropdownMenuContent>
+                        </ZenDropdownMenu>
                     </div>
                 </div>
 
@@ -863,31 +880,35 @@ export function CatalogoAcordeonNavigation({
                         </div>
                     </div>
                     <div className="flex items-center gap-1">
-                        <ZenButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditItem(item)}
-                            className="h-8 w-8 p-0"
-                        >
-                            <Edit2 className="h-4 w-4" />
-                        </ZenButton>
-                        <ZenButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDuplicateItem(item)}
-                            className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300"
-                            title="Duplicar item"
-                        >
-                            <Copy className="h-4 w-4" />
-                        </ZenButton>
-                        <ZenButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteItem(item)}
-                            className="h-8 w-8 p-0 text-red-400 hover:text-red-300"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </ZenButton>
+                        <ZenDropdownMenu>
+                            <ZenDropdownMenuTrigger asChild>
+                                <ZenButton
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </ZenButton>
+                            </ZenDropdownMenuTrigger>
+                            <ZenDropdownMenuContent align="end" className="w-48">
+                                <ZenDropdownMenuItem onClick={() => handleEditItem(item)}>
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Editar
+                                </ZenDropdownMenuItem>
+                                <ZenDropdownMenuItem onClick={() => handleDuplicateItem(item)}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Duplicar
+                                </ZenDropdownMenuItem>
+                                <ZenDropdownMenuSeparator />
+                                <ZenDropdownMenuItem
+                                    onClick={() => handleDeleteItem(item)}
+                                    className="text-red-400 focus:text-red-300"
+                                >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Eliminar
+                                </ZenDropdownMenuItem>
+                            </ZenDropdownMenuContent>
+                        </ZenDropdownMenu>
                     </div>
                 </div>
             </div>
@@ -1094,7 +1115,7 @@ export function CatalogoAcordeonNavigation({
     const handleDuplicateItem = async (item: Item) => {
         try {
             setIsLoading(true);
-            
+
             // Crear el item duplicado con nombre modificado
             const duplicatedItemData = {
                 name: `${item.name} (Copia)`,
@@ -1106,7 +1127,7 @@ export function CatalogoAcordeonNavigation({
             };
 
             const response = await crearItem(duplicatedItemData);
-            
+
             if (response.success && response.data) {
                 // Actualizar el estado local
                 const newItem = {
@@ -1151,6 +1172,8 @@ export function CatalogoAcordeonNavigation({
             setIsLoading(false);
         }
     };
+
+
 
     const handleSaveItem = async (data: ItemFormData) => {
         try {
