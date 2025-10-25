@@ -114,7 +114,9 @@ export default function IdentidadPage() {
             is_active: true
         })),
         direccion: builderData.contactInfo.address,
-        google_maps_url: builderData.studio.maps_url
+        google_maps_url: builderData.studio.maps_url,
+        // FAQ data for preview
+        faq: builderData.faq
     } : null;
 
     return (

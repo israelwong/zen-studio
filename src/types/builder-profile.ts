@@ -102,6 +102,14 @@ export interface BuilderPaquete {
     order: number;
 }
 
+export interface BuilderFAQ {
+    id: string;
+    pregunta: string;
+    respuesta: string;
+    orden: number;
+    is_active: boolean;
+}
+
 export interface BuilderProfileData {
     studio: BuilderStudioProfile;
     socialNetworks: BuilderSocialNetwork[];
@@ -109,4 +117,5 @@ export interface BuilderProfileData {
     items: BuilderCatalogItem[];
     portfolios: BuilderPortfolio[];
     paquetes: BuilderPaquete[];
+    faq: BuilderFAQ[];
 }

@@ -135,6 +135,18 @@ export async function getBuilderProfileData(studioSlug: string) {
                             orden: true,
                         },
                         orderBy: { orden: 'asc' }
+                    },
+                    // FAQ data for identity section
+                    faq: {
+                        where: { is_active: true },
+                        select: {
+                            id: true,
+                            pregunta: true,
+                            respuesta: true,
+                            orden: true,
+                            is_active: true,
+                        },
+                        orderBy: { orden: 'asc' }
                     }
                 }
             });
@@ -229,6 +241,14 @@ export async function getBuilderProfileData(studioSlug: string) {
                     no_incluye: undefined, // Campo no disponible en schema actual
                     condiciones: undefined, // Campo no disponible en schema actual
                     order: paquete.order,
+                })),
+                // FAQ data
+                faq: studio.faq.map(faq => ({
+                    id: faq.id,
+                    pregunta: faq.pregunta,
+                    respuesta: faq.respuesta,
+                    orden: faq.orden,
+                    is_active: faq.is_active,
                 })),
             };
 
