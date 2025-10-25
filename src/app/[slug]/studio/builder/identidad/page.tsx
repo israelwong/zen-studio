@@ -119,6 +119,10 @@ export default function IdentidadPage() {
         faq: builderData.faq
     } : null;
 
+    // Debug: Log FAQ data
+    console.log('🔍 [IdentidadPage] FAQ data:', builderData?.faq);
+    console.log('🔍 [IdentidadPage] Preview data FAQ:', previewData?.faq);
+
     return (
         <SectionLayout section="identidad" studioSlug={studioSlug} data={previewData as unknown as Record<string, unknown>} loading={loading}>
             <ZenCard variant="default" padding="none">

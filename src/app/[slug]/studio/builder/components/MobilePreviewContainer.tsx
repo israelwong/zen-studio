@@ -41,6 +41,10 @@ export function MobilePreviewContainer({
 }: MobilePreviewContainerProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    // Debug: Log FAQ data
+    console.log('🔍 [MobilePreviewContainer] Data received:', data);
+    console.log('🔍 [MobilePreviewContainer] FAQ data:', data?.faq);
+
     return (
         <div className="w-full max-w-sm mx-auto">
             {/* Simulador de móvil con proporciones reales */}
