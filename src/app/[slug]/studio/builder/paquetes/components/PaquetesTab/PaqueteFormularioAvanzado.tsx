@@ -731,7 +731,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                     label="Precio personalizado (opcional)"
                                     type="number"
                                     value={precioPersonalizado}
-                                    onChange={(e) => setPrecioPersonalizado(Number(e.target.value))}
+                                    onChange={(e) => setPrecioPersonalizado(e.target.value)}
                                     placeholder="0"
                                     hint="Deja en 0 para usar el precio calculado automáticamente"
                                 />
