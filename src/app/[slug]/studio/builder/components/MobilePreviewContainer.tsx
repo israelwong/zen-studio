@@ -85,7 +85,9 @@ export function MobilePreviewContainer({
                         {children}
 
                         {/* FAQ Section - Persistente antes del footer */}
-                        {data?.faq && Array.isArray(data.faq) && data.faq.length > 0 && (
+                        {data?.faq && Array.isArray(data.faq) && data.faq.filter((faq: unknown) => 
+                            typeof faq === 'object' && faq !== null && 'is_active' in faq && (faq as { is_active: boolean }).is_active
+                        ).length > 0 && (
                             <div className="mt-6">
                                 <ProfileFAQ
                                     data={data}

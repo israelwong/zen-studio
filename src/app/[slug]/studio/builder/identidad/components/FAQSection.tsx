@@ -192,7 +192,7 @@ export function FAQSection({
     const handleDeleteFAQ = async (faqId: string) => {
         // Guardar FAQ original para rollback
         const originalFAQ = faqItems.find(faq => faq.id === faqId);
-        
+
         try {
             // Eliminación optimista local
             const updatedFAQ = faqItems.filter(faq => faq.id !== faqId);
