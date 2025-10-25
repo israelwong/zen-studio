@@ -710,18 +710,28 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             Resumen Financiero
                         </h3>
                         <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
-                            <div className="flex justify-between">
-                                <span className="text-white font-semibold">Precio del paquete:</span>
-                                <span className="text-emerald-400 font-semibold text-lg">
-                                    {formatearMoneda(calculoPrecio.total)}
-                                </span>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-zinc-400">Precio público calculado:</span>
+                                <span className="text-white">{formatearMoneda(calculoPrecio.subtotal)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Cuánto cuesta:</span>
-                                <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalCosto + calculoPrecio.totalGasto)}</span>
+                                <span className="text-zinc-400">Costo total:</span>
+                                <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalCosto)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Cuánto ganas:</span>
+                                <span className="text-zinc-400">Gasto total:</span>
+                                <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalGasto)}</span>
+                            </div>
+                            <div className="border-t border-zinc-700 pt-3">
+                                <div className="flex justify-between">
+                                    <span className="text-white font-semibold">Precio final:</span>
+                                    <span className="text-emerald-400 font-semibold text-lg">
+                                        {formatearMoneda(calculoPrecio.total)}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                                <span className="text-zinc-400">Utilidad neta:</span>
                                 <span className={`font-medium ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'
                                     }`}>
                                     {formatearMoneda(calculoPrecio.utilidadNeta)}
