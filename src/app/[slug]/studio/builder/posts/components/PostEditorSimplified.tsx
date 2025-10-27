@@ -5,12 +5,13 @@ import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, Z
 import { MobilePreviewFull } from "../../components/MobilePreviewFull";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
 import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
-import { PostFormData } from "@/lib/actions/schemas/post-schemas";
+import { PostFormData, MediaItem } from "@/lib/actions/schemas/post-schemas";
 import { MediaUploadZone } from "./MediaUploadZone";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import cuid from "cuid";
 
 interface PostEditorProps {
     studioSlug: string;
@@ -19,11 +20,24 @@ interface PostEditorProps {
     post?: PostFormData;
 }
 
+interface PostItem {
+    id: string;
+    [key: string]: unknown;
+}
+
+interface StudioData {
+    studio_name?: string;
+    logo_url?: string;
+    slogan?: string;
+    address?: string;
+    maps_url?: string;
+}
+
 interface PreviewData {
     studio_name?: string;
     logo_url?: string;
     slogan?: string;
-    posts?: unknown[];
+    posts?: PostItem[];
     studio?: unknown;
     redes_sociales?: unknown[];
     email?: string;
@@ -66,7 +80,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
                 // Obtener datos del estudio
                 const identidadResult = await obtenerIdentidadStudio(studioSlug);
-                const studioData = identidadResult.success ? identidadResult.data : undefined;
+                const studioData = identidadResult.success && 'data' in identidadResult ? identidadResult.data as StudioData : undefined;
 
                 // Obtener posts publicados
                 const postsResult = await getStudioPostsBySlug(studioSlug, { is_published: true });
@@ -77,7 +91,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                     studio_name: studioData?.studio_name,
                     logo_url: studioData?.logo_url,
                     slogan: studioData?.slogan,
-                    posts: publishedPosts,
+                    posts: publishedPosts as unknown as PostItem[],
                     studio: studioData,
                     redes_sociales: [],
                     email: undefined,
@@ -101,17 +115,20 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
     const finalPreviewData = useMemo(() => {
         if (!previewData) return null;
 
-        // Crear un post temporal para el preview
+        // Crear un post temporal para el preview (siempre marcado como publicado para preview)
         const tempPost = {
             id: tempCuid,
             title: formData.title,
             caption: formData.caption,
             category: formData.category,
-            event_type: eventTypes.find(et => et.id === formData.event_type_id),
+            event_type: eventTypes.find(et => et.id === formData.event_type_id) ? {
+                id: formData.event_type_id,
+                nombre: eventTypes.find(et => et.id === formData.event_type_id)?.name || ''
+            } : null,
             tags: formData.tags,
             is_featured: formData.is_featured,
-            is_published: formData.is_published,
-            published_at: formData.is_published ? new Date() : null,
+            is_published: true, // Siempre true para preview
+            published_at: new Date(),
             view_count: 0,
             media: formData.media,
             cover_index: formData.cover_index,
@@ -123,7 +140,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
         return {
             ...previewData,
-            posts: [tempPost, ...(previewData.posts?.filter((p: unknown) => (p as any).id !== tempCuid) || [])]
+            posts: [tempPost, ...(previewData.posts?.filter((p: PostItem) => p.id !== tempCuid) || [])]
         };
     }, [previewData, formData, eventTypes, tempCuid]);
 
@@ -131,8 +148,13 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleMediaChange = (media: unknown[]) => {
-        setFormData(prev => ({ ...prev, media: media as any }));
+    const handleMediaChange = (media: MediaItem[]) => {
+        // Asegurar que todos los items tengan id
+        const mediaWithIds = media.map(item => ({
+            ...item,
+            id: item.id || cuid()
+        }));
+        setFormData(prev => ({ ...prev, media: mediaWithIds }));
     };
 
     const handleSave = async () => {
@@ -205,7 +227,10 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                     Multimedia
                                 </label>
                                 <MediaUploadZone
-                                    media={formData.media}
+                                    media={formData.media.map(item => ({
+                                        ...item,
+                                        id: item.id || cuid()
+                                    }))}
                                     onMediaChange={handleMediaChange}
                                     studioSlug={studioSlug}
                                     postId={tempCuid} // Usar CUID temporal para uploads
@@ -214,34 +239,34 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
                             {/* Categoría y Tipo de Evento */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                    Categoría
-                                </label>
-                                <ZenSelect
-                                    value={formData.category}
-                                    onChange={(value: string) => handleInputChange("category", value)}
-                                    options={[
-                                        { value: "portfolio", label: "Portfolio" },
-                                        { value: "blog", label: "Blog" },
-                                        { value: "promo", label: "Promoción" },
-                                    ]}
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                        Categoría
+                                    </label>
+                                    <ZenSelect
+                                        value={formData.category}
+                                        onValueChange={(value: string) => handleInputChange("category", value)}
+                                        options={[
+                                            { value: "portfolio", label: "Portfolio" },
+                                            { value: "blog", label: "Blog" },
+                                            { value: "promo", label: "Promoción" },
+                                        ]}
+                                    />
+                                </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                    Tipo de Evento
-                                </label>
-                                <ZenSelect
-                                    value={formData.event_type_id || ""}
-                                    onChange={(value: string) => handleInputChange("event_type_id", value)}
-                                    options={[
-                                        { value: "", label: "Sin especificar" },
-                                        ...eventTypes.map(et => ({ value: et.id, label: et.name }))
-                                    ]}
-                                />
-                            </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                        Tipo de Evento
+                                    </label>
+                                    <ZenSelect
+                                        value={formData.event_type_id || ""}
+                                        onValueChange={(value: string) => handleInputChange("event_type_id", value)}
+                                        options={[
+                                            { value: "", label: "Sin especificar" },
+                                            ...eventTypes.map(et => ({ value: et.id, label: et.name }))
+                                        ]}
+                                    />
+                                </div>
                             </div>
 
                             {/* CTA */}
@@ -268,20 +293,20 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                             placeholder="¡Contáctanos!"
                                         />
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                            Acción
-                                        </label>
-                                        <ZenSelect
-                                            value={formData.cta_action}
-                                            onChange={(value: string) => handleInputChange("cta_action", value)}
-                                            options={[
-                                                { value: "whatsapp", label: "WhatsApp" },
-                                                { value: "lead_form", label: "Formulario" },
-                                                { value: "calendar", label: "Calendario" },
-                                            ]}
-                                        />
-                                    </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                                Acción
+                                            </label>
+                                            <ZenSelect
+                                                value={formData.cta_action}
+                                                onValueChange={(value: string) => handleInputChange("cta_action", value)}
+                                                options={[
+                                                    { value: "whatsapp", label: "WhatsApp" },
+                                                    { value: "lead_form", label: "Formulario" },
+                                                    { value: "calendar", label: "Calendario" },
+                                                ]}
+                                            />
+                                        </div>
 
                                         {formData.cta_action === "lead_form" && (
                                             <ZenInput
