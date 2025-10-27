@@ -33,9 +33,10 @@ interface MediaUploadZoneProps {
     media: MediaItem[];
     onMediaChange: (media: MediaItem[]) => void;
     studioSlug: string;
+    postId?: string; // CUID temporal para nuevos posts
 }
 
-export function MediaUploadZone({ media, onMediaChange, studioSlug }: MediaUploadZoneProps) {
+export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: MediaUploadZoneProps) {
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -63,7 +64,9 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug }: MediaUploa
 
         try {
             const fileArray = Array.from(files);
-            const uploadedFiles = await uploadFiles(fileArray, studioSlug, 'posts');
+            // Usar postId si está disponible para la ruta de upload
+            const uploadPath = postId ? `posts/${postId}` : `posts/${studioSlug}`;
+            const uploadedFiles = await uploadFiles(fileArray, studioSlug, uploadPath);
 
             // Convertir a formato MediaItem
             const mediaItems: MediaItem[] = uploadedFiles.map(file => ({

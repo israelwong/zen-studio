@@ -50,22 +50,11 @@ export default async function EditarPostPage({ params }: EditarPostPageProps) {
         : [];
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-zinc-100">Editar Post</h1>
-                <p className="text-zinc-400">
-                    Modifica tu publicación
-                </p>
-            </div>
-
-            {/* Editor */}
-            <PostEditorSimplified
-                studioSlug={slug}
-                eventTypes={eventTypes}
-                mode="edit"
-                post={convertDatabasePostToFormData(postResult.data)}
-            />
-        </div>
+        <PostEditorSimplified
+            studioSlug={slug}
+            eventTypes={eventTypes}
+            mode="edit"
+            post={convertDatabasePostToFormData(postResult.data)}
+        />
     );
 }

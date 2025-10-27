@@ -1,13 +1,16 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from "@/components/ui/zen";
-import { MobilePreviewContainer } from "../../components/MobilePreviewContainer";
+import { MobilePreviewFull } from "../../components/MobilePreviewFull";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
-import { getStudioPosts } from "@/lib/actions/studio/builder/posts";
+import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
 import { PostFormData } from "@/lib/actions/schemas/post-schemas";
 import { MediaUploadZone } from "./MediaUploadZone";
+import { useTempCuid } from "@/hooks/useTempCuid";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface PostEditorProps {
     studioSlug: string;
@@ -20,18 +23,22 @@ interface PreviewData {
     studio_name?: string;
     logo_url?: string;
     slogan?: string;
-    posts?: any[];
-    studio?: any;
-    redes_sociales?: any[];
+    posts?: unknown[];
+    studio?: unknown;
+    redes_sociales?: unknown[];
     email?: string;
-    telefonos?: any[];
+    telefonos?: unknown[];
     direccion?: string;
     google_maps_url?: string;
 }
 
 export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: PostEditorProps) {
+    const router = useRouter();
+    const tempCuid = useTempCuid();
+    
     // Estado del formulario
     const [formData, setFormData] = useState<PostFormData>({
+        id: post?.id || tempCuid, // Usar CUID temporal para nuevos posts
         title: post?.title || "",
         caption: post?.caption || "",
         media: post?.media || [],
@@ -62,7 +69,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                 const studioData = identidadResult.success ? identidadResult.data : null;
 
                 // Obtener posts publicados
-                const postsResult = await getStudioPosts(studioSlug, { is_published: true });
+                const postsResult = await getStudioPostsBySlug(studioSlug, { is_published: true });
                 const publishedPosts = postsResult.success ? postsResult.data || [] : [];
 
                 // Crear datos de preview
@@ -92,10 +99,10 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
     // Actualizar preview cuando cambie el formulario
     useEffect(() => {
-        if (previewData && formData.is_published) {
-            // Crear un post temporal para el preview
+        if (previewData) {
+            // Crear un post temporal para el preview (siempre visible, no solo si está publicado)
             const tempPost = {
-                id: "temp-preview",
+                id: tempCuid,
                 title: formData.title,
                 caption: formData.caption,
                 category: formData.category,
@@ -103,7 +110,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                 tags: formData.tags,
                 is_featured: formData.is_featured,
                 is_published: formData.is_published,
-                published_at: new Date(),
+                published_at: formData.is_published ? new Date() : null,
                 view_count: 0,
                 media: formData.media,
                 cover_index: formData.cover_index,
@@ -115,16 +122,16 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
             setPreviewData(prev => ({
                 ...prev,
-                posts: [tempPost, ...(prev?.posts?.filter(p => p.id !== "temp-preview") || [])]
+                posts: [tempPost, ...(prev?.posts?.filter(p => p.id !== tempCuid) || [])]
             }));
         }
-    }, [formData, eventTypes]);
+    }, [formData, eventTypes, tempCuid, previewData]);
 
     const handleInputChange = (field: keyof PostFormData, value: string | boolean | number | string[]) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleMediaChange = (media: any[]) => {
+    const handleMediaChange = (media: unknown[]) => {
         setFormData(prev => ({ ...prev, media }));
     };
 
@@ -132,21 +139,48 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
         try {
             // Aquí iría la lógica para guardar el post
             toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
-        } catch (error) {
+        } catch {
             toast.error("Error al guardar el post");
         }
     };
 
+    const handleBack = () => {
+        router.back();
+    };
+
+    const handleCancel = () => {
+        if (confirm("¿Estás seguro de que quieres cancelar? Se perderán los cambios no guardados.")) {
+            router.back();
+        }
+    };
+
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Panel de Edición */}
-            <div className="space-y-6">
-                <ZenCard>
-                    <ZenCardHeader>
-                        <ZenCardTitle>
-                            {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
-                        </ZenCardTitle>
-                    </ZenCardHeader>
+        <div className="space-y-6">
+            {/* Header con botón de regresar */}
+            <div className="flex items-center gap-4">
+                <ZenButton variant="ghost" onClick={handleBack} className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Regresar
+                </ZenButton>
+                <div>
+                    <h1 className="text-2xl font-bold text-zinc-100">
+                        {mode === "create" ? "Nuevo Post" : "Editar Post"}
+                    </h1>
+                    <p className="text-zinc-400">
+                        {mode === "create" ? "Crea una nueva publicación" : "Modifica tu publicación"}
+                    </p>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Panel de Edición */}
+                <div className="space-y-6">
+                    <ZenCard>
+                        <ZenCardHeader>
+                            <ZenCardTitle>
+                                {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
+                            </ZenCardTitle>
+                        </ZenCardHeader>
                     <ZenCardContent className="space-y-6">
                         {/* Título */}
                         <ZenInput
@@ -174,6 +208,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                 media={formData.media}
                                 onMediaChange={handleMediaChange}
                                 studioSlug={studioSlug}
+                                postId={tempCuid} // Usar CUID temporal para uploads
                             />
                         </div>
 
@@ -282,28 +317,32 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                             <ZenButton onClick={handleSave} className="flex-1">
                                 {mode === "create" ? "Crear Post" : "Actualizar Post"}
                             </ZenButton>
+                            <ZenButton variant="outline" onClick={handleCancel}>
+                                Cancelar
+                            </ZenButton>
                         </div>
                     </ZenCardContent>
                 </ZenCard>
             </div>
 
-            {/* Panel de Preview */}
-            <div className="hidden lg:block">
-                <div className="sticky top-6">
-                    <div className="mb-4">
-                        <h2 className="text-lg font-semibold text-zinc-200">Preview Móvil</h2>
-                        <p className="text-sm text-zinc-400">
-                            Vista previa en tiempo real
-                        </p>
-                    </div>
+                {/* Panel de Preview */}
+                <div className="hidden lg:block">
+                    <div className="sticky top-6">
+                        <div className="mb-4">
+                            <h2 className="text-lg font-semibold text-zinc-200">Preview Móvil</h2>
+                            <p className="text-sm text-zinc-400">
+                                Vista previa en tiempo real
+                            </p>
+                        </div>
 
-                    <MobilePreviewContainer
-                        data={previewData}
-                        contentVariant="posts"
-                        activeTab="posts"
-                        showNavbar={true}
-                        loading={isLoadingPreview}
-                    />
+                        <MobilePreviewFull
+                            data={previewData}
+                            contentVariant="posts"
+                            activeTab="inicio"
+                            loading={isLoadingPreview}
+                            onClose={handleBack}
+                        />
+                    </div>
                 </div>
             </div>
         </div>
