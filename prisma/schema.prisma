@@ -688,6 +688,7 @@ model platform_agent_discount_codes {
   @@index([expiration_date])
 }
 
+//! STUDIOS
 model studios {
   id                         String                           @id @default(cuid())
   studio_name                String
@@ -765,6 +766,7 @@ model studios {
   studio_users               studio_users[]
   zonas_trabajo              studio_zonas_trabajo[]
   faq                        studio_faq[]
+  posts                      studio_posts[]
   plan                       platform_plans?                  @relation(fields: [plan_id], references: [id])
   subscriptions              subscriptions[]
   usage_tracking             usage_tracking[]
@@ -975,6 +977,7 @@ model studio_event_types {
   manager_events  manager_events[]
   marketing_leads marketing_leads[]
   quotes          studio_cotizaciones[]
+  posts           studio_posts[]
   studio          studios               @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   events          studio_eventos[]
   packages        studio_paquetes[]
@@ -2071,7 +2074,7 @@ model gantt_task_activity {
   @@index([action])
 }
 
-model studio_pages {
+model studio_pages { //no se usa
   id               String                 @id @default(cuid())
   studio_id        String                 @unique
   is_published     Boolean                @default(false)
@@ -2092,7 +2095,7 @@ model studio_pages {
   @@index([studio_id, is_published])
 }
 
-model studio_page_sections {
+model studio_page_sections { //no se usa
   id           String          @id @default(cuid())
   page_id      String
   section_type PageSectionType
@@ -2558,4 +2561,51 @@ enum PageSectionType {
 enum PortfolioItemType {
   PHOTO
   VIDEO
+}
+
+// ============================================
+// SISTEMA DE POSTS (PUBLICACIONES)
+// ============================================
+
+model studio_posts {
+  id              String   @id @default(cuid())
+  studio_id       String
+
+  // Contenido
+  title           String?
+  caption         String?
+  media           Json     // [{ url, type, width, height, thumbnail_url, storage_path }]
+  cover_index     Int      @default(0)
+
+  // Clasificación
+  category        String   @default("portfolio") // "portfolio" | "blog" | "promo"
+  event_type_id   String?
+  tags            String[] @default([])
+
+  // CTA
+  cta_enabled     Boolean  @default(true)
+  cta_text        String   @default("Cotiza tu evento")
+  cta_action      String   @default("whatsapp") // "whatsapp" | "lead_form" | "calendar"
+  cta_link        String?
+
+  // Visibilidad
+  is_featured     Boolean  @default(false)
+  is_published    Boolean  @default(false)
+  published_at    DateTime?
+
+  // Métricas
+  view_count      Int      @default(0)
+
+  // Timestamps
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  studio          studios              @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  event_type      studio_event_types?  @relation(fields: [event_type_id], references: [id])
+
+  @@index([studio_id, is_published, published_at])
+  @@index([studio_id, is_featured])
+  @@index([category])
+  @@index([event_type_id])
 }
