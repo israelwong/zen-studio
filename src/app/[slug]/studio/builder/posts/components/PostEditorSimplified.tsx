@@ -534,13 +534,6 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                 {/* Panel de Preview */}
                 <div className="hidden lg:block">
                     <div className="sticky top-6">
-                        <div className="mb-4">
-                            <h2 className="text-lg font-semibold text-zinc-200">Preview Móvil</h2>
-                            <p className="text-sm text-zinc-400">
-                                Vista previa en tiempo real
-                            </p>
-                        </div>
-
                         <MobilePreviewFull
                             data={finalPreviewData as Record<string, unknown>}
                             contentVariant="post-detail"
