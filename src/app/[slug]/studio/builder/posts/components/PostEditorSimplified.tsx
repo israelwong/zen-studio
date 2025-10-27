@@ -9,7 +9,7 @@ import { PostFormData, MediaItem } from "@/lib/actions/schemas/post-schemas";
 import { MediaUploadZone } from "./MediaUploadZone";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Video } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
 
@@ -71,7 +71,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
     // Estado para preview
     const [previewData, setPreviewData] = useState<PreviewData | null>(null);
     const [isLoadingPreview, setIsLoadingPreview] = useState(true);
-    
+
     // Estado para modal de confirmación
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -158,33 +158,56 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
             ...item,
             id: item.id || cuid()
         }));
-        setFormData(prev => ({ ...prev, media: mediaWithIds }));
+        
+        // Actualizar cover_index si es necesario
+        const newCoverIndex = Math.min(formData.cover_index, mediaWithIds.length - 1);
+        
+        setFormData(prev => ({ 
+            ...prev, 
+            media: mediaWithIds,
+            cover_index: newCoverIndex >= 0 ? newCoverIndex : 0
+        }));
     };
 
     const handleSave = async () => {
         try {
             setIsSaving(true);
-            
+
             // Validación básica
             if (!formData.title?.trim()) {
                 toast.error("El título es requerido");
                 return;
             }
-            
+
             if (!formData.media || formData.media.length === 0) {
                 toast.error("Agrega al menos una imagen o video");
                 return;
             }
 
+            // Preparar datos para guardar con ordenamiento preservado
+            const postData = {
+                ...formData,
+                // Asegurar que el cover_index esté dentro del rango válido
+                cover_index: Math.min(formData.cover_index, formData.media.length - 1),
+                // Asegurar que todos los media items tengan IDs
+                media: formData.media.map((item, index) => ({
+                    ...item,
+                    id: item.id || cuid(),
+                    display_order: index // Agregar orden explícito
+                }))
+            };
+
+            console.log("Guardando post con datos:", postData);
+
             // Aquí iría la lógica para guardar el post
             // Por ahora simulamos el guardado
             await new Promise(resolve => setTimeout(resolve, 2000));
-            
+
             toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
-            
+
             // Redirigir a la lista de posts
             router.push(`/${studioSlug}/studio/builder/posts`);
-            
+
         } catch (error) {
             console.error("Error saving post:", error);
             toast.error("Error al guardar el post");
@@ -265,6 +288,60 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                     studioSlug={studioSlug}
                                     postId={tempCuid} // Usar CUID temporal para uploads
                                 />
+                                
+                                {/* Selector de imagen de portada */}
+                                {formData.media.length > 1 && (
+                                    <div className="mt-4">
+                                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                            Imagen de Portada
+                                        </label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {formData.media.map((item, index) => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => handleInputChange("cover_index", index)}
+                                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
+                                                        formData.cover_index === index
+                                                            ? "border-blue-500 ring-2 ring-blue-500/20"
+                                                            : "border-zinc-600 hover:border-zinc-500"
+                                                    }`}
+                                                >
+                                                    {item.file_type === 'image' ? (
+                                                        <img
+                                                            src={item.file_url}
+                                                            alt={`Portada ${index + 1}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-zinc-700">
+                                                            <Video className="h-4 w-4 text-zinc-400" />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Indicador de selección */}
+                                                    {formData.cover_index === index && (
+                                                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                                            <div className="bg-blue-500 text-white rounded-full p-1">
+                                                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Número de orden */}
+                                                    <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                                                        {index + 1}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-zinc-400 mt-1">
+                                            Selecciona la imagen que aparecerá como portada del post
+                                        </p>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Categoría y Tipo de Evento */}
@@ -381,16 +458,16 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
                             {/* Botones */}
                             <div className="flex gap-3 pt-4">
-                                <ZenButton 
-                                    onClick={handleSave} 
+                                <ZenButton
+                                    onClick={handleSave}
                                     className="flex-1"
                                     loading={isSaving}
                                     disabled={isSaving}
                                 >
                                     {mode === "create" ? "Crear Post" : "Actualizar Post"}
                                 </ZenButton>
-                                <ZenButton 
-                                    variant="outline" 
+                                <ZenButton
+                                    variant="outline"
                                     onClick={handleCancel}
                                     disabled={isSaving}
                                 >
