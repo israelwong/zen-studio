@@ -16,6 +16,7 @@ export { SeparadorZen } from './SeparadorZen';
 // =============================================================================
 export { ZenTextarea } from './forms/ZenTextarea';
 export { ZenSelect } from './forms/ZenSelect';
+export { ZenSwitch } from './forms/ZenSwitch';
 
 // =============================================================================
 // MEDIA COMPONENTS (DISPONIBLES)
@@ -51,6 +52,11 @@ export { ZenHeader } from './layout/ZenHeader';
 // OVERLAYS COMPONENTS (DISPONIBLES)
 // =============================================================================
 export { ZenConfirmModal } from './overlays/ZenConfirmModal';
+
+// =============================================================================
+// MODAL COMPONENTS (DISPONIBLES)
+// =============================================================================
+export { ZenTagModal } from './modals/ZenTagModal';
 export {
   ZenDropdownMenu,
   ZenDropdownMenuTrigger,
@@ -86,7 +92,13 @@ export type { ZenBadgeProps } from './base/ZenBadge';
 export type { ZenLabelProps } from './base/ZenLabel';
 export type { ZenTextareaProps } from './forms/ZenTextarea';
 export type { ZenSelectProps, ZenSelectOption } from './forms/ZenSelect';
+export type { ZenSwitchProps } from './forms/ZenSwitch';
 export type { SeparadorZenProps } from './SeparadorZen';
+
+// =============================================================================
+// MODAL TYPES (DISPONIBLES)
+// =============================================================================
+export type { ZenTagModalProps } from './modals/ZenTagModal';
 
 // =============================================================================
 // COMPONENTES PENDIENTES (comentados hasta implementación)

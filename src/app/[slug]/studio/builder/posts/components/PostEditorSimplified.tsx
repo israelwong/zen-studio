@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal } from "@/components/ui/zen";
+import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenSwitch, ZenBadge, ZenTagModal } from "@/components/ui/zen";
 import { MobilePreviewFull } from "../../components/MobilePreviewFull";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
 import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
@@ -9,7 +9,7 @@ import { PostFormData, MediaItem } from "@/lib/actions/schemas/post-schemas";
 import { MediaUploadZone } from "./MediaUploadZone";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { toast } from "sonner";
-import { ArrowLeft, Video } from "lucide-react";
+import { ArrowLeft, Video, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
 
@@ -75,6 +75,7 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
     // Estado para modal de confirmación
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [showTagModal, setShowTagModal] = useState(false);
 
     // Cargar datos del estudio para preview
     useEffect(() => {
@@ -158,12 +159,12 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
             ...item,
             id: item.id || cuid()
         }));
-        
+
         // Actualizar cover_index si es necesario
         const newCoverIndex = Math.min(formData.cover_index, mediaWithIds.length - 1);
-        
-        setFormData(prev => ({ 
-            ...prev, 
+
+        setFormData(prev => ({
+            ...prev,
             media: mediaWithIds,
             cover_index: newCoverIndex >= 0 ? newCoverIndex : 0
         }));
@@ -229,6 +230,23 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
         router.back();
     };
 
+    const handleAddTag = (tag: string) => {
+        const currentTags = formData.tags || [];
+        if (!currentTags.includes(tag)) {
+            setFormData(prev => ({
+                ...prev,
+                tags: [...currentTags, tag]
+            }));
+        }
+    };
+
+    const handleRemoveTag = (tagToRemove: string) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
+        }));
+    };
+
     return (
         <div className="space-y-6">
             {/* Header con botón de regresar */}
@@ -271,78 +289,8 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                 value={formData.caption || ""}
                                 onChange={(e) => handleInputChange("caption", e.target.value)}
                                 placeholder="Descripción del post"
-                                rows={3}
+                                rows={4}
                             />
-
-                            {/* Zona de Media */}
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                    Multimedia
-                                </label>
-                                <MediaUploadZone
-                                    media={formData.media.map(item => ({
-                                        ...item,
-                                        id: item.id || cuid()
-                                    }))}
-                                    onMediaChange={handleMediaChange}
-                                    studioSlug={studioSlug}
-                                    postId={tempCuid} // Usar CUID temporal para uploads
-                                />
-                                
-                                {/* Selector de imagen de portada */}
-                                {formData.media.length > 1 && (
-                                    <div className="mt-4">
-                                        <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                            Imagen de Portada
-                                        </label>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {formData.media.map((item, index) => (
-                                                <button
-                                                    key={item.id}
-                                                    type="button"
-                                                    onClick={() => handleInputChange("cover_index", index)}
-                                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${
-                                                        formData.cover_index === index
-                                                            ? "border-blue-500 ring-2 ring-blue-500/20"
-                                                            : "border-zinc-600 hover:border-zinc-500"
-                                                    }`}
-                                                >
-                                                    {item.file_type === 'image' ? (
-                                                        <img
-                                                            src={item.file_url}
-                                                            alt={`Portada ${index + 1}`}
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center bg-zinc-700">
-                                                            <Video className="h-4 w-4 text-zinc-400" />
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* Indicador de selección */}
-                                                    {formData.cover_index === index && (
-                                                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
-                                                            <div className="bg-blue-500 text-white rounded-full p-1">
-                                                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                                </svg>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    
-                                                    {/* Número de orden */}
-                                                    <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
-                                                        {index + 1}
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                        <p className="text-xs text-zinc-400 mt-1">
-                                            Selecciona la imagen que aparecerá como portada del post
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
 
                             {/* Categoría y Tipo de Evento */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -376,20 +324,125 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                 </div>
                             </div>
 
+                            {/* Zona de Media */}
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                    Multimedia
+                                </label>
+                                <MediaUploadZone
+                                    media={formData.media.map(item => ({
+                                        ...item,
+                                        id: item.id || cuid()
+                                    }))}
+                                    onMediaChange={handleMediaChange}
+                                    studioSlug={studioSlug}
+                                    postId={tempCuid} // Usar CUID temporal para uploads
+                                />
+
+                                {/* Selector de imagen de portada */}
+                                {formData.media.length > 1 && (
+                                    <div className="mt-4">
+                                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                            Imagen de Portada
+                                        </label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {formData.media.map((item, index) => (
+                                                <button
+                                                    key={item.id}
+                                                    type="button"
+                                                    onClick={() => handleInputChange("cover_index", index)}
+                                                    className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${formData.cover_index === index
+                                                        ? "border-blue-500 ring-2 ring-blue-500/20"
+                                                        : "border-zinc-600 hover:border-zinc-500"
+                                                        }`}
+                                                >
+                                                    {item.file_type === 'image' ? (
+                                                        <img
+                                                            src={item.file_url}
+                                                            alt={`Portada ${index + 1}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center bg-zinc-700">
+                                                            <Video className="h-4 w-4 text-zinc-400" />
+                                                        </div>
+                                                    )}
+
+                                                    {/* Indicador de selección */}
+                                                    {formData.cover_index === index && (
+                                                        <div className="absolute inset-0 bg-blue-500/20 flex items-center justify-center">
+                                                            <div className="bg-blue-500 text-white rounded-full p-1">
+                                                                <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                                                </svg>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Número de orden */}
+                                                    <div className="absolute top-1 left-1 bg-black/50 text-white text-xs px-1 rounded">
+                                                        {index + 1}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-zinc-400 mt-1">
+                                            Selecciona la imagen que aparecerá como portada del post
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Palabras Clave */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <label className="block text-sm font-medium text-zinc-300">
+                                        Palabras Clave
+                                    </label>
+                                    <ZenButton
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setShowTagModal(true)}
+                                        disabled={(formData.tags || []).length >= 10}
+                                    >
+                                        <Plus className="h-4 w-4 mr-1" />
+                                        Agregar
+                                    </ZenButton>
+                                </div>
+                                
+                                {formData.tags && formData.tags.length > 0 ? (
+                                    <div className="flex flex-wrap gap-2">
+                                        {formData.tags.map((tag, index) => (
+                                            <ZenBadge
+                                                key={index}
+                                                variant="secondary"
+                                                className="cursor-pointer hover:bg-zinc-600 transition-colors group"
+                                                onClick={() => handleRemoveTag(tag)}
+                                            >
+                                                #{tag}
+                                                <X className="h-3 w-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            </ZenBadge>
+                                        ))}
+                                    </div>
+                                ) : (
+                                        <p className="text-sm text-zinc-500 italic">
+                                            No hay palabras clave agregadas. Haz clic en &quot;Agregar&quot; para añadir algunas.
+                                        </p>
+                                )}
+                                
+                                <p className="text-xs text-zinc-400 mt-2">
+                                    Las palabras clave ayudan a que tu post sea más fácil de encontrar
+                                </p>
+                            </div>
+
                             {/* CTA */}
                             <div className="space-y-4">
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="cta_enabled"
-                                        checked={formData.cta_enabled}
-                                        onChange={(e) => handleInputChange("cta_enabled", e.target.checked)}
-                                        className="rounded border-zinc-600 bg-zinc-800 text-blue-500"
-                                    />
-                                    <label htmlFor="cta_enabled" className="text-sm text-zinc-300">
-                                        Habilitar Call-to-Action
-                                    </label>
-                                </div>
+                                <ZenSwitch
+                                    checked={formData.cta_enabled}
+                                    onCheckedChange={(checked) => handleInputChange("cta_enabled", checked)}
+                                    label="Habilitar Call-to-Action"
+                                    description="Agrega un botón de acción al final del post"
+                                />
 
                                 {formData.cta_enabled && (
                                     <div className="space-y-3">
@@ -427,33 +480,21 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                                 )}
                             </div>
 
-                            {/* Opciones */}
-                            <div className="space-y-3">
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="is_featured"
-                                        checked={formData.is_featured}
-                                        onChange={(e) => handleInputChange("is_featured", e.target.checked)}
-                                        className="rounded border-zinc-600 bg-zinc-800 text-blue-500"
-                                    />
-                                    <label htmlFor="is_featured" className="text-sm text-zinc-300">
-                                        Post Destacado
-                                    </label>
-                                </div>
+                            {/* Opciones de Publicación */}
+                            <div className="space-y-4">
+                                <ZenSwitch
+                                    checked={formData.is_featured}
+                                    onCheckedChange={(checked) => handleInputChange("is_featured", checked)}
+                                    label="Post Destacado"
+                                    description="Marca este post como destacado en tu perfil"
+                                />
 
-                                <div className="flex items-center space-x-2">
-                                    <input
-                                        type="checkbox"
-                                        id="is_published"
-                                        checked={formData.is_published}
-                                        onChange={(e) => handleInputChange("is_published", e.target.checked)}
-                                        className="rounded border-zinc-600 bg-zinc-800 text-blue-500"
-                                    />
-                                    <label htmlFor="is_published" className="text-sm text-zinc-300">
-                                        Publicar Inmediatamente
-                                    </label>
-                                </div>
+                                <ZenSwitch
+                                    checked={formData.is_published}
+                                    onCheckedChange={(checked) => handleInputChange("is_published", checked)}
+                                    label="Publicar Post"
+                                    description="Haz visible este post en tu perfil público"
+                                />
                             </div>
 
                             {/* Botones */}
@@ -509,6 +550,14 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                 confirmText="Sí, Cancelar"
                 cancelText="Continuar Editando"
                 variant="destructive"
+            />
+
+            <ZenTagModal
+                isOpen={showTagModal}
+                onClose={() => setShowTagModal(false)}
+                onAddTag={handleAddTag}
+                existingTags={formData.tags || []}
+                maxTags={10}
             />
         </div>
     );
