@@ -14,23 +14,18 @@ import { z } from "zod";
 
 const CreateCategoriaSchema = z.object({
     name: z.string().min(1, "El nombre es requerido").max(100, "Máximo 100 caracteres"),
-    description: z.string().optional(),
     seccionId: z.string().cuid(),
 });
 
 const UpdateCategoriaSchema = z.object({
     id: z.string().cuid(),
     name: z.string().min(1, "El nombre es requerido").max(100, "Máximo 100 caracteres"),
-    description: z.string().optional(),
 });
 
-type CreateCategoriaInput = z.infer<typeof CreateCategoriaSchema>;
-type UpdateCategoriaInput = z.infer<typeof UpdateCategoriaSchema>;
 
 export interface CategoriaData {
     id: string;
     name: string;
-    description: string | null;
     order: number;
     createdAt: Date;
     updatedAt: Date;
@@ -85,22 +80,22 @@ export async function obtenerCategoriasConStats(
 
         // Mapear a formato CategoriaData
         const categoriasData: CategoriaData[] = sectionCategories.map((sc) => {
-            const totalItems = sc.service_categories.items.length;
-            const mediaSize = sc.service_categories.category_media.reduce(
-                (acc, media) => acc + Number(media.storage_bytes),
+            const categoria = sc.service_categories;
+            const totalItems = categoria.items.length;
+            const mediaSize = categoria.category_media.reduce(
+                (acc: number, media: { storage_bytes: bigint }) => acc + Number(media.storage_bytes),
                 0
             );
 
             return {
-                id: sc.service_categories.id,
-                name: sc.service_categories.name,
-                description: sc.service_categories.description || null,
-                order: sc.service_categories.order,
-                createdAt: sc.service_categories.created_at,
-                updatedAt: sc.service_categories.updated_at,
+                id: categoria.id,
+                name: categoria.name,
+                order: categoria.order,
+                createdAt: categoria.created_at,
+                updatedAt: categoria.updated_at,
                 totalItems,
                 mediaSize,
-                mediaCount: sc.service_categories.category_media.length,
+                mediaCount: categoria.category_media.length,
             };
         });
 
@@ -176,7 +171,6 @@ export async function crearCategoria(
         const categoriaData: CategoriaData = {
             id: categoria.id,
             name: categoria.name,
-            description: null,
             order: categoria.order,
             createdAt: categoria.created_at,
             updatedAt: categoria.updated_at,
@@ -197,7 +191,7 @@ export async function crearCategoria(
         if (error instanceof z.ZodError) {
             return {
                 success: false,
-                error: error.errors?.[0]?.message || error.message || 'Error de validación',
+                error: error.issues?.[0]?.message || error.message || 'Error de validación',
             };
         }
 
@@ -257,15 +251,10 @@ export async function actualizarCategoria(
             },
         });
 
-        // Obtener información de relación con sección
-        const seccionCategoria = await prisma.studio_section_categories.findFirst({
-            where: { category_id: categoria.id },
-        });
 
         const categoriaData: CategoriaData = {
             id: categoria.id,
             name: categoria.name,
-            description: null,
             order: categoria.order,
             createdAt: categoria.created_at,
             updatedAt: categoria.updated_at,
@@ -286,7 +275,7 @@ export async function actualizarCategoria(
         if (error instanceof z.ZodError) {
             return {
                 success: false,
-                error: error.errors?.[0]?.message || error.message || 'Error de validación',
+                error: error.issues?.[0]?.message || error.message || 'Error de validación',
             };
         }
 
