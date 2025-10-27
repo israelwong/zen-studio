@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from "@/components/ui/zen";
+import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal } from "@/components/ui/zen";
 import { MobilePreviewFull } from "../../components/MobilePreviewFull";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
 import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
@@ -71,6 +71,10 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
     // Estado para preview
     const [previewData, setPreviewData] = useState<PreviewData | null>(null);
     const [isLoadingPreview, setIsLoadingPreview] = useState(true);
+    
+    // Estado para modal de confirmación
+    const [showCancelModal, setShowCancelModal] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Cargar datos del estudio para preview
     useEffect(() => {
@@ -159,10 +163,33 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
     const handleSave = async () => {
         try {
+            setIsSaving(true);
+            
+            // Validación básica
+            if (!formData.title?.trim()) {
+                toast.error("El título es requerido");
+                return;
+            }
+            
+            if (!formData.media || formData.media.length === 0) {
+                toast.error("Agrega al menos una imagen o video");
+                return;
+            }
+
             // Aquí iría la lógica para guardar el post
+            // Por ahora simulamos el guardado
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
             toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
-        } catch {
+            
+            // Redirigir a la lista de posts
+            router.push(`/${studioSlug}/studio/builder/posts`);
+            
+        } catch (error) {
+            console.error("Error saving post:", error);
             toast.error("Error al guardar el post");
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -171,9 +198,12 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
     };
 
     const handleCancel = () => {
-        if (confirm("¿Estás seguro de que quieres cancelar? Se perderán los cambios no guardados.")) {
-            router.back();
-        }
+        setShowCancelModal(true);
+    };
+
+    const handleConfirmCancel = () => {
+        setShowCancelModal(false);
+        router.back();
     };
 
     return (
@@ -351,10 +381,19 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
 
                             {/* Botones */}
                             <div className="flex gap-3 pt-4">
-                                <ZenButton onClick={handleSave} className="flex-1">
+                                <ZenButton 
+                                    onClick={handleSave} 
+                                    className="flex-1"
+                                    loading={isSaving}
+                                    disabled={isSaving}
+                                >
                                     {mode === "create" ? "Crear Post" : "Actualizar Post"}
                                 </ZenButton>
-                                <ZenButton variant="outline" onClick={handleCancel}>
+                                <ZenButton 
+                                    variant="outline" 
+                                    onClick={handleCancel}
+                                    disabled={isSaving}
+                                >
                                     Cancelar
                                 </ZenButton>
                             </div>
@@ -382,6 +421,18 @@ export function PostEditorSimplified({ studioSlug, eventTypes, mode, post }: Pos
                     </div>
                 </div>
             </div>
+
+            {/* Modal de Confirmación */}
+            <ZenConfirmModal
+                isOpen={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                onConfirm={handleConfirmCancel}
+                title="Cancelar Edición"
+                description="¿Estás seguro de que quieres cancelar? Se perderán todos los cambios no guardados."
+                confirmText="Sí, Cancelar"
+                cancelText="Continuar Editando"
+                variant="destructive"
+            />
         </div>
     );
 }

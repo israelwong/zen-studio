@@ -11,7 +11,7 @@ interface MobilePreviewFullProps {
     data?: Record<string, unknown>;
     loading?: boolean;
     // Configuración de contenido
-    contentVariant?: 'skeleton' | 'posts' | 'shop' | 'info' | 'paquetes';
+    contentVariant?: 'skeleton' | 'posts' | 'post-detail' | 'shop' | 'info' | 'paquetes';
     activeTab?: string;
     // Callbacks
     onClose?: () => void;
@@ -26,7 +26,7 @@ export function MobilePreviewFull({
     children,
     data,
     loading = false,
-    contentVariant = 'posts',
+    contentVariant = 'post-detail',
     activeTab = 'inicio',
     onClose,
     onBack
