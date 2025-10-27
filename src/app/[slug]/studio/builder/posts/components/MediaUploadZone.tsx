@@ -69,12 +69,13 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: Me
             const uploadedFiles = await uploadFiles(fileArray, studioSlug, uploadPath);
 
             // Convertir a formato MediaItem
-            const mediaItems: MediaItem[] = uploadedFiles.map(file => ({
+            const mediaItems: MediaItem[] = uploadedFiles.map((file, index) => ({
                 id: file.id,
                 file_url: file.url,
                 file_type: file.fileName.toLowerCase().includes('.mp4') || file.fileName.toLowerCase().includes('.mov') ? 'video' as const : 'image' as const,
                 filename: file.fileName,
                 storage_path: file.url, // Por ahora usar URL como path
+                storage_bytes: fileArray[index]?.size || 0, // Agregar tamaño del archivo
                 isUploading: false,
             }));
 
