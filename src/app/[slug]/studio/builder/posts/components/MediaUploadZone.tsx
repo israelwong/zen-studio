@@ -108,11 +108,7 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: Me
     };
 
     const removeMedia = (mediaId: string) => {
-        console.log('removeMedia called with ID:', mediaId);
-        console.log('Current media:', media);
-        const filteredMedia = media.filter(m => m.id !== mediaId);
-        console.log('Filtered media:', filteredMedia);
-        onMediaChange(filteredMedia);
+        onMediaChange(media.filter(m => m.id !== mediaId));
     };
 
     const handleReorder = (newItems: MediaItem[]) => {
@@ -143,7 +139,6 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: Me
                     onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        console.log('Delete button clicked for item:', item.id);
                         removeMedia(item.id);
                     }}
                     className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-all duration-200 shadow-lg z-20"
