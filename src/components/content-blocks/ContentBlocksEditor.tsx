@@ -21,6 +21,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { ZenButton } from '@/components/ui/zen';
+import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 import { ContentBlock, ComponentType, MediaMode, MediaType, MediaItem, MediaBlockConfig } from '@/types/content-blocks';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { toast } from 'sonner';
@@ -35,6 +36,29 @@ interface UploadedFile {
     fileName: string;
     size: number;
     isUploading?: boolean;
+}
+
+// Función para obtener el nombre de visualización del componente
+function getComponentDisplayName(block: ContentBlock): string {
+    switch (block.type) {
+        case 'image':
+            return 'Imagen';
+        case 'gallery':
+            const mode = (block.config?.mode as MediaMode) || 'grid';
+            const modeLabels: Record<MediaMode, string> = {
+                single: 'Imagen',
+                grid: 'Galería',
+                masonry: 'Imagen Masonry',
+                slide: 'Galería Slide'
+            };
+            return modeLabels[mode];
+        case 'video':
+            return 'Video';
+        case 'text':
+            return 'Bloque de Texto';
+        default:
+            return 'Componente';
+    }
 }
 
 
@@ -112,6 +136,8 @@ export function ContentBlocksEditor({
     const [activeBlock, setActiveBlock] = useState<ContentBlock | null>(null);
     const [showComponentSelector, setShowComponentSelector] = useState(false);
     const [uploadingBlocks, setUploadingBlocks] = useState<Set<string>>(new Set());
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [blockToDelete, setBlockToDelete] = useState<ContentBlock | null>(null);
     const { uploadFiles } = useMediaUpload();
 
     // Configuración de sensores
@@ -173,14 +199,6 @@ export function ContentBlocksEditor({
         onBlocksChange([...blocks, newBlock]);
     }, [blocks, onBlocksChange]);
 
-    // Eliminar componente
-    const handleDeleteBlock = useCallback((blockId: string) => {
-        const newBlocks = blocks.filter(b => b.id !== blockId);
-        newBlocks.forEach((block, index) => {
-            block.order = index;
-        });
-        onBlocksChange(newBlocks);
-    }, [blocks, onBlocksChange]);
 
     // Actualizar componente
     const handleUpdateBlock = useCallback((blockId: string, updates: Partial<ContentBlock>) => {
@@ -233,6 +251,35 @@ export function ContentBlocksEditor({
             }
             return newSet;
         });
+    }, []);
+
+    // Función para solicitar eliminación con confirmación
+    const requestDeleteBlock = useCallback((block: ContentBlock) => {
+        // Si tiene media asociada, mostrar modal de confirmación
+        if (block.media && block.media.length > 0) {
+            setBlockToDelete(block);
+            setShowDeleteModal(true);
+        } else {
+            // Si no tiene media, eliminar directamente
+            onBlocksChange(blocks.filter(b => b.id !== block.id));
+            toast.success('Componente eliminado correctamente');
+        }
+    }, [blocks, onBlocksChange]);
+
+    // Función para confirmar eliminación
+    const confirmDeleteBlock = useCallback(() => {
+        if (blockToDelete) {
+            onBlocksChange(blocks.filter(block => block.id !== blockToDelete.id));
+            toast.success('Componente eliminado correctamente');
+        }
+        setShowDeleteModal(false);
+        setBlockToDelete(null);
+    }, [blockToDelete, blocks, onBlocksChange]);
+
+    // Función para cancelar eliminación
+    const cancelDeleteBlock = useCallback(() => {
+        setShowDeleteModal(false);
+        setBlockToDelete(null);
     }, []);
 
     return (
@@ -330,7 +377,7 @@ export function ContentBlocksEditor({
                                     key={block.id}
                                     block={block}
                                     onUpdate={handleUpdateBlock}
-                                    onDelete={handleDeleteBlock}
+                                    onDelete={requestDeleteBlock}
                                     onMediaUpload={uploadFiles}
                                     studioSlug={studioSlug}
                                     isUploading={uploadingBlocks.has(block.id)}
@@ -352,6 +399,18 @@ export function ContentBlocksEditor({
                     </DragOverlay>
                 </DndContext>
             )}
+
+            {/* Modal de confirmación para eliminar componente */}
+            <ZenConfirmModal
+                isOpen={showDeleteModal}
+                onClose={cancelDeleteBlock}
+                onConfirm={confirmDeleteBlock}
+                title="Eliminar componente"
+                description={`¿Estás seguro de que deseas eliminar este componente? Esta acción no se puede deshacer.`}
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+            />
         </div>
     );
 }
@@ -368,7 +427,7 @@ function SortableBlock({
 }: {
     block: ContentBlock;
     onUpdate: (blockId: string, updates: Partial<ContentBlock>) => void;
-    onDelete: (blockId: string) => void;
+    onDelete: (block: ContentBlock) => void;
     onMediaUpload: (files: File[], studioSlug: string, category: string, subcategory?: string) => Promise<UploadedFile[]>;
     studioSlug: string;
     isUploading: boolean;
@@ -604,13 +663,11 @@ function SortableBlock({
                         </svg>
                     </div>
                     <span className="text-sm font-medium text-zinc-300">
-                        {block.type === 'image' ? 'Imagen' :
-                            block.type === 'gallery' ? 'Galería' :
-                                block.type === 'video' ? 'Video' : 'Texto'}
+                        {getComponentDisplayName(block)}
                     </span>
                 </div>
                 <button
-                    onClick={() => onDelete(block.id)}
+                    onClick={() => onDelete(block)}
                     className="text-zinc-400 hover:text-red-400 transition-colors"
                 >
                     <X className="h-4 w-4" />
