@@ -137,42 +137,8 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: Me
         };
 
         return (
-            <div
-                ref={setNodeRef}
-                style={style}
-                className="relative group"
-                {...attributes}
-                {...listeners}
-            >
-                <div className="aspect-square bg-zinc-800 rounded-lg overflow-hidden cursor-grab">
-                    {item.file_type === 'image' ? (
-                        <img
-                            src={item.file_url}
-                            alt={item.filename}
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-zinc-700">
-                            <Video className="h-6 w-6 text-zinc-400" />
-                        </div>
-                    )}
-
-                    {/* Overlay de carga */}
-                    {item.isUploading && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <Loader2 className="h-6 w-6 text-white animate-spin" />
-                        </div>
-                    )}
-
-                    {/* Tamaño del archivo */}
-                    {item.storage_bytes && (
-                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                            {formatBytes(item.storage_bytes)}
-                        </div>
-                    )}
-                </div>
-
-                {/* Botón de eliminar */}
+            <div className="relative group">
+                {/* Botón de eliminar - FUERA del área de drag */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
@@ -180,11 +146,48 @@ export function MediaUploadZone({ media, onMediaChange, studioSlug, postId }: Me
                         console.log('Delete button clicked for item:', item.id);
                         removeMedia(item.id);
                     }}
-                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-all duration-200 shadow-lg z-10"
+                    className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-80 hover:opacity-100 transition-all duration-200 shadow-lg z-20"
                     title="Eliminar imagen"
                 >
                     <X className="h-3 w-3" />
                 </button>
+
+                {/* Área de drag and drop */}
+                <div
+                    ref={setNodeRef}
+                    style={style}
+                    className="relative"
+                    {...attributes}
+                    {...listeners}
+                >
+                    <div className="aspect-square bg-zinc-800 rounded-lg overflow-hidden cursor-grab">
+                        {item.file_type === 'image' ? (
+                            <img
+                                src={item.file_url}
+                                alt={item.filename}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-zinc-700">
+                                <Video className="h-6 w-6 text-zinc-400" />
+                            </div>
+                        )}
+
+                        {/* Overlay de carga */}
+                        {item.isUploading && (
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 text-white animate-spin" />
+                            </div>
+                        )}
+
+                        {/* Tamaño del archivo */}
+                        {item.storage_bytes && (
+                            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                                {formatBytes(item.storage_bytes)}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* Nombre del archivo */}
                 <p className="text-xs text-zinc-400 mt-1 truncate">
