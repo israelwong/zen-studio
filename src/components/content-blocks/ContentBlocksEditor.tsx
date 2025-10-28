@@ -447,139 +447,126 @@ function SortableBlock({
 
     const renderImageContent = () => {
         return (
-            <div className="space-y-3">
-                <div className="text-sm font-medium text-zinc-300">Imagen</div>
-                <div
-                    className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors relative"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={block.media && block.media.length > 0 ? undefined : (e) => handleDrop(e, block.id)}
-                >
-                    {block.media && block.media.length > 0 ? (
-                        <div className="space-y-2">
-                            <ImageSingle
-                                media={block.media[0]}
-                                aspectRatio={(block.config?.aspectRatio as 'video' | 'square' | 'portrait' | 'landscape' | 'auto') || 'square'}
-                                className=""
-                                showDeleteButton={true}
-                                onDelete={() => removeMedia(block.media[0].id)}
-                                onMediaChange={(newMedia) => {
-                                    if (newMedia) {
-                                        const updatedMedia = [...block.media];
-                                        updatedMedia[0] = newMedia;
-                                        onUpdate(block.id, { media: updatedMedia });
-                                    }
-                                }}
-                                studioSlug={studioSlug}
-                                category="posts"
-                                subcategory="content"
-                            />
+            <div className="space-y-2">
+                {block.media && block.media.length > 0 ? (
+                    // Solo mostrar la imagen sin header cuando hay contenido
+                    <ImageSingle
+                        media={block.media[0]}
+                        aspectRatio={(block.config?.aspectRatio as 'video' | 'square' | 'portrait' | 'landscape' | 'auto') || 'square'}
+                        className=""
+                        showDeleteButton={true}
+                        onDelete={() => removeMedia(block.media[0].id)}
+                        onMediaChange={(newMedia) => {
+                            if (newMedia) {
+                                const updatedMedia = [...block.media];
+                                updatedMedia[0] = newMedia;
+                                onUpdate(block.id, { media: updatedMedia });
+                            }
+                        }}
+                        studioSlug={studioSlug}
+                        category="posts"
+                        subcategory="content"
+                        showBorder={false}
+                    />
+                ) : (
+                    // Solo área de drop cuando está vacío
+                    <div
+                        className="border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 transition-colors relative"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, block.id)}
+                    >
+                        <div className="p-6 space-y-2">
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
+                                    <div className="text-sm text-zinc-500">Subiendo imagen...</div>
+                                </>
+                            ) : (
+                                <>
+                                    <ImageIcon className="h-8 w-8 text-zinc-500 mx-auto" />
+                                    <div className="text-sm text-zinc-500">Arrastra una imagen aquí</div>
+                                </>
+                            )}
                         </div>
-                    ) : (
-                        <div className="space-y-2 relative">
-                            <div className="relative">
-                                <ImageIcon className="h-8 w-8 text-zinc-500 mx-auto" />
-                                {/* Spinner minimalista sobre el ícono */}
-                                {isUploading && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-emerald-400 border-t-transparent"></div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-sm text-zinc-500">
-                                {isUploading ? 'Subiendo imagen...' : 'Arrastra una imagen aquí'}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     };
 
     const renderGalleryContent = () => {
-        const mode = (block.config?.mode as MediaMode) || 'grid';
-        const modeLabels: Record<MediaMode, string> = {
-            single: 'Single',
-            grid: 'Grid',
-            masonry: 'Masonry',
-            slide: 'Slide'
-        };
-
         return (
-            <div className="space-y-3">
-                <div className="text-sm font-medium text-zinc-300">Galería {modeLabels[mode]}</div>
-                <div
-                    className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors relative"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => handleDrop(e, block.id)}
-                >
-                    {block.media && block.media.length > 0 ? (
-                        <div className="space-y-2">
-                            <ImageGrid
-                                media={block.media}
-                                config={block.config as Partial<MediaBlockConfig>}
-                                className=""
-                                showDeleteButtons={true}
-                                onDelete={(mediaId) => removeMedia(mediaId)}
-                            />
+            <div className="space-y-2">
+                {block.media && block.media.length > 0 ? (
+                    // Solo mostrar la galería sin header cuando hay contenido
+                    <ImageGrid
+                        media={block.media}
+                        config={block.config as Partial<MediaBlockConfig>}
+                        className=""
+                        showDeleteButtons={true}
+                        onDelete={(mediaId) => removeMedia(mediaId)}
+                    />
+                ) : (
+                    // Solo área de drop cuando está vacío
+                    <div
+                        className="border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 transition-colors relative"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, block.id)}
+                    >
+                        <div className="p-6 space-y-2">
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
+                                    <div className="text-sm text-zinc-500">Subiendo imágenes...</div>
+                                </>
+                            ) : (
+                                <>
+                                    <Grid3X3 className="h-8 w-8 text-zinc-500 mx-auto" />
+                                    <div className="text-sm text-zinc-500">Arrastra imágenes aquí</div>
+                                </>
+                            )}
                         </div>
-                    ) : (
-                        <div className="space-y-2 relative">
-                            <div className="relative">
-                                <Grid3X3 className="h-8 w-8 text-zinc-500 mx-auto" />
-                                {/* Spinner minimalista sobre el ícono */}
-                                {isUploading && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-emerald-400 border-t-transparent"></div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-sm text-zinc-500">
-                                {isUploading ? 'Subiendo imágenes...' : 'Arrastra imágenes aquí'}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     };
 
     const renderVideoContent = () => {
         return (
-            <div className="space-y-3">
-                <div className="text-sm font-medium text-zinc-300">Video</div>
-                <div
-                    className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors relative"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={block.media && block.media.length > 0 ? undefined : (e) => handleDrop(e, block.id)}
-                >
-                    {block.media && block.media.length > 0 ? (
-                        <div className="space-y-2">
-                            <VideoSingle
-                                src={block.media[0].file_url}
-                                config={block.config as Partial<MediaBlockConfig>}
-                                storageBytes={block.media[0].storage_bytes}
-                                className=""
-                                showDeleteButton={true}
-                                onDelete={() => removeMedia(block.media[0].id)}
-                            />
+            <div className="space-y-2">
+                {block.media && block.media.length > 0 ? (
+                    // Solo mostrar el video sin header cuando hay contenido
+                    <VideoSingle
+                        src={block.media[0].file_url}
+                        config={block.config as Partial<MediaBlockConfig>}
+                        storageBytes={block.media[0].storage_bytes}
+                        className=""
+                        showDeleteButton={true}
+                        onDelete={() => removeMedia(block.media[0].id)}
+                    />
+                ) : (
+                    // Solo área de drop cuando está vacío
+                    <div
+                        className="border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 transition-colors relative"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, block.id)}
+                    >
+                        <div className="p-6 space-y-2">
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
+                                    <div className="text-sm text-zinc-500">Subiendo video...</div>
+                                </>
+                            ) : (
+                                <>
+                                    <Video className="h-8 w-8 text-zinc-500 mx-auto" />
+                                    <div className="text-sm text-zinc-500">Arrastra un video aquí</div>
+                                </>
+                            )}
                         </div>
-                    ) : (
-                        <div className="space-y-2 relative">
-                            <div className="relative">
-                                <Video className="h-8 w-8 text-zinc-500 mx-auto" />
-                                {/* Spinner minimalista sobre el ícono */}
-                                {isUploading && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <div className="animate-spin rounded-full h-6 w-6 border-2 border-emerald-400 border-t-transparent"></div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="text-sm text-zinc-500">
-                                {isUploading ? 'Subiendo video...' : 'Arrastra un video aquí'}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         );
     };

@@ -7,11 +7,12 @@ import { formatBytes } from '@/lib/utils/storage';
 
 interface VideoSingleProps {
     src: string;
-    config?: MediaBlockConfig;
+    config?: Partial<MediaBlockConfig>;
     className?: string;
     storageBytes?: number;
     onDelete?: () => void;
     showDeleteButton?: boolean;
+    showSizeLabel?: boolean;
 }
 
 export function VideoSingle({
@@ -20,7 +21,8 @@ export function VideoSingle({
     className = '',
     storageBytes,
     onDelete,
-    showDeleteButton = false
+    showDeleteButton = false,
+    showSizeLabel = true
 }: VideoSingleProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -62,7 +64,7 @@ export function VideoSingle({
                 </video>
 
                 {/* Storage Size Label */}
-                {storageBytes && (
+                {storageBytes && showSizeLabel && (
                     <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                         {formatBytes(storageBytes)}
                     </div>

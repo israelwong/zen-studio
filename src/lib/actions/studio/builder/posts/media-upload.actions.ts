@@ -49,7 +49,7 @@ export async function uploadPostImage(
                 fit: "inside",
                 withoutEnlargement: true,
             })
-            .jpeg({ quality: 85 })
+            .jpeg({ quality: 92 })
             .toBuffer();
 
         // Crear thumbnail (400px)
@@ -58,7 +58,7 @@ export async function uploadPostImage(
                 fit: "cover",
                 position: "center",
             })
-            .jpeg({ quality: 80 })
+            .jpeg({ quality: 88 })
             .toBuffer();
 
         // Upload imagen principal

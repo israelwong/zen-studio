@@ -24,6 +24,8 @@ interface ImageSingleProps {
     // Opción para usar sistema externo de upload
     onDrop?: (files: File[]) => void | Promise<void>;
     isUploading?: boolean;
+    showSizeLabel?: boolean;
+    showBorder?: boolean;
 }
 
 export function ImageSingle({
@@ -40,7 +42,9 @@ export function ImageSingle({
     category = 'posts',
     subcategory = 'content',
     onDrop,
-    isUploading = false
+    isUploading = false,
+    showSizeLabel = true,
+    showBorder = true
 }: ImageSingleProps) {
     const [isDragOver, setIsDragOver] = useState(false);
     const [imageError, setImageError] = useState(false);
@@ -168,11 +172,13 @@ export function ImageSingle({
 
             {/* Image Container */}
             <div
-                className={`relative bg-zinc-800 rounded-lg overflow-hidden group ${aspectClass} ${isDragOver ? 'border-2 border-emerald-500 bg-emerald-500/10' : 'border-2 border-dashed border-zinc-700'
+                className={`relative bg-zinc-800 rounded-lg overflow-hidden group ${aspectClass} ${showBorder
+                    ? (isDragOver ? 'border-2 border-emerald-500 bg-emerald-500/10' : 'border-2 border-dashed border-zinc-700')
+                    : ''
                     }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
+                onDragOver={showBorder ? handleDragOver : undefined}
+                onDragLeave={showBorder ? handleDragLeave : undefined}
+                onDrop={showBorder ? handleDrop : undefined}
             >
                 {/* Loading State */}
                 {(isUploading || internalIsUploading) && (
@@ -187,17 +193,29 @@ export function ImageSingle({
                 {/* Image or Placeholder */}
                 {media && !imageError ? (
                     <>
-                        <Image
-                            src={media.file_url}
-                            alt={media.filename}
-                            fill
-                            className="object-cover"
-                            sizes="(max-width: 768px) 100vw, 80vw"
-                            onError={handleImageError}
-                        />
+                        {aspectRatio === 'auto' ? (
+                            <Image
+                                src={media.file_url}
+                                alt={media.filename}
+                                width={800}
+                                height={600}
+                                className="w-full h-auto object-contain"
+                                sizes="(max-width: 768px) 100vw, 80vw"
+                                onError={handleImageError}
+                            />
+                        ) : (
+                            <Image
+                                src={media.file_url}
+                                alt={media.filename}
+                                fill
+                                className="object-cover"
+                                sizes="(max-width: 768px) 100vw, 80vw"
+                                onError={handleImageError}
+                            />
+                        )}
 
                         {/* Storage Size Label */}
-                        {media.storage_bytes && (
+                        {media.storage_bytes && showSizeLabel && (
                             <div className="absolute top-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                                 {formatBytes(media.storage_bytes)}
                             </div>

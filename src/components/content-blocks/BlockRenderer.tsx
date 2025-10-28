@@ -24,10 +24,12 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                 return (
                     <ImageSingle
                         media={block.media[0]}
-                        aspectRatio={(block.config?.aspectRatio as 'video' | 'square' | 'portrait' | 'landscape' | 'auto') || 'square'}
+                        aspectRatio="auto"
                         className={className}
-                        showCaption={true}
+                        showCaption={false}
                         studioSlug=""
+                        showSizeLabel={false}
+                        showBorder={false}
                     />
                 );
 
@@ -46,6 +48,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                         description={block.description}
                         config={block.config}
                         className={className}
+                        showSizeLabel={false}
                     />
                 );
 
@@ -63,6 +66,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                         config={block.config}
                         storageBytes={block.media[0].storage_bytes}
                         className={className}
+                        showSizeLabel={false}
                     />
                 );
 

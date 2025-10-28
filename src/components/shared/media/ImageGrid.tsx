@@ -18,9 +18,10 @@ interface ImageGridProps {
     onDelete?: (mediaId: string) => void;
     showDeleteButtons?: boolean;
     // MediaBlockConfig support
-    config?: MediaBlockConfig;
+    config?: Partial<MediaBlockConfig>;
     lightbox?: boolean;
     showTitles?: boolean;
+    showSizeLabel?: boolean;
 }
 
 export function ImageGrid({
@@ -36,7 +37,8 @@ export function ImageGrid({
     showDeleteButtons = false,
     config = {},
     lightbox = true,
-    showTitles = false
+    showTitles = false,
+    showSizeLabel = true
 }: ImageGridProps) {
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -127,7 +129,7 @@ export function ImageGrid({
                             />
 
                             {/* Storage Size Label */}
-                            {item.storage_bytes && (
+                            {item.storage_bytes && showSizeLabel && (
                                 <div className="absolute top-1 left-1 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
                                     {formatBytes(item.storage_bytes)}
                                 </div>

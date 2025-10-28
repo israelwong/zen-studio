@@ -74,7 +74,7 @@ export async function optimizeImage(file: File): Promise<{
               });
             },
             'image/jpeg',
-            0.85 // Calidad 85% - balance perfecto entre tamaño y calidad
+            0.92 // Calidad 92% - alta calidad manteniendo tamaño razonable
           );
         };
 
