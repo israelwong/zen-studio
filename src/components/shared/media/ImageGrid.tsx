@@ -66,7 +66,11 @@ export function ImageGrid({
 
     // Drag and drop sensors
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor)
     );
 
@@ -113,6 +117,7 @@ export function ImageGrid({
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
+        console.log('Drag ended:', { active: active.id, over: over?.id });
 
         if (over && active.id !== over.id) {
             const oldIndex = media.findIndex(item => item.id === active.id);
@@ -120,6 +125,7 @@ export function ImageGrid({
 
             if (oldIndex !== -1 && newIndex !== -1) {
                 const reorderedMedia = arrayMove(media, oldIndex, newIndex);
+                console.log('Reordering media:', { oldIndex, newIndex, reorderedMedia: reorderedMedia.map(m => m.id) });
                 onReorder?.(reorderedMedia);
             }
         }
@@ -150,6 +156,11 @@ export function ImageGrid({
                 onMouseDown={(e) => {
                     // Si el click es en el botón eliminar, no iniciar drag
                     if (e.target instanceof HTMLElement && e.target.closest('button[title="Eliminar imagen"]')) {
+                        e.stopPropagation();
+                        return;
+                    }
+                    // Si el click es en el botón de zoom, no iniciar drag
+                    if (e.target instanceof HTMLElement && e.target.closest('button[title="Ver en pantalla completa"]')) {
                         e.stopPropagation();
                         return;
                     }
