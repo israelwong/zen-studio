@@ -3,7 +3,7 @@
  * Reutilizables entre ZEN Posts, ZEN Invitations y otros módulos
  */
 
-export type ComponentType = 'image' | 'gallery' | 'video' | 'text';
+export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider';
 
 export type MediaMode = 'single' | 'grid' | 'masonry' | 'slide';
 
@@ -59,6 +59,7 @@ export interface MediaBlockConfig {
 }
 
 export interface TextBlockConfig {
+    text?: string;
     alignment?: TextAlignment;
     fontSize?: 'sm' | 'base' | 'lg' | 'xl' | '2xl';
     fontWeight?: 'normal' | 'medium' | 'semibold' | 'bold';

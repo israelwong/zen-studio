@@ -111,6 +111,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
 
             case 'text':
                 const textConfig = block.config as TextBlockConfig;
+                const textContent = textConfig?.text || block.description || '';
                 return (
                     <div
                         className={`${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'
@@ -128,7 +129,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                                 textAlign: textConfig?.alignment || 'left'
                             }}
                         >
-                            {block.description}
+                            {textContent}
                         </div>
                     </div>
                 );

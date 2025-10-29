@@ -656,13 +656,18 @@ function SortableBlock({
     const renderTextContent = () => {
         return (
             <div className="space-y-3">
-                <div className="text-sm font-medium text-zinc-300">Texto</div>
-                <div className="border-2 border-dashed border-zinc-700 rounded-lg p-6 text-center hover:border-emerald-500 transition-colors">
-                    <div className="space-y-2">
-                        <Type className="h-8 w-8 text-zinc-500 mx-auto" />
-                        <div className="text-sm text-zinc-500">Bloque de texto</div>
-                    </div>
-                </div>
+                <textarea
+                    value={String(block.config?.text || '')}
+                    onChange={(e) => onUpdate(block.id, {
+                        config: {
+                            ...block.config,
+                            text: e.target.value
+                        }
+                    })}
+                    placeholder="Escribe tu texto aquí..."
+                    className="w-full min-h-[120px] p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none"
+                    rows={4}
+                />
             </div>
         );
     };
