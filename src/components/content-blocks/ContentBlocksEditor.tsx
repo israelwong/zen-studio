@@ -47,7 +47,7 @@ function getComponentDisplayName(block: ContentBlock): string {
             const mode = (block.config?.mode as MediaMode) || 'grid';
             const modeLabels: Record<MediaMode, string> = {
                 single: 'Imagen',
-                grid: 'Galería',
+                grid: 'Galería Grid',
                 masonry: 'Imagen Masonry',
                 slide: 'Galería Slide'
             };
