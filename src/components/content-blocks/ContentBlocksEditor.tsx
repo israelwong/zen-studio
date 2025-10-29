@@ -484,8 +484,12 @@ function SortableBlock({
 
 
     const removeMedia = (mediaId: string) => {
+        console.log('removeMedia called with mediaId:', mediaId);
+        console.log('Current block.media:', block.media);
         const newMedia = block.media.filter(item => item.id !== mediaId);
+        console.log('New media after filter:', newMedia);
         onUpdate(block.id, { media: newMedia });
+        console.log('onUpdate called');
     };
 
 
