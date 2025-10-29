@@ -149,7 +149,7 @@ export function ImageGrid({
                 className={`relative group ${isDragging ? 'opacity-50' : ''}`}
                 {...(isEditable ? { ...attributes, ...listeners } : {})}
             >
-                <div 
+                <div
                     className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} ${isEditable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                     onClick={!isEditable && configLightbox ? () => handleImageClick(index) : undefined}
                 >
@@ -168,8 +168,8 @@ export function ImageGrid({
                         </div>
                     )}
 
-                    {/* Zoom Button for Lightbox */}
-                    {configLightbox && (
+                    {/* Zoom Button for Lightbox - Solo en modo no editable */}
+                    {configLightbox && !isEditable && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -276,8 +276,8 @@ export function ImageGrid({
                 </div>
             )}
 
-            {/* Lightbox */}
-            {configLightbox && (
+            {/* Lightbox - Solo en modo no editable */}
+            {configLightbox && !isEditable && (
                 <Lightbox
                     open={lightboxOpen}
                     close={() => setLightboxOpen(false)}
