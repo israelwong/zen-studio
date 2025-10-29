@@ -45,7 +45,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
 
                 // Determinar el modo de la galería
                 const mode = (block.config as Partial<MediaBlockConfig>)?.mode || 'grid';
-                
+
                 // Renderizar según el modo
                 switch (mode) {
                     case 'masonry':
@@ -57,6 +57,8 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                                 showSizeLabel={false}
                                 columns={3}
                                 spacing={4}
+                                showDeleteButtons={false}
+                                onDelete={undefined}
                             />
                         );
                     case 'slide':

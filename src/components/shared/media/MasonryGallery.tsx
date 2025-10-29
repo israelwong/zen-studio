@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { Trash2 } from 'lucide-react';
 import { MasonryPhotoAlbum, RenderImageProps, RenderImageContext } from "react-photo-album";
 import Lightbox from "yet-another-react-lightbox";
 import "react-photo-album/masonry.css";
@@ -22,6 +23,8 @@ interface MasonryGalleryProps {
     className?: string;
     enableLightbox?: boolean;
     showSizeLabel?: boolean;
+    onDelete?: (mediaId: string) => void;
+    showDeleteButtons?: boolean;
 }
 
 // Función para obtener las dimensiones reales de una imagen
@@ -61,7 +64,9 @@ export function MasonryGallery({
     spacing = 4,
     className = '',
     enableLightbox = true,
-    showSizeLabel = false
+    showSizeLabel = false,
+    onDelete,
+    showDeleteButtons = false
 }: MasonryGalleryProps) {
     // Estado para el lightbox
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -148,6 +153,20 @@ export function MasonryGallery({
                     <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                         {Math.round(mediaItem.storage_bytes / 1024)}KB
                     </div>
+                )}
+
+                {/* Delete Button */}
+                {showDeleteButtons && onDelete && (
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(mediaItem.id);
+                        }}
+                        className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-20"
+                        title="Eliminar imagen"
+                    >
+                        <Trash2 className="h-3 w-3" />
+                    </button>
                 )}
             </div>
         );

@@ -196,7 +196,7 @@ export function ImageGrid({
                                 e.stopPropagation();
                                 onDelete(item.id);
                             }}
-                            className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-10"
+                            className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-20"
                             title="Eliminar imagen"
                         >
                             <Trash2 className="h-3 w-3" />
