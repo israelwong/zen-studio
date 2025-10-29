@@ -15,14 +15,21 @@ export function ContentBlocksPreview({
 }: ContentBlocksPreviewProps) {
     if (!blocks || blocks.length === 0) {
         return (
-            <div className={`text-center py-8 ${className}`}>
-                <div className="text-zinc-500 mb-2">
-                    📝
+            <div className={`text-center py-12 px-4 ${className}`}>
+                <div className="text-zinc-500 mb-4 text-4xl">
+                    📱
                 </div>
-                <p className="text-zinc-400 mb-1">No hay componentes agregados</p>
-                <p className="text-sm text-zinc-500">
-                    Agrega componentes desde el editor para ver la vista previa
+                <h3 className="text-lg font-semibold text-zinc-300 mb-2">
+                    Agrega componentes multimedia
+                </h3>
+                <p className="text-zinc-400 mb-3">
+                    Crea contenido atractivo con imágenes, videos, galerías y más
                 </p>
+                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 max-w-sm mx-auto">
+                    <p className="text-sm text-zinc-500">
+                        Usa el editor para agregar componentes y ver la vista previa aquí
+                    </p>
+                </div>
             </div>
         );
     }
