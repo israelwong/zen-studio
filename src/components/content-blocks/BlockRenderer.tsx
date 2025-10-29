@@ -1,10 +1,14 @@
 'use client';
 
 import React from 'react';
-import { ContentBlock, TextBlockConfig, MediaBlockConfig } from '@/types/content-blocks';
+import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig } from '@/types/content-blocks';
 import { VideoSingle } from '@/components/shared/video';
 import { ImageSingle, ImageGrid, ImageSlider } from '@/components/shared/media';
 import { MasonryGallery } from '@/components/shared/media/MasonryGallery';
+import HeroContact from '@/components/shared/heroes/HeroContact';
+import HeroImage from '@/components/shared/heroes/HeroImage';
+import HeroVideo from '@/components/shared/heroes/HeroVideo';
+import HeroText from '@/components/shared/heroes/HeroText';
 
 interface BlockRendererProps {
     block: ContentBlock;
@@ -122,15 +126,53 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                             </h3>
                         )}
                         <div
-                            className={`text-${textConfig?.fontSize || 'base'} font-${textConfig?.fontWeight || 'normal'}`}
+                            className={`text-${textConfig?.fontSize || 'sm'} font-${textConfig?.fontWeight || 'light'} leading-relaxed`}
                             style={{
-                                color: textConfig?.color || '#ffffff',
+                                color: textConfig?.color || '#d4d4d8',
                                 textAlign: textConfig?.alignment || 'left'
                             }}
                         >
                             {textContent}
                         </div>
                     </div>
+                );
+
+            case 'hero-contact':
+                const heroContactConfig = block.config as HeroContactConfig;
+                return (
+                    <HeroContact
+                        config={heroContactConfig}
+                        className={className}
+                    />
+                );
+
+            case 'hero-image':
+                const heroImageConfig = block.config as HeroImageConfig;
+                return (
+                    <HeroImage
+                        config={heroImageConfig}
+                        media={block.media || []}
+                        className={className}
+                    />
+                );
+
+            case 'hero-video':
+                const heroVideoConfig = block.config as HeroVideoConfig;
+                return (
+                    <HeroVideo
+                        config={heroVideoConfig}
+                        media={block.media || []}
+                        className={className}
+                    />
+                );
+
+            case 'hero-text':
+                const heroTextConfig = block.config as HeroTextConfig;
+                return (
+                    <HeroText
+                        config={heroTextConfig}
+                        className={className}
+                    />
                 );
 
             default:

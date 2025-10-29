@@ -3,7 +3,7 @@
  * Reutilizables entre ZEN Posts, ZEN Invitations y otros módulos
  */
 
-export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider';
+export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text';
 
 export type MediaMode = 'single' | 'grid' | 'masonry' | 'slide';
 
@@ -66,8 +66,68 @@ export interface TextBlockConfig {
     color?: string;
 }
 
+// Configuraciones para Heroes
+export interface HeroContactConfig {
+    evento?: string;
+    titulo?: string;
+    descripcion?: string;
+    gradientFrom?: string;
+    gradientTo?: string;
+    showScrollIndicator?: boolean;
+}
+
+export interface ButtonConfig {
+    text: string;
+    href?: string;
+    onClick?: () => void;
+    variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'gradient';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
+    target?: '_blank' | '_self';
+    fullWidth?: boolean;
+    withBorder?: boolean;
+    className?: string;
+}
+
+export interface HeroImageConfig {
+    title?: string;
+    subtitle?: string;
+    description?: string;
+    buttons?: ButtonConfig[];
+    overlay?: boolean;
+    overlayOpacity?: number;
+    textAlignment?: TextAlignment;
+    imagePosition?: 'top' | 'center' | 'bottom';
+}
+
+export interface HeroVideoConfig {
+    title?: string;
+    subtitle?: string;
+    description?: string;
+    buttons?: ButtonConfig[];
+    overlay?: boolean;
+    overlayOpacity?: number;
+    textAlignment?: TextAlignment;
+    autoPlay?: boolean;
+    muted?: boolean;
+    loop?: boolean;
+    poster?: string;
+}
+
+export interface HeroTextConfig {
+    title?: string;
+    subtitle?: string;
+    description?: string;
+    buttons?: ButtonConfig[];
+    backgroundVariant?: 'solid' | 'gradient' | 'pattern';
+    backgroundColor?: string;
+    backgroundGradient?: string;
+    textAlignment?: TextAlignment;
+    pattern?: 'dots' | 'grid' | 'waves' | 'none';
+    textColor?: string;
+}
+
 // Union type para todas las configuraciones
-export type BlockConfig = MediaBlockConfig | TextBlockConfig;
+export type BlockConfig = MediaBlockConfig | TextBlockConfig | HeroContactConfig | HeroImageConfig | HeroVideoConfig | HeroTextConfig;
 
 // Props base para todos los componentes de bloque
 export interface BaseBlockProps {

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { Plus, Image as ImageIcon, Video, Type, Grid3X3, X, LayoutGrid } from 'lucide-react';
+import { Plus, Image as ImageIcon, Video, Type, Grid3X3, X, LayoutGrid, MessageCircle, Play, FileText } from 'lucide-react';
 import {
     DndContext,
     DragOverlay,
@@ -56,6 +56,14 @@ function getComponentDisplayName(block: ContentBlock): string {
             return 'Video';
         case 'text':
             return 'Bloque de Texto';
+        case 'hero-contact':
+            return 'Hero Contacto';
+        case 'hero-image':
+            return 'Hero Imagen';
+        case 'hero-video':
+            return 'Hero Video';
+        case 'hero-text':
+            return 'Hero Texto';
         default:
             return 'Componente';
     }
@@ -125,6 +133,43 @@ const ALL_COMPONENTS = [
         icon: Type,
         description: 'Bloque de texto'
     },
+    // Heroes - Componentes Premium
+    {
+        type: 'hero-contact' as ComponentType,
+        mode: undefined,
+        mediaType: undefined,
+        label: 'Hero Contacto',
+        icon: MessageCircle,
+        description: 'Hero con call-to-action',
+        isPremium: true
+    },
+    {
+        type: 'hero-image' as ComponentType,
+        mode: 'single' as MediaMode,
+        mediaType: 'images' as MediaType,
+        label: 'Hero Imagen',
+        icon: ImageIcon,
+        description: 'Hero con imagen de fondo',
+        isPremium: true
+    },
+    {
+        type: 'hero-video' as ComponentType,
+        mode: 'single' as MediaMode,
+        mediaType: 'videos' as MediaType,
+        label: 'Hero Video',
+        icon: Play,
+        description: 'Hero con video de fondo',
+        isPremium: true
+    },
+    {
+        type: 'hero-text' as ComponentType,
+        mode: undefined,
+        mediaType: undefined,
+        label: 'Hero Texto',
+        icon: FileText,
+        description: 'Hero con fondo decorativo',
+        isPremium: true
+    },
 ];
 
 export function ContentBlocksEditor({
@@ -185,6 +230,84 @@ export function ContentBlocksEditor({
                 muted: true,
                 loop: false,
                 controls: true
+            };
+        } else if (component.type === 'hero-contact') {
+            config = {
+                evento: 'Eventos',
+                titulo: 'Contáctanos Hoy Mismo',
+                descripcion: 'Nos emociona saber que nos estás considerando para cubrir tu evento. Especialistas en bodas, XV años y eventos corporativos.',
+                gradientFrom: 'from-purple-600',
+                gradientTo: 'to-blue-600',
+                showScrollIndicator: true
+            };
+        } else if (component.type === 'hero-image') {
+            config = {
+                title: 'Tu Título Aquí',
+                subtitle: 'Subtítulo Impactante',
+                description: 'Descripción que cautive a tus prospectos',
+                buttons: [
+                    {
+                        text: 'Ver Trabajo',
+                        variant: 'primary',
+                        size: 'lg'
+                    },
+                    {
+                        text: 'Contactar',
+                        variant: 'outline',
+                        size: 'lg'
+                    }
+                ],
+                overlay: true,
+                overlayOpacity: 50,
+                textAlignment: 'center',
+                imagePosition: 'center'
+            };
+        } else if (component.type === 'hero-video') {
+            config = {
+                title: 'Tu Título Aquí',
+                subtitle: 'Subtítulo Impactante',
+                description: 'Descripción que cautive a tus prospectos',
+                buttons: [
+                    {
+                        text: 'Ver Trabajo',
+                        variant: 'primary',
+                        size: 'lg'
+                    },
+                    {
+                        text: 'Contactar',
+                        variant: 'outline',
+                        size: 'lg'
+                    }
+                ],
+                overlay: true,
+                overlayOpacity: 50,
+                textAlignment: 'center',
+                autoPlay: true,
+                muted: true,
+                loop: true
+            };
+        } else if (component.type === 'hero-text') {
+            config = {
+                title: 'Tu Título Aquí',
+                subtitle: 'Subtítulo Impactante',
+                description: 'Descripción que cautive a tus prospectos',
+                buttons: [
+                    {
+                        text: 'Ver Trabajo',
+                        variant: 'primary',
+                        size: 'lg'
+                    },
+                    {
+                        text: 'Contactar',
+                        variant: 'outline',
+                        size: 'lg'
+                    }
+                ],
+                backgroundVariant: 'gradient',
+                backgroundGradient: 'from-zinc-900 via-zinc-800 to-zinc-900',
+                textAlignment: 'center',
+                pattern: 'dots',
+                textColor: 'text-white'
             };
         }
 
@@ -322,12 +445,12 @@ export function ContentBlocksEditor({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                    <h3 className="text-lg font-semibold text-zinc-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1 min-w-0 w-full sm:w-auto sm:flex-1">
+                    <h3 className="text-lg font-semibold text-zinc-300 overflow-hidden text-ellipsis whitespace-nowrap">
                         Componentes del Post ({blocks.length})
                     </h3>
-                    <div className="flex items-center space-x-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                         <span className="text-zinc-500">Almacenamiento:</span>
                         <span className={`font-medium ${storageInfo.status.color}`}>
                             {formatBytes(storageInfo.used)}
@@ -340,10 +463,11 @@ export function ContentBlocksEditor({
                 </div>
                 <ZenButton
                     onClick={() => setShowComponentSelector(true)}
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto"
                 >
                     <Plus className="h-4 w-4" />
-                    <span>Agregar Componente</span>
+                    <span className="hidden sm:inline">Agregar Componente</span>
+                    <span className="sm:hidden">Agregar</span>
                 </ZenButton>
             </div>
 
@@ -528,6 +652,14 @@ function SortableBlock({
                 return renderVideoContent();
             case 'text':
                 return renderTextContent();
+            case 'hero-contact':
+                return renderHeroContactContent();
+            case 'hero-image':
+                return renderHeroImageContent();
+            case 'hero-video':
+                return renderHeroVideoContent();
+            case 'hero-text':
+                return renderHeroTextContent();
             default:
                 return null;
         }
@@ -669,9 +801,132 @@ function SortableBlock({
                         }
                     })}
                     placeholder="Escribe tu texto aquí..."
-                    className="w-full min-h-[120px] p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none"
+                    className="w-full min-h-[120px] p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none text-sm font-light leading-relaxed"
                     rows={4}
                 />
+            </div>
+        );
+    };
+
+    const renderHeroContactContent = () => {
+        return (
+            <div className="space-y-3 p-4 bg-gradient-to-br from-purple-900/20 to-blue-900/20 border border-purple-700/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                    <MessageCircle className="h-5 w-5 text-purple-400" />
+                    <span className="text-sm font-medium text-purple-300">Hero de Contacto</span>
+                </div>
+                <p className="text-xs text-zinc-400">
+                    Hero con animaciones y call-to-action integrado. Ideal para páginas de contacto.
+                </p>
+            </div>
+        );
+    };
+
+    const renderHeroImageContent = () => {
+        return (
+            <div className="space-y-3">
+                {block.media && block.media.length > 0 ? (
+                    <div className="relative">
+                        <ImageSingle
+                            media={block.media[0]}
+                            aspectRatio="video"
+                            className=""
+                            showDeleteButton={true}
+                            onDelete={() => removeMedia(block.media[0].id)}
+                            onMediaChange={(newMedia) => {
+                                if (newMedia) {
+                                    const updatedMedia = [...block.media];
+                                    updatedMedia[0] = newMedia;
+                                    onUpdate(block.id, { media: updatedMedia });
+                                }
+                            }}
+                            studioSlug={studioSlug}
+                            category="posts"
+                            subcategory="hero"
+                            showBorder={false}
+                        />
+                        <div className="mt-3 p-3 bg-zinc-900/50 border border-zinc-700 rounded-lg">
+                            <p className="text-xs text-zinc-400">Hero con imagen de fondo y texto superpuesto</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div
+                        className="border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 transition-colors"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, block.id)}
+                    >
+                        <div className="p-8 space-y-3">
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
+                                    <div className="text-sm text-zinc-500">Subiendo imagen...</div>
+                                </>
+                            ) : (
+                                <>
+                                    <ImageIcon className="h-12 w-12 text-zinc-500 mx-auto" />
+                                    <div className="text-sm font-medium text-zinc-300">Agrega imagen de fondo para el Hero</div>
+                                    <div className="text-xs text-zinc-500">Arrastra una imagen aquí o haz clic para seleccionar</div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderHeroVideoContent = () => {
+        return (
+            <div className="space-y-3">
+                {block.media && block.media.length > 0 ? (
+                    <div className="relative">
+                        <VideoSingle
+                            src={block.media[0].file_url}
+                            className=""
+                            showDeleteButton={true}
+                            onDelete={() => removeMedia(block.media[0].id)}
+                            storageBytes={block.media[0].storage_bytes}
+                        />
+                        <div className="mt-3 p-3 bg-zinc-900/50 border border-zinc-700 rounded-lg">
+                            <p className="text-xs text-zinc-400">Hero con video de fondo y texto superpuesto</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div
+                        className="border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 transition-colors"
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => handleDrop(e, block.id)}
+                    >
+                        <div className="p-8 space-y-3">
+                            {isUploading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
+                                    <div className="text-sm text-zinc-500">Subiendo video...</div>
+                                </>
+                            ) : (
+                                <>
+                                    <Video className="h-12 w-12 text-zinc-500 mx-auto" />
+                                    <div className="text-sm font-medium text-zinc-300">Agrega video de fondo para el Hero</div>
+                                    <div className="text-xs text-zinc-500">Arrastra un video aquí o haz clic para seleccionar</div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderHeroTextContent = () => {
+        return (
+            <div className="space-y-3 p-4 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 border border-zinc-700 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                    <FileText className="h-5 w-5 text-zinc-400" />
+                    <span className="text-sm font-medium text-zinc-300">Hero con Texto</span>
+                </div>
+                <p className="text-xs text-zinc-400">
+                    Hero con fondo decorativo (gradientes o patrones SVG) y texto personalizable.
+                </p>
             </div>
         );
     };
