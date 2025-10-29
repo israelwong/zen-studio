@@ -285,7 +285,7 @@ export function ContentBlocksEditor({
     // Función para manejar subida de archivos (drag & drop y click)
     const handleDropFiles = useCallback(async (files: File[], blockId: string) => {
         if (files.length === 0) return;
-        
+
         try {
             // Activar estado de carga
             setBlockUploading(blockId, true);
@@ -608,6 +608,7 @@ function SortableBlock({
                         };
                         input.click();
                     }}
+                    isUploading={isUploading}
                 />
             </div>
         );

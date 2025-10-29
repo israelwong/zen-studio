@@ -45,6 +45,8 @@ interface ImageGridProps {
     // Dropzone props
     onDrop?: (files: File[]) => void;
     onUploadClick?: () => void;
+    // Upload state
+    isUploading?: boolean;
 }
 
 export function ImageGrid({
@@ -65,7 +67,8 @@ export function ImageGrid({
     showTitles, // eslint-disable-line @typescript-eslint/no-unused-vars
     showSizeLabel = true,
     onDrop,
-    onUploadClick
+    onUploadClick,
+    isUploading = false
 }: ImageGridProps) {
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -256,13 +259,8 @@ export function ImageGrid({
         );
     }
 
-    if (!media || media.length === 0) {
-        return (
-            <div className={`text-center py-8 ${className}`}>
-                <p className="text-zinc-500">No hay imágenes disponibles</p>
-            </div>
-        );
-    }
+    // Removido: lógica que ocultaba el dropzone cuando no hay media
+    // Ahora siempre mostramos el dropzone para permitir subir archivos
 
     return (
         <div className={`space-y-4 ${className}`}>
@@ -301,26 +299,6 @@ export function ImageGrid({
                             }
                         }}
                     >
-                        {/* Slot de Upload - Siempre visible como primer elemento */}
-                        <button
-                            type="button"
-                            className={`relative bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 hover:bg-zinc-700 transition-colors ${aspectClass} cursor-pointer group`}
-                            onClick={() => {
-                                if (onUploadClick) {
-                                    onUploadClick();
-                                }
-                            }}
-                        >
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-center">
-                                    <Upload className="h-8 w-8 text-zinc-500 mx-auto mb-2 group-hover:text-emerald-400" />
-                                    <div className="text-sm text-zinc-500 group-hover:text-emerald-400">
-                                        Arrastra archivos aquí
-                                    </div>
-                                </div>
-                            </div>
-                        </button>
-
                         {/* Sortable Items existentes */}
                         <SortableContext
                             key={media.map(item => item.id).join('-')} // Forzar re-render cuando cambien los IDs
@@ -335,6 +313,40 @@ export function ImageGrid({
                                 />
                             ))}
                         </SortableContext>
+
+                        {/* Slot de Upload - Al final, cuando está vacío o subiendo */}
+                        {(!media || media.length === 0 || isUploading) && (
+                            <button
+                                type="button"
+                                className={`relative bg-zinc-800 border-2 border-dashed border-zinc-700 rounded-lg text-center hover:border-emerald-500 hover:bg-zinc-700 transition-colors ${aspectClass} cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed`}
+                                onClick={() => {
+                                    if (onUploadClick && !isUploading) {
+                                        onUploadClick();
+                                    }
+                                }}
+                                disabled={isUploading}
+                            >
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="text-center">
+                                        {isUploading ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto mb-2"></div>
+                                                <div className="text-sm text-emerald-400">
+                                                    Subiendo imagen...
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-8 w-8 text-zinc-500 mx-auto mb-2 group-hover:text-emerald-400" />
+                                                <div className="text-sm text-zinc-500 group-hover:text-emerald-400">
+                                                    Arrastra imágenes aquí
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </button>
+                        )}
                     </div>
                 </DndContext>
             ) : (
