@@ -567,6 +567,8 @@ function SortableBlock({
                         onReorder={(reorderedMedia) => {
                             onUpdate(block.id, { media: reorderedMedia });
                         }}
+                        isEditable={true}
+                        lightbox={true}
                     />
                 ) : (
                     // Solo área de drop cuando está vacío

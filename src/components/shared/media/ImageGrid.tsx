@@ -35,6 +35,7 @@ interface ImageGridProps {
     onDelete?: (mediaId: string) => void;
     onReorder?: (reorderedMedia: MediaItem[]) => void;
     showDeleteButtons?: boolean;
+    isEditable?: boolean; // Controla si se puede ordenar
     // MediaBlockConfig support
     config?: Partial<MediaBlockConfig>;
     lightbox?: boolean;
@@ -54,6 +55,7 @@ export function ImageGrid({
     onDelete,
     onReorder,
     showDeleteButtons = false,
+    isEditable = true,
     config = {},
     lightbox = true,
     showTitles = false,
@@ -145,10 +147,12 @@ export function ImageGrid({
                 ref={setNodeRef}
                 style={style}
                 className={`relative group ${isDragging ? 'opacity-50' : ''}`}
-                {...attributes}
-                {...listeners}
+                {...(isEditable ? { ...attributes, ...listeners } : {})}
             >
-                <div className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} cursor-grab active:cursor-grabbing`}>
+                <div 
+                    className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} ${isEditable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                    onClick={!isEditable && configLightbox ? () => handleImageClick(index) : undefined}
+                >
                     <Image
                         src={item.file_url}
                         alt={item.filename}
@@ -158,9 +162,11 @@ export function ImageGrid({
                     />
 
                     {/* Drag Handle */}
-                    <div className="absolute top-2 left-2 bg-black/70 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                        <GripVertical className="h-3 w-3" />
-                    </div>
+                    {isEditable && (
+                        <div className="absolute top-2 left-2 bg-black/70 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                            <GripVertical className="h-3 w-3" />
+                        </div>
+                    )}
 
                     {/* Zoom Button for Lightbox */}
                     {configLightbox && (
@@ -196,16 +202,16 @@ export function ImageGrid({
                             <Trash2 className="h-3 w-3" />
                         </button>
                     )}
-                    </div>
+                </div>
 
-                    {/* Caption */}
-                    {showCaptions && item.filename && (
-                        <div className="mt-2 text-center">
-                            <p className="text-sm text-zinc-400 truncate">
-                                {item.filename}
-                            </p>
-                        </div>
-                    )}
+                {/* Caption */}
+                {showCaptions && item.filename && (
+                    <div className="mt-2 text-center">
+                        <p className="text-sm text-zinc-400 truncate">
+                            {item.filename}
+                        </p>
+                    </div>
+                )}
             </div>
         );
     }
@@ -237,26 +243,38 @@ export function ImageGrid({
             )}
 
             {/* Sortable Grid */}
-            <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-            >
-                <SortableContext
-                    items={media.map(item => item.id)}
-                    strategy={verticalListSortingStrategy}
+            {isEditable ? (
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
                 >
-                    <div className={`grid ${columnsClass} ${gapClass}`}>
-                        {media.map((item, index) => (
-                            <SortableImageItem
-                                key={item.id}
-                                item={item}
-                                index={index}
-                            />
-                        ))}
-                    </div>
-                </SortableContext>
-            </DndContext>
+                    <SortableContext
+                        items={media.map(item => item.id)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className={`grid ${columnsClass} ${gapClass}`}>
+                            {media.map((item, index) => (
+                                <SortableImageItem
+                                    key={item.id}
+                                    item={item}
+                                    index={index}
+                                />
+                            ))}
+                        </div>
+                    </SortableContext>
+                </DndContext>
+            ) : (
+                <div className={`grid ${columnsClass} ${gapClass}`}>
+                    {media.map((item, index) => (
+                        <SortableImageItem
+                            key={item.id}
+                            item={item}
+                            index={index}
+                        />
+                    ))}
+                </div>
+            )}
 
             {/* Lightbox */}
             {configLightbox && (

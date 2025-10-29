@@ -49,6 +49,8 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                         config={block.config}
                         className={className}
                         showSizeLabel={false}
+                        isEditable={false}
+                        lightbox={true}
                     />
                 );
 
