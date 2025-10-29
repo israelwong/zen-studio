@@ -163,7 +163,7 @@ export function ImageGrid({
 
                     {/* Drag Handle */}
                     {isEditable && (
-                        <div className="absolute top-2 left-2 bg-black/70 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2 left-2 bg-black/70 text-white p-1 rounded">
                             <GripVertical className="h-3 w-3" />
                         </div>
                     )}
