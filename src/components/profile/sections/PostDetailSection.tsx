@@ -107,9 +107,7 @@ export function PostDetailSection({ post }: PostDetailSectionProps) {
             )}
 
             {/* Bloques de Contenido */}
-            {post.content_blocks && post.content_blocks.length > 0 && (
-                <ContentBlocksPreview blocks={post.content_blocks} />
-            )}
+            <ContentBlocksPreview blocks={post.content_blocks || []} />
 
             {/* Tags/Palabras Clave */}
             {post.tags && post.tags.length > 0 && (
