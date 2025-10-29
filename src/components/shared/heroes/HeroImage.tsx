@@ -1,8 +1,9 @@
 'use client'
 import React from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { ZenButton } from '@/components/ui/zen'
-import { HeroImageConfig, ButtonConfig } from '@/types/content-blocks'
+import { HeroImageConfig } from '@/types/content-blocks'
 
 interface HeroImageProps {
     config: HeroImageConfig
@@ -26,7 +27,7 @@ export default function HeroImage({
         imagePosition = 'center'
     } = config
 
-    const imageSrc = media[0]?.file_url || '/placeholder-hero.jpg'
+    const imageSrc = media[0]?.file_url
     const imageAlt = media[0]?.filename || 'Hero image'
 
     const textAlignmentClasses = {
@@ -41,85 +42,103 @@ export default function HeroImage({
         bottom: 'object-bottom'
     }
 
-    const getButtonVariant = (variant?: string) => {
+    const getButtonVariant = (variant?: string): 'primary' | 'secondary' | 'outline' | 'ghost' => {
         switch (variant) {
             case 'primary': return 'primary'
             case 'secondary': return 'secondary'
             case 'outline': return 'outline'
             case 'ghost': return 'ghost'
-            case 'gradient': return 'gradient'
+            case 'gradient': return 'primary' // Fallback to primary for gradient
             default: return 'primary'
         }
     }
 
-    const getButtonSize = (size?: string) => {
+    const getButtonSize = (size?: string): 'sm' | 'md' | 'lg' => {
         switch (size) {
             case 'sm': return 'sm'
             case 'md': return 'md'
             case 'lg': return 'lg'
-            case 'xl': return 'xl'
+            case 'xl': return 'lg' // Fallback to lg for xl
             default: return 'md'
         }
     }
 
     return (
-        <div className={`relative min-h-screen flex items-center justify-center overflow-hidden ${className}`}>
+        <div className={`relative min-h-[50vh] sm:min-h-[60vh] flex items-center justify-center overflow-hidden bg-zinc-900 ${className}`}>
+            {/* Fallback Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 -z-20" />
+
             {/* Image Background */}
-            <Image
-                src={imageSrc}
-                alt={imageAlt}
-                fill
-                priority
-                className={`object-cover ${imagePositionClasses[imagePosition]} -z-10`}
-                sizes="100vw"
-            />
+            {imageSrc && (
+                <Image
+                    src={imageSrc}
+                    alt={imageAlt}
+                    fill
+                    priority
+                    className={`object-cover ${imagePositionClasses[imagePosition]}`}
+                    sizes="100vw"
+                    style={{ zIndex: 1 }}
+                />
+            )}
 
             {/* Overlay */}
             {overlay && (
                 <div
-                    className={`absolute inset-0 bg-black/${overlayOpacity} -z-5`}
+                    className={`absolute inset-0 bg-black/${overlayOpacity}`}
+                    style={{ zIndex: 2 }}
                 />
             )}
 
             {/* Content */}
-            <div className="relative z-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
+            <div className="relative z-10 px-4 sm:px-6 max-w-3xl mx-auto w-full">
                 <div className={textAlignmentClasses[textAlignment]}>
                     {/* Subtitle */}
                     {subtitle && (
-                        <p className="text-lg sm:text-xl md:text-2xl text-pink-400 font-medium mb-4">
+                        <p className="text-xs sm:text-sm text-zinc-400 font-medium mb-2 sm:mb-3 uppercase tracking-wide">
                             {subtitle}
                         </p>
                     )}
 
                     {/* Title */}
                     {title && (
-                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
                             {title}
                         </h1>
                     )}
 
                     {/* Description */}
                     {description && (
-                        <p className="text-xl sm:text-2xl md:text-3xl text-zinc-300 mb-8 leading-relaxed max-w-3xl mx-auto">
+                        <p className="text-sm sm:text-lg text-zinc-300 mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
                             {description}
                         </p>
                     )}
 
                     {/* Buttons */}
                     {buttons.length > 0 && (
-                        <div className={`flex flex-col sm:flex-row gap-4 ${textAlignment === 'center' ? 'justify-center' : textAlignment === 'right' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex flex-col sm:flex-row gap-2 sm:gap-3 ${textAlignment === 'center' ? 'justify-center' : textAlignment === 'right' ? 'justify-end' : 'justify-start'}`}>
                             {buttons.map((button, index) => (
-                                <ZenButton
-                                    key={index}
-                                    variant={getButtonVariant(button.variant)}
-                                    size={getButtonSize(button.size)}
-                                    href={button.href}
-                                    target={button.target}
-                                    onClick={button.onClick}
-                                    className={button.className}
-                                >
-                                    {button.text}
-                                </ZenButton>
+                                button.href ? (
+                                    <ZenButton
+                                        key={index}
+                                        asChild
+                                        variant={getButtonVariant(button.variant)}
+                                        size={getButtonSize(button.size)}
+                                        className={`text-sm sm:text-base ${button.className}`}
+                                    >
+                                        <Link href={button.href} target={button.target} onClick={button.onClick}>
+                                            {button.text}
+                                        </Link>
+                                    </ZenButton>
+                                ) : (
+                                    <ZenButton
+                                        key={index}
+                                        variant={getButtonVariant(button.variant)}
+                                        size={getButtonSize(button.size)}
+                                        className={`text-sm sm:text-base ${button.className}`}
+                                    >
+                                        {button.text}
+                                    </ZenButton>
+                                )
                             ))}
                         </div>
                     )}

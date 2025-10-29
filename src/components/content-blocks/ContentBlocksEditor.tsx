@@ -880,13 +880,23 @@ function SortableBlock({
             <div className="space-y-3">
                 {block.media && block.media.length > 0 ? (
                     <div className="relative">
-                        <VideoSingle
-                            src={block.media[0].file_url}
-                            className=""
-                            showDeleteButton={true}
-                            onDelete={() => removeMedia(block.media[0].id)}
-                            storageBytes={block.media[0].storage_bytes}
-                        />
+                        {/* Preview del video */}
+                        <div className="relative h-48 bg-zinc-800 rounded-lg overflow-hidden">
+                            <video
+                                className="w-full h-full object-cover"
+                                controls
+                                poster={block.media[0].thumbnail_url}
+                            >
+                                <source src={block.media[0].file_url} type="video/mp4" />
+                                Tu navegador no soporta el elemento video.
+                            </video>
+                            <button
+                                onClick={() => removeMedia(block.media[0].id)}
+                                className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full hover:bg-red-700 transition-colors"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
                         <div className="mt-3 p-3 bg-zinc-900/50 border border-zinc-700 rounded-lg">
                             <p className="text-xs text-zinc-400">Hero con video de fondo y texto superpuesto</p>
                         </div>
