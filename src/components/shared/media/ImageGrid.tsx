@@ -63,6 +63,7 @@ export function ImageGrid({
 }: ImageGridProps) {
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
+    const [activeId, setActiveId] = useState<string | null>(null);
 
     // Drag and drop sensors
     const sensors = useSensors(
@@ -115,6 +116,12 @@ export function ImageGrid({
         }
     };
 
+    const handleDragStart = (event: { active: { id: string } }) => {
+        const { active } = event;
+        console.log('Drag started:', active.id);
+        setActiveId(active.id);
+    };
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         console.log('Drag ended:', { active: active.id, over: over?.id });
@@ -129,6 +136,8 @@ export function ImageGrid({
                 onReorder?.(reorderedMedia);
             }
         }
+        
+        setActiveId(null);
     };
 
     // Componente para cada imagen sortable
@@ -151,7 +160,7 @@ export function ImageGrid({
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`relative group ${isDragging ? 'opacity-50' : ''}`}
+                className={`relative group ${isDragging || activeId === item.id ? 'opacity-50' : ''}`}
                 {...(isEditable ? { ...attributes, ...listeners } : {})}
                 onMouseDown={(e) => {
                     // Si el click es en el botón eliminar, no iniciar drag
@@ -275,6 +284,7 @@ export function ImageGrid({
                 <DndContext
                     sensors={sensors}
                     collisionDetection={closestCenter}
+                    onDragStart={handleDragStart}
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
