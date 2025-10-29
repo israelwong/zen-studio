@@ -21,6 +21,7 @@ import {
     SortableContext,
     verticalListSortingStrategy,
     useSortable,
+    sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 
@@ -74,14 +75,16 @@ export function ImageGrid({
     const [lightboxIndex, setLightboxIndex] = useState(0);
     const [activeId, setActiveId] = useState<string | null>(null);
 
-    // Drag and drop sensors
+    // Drag and drop sensors con configuración mejorada
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 8,
             },
         }),
-        useSensor(KeyboardSensor)
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        })
     );
 
     // Use config values if provided, otherwise use props
@@ -159,14 +162,19 @@ export function ImageGrid({
 
         const style = {
             transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-            transition,
+            transition: transition || 'transform 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+            zIndex: isDragging ? 1000 : 'auto',
         };
 
         return (
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`relative group ${isDragging || activeId === item.id ? 'opacity-50' : ''}`}
+                className={`relative group transition-all duration-200 ease-out ${
+                    isDragging || activeId === item.id 
+                        ? 'opacity-50 scale-105 shadow-2xl' 
+                        : 'opacity-100 scale-100'
+                }`}
                 {...(isEditable ? { ...attributes, ...listeners } : {})}
                 onMouseDown={(e) => {
                     // Si el click es en el botón eliminar, no iniciar drag
@@ -182,7 +190,11 @@ export function ImageGrid({
                 }}
             >
                 <div
-                    className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} ${isEditable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
+                    className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} transition-all duration-200 ease-out ${
+                        isEditable 
+                            ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02] hover:shadow-lg' 
+                            : 'cursor-pointer hover:scale-[1.02] hover:shadow-lg'
+                    }`}
                     onClick={!isEditable && configLightbox ? () => handleImageClick(index) : undefined}
                 >
                     <Image
@@ -289,7 +301,7 @@ export function ImageGrid({
                     onDragEnd={handleDragEnd}
                 >
                     <div
-                        className={`grid ${columnsClass} ${gapClass} p-4 rounded-lg border-2 border-dashed transition-all border-zinc-700 bg-zinc-800/30`}
+                        className={`grid ${columnsClass} ${gapClass} p-4 rounded-lg border-2 border-dashed transition-all duration-300 ease-out border-zinc-700 bg-zinc-800/30`}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                             e.preventDefault();
@@ -358,6 +370,21 @@ export function ImageGrid({
                             index={index}
                         />
                     ))}
+                </div>
+            )}
+
+            {/* DragOverlay para feedback visual mejorado */}
+            {isEditable && (
+                <div className="fixed inset-0 pointer-events-none z-50">
+                    {activeId && (
+                        <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                            <div className="bg-zinc-800 border-2 border-emerald-500 rounded-lg p-4 shadow-2xl transform rotate-3 scale-110 opacity-90">
+                                <div className="text-sm text-emerald-400 font-medium">
+                                    Reordenando...
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
