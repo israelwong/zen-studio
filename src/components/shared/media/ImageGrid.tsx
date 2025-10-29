@@ -58,7 +58,7 @@ export function ImageGrid({
     isEditable = true,
     config = {},
     lightbox = true,
-    showTitles = false,
+    showTitles, // eslint-disable-line @typescript-eslint/no-unused-vars
     showSizeLabel = true
 }: ImageGridProps) {
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -74,7 +74,6 @@ export function ImageGrid({
     const {
         columns: configColumns = columns,
         gap: configGap = gap,
-        showTitles: configShowTitles = showTitles,
         lightbox: configLightbox = lightbox
     } = config;
 
@@ -148,8 +147,15 @@ export function ImageGrid({
                 style={style}
                 className={`relative group ${isDragging ? 'opacity-50' : ''}`}
                 {...(isEditable ? { ...attributes, ...listeners } : {})}
+                onMouseDown={(e) => {
+                    // Si el click es en el botón eliminar, no iniciar drag
+                    if (e.target instanceof HTMLElement && e.target.closest('button[title="Eliminar imagen"]')) {
+                        e.stopPropagation();
+                        return;
+                    }
+                }}
             >
-                <div 
+                <div
                     className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} ${isEditable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}`}
                     onClick={!isEditable && configLightbox ? () => handleImageClick(index) : undefined}
                 >
@@ -189,17 +195,26 @@ export function ImageGrid({
                         </div>
                     )}
 
-                    {/* Delete Button - Dentro de la imagen pero sin interferir con drag */}
+                    {/* Delete Button - Fuera del área dragable */}
                     {showDeleteButtons && onDelete && (
                         <button
                             onClick={(e) => {
                                 console.log('Delete button clicked for item:', item.id);
+                                console.log('Current media array:', media.map(m => m.id));
+                                console.log('Item to delete:', item);
+                                e.preventDefault();
                                 e.stopPropagation();
                                 onDelete(item.id);
                             }}
-                            className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-20"
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                            }}
+                            className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-30"
                             title="Eliminar imagen"
-                            style={{ pointerEvents: 'auto' }}
+                            style={{
+                                pointerEvents: 'auto',
+                                touchAction: 'none'
+                            }}
                         >
                             <Trash2 className="h-3 w-3" />
                         </button>
