@@ -564,6 +564,9 @@ function SortableBlock({
                         className=""
                         showDeleteButtons={true}
                         onDelete={(mediaId) => removeMedia(mediaId)}
+                        onReorder={(reorderedMedia) => {
+                            onUpdate(block.id, { media: reorderedMedia });
+                        }}
                     />
                 ) : (
                     // Solo área de drop cuando está vacío
