@@ -15,6 +15,7 @@ import {
     useSensor,
     useSensors,
     DragEndEvent,
+    DragStartEvent,
 } from "@dnd-kit/core";
 import {
     SortableContext,
@@ -116,10 +117,10 @@ export function ImageGrid({
         }
     };
 
-    const handleDragStart = (event: { active: { id: string } }) => {
+    const handleDragStart = (event: DragStartEvent) => {
         const { active } = event;
         console.log('Drag started:', active.id);
-        setActiveId(active.id);
+        setActiveId(String(active.id));
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
@@ -288,6 +289,7 @@ export function ImageGrid({
                     onDragEnd={handleDragEnd}
                 >
                     <SortableContext
+                        key={media.map(item => item.id).join('-')} // Forzar re-render cuando cambien los IDs
                         items={media.map(item => item.id)}
                         strategy={verticalListSortingStrategy}
                     >
