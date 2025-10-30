@@ -1,28 +1,36 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
-import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenSwitch, ZenBadge, ZenTagModal } from "@/components/ui/zen";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { ZenButton, ZenInput, ZenTextarea, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenBadge } from "@/components/ui/zen";
 import { MobilePreviewFull } from "../../../components/MobilePreviewFull";
-import { ContentBlocksEditor } from "@/components/content-blocks";
-import { ContentBlock } from "@/types/content-blocks";
+import { ImageGrid } from "@/components/shared/media";
+import { MediaItem } from "@/types/content-blocks";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
 import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
-import { PostFormData } from "@/lib/actions/schemas/post-schemas";
+import { PostFormData, MediaItem as PostMediaItem } from "@/lib/actions/schemas/post-schemas";
 import { useTempCuid } from "@/hooks/useTempCuid";
+import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, Star } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
 
 interface PostEditorProps {
     studioSlug: string;
-    eventTypes: { id: string; name: string }[];
+    eventTypes?: { id: string; name: string }[];
     mode: "create" | "edit";
     post?: PostFormData;
 }
 
 interface PostItem {
     id: string;
+    title?: string | null;
+    caption?: string | null;
+    tags?: string[];
+    media: PostMediaItem[];
+    is_published?: boolean;
+    published_at?: Date;
+    view_count?: number;
     [key: string]: unknown;
 }
 
@@ -47,30 +55,21 @@ interface PreviewData {
     google_maps_url?: string;
 }
 
-export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorProps) {
+export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
     const router = useRouter();
     const tempCuid = useTempCuid();
+    const { uploadFiles, isUploading } = useMediaUpload();
 
-    // Estado del formulario
-    const [formData, setFormData] = useState<PostFormData>({
-        id: post?.id || tempCuid, // Usar CUID temporal para nuevos posts
+    // Estado del formulario simplificado
+    const [formData, setFormData] = useState<{ title: string; caption: string; tags: string[]; media: PostMediaItem[] }>({
         title: post?.title || "",
         caption: post?.caption || "",
-        media: post?.media || [],
-        cover_index: post?.cover_index || 0,
-        category: post?.category || "portfolio",
-        event_type_id: post?.event_type_id || "",
         tags: post?.tags || [],
-        cta_enabled: post?.cta_enabled || false,
-        cta_text: post?.cta_text || "",
-        cta_action: post?.cta_action || "whatsapp",
-        cta_link: post?.cta_link || "",
-        is_featured: post?.is_featured || false,
-        is_published: post?.is_published || false,
+        media: post?.media || [],
     });
 
-    // Estado para bloques de contenido
-    const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
+    // Estado para input de palabras clave
+    const [tagInput, setTagInput] = useState("");
 
     // Estado para preview
     const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -79,7 +78,7 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
     // Estado para modal de confirmación
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [showTagModal, setShowTagModal] = useState(false);
+    const [isMediaUploading, setIsMediaUploading] = useState(false);
 
     // Cargar datos del estudio para preview
     useEffect(() => {
@@ -124,50 +123,124 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
     const finalPreviewData = useMemo(() => {
         if (!previewData) return null;
 
-        // Crear un post temporal para el preview (siempre marcado como publicado para preview)
-        const tempPost = {
+        // Crear un post temporal simplificado para el preview
+        const tempPost: PostItem = {
             id: tempCuid,
-            title: formData.title,
-            caption: formData.caption,
-            category: formData.category,
-            event_type: eventTypes.find(et => et.id === formData.event_type_id) ? {
-                id: formData.event_type_id,
-                nombre: eventTypes.find(et => et.id === formData.event_type_id)?.name || ''
-            } : null,
+            title: formData.title || null,
+            caption: formData.caption || null,
             tags: formData.tags,
-            is_featured: formData.is_featured,
-            is_published: true, // Siempre true para preview
+            is_published: true,
             published_at: new Date(),
             view_count: 0,
             media: formData.media,
-            cover_index: formData.cover_index,
-            cta_enabled: formData.cta_enabled,
-            cta_text: formData.cta_text,
-            cta_action: formData.cta_action,
-            cta_link: formData.cta_link,
-            content_blocks: contentBlocks, // Agregar bloques de contenido
         };
 
         return {
             ...previewData,
-            post: tempPost // Usar 'post' en lugar de 'posts' para PostDetailSection
+            post: tempPost
         };
-    }, [previewData, formData, eventTypes, tempCuid, contentBlocks]);
+    }, [previewData, formData, tempCuid]);
 
-    const handleInputChange = (field: keyof PostFormData, value: string | boolean | number | string[]) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
+    // Manejar subida de archivos
+    const handleDropFiles = useCallback(async (files: File[]) => {
+        if (files.length === 0) return;
+
+        try {
+            setIsMediaUploading(true);
+
+            const uploadedFiles = await uploadFiles(files, studioSlug, 'posts', 'content');
+
+            // Convertir UploadedFile a MediaItem
+            const mediaItems: PostMediaItem[] = uploadedFiles.map((file) => ({
+                id: file.id,
+                file_url: file.url,
+                file_type: file.fileName.toLowerCase().includes('.mp4') ||
+                    file.fileName.toLowerCase().includes('.mov') ||
+                    file.fileName.toLowerCase().includes('.webm')
+                    ? 'video' as const
+                    : 'image' as const,
+                filename: file.fileName,
+                storage_path: file.url,
+                storage_bytes: file.size,
+                display_order: formData.media.length,
+            }));
+
+            setFormData(prev => ({
+                ...prev,
+                media: [...prev.media, ...mediaItems]
+            }));
+
+            toast.success(`${files.length} archivo(s) subido(s) correctamente`);
+        } catch (error) {
+            console.error('Error uploading files:', error);
+            toast.error('Error al subir archivos');
+        } finally {
+            setIsMediaUploading(false);
+        }
+    }, [uploadFiles, studioSlug, formData.media.length]);
+
+    // Manejar eliminación de media
+    const handleDeleteMedia = useCallback((mediaId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            media: prev.media.filter(item => item.id !== mediaId)
+        }));
+    }, []);
+
+    // Manejar reordenamiento de media
+    const handleReorderMedia = useCallback((reorderedMedia: MediaItem[]) => {
+        const convertedMedia: PostMediaItem[] = reorderedMedia.map((item, index) => ({
+            ...item as PostMediaItem,
+            display_order: index
+        }));
+        setFormData(prev => ({
+            ...prev,
+            media: convertedMedia
+        }));
+    }, []);
+
+    // Manejar click de upload
+    const handleUploadClick = useCallback(() => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.accept = 'image/*,video/*';
+        input.onchange = (e) => {
+            const files = Array.from((e.target as HTMLInputElement).files || []);
+            if (files.length > 0) {
+                handleDropFiles(files);
+            }
+        };
+        input.click();
+    }, [handleDropFiles]);
+
+    // Manejar agregar tag
+    const handleAddTag = useCallback(() => {
+        const trimmedTag = tagInput.trim();
+        if (trimmedTag && !formData.tags.includes(trimmedTag)) {
+            setFormData(prev => ({
+                ...prev,
+                tags: [...prev.tags, trimmedTag]
+            }));
+            setTagInput("");
+        } else if (formData.tags.includes(trimmedTag)) {
+            toast.error("Esta palabra clave ya existe");
+        }
+    }, [tagInput, formData.tags]);
+
+    // Manejar eliminar tag
+    const handleRemoveTag = useCallback((index: number) => {
+        setFormData(prev => ({
+            ...prev,
+            tags: prev.tags.filter((_, i) => i !== index)
+        }));
+    }, []);
 
     const handleSave = async () => {
         try {
             setIsSaving(true);
 
             // Validación básica
-            if (!formData.title?.trim()) {
-                toast.error("El título es requerido");
-                return;
-            }
-
             if (!formData.media || formData.media.length === 0) {
                 toast.error("Agrega al menos una imagen o video");
                 return;
@@ -175,16 +248,25 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
 
             // Preparar datos para guardar con ordenamiento preservado
             const postData = {
-                ...formData,
-                // Asegurar que el cover_index esté dentro del rango válido
-                cover_index: Math.min(formData.cover_index, formData.media.length - 1),
-                // Asegurar que todos los media items tengan IDs
+                id: post?.id || tempCuid,
+                title: formData.title || null,
+                caption: formData.caption || null,
                 media: formData.media.map((item, index) => ({
                     ...item,
                     id: item.id || cuid(),
-                    display_order: index // Agregar orden explícito
-                }))
-            };
+                    display_order: index
+                })),
+                cover_index: 0,
+                category: "portfolio" as const,
+                event_type_id: null,
+                tags: formData.tags,
+                cta_enabled: false,
+                cta_text: "",
+                cta_action: "whatsapp" as const,
+                cta_link: null,
+                is_featured: false,
+                is_published: false,
+            } as PostFormData;
 
             console.log("Guardando post con datos:", postData);
 
@@ -218,23 +300,6 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
         router.back();
     };
 
-    const handleAddTag = (tag: string) => {
-        const currentTags = formData.tags || [];
-        if (!currentTags.includes(tag)) {
-            setFormData(prev => ({
-                ...prev,
-                tags: [...currentTags, tag]
-            }));
-        }
-    };
-
-    const handleRemoveTag = (tagToRemove: string) => {
-        setFormData(prev => ({
-            ...prev,
-            tags: (prev.tags || []).filter(tag => tag !== tagToRemove)
-        }));
-    };
-
     return (
         <div className="space-y-6">
             {/* Header con botón de regresar */}
@@ -258,25 +323,9 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
                 <div className="space-y-6">
                     <ZenCard>
                         <ZenCardHeader>
-                            <div className="flex items-center justify-between">
-                                <ZenCardTitle>
-                                    {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
-                                </ZenCardTitle>
-
-                                {/* Botón de Destacar */}
-                                <ZenButton
-                                    variant={formData.is_featured ? "primary" : "outline"}
-                                    size="sm"
-                                    onClick={() => handleInputChange("is_featured", !formData.is_featured)}
-                                    className={`gap-2 transition-all ${formData.is_featured
-                                        ? "bg-yellow-500 hover:bg-yellow-600 text-black"
-                                        : "hover:bg-yellow-500/10 hover:border-yellow-500/50"
-                                        }`}
-                                >
-                                    <Star className={`h-4 w-4 ${formData.is_featured ? "fill-current" : ""}`} />
-                                    {formData.is_featured ? "Destacado" : "Destacar"}
-                                </ZenButton>
-                            </div>
+                            <ZenCardTitle>
+                                {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
+                            </ZenCardTitle>
                         </ZenCardHeader>
 
                         <ZenCardContent className="space-y-4">
@@ -284,158 +333,91 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
                             <ZenInput
                                 label="Título"
                                 value={formData.title || ""}
-                                onChange={(e) => handleInputChange("title", e.target.value)}
-                                placeholder="Título del post"
+                                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                                placeholder="Título del post (opcional)"
                             />
 
                             {/* Descripción */}
                             <ZenTextarea
                                 label="Descripción"
                                 value={formData.caption || ""}
-                                onChange={(e) => handleInputChange("caption", e.target.value)}
-                                placeholder="Descripción del post"
+                                onChange={(e) => setFormData(prev => ({ ...prev, caption: e.target.value }))}
+                                placeholder="Escribe una descripción... Los enlaces se convertirán automáticamente en links"
                                 rows={4}
                             />
 
-
-                            {/* //! Sistema de Bloques de Contenido */}
+                            {/* Multimedia */}
                             <div>
-                                <ContentBlocksEditor
-                                    blocks={contentBlocks}
-                                    onBlocksChange={setContentBlocks}
-                                    studioSlug={studioSlug}
+                                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                    Multimedia
+                                </label>
+                                <ImageGrid
+                                    media={formData.media as MediaItem[]}
+                                    columns={3}
+                                    gap={4}
+                                    showDeleteButtons={true}
+                                    onDelete={handleDeleteMedia}
+                                    onReorder={handleReorderMedia}
+                                    isEditable={true}
+                                    lightbox={true}
+                                    onDrop={handleDropFiles}
+                                    onUploadClick={handleUploadClick}
+                                    isUploading={isMediaUploading || isUploading}
                                 />
                             </div>
 
-                            {/* Categoría y Tipo de Evento */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        Categoría
-                                    </label>
-                                    <ZenSelect
-                                        value={formData.category}
-                                        onValueChange={(value: string) => handleInputChange("category", value)}
-                                        options={[
-                                            { value: "portfolio", label: "Portfolio" },
-                                            { value: "blog", label: "Blog" },
-                                            { value: "promo", label: "Promoción" },
-                                        ]}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                        Tipo de Evento
-                                    </label>
-                                    <ZenSelect
-                                        value={formData.event_type_id || ""}
-                                        onValueChange={(value: string) => handleInputChange("event_type_id", value)}
-                                        options={[
-                                            { value: "", label: "Sin especificar" },
-                                            ...eventTypes.map(et => ({ value: et.id, label: et.name }))
-                                        ]}
-                                    />
-                                </div>
-                            </div>
-
-
-                            {/* Palabras Clave */}
-                            <div className="space-y-4 p-4 bg-zinc-950/50 rounded-sm">
-                                <div className="flex items-center justify-between mb-3">
-                                    <label className="block text-sm font-medium text-zinc-300">
-                                        Palabras Clave
-                                    </label>
+                            {/* Palabras clave */}
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                    Palabras clave
+                                </label>
+                                <div className="flex gap-2 w-full items-center">
+                                    <div className="flex-1 [&>div]:!space-y-0 [&>div>div>input]:h-10">
+                                        <ZenInput
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleAddTag();
+                                                }
+                                            }}
+                                            placeholder="Escribe una palabra clave y presiona Enter"
+                                            label=""
+                                        />
+                                    </div>
                                     <ZenButton
+                                        type="button"
+                                        onClick={handleAddTag}
                                         variant="outline"
-                                        size="sm"
-                                        onClick={() => setShowTagModal(true)}
-                                        disabled={(formData.tags || []).length >= 10}
+                                        className="px-3 h-10"
                                     >
-                                        <Plus className="h-4 w-4 mr-1" />
-                                        Agregar
+                                        <Plus className="h-4 w-4" />
                                     </ZenButton>
                                 </div>
 
-                                {formData.tags && formData.tags.length > 0 ? (
-                                    <div className="flex flex-wrap justify-start gap-2">
+                                {/* Mostrar tags agregados */}
+                                {formData.tags.length > 0 && (
+                                    <div className="flex flex-wrap gap-2 mt-3">
                                         {formData.tags.map((tag, index) => (
                                             <ZenBadge
                                                 key={index}
                                                 variant="secondary"
-                                                size="sm"
-                                                className="cursor-pointer hover:bg-zinc-600 transition-colors group rounded-full px-2 py-0.5 text-xs text-center"
-                                                onClick={() => handleRemoveTag(tag)}
+                                                className="flex items-center gap-1.5 pr-1"
                                             >
-                                                #{tag}
-                                                <X className="h-2.5 w-2.5 ml-1 opacity-100 transition-opacity" />
+                                                <span>{tag}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveTag(index)}
+                                                    className="hover:bg-zinc-700 rounded-full p-0.5 transition-colors"
+                                                    aria-label={`Eliminar ${tag}`}
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
                                             </ZenBadge>
                                         ))}
                                     </div>
-                                ) : (
-                                    <p className="text-sm text-zinc-700 italic mb-4">
-                                        No hay palabras clave agregadas. Haz clic en &quot;Agregar&quot; para añadir algunas.
-                                    </p>
                                 )}
-
-                                <p className="text-xs text-zinc-400 mt-2">
-                                    Las palabras clave ayudan a que tu post sea más fácil de encontrar
-                                </p>
-                            </div>
-
-                            {/* CTA */}
-                            <div className="space-y-4">
-                                <ZenSwitch
-                                    checked={formData.cta_enabled}
-                                    onCheckedChange={(checked) => handleInputChange("cta_enabled", checked)}
-                                    label="Habilitar Call-to-Action"
-                                    description="Agrega un botón de acción al final del post"
-                                />
-
-                                {formData.cta_enabled && (
-                                    <div className="space-y-3">
-                                        <ZenInput
-                                            label="Texto del CTA"
-                                            value={formData.cta_text || ""}
-                                            onChange={(e) => handleInputChange("cta_text", e.target.value)}
-                                            placeholder="¡Contáctanos!"
-                                        />
-
-                                        <div>
-                                            <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                                Acción
-                                            </label>
-                                            <ZenSelect
-                                                value={formData.cta_action}
-                                                onValueChange={(value: string) => handleInputChange("cta_action", value)}
-                                                options={[
-                                                    { value: "whatsapp", label: "WhatsApp" },
-                                                    { value: "lead_form", label: "Formulario" },
-                                                    { value: "calendar", label: "Calendario" },
-                                                ]}
-                                            />
-                                        </div>
-
-                                        {formData.cta_action === "lead_form" && (
-                                            <ZenInput
-                                                label="Enlace"
-                                                value={formData.cta_link || ""}
-                                                onChange={(e) => handleInputChange("cta_link", e.target.value)}
-                                                placeholder="https://..."
-                                            />
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Opciones de Publicación */}
-                            <div className="space-y-4">
-                                <ZenSwitch
-                                    checked={formData.is_published}
-                                    onCheckedChange={(checked) => handleInputChange("is_published", checked)}
-                                    label="Publicar Post"
-                                    description="Haz visible este post en tu perfil público"
-                                />
                             </div>
 
                             {/* Botones */}
@@ -486,13 +468,6 @@ export function PostEditor({ studioSlug, eventTypes, mode, post }: PostEditorPro
                 variant="destructive"
             />
 
-            <ZenTagModal
-                isOpen={showTagModal}
-                onClose={() => setShowTagModal(false)}
-                onAddTag={handleAddTag}
-                existingTags={formData.tags || []}
-                maxTags={10}
-            />
         </div>
     );
 }

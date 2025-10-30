@@ -3,7 +3,7 @@
 import React from 'react';
 import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig } from '@/types/content-blocks';
 import { VideoSingle } from '@/components/shared/video';
-import { ImageSingle, ImageGrid, ImageSlider } from '@/components/shared/media';
+import { ImageSingle, ImageGrid, ImageCarousel } from '@/components/shared/media';
 import { MasonryGallery } from '@/components/shared/media/MasonryGallery';
 import HeroContact from '@/components/shared/heroes/HeroContact';
 import HeroImage from '@/components/shared/heroes/HeroImage';
@@ -67,11 +67,10 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                         );
                     case 'slide':
                         return (
-                            <ImageSlider
+                            <ImageCarousel
                                 media={block.media}
                                 title={block.title}
                                 description={block.description}
-                                aspectRatio="video"
                                 showArrows={true}
                                 showDots={true}
                                 autoplay={4000}

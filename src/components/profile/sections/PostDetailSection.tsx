@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { CaptionWithLinks } from '@/app/[slug]/studio/builder/content/posts/components/CaptionWithLinks';
 import { ImageCarousel } from '@/components/shared/media';
@@ -6,6 +6,31 @@ import { MediaItem } from '@/types/content-blocks';
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
+
+// Función para formatear tiempo relativo corto (1h, 2d)
+function formatTimeAgo(date: Date | null): string {
+    if (!date) return "";
+
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) {
+        return "1h"; // Menos de 1 minuto = 1h
+    }
+
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    if (diffInMinutes < 60) {
+        return "1h"; // Menos de 1 hora = 1h
+    }
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) {
+        return `${diffInHours}h`;
+    }
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays}d`;
+}
 
 interface PostMedia {
     id: string;
@@ -18,7 +43,9 @@ interface PostMedia {
 
 interface PostDetail {
     id: string;
+    title?: string | null;
     caption: string | null;
+    tags?: string[];
     media: PostMedia[];
     is_published: boolean;
     published_at: Date | null;
@@ -41,6 +68,8 @@ export function PostDetailSection({ post }: PostDetailSectionProps) {
     const hasMultipleMedia = post.media.length > 1;
     const firstMedia = post.media[0];
     const [lightboxOpen, setLightboxOpen] = useState(false);
+
+    const timeAgo = useMemo(() => formatTimeAgo(post.published_at), [post.published_at]);
 
     // Convertir PostMedia a MediaItem para ImageCarousel
     const mediaItems: MediaItem[] = post.media.map(item => ({
@@ -69,11 +98,27 @@ export function PostDetailSection({ post }: PostDetailSectionProps) {
     } : null;
 
     return (
-        <div className="space-y-2">
-            {/* Descripción arriba */}
+        <div className="mt-10 space-y-2">
+            {/* Título y tiempo de publicación */}
+            {(post.title || timeAgo) && (
+                <div className="flex items-center gap-2 mb-2">
+                    {post.title && (
+                        <span className="text-white font-light leading-relaxed whitespace-pre-wrap break-words text-base">
+                            {post.title}
+                        </span>
+                    )}
+                    {timeAgo && (
+                        <span className="text-zinc-500 text-sm">
+                            {timeAgo}
+                        </span>
+                    )}
+                </div>
+            )}
+
+            {/* Descripción */}
             {post.caption && (
                 <div className="w-full mb-2">
-                    <CaptionWithLinks caption={post.caption} />
+                    <CaptionWithLinks caption={post.caption} className="text-zinc-400" />
                 </div>
             )}
 
@@ -201,6 +246,20 @@ export function PostDetailSection({ post }: PostDetailSectionProps) {
                         }
                     }}
                 />
+            )}
+
+            {/* Palabras clave */}
+            {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3">
+                    {post.tags.map((tag, index) => (
+                        <span
+                            key={index}
+                            className="text-zinc-600 text-sm"
+                        >
+                            #{tag}
+                        </span>
+                    ))}
+                </div>
             )}
         </div>
     );
