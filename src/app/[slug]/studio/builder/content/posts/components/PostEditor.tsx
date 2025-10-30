@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
+import { calculateTotalStorage, formatBytes } from "@/lib/utils/storage";
 
 interface PostEditorProps {
     studioSlug: string;
@@ -315,6 +316,11 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
         router.back();
     };
 
+    // Calcular tamaño total del post
+    const postSize = useMemo(() => {
+        return calculateTotalStorage(formData.media);
+    }, [formData.media]);
+
     return (
         <div className="space-y-6">
             {/* Header con botón de regresar */}
@@ -364,9 +370,16 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
 
                             {/* Multimedia */}
                             <div>
-                                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                                    Multimedia
-                                </label>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-sm font-medium text-zinc-300">
+                                        Multimedia
+                                    </label>
+                                    {postSize > 0 && (
+                                        <span className="text-xs text-zinc-400">
+                                            Tamaño del post: <span className="text-zinc-300 font-medium">{formatBytes(postSize)}</span>
+                                        </span>
+                                    )}
+                                </div>
                                 <ImageGrid
                                     media={formData.media as MediaItem[]}
                                     columns={3}
