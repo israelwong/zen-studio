@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { ZenButton, ZenInput, ZenTextarea, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenBadge } from "@/components/ui/zen";
+import { ZenButton, ZenInput, ZenTextarea, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenBadge, ZenSwitch } from "@/components/ui/zen";
 import { MobilePreviewFull } from "../../../components/MobilePreviewFull";
 import { ImageGrid } from "@/components/shared/media";
 import { MediaItem } from "@/types/content-blocks";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
-import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
+import { getStudioPostsBySlug, createStudioPostBySlug, updateStudioPost } from "@/lib/actions/studio/builder/posts";
 import { PostFormData, MediaItem as PostMediaItem } from "@/lib/actions/schemas/post-schemas";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
@@ -62,11 +62,12 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
     const { uploadFiles, isUploading } = useMediaUpload();
 
     // Estado del formulario simplificado
-    const [formData, setFormData] = useState<{ title: string; caption: string; tags: string[]; media: PostMediaItem[] }>({
+    const [formData, setFormData] = useState<{ title: string; caption: string; tags: string[]; media: PostMediaItem[]; is_published: boolean }>({
         title: post?.title || "",
         caption: post?.caption || "",
         tags: post?.tags || [],
         media: post?.media || [],
+        is_published: post?.is_published ?? true,
     });
 
     // Estado para input de palabras clave
@@ -263,7 +264,7 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
             }
 
             // Preparar datos para guardar con ordenamiento preservado
-            const postData = {
+            const postData: PostFormData = {
                 id: post?.id || tempCuid,
                 title: formData.title,
                 caption: formData.caption || null,
@@ -281,23 +282,30 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
                 cta_action: "whatsapp" as const,
                 cta_link: null,
                 is_featured: false,
-                is_published: false,
-            } as PostFormData;
+                is_published: formData.is_published,
+            };
 
-            console.log("Guardando post con datos:", postData);
+            let result;
+            if (mode === "create") {
+                result = await createStudioPostBySlug(studioSlug, postData);
+            } else {
+                if (!post?.id) {
+                    toast.error("ID del post no encontrado");
+                    return;
+                }
+                result = await updateStudioPost(post.id, postData);
+            }
 
-            // Aquí iría la lógica para guardar el post
-            // Por ahora simulamos el guardado
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
-
-            // Redirigir a la lista de posts
-            router.push(`/${studioSlug}/studio/builder/posts`);
+            if (result.success) {
+                toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
+                router.push(`/${studioSlug}/studio/builder/content/posts`);
+            } else {
+                toast.error(result.error || "Error al guardar el post");
+            }
 
         } catch (error) {
             console.error("Error saving post:", error);
-            toast.error("Error al guardar el post");
+            toast.error(error instanceof Error ? error.message : "Error al guardar el post");
         } finally {
             setIsSaving(false);
         }
@@ -344,9 +352,16 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
                 <div className="space-y-6">
                     <ZenCard>
                         <ZenCardHeader>
-                            <ZenCardTitle>
-                                {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
-                            </ZenCardTitle>
+                            <div className="flex items-center justify-between">
+                                <ZenCardTitle>
+                                    {mode === "create" ? "Crear Nuevo Post" : "Editar Post"}
+                                </ZenCardTitle>
+                                <ZenSwitch
+                                    checked={formData.is_published}
+                                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
+                                    label="Publicado"
+                                />
+                            </div>
                         </ZenCardHeader>
 
                         <ZenCardContent className="space-y-4">

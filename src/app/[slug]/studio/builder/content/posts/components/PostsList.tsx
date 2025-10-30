@@ -7,6 +7,7 @@ import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
 import { ZenSelect } from "@/components/ui/zen";
 import { Loader2 } from "lucide-react";
 import { StudioPost } from "@/types/studio-posts";
+import { toast } from "sonner";
 
 interface PostsListProps {
     studioSlug: string;
@@ -16,21 +17,40 @@ export function PostsList({ studioSlug }: PostsListProps) {
     const [posts, setPosts] = useState<StudioPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>("all");
+    const [error, setError] = useState<string | null>(null);
 
     const loadPosts = useCallback(async () => {
         setLoading(true);
+        setError(null);
         try {
-            const filters = filter === "all" ? undefined : {
-                is_published: filter === "published",
-                category: filter !== "all" && filter !== "published" ? filter as "portfolio" | "blog" | "promo" : undefined,
-            };
+            // Construir filtros según el valor seleccionado
+            let filters;
+            if (filter === "all") {
+                filters = undefined; // Traer todos los posts (publicados y no publicados)
+            } else if (filter === "published") {
+                filters = { is_published: true };
+            } else {
+                // Filtro por categoría (traer todos de esa categoría, publicados y no publicados)
+                filters = {
+                    category: filter as "portfolio" | "blog" | "promo",
+                };
+            }
 
             const result = await getStudioPostsBySlug(studioSlug, filters);
             if (result.success) {
-                setPosts(result.data);
+                setPosts(result.data || []);
+            } else {
+                const errorMessage = result.error || "Error al cargar posts";
+                setError(errorMessage);
+                toast.error(errorMessage);
+                setPosts([]);
             }
         } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Error inesperado al cargar posts";
             console.error("Error loading posts:", error);
+            setError(errorMessage);
+            toast.error(errorMessage);
+            setPosts([]);
         } finally {
             setLoading(false);
         }
@@ -52,6 +72,20 @@ export function PostsList({ studioSlug }: PostsListProps) {
         return (
             <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                <p className="text-red-400 text-sm">{error}</p>
+                <button
+                    onClick={() => loadPosts()}
+                    className="text-blue-400 hover:text-blue-300 text-sm underline"
+                >
+                    Intentar nuevamente
+                </button>
             </div>
         );
     }
