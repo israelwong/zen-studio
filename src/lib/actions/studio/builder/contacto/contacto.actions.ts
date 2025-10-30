@@ -26,7 +26,7 @@ export async function actualizarContacto(studioSlug: string, data: Partial<Conta
         }
 
         // Actualizar datos del studio
-        const updateData: { description?: string; address?: string } = {};
+        const updateData: { description?: string; address?: string; maps_url?: string } = {};
 
         if (data.descripcion !== undefined) {
             updateData.description = data.descripcion;
@@ -34,6 +34,10 @@ export async function actualizarContacto(studioSlug: string, data: Partial<Conta
 
         if (data.direccion !== undefined) {
             updateData.address = data.direccion;
+        }
+
+        if (data.google_maps_url !== undefined) {
+            updateData.maps_url = data.google_maps_url;
         }
 
         // Solo actualizar si hay datos que cambiar
@@ -45,9 +49,10 @@ export async function actualizarContacto(studioSlug: string, data: Partial<Conta
             console.log('✅ [actualizarContacto] Studio updated successfully');
         }
 
-        // Revalidar la página para reflejar los cambios
+        // Revalidar las páginas para reflejar los cambios
         revalidatePath(`/studio/${studioSlug}/builder/contacto`);
-        console.log('✅ [actualizarContacto] Page revalidated');
+        revalidatePath(`/studio/${studioSlug}/builder/identidad`);
+        console.log('✅ [actualizarContacto] Pages revalidated');
 
         return { success: true };
     } catch (error) {
