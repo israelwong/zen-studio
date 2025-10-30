@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
-import { PersonalList, PersonalSkeletonZen } from './components';
+import { PersonalList, PersonalSkeletonZen } from './';
 import { obtenerPersonal } from '@/lib/actions/studio/config/personal.actions';
 import type { PersonalData } from '@/lib/actions/schemas/personal-schemas';
 

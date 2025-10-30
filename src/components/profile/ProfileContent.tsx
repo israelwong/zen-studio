@@ -68,6 +68,9 @@ export function ProfileContent({
     // Post detail content (para editor)
     if (variant === 'post-detail') {
         const post = data?.post;
+        const logoUrl = data?.logo_url as string | null | undefined;
+        const studioSlug = data?.studioSlug as string | undefined;
+        
         if (!post) {
             return (
                 <div className="p-8 text-center">
@@ -80,7 +83,7 @@ export function ProfileContent({
                 </div>
             );
         }
-        return <PostDetailSection post={post} />;
+        return <PostDetailSection post={post} logoUrl={logoUrl} studioSlug={studioSlug} />;
     }
 
     // Portfolio content

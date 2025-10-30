@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Calendar } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
-import { SectionLayout, StorageIndicator } from '../components';
+import { SectionLayout, StorageIndicator } from '../../components';
 import { AgendamientoWrapper } from './components';
 import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
 import type { BuilderProfileData } from '@/types/builder-profile';
