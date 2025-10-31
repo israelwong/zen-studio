@@ -313,26 +313,32 @@ export async function updateStudioPost(
             if (validatedData.cover_index !== undefined) updateData.cover_index = validatedData.cover_index;
             if (validatedData.event_type_id !== undefined) updateData.event_type_id = validatedData.event_type_id ?? null;
             if (validatedData.tags !== undefined) updateData.tags = validatedData.tags;
-            
+
             // Verificar estado actual del post para aplicar lógica de destacado
             const currentPost = await tx.studio_posts.findUnique({
                 where: { id: postId },
                 select: { is_published: true, is_featured: true },
             });
 
-            // Solo actualizar is_featured si se proporciona - NO modificar is_published
-            if (validatedData.is_featured !== undefined) {
-                updateData.is_featured = validatedData.is_featured;
-                // NO publicar automáticamente al destacar
-                // Cada función debe cumplir su función específica sin alterar otras propiedades
+            // Solo actualizar is_featured si se proporciona explícitamente en data
+            // Si se destaca un post no publicado, publicarlo automáticamente
+            if (data.is_featured !== undefined) {
+                updateData.is_featured = data.is_featured;
+
+                // Si se destaca un post no publicado, publicarlo automáticamente
+                if (data.is_featured && !currentPost?.is_published) {
+                    updateData.is_published = true;
+                    updateData.published_at = new Date();
+                }
             }
 
-            // Manejar is_published y published_at (solo si se proporciona explícitamente)
-            if (validatedData.is_published !== undefined) {
-                updateData.is_published = validatedData.is_published;
-                updateData.published_at = validatedData.is_published ? new Date() : null;
+            // Manejar is_published y published_at (solo si se proporciona explícitamente en data)
+            // NO usar validatedData porque puede tener valores por defecto
+            if (data.is_published !== undefined) {
+                updateData.is_published = data.is_published;
+                updateData.published_at = data.is_published ? new Date() : null;
                 // Si se despublica y está destacado, quitar también el destacado
-                if (!validatedData.is_published && currentPost?.is_featured) {
+                if (!data.is_published && currentPost?.is_featured) {
                     updateData.is_featured = false;
                 }
             }
@@ -446,7 +452,7 @@ export async function toggleStudioPostPublish(postId: string) {
         }
 
         const newPublishedState = !post.is_published;
-        
+
         // Si se despublica y está destacado, quitar también el destacado
         const updateData: {
             is_published: boolean;

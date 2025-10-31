@@ -112,10 +112,14 @@ export function PostCard({ post, studioSlug, onUpdate }: PostCardProps) {
         const optimisticPost: StudioPost = {
             ...localPost,
             is_featured: newFeaturedState,
-            // NO cambiar is_published al destacar/quitar destacado
-            // Mantener el estado de publicación actual en ambos casos
-            is_published: localPost.is_published,
-            published_at: localPost.published_at
+            // Si se destaca un post no publicado, publicarlo automáticamente
+            // Si se quita el destacado, mantener el estado de publicación actual
+            is_published: newFeaturedState && !localPost.is_published
+                ? true
+                : localPost.is_published,
+            published_at: newFeaturedState && !localPost.is_published
+                ? new Date()
+                : localPost.published_at
         };
         setLocalPost(optimisticPost);
         onUpdate(optimisticPost);
@@ -126,19 +130,18 @@ export function PostCard({ post, studioSlug, onUpdate }: PostCardProps) {
                 is_featured: newFeaturedState
             });
             if (result.success) {
-                toast.success(
-                    newFeaturedState ? "Post destacado" : "Post desmarcado como destacado"
-                );
-                // Actualizar con datos del servidor pero preservar is_published del estado optimista
-                // porque solo actualizamos is_featured, no is_published
+                // Si se destacó un post no publicado, mencionar que se publicó automáticamente
+                if (newFeaturedState && !localPost.is_published) {
+                    toast.success("Post destacado y publicado automáticamente");
+                } else {
+                    toast.success(
+                        newFeaturedState ? "Post destacado" : "Post desmarcado como destacado"
+                    );
+                }
+                // Actualizar con datos del servidor (que incluyen la publicación automática si aplica)
                 if (result.data) {
-                    const updatedPost = {
-                        ...result.data,
-                        is_published: optimisticPost.is_published, // Preservar estado optimista
-                        published_at: optimisticPost.published_at
-                    };
-                    setLocalPost(updatedPost);
-                    onUpdate(updatedPost);
+                    setLocalPost(result.data);
+                    onUpdate(result.data);
                 } else {
                     // Fallback: usar el estado optimista que ya está aplicado
                     // PostsList recargará desde el servidor en background
@@ -345,7 +348,14 @@ export function PostCard({ post, studioSlug, onUpdate }: PostCardProps) {
                             {localPost.is_published ? 'Publicado' : 'No publicado'}
                         </span>
 
-                        {/* Separador */}
+                        {/* Indicador de destacado */}
+                        {localPost.is_featured && (
+                            <span title="Post destacado" className="flex items-center">
+                                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            </span>
+                        )}
+
+                        {/* Separador y fecha de publicación - mostrar siempre si existe */}
                         {publishedDate && (
                             <>
                                 <span className="text-zinc-600">—</span>
