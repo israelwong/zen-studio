@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { ZenButton, ZenInput, ZenTextarea, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenSwitch, ZenBadge, ZenTagModal } from "@/components/ui/zen";
+import { ZenButton, ZenInput, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenSwitch, ZenBadge, ZenTagModal } from "@/components/ui/zen";
 import { MobilePreviewFull } from "../../../components/MobilePreviewFull";
 import { ContentBlocksEditor } from "@/components/content-blocks";
 import { ContentBlock } from "@/types/content-blocks";
@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import cuid from "cuid";
 import Image from "next/image";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
+import { calculateTotalStorage, formatBytes } from "@/lib/utils/storage";
 
 interface PortfolioEditorProps {
     studioSlug: string;
@@ -60,6 +61,83 @@ function generateSlug(title: string): string {
         .replace(/(^-|-$)/g, "");
 }
 
+// Componente para inyectar botones después de cada bloque renderizado por ContentBlocksEditor
+function InjectAddButtons({
+    contentBlocks,
+    activeBlockId,
+    onInsertAt
+}: {
+    contentBlocks: ContentBlock[];
+    activeBlockId: string | null;
+    onInsertAt: (index: number) => void;
+}) {
+    useEffect(() => {
+        // Remover todos los botones inyectados cuando se arrastra
+        if (activeBlockId) {
+            document.querySelectorAll('[data-injected-add-button]').forEach(btn => btn.remove());
+            return;
+        }
+
+        if (contentBlocks.length === 0) {
+            return;
+        }
+
+        // Esperar a que el DOM se actualice
+        const timeoutId = setTimeout(() => {
+            // Para cada bloque, agregar botón después
+            contentBlocks.forEach((block, index) => {
+                const blockElement = document.getElementById(block.id);
+                if (!blockElement) return;
+
+                // Verificar si ya existe un botón inyectado para este bloque
+                const existingButton = document.querySelector(`[data-injected-add-button="${block.id}"]`);
+                if (existingButton) return;
+
+                // Buscar el contenedor del bloque (el div con bg-zinc-800 que contiene el bloque)
+                const blockContainer = blockElement.closest('div[class*="bg-zinc-800"]') ||
+                    blockElement.parentElement?.querySelector('div[class*="bg-zinc-800"]') ||
+                    blockElement.parentElement;
+
+                if (!blockContainer) return;
+
+                // Crear botón usando React.createElement para mejor integración
+                const button = document.createElement('button');
+                button.setAttribute('data-injected-add-button', block.id);
+                button.className = 'w-full py-2 px-4 text-sm text-zinc-500 border border-dashed border-zinc-800 rounded-md transition-all bg-zinc-900 hover:bg-zinc-400 hover:text-zinc-900 hover:border-zinc-400 mt-2';
+
+                // Crear el icono SVG
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('class', 'w-4 h-4 inline mr-2');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', 'currentColor');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('d', 'M12 4v16m8-8H4');
+                svg.appendChild(path);
+
+                button.appendChild(svg);
+                button.appendChild(document.createTextNode('Agregar componente aquí'));
+
+                button.onclick = () => onInsertAt(index + 1);
+
+                // Insertar después del contenedor del bloque
+                blockContainer.insertAdjacentElement('afterend', button);
+            });
+        }, 100);
+
+        return () => {
+            clearTimeout(timeoutId);
+            // Cleanup: remover botones inyectados
+            document.querySelectorAll('[data-injected-add-button]').forEach(btn => btn.remove());
+        };
+    }, [contentBlocks, activeBlockId, onInsertAt]);
+
+    return null;
+}
+
 export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: PortfolioEditorProps) {
     const router = useRouter();
     const tempCuid = useTempCuid();
@@ -81,13 +159,23 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
         cta_action: portfolio?.cta_action || "whatsapp",
         cta_link: portfolio?.cta_link || "",
         is_featured: portfolio?.is_featured || false,
-        is_published: portfolio?.is_published || false,
+        is_published: portfolio?.is_published ?? true,
         content_blocks: portfolio?.content_blocks || [],
         order: portfolio?.order || 0,
     });
 
-    // Estado para bloques de contenido
-    const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(portfolio?.content_blocks || []);
+    // Estado para bloques de contenido - Asegurar que todos tengan IDs
+    const normalizeBlocks = (blocks: ContentBlock[]): ContentBlock[] => {
+        return blocks.map((block, index) => ({
+            ...block,
+            id: block.id || `block_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+            order: block.order ?? index,
+        }));
+    };
+
+    const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>(
+        normalizeBlocks(portfolio?.content_blocks || [])
+    );
 
     // Estado para preview
     const [previewData, setPreviewData] = useState<PreviewData | null>(null);
@@ -98,9 +186,54 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
     const [isSaving, setIsSaving] = useState(false);
     const [showTagModal, setShowTagModal] = useState(false);
     const [showComponentSelector, setShowComponentSelector] = useState(false);
+    const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
     const [isUploadingCover, setIsUploadingCover] = useState(false);
     const [isDragOverCover, setIsDragOverCover] = useState(false);
+    const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
     const { uploadFiles } = useMediaUpload();
+
+    // Detectar cuando se está arrastrando desde ContentBlocksEditor
+    useEffect(() => {
+        let isDragging = false;
+
+        const handlePointerDown = (e: PointerEvent) => {
+            const target = e.target as HTMLElement;
+            // Detectar si se hace clic en el handle de arrastre o cerca
+            if (target.closest('.cursor-grab') ||
+                target.closest('[style*="cursor: grab"]') ||
+                target.closest('svg[viewBox="0 0 24 24"]') ||
+                target.closest('path[d*="M4 8h16"]')) {
+                isDragging = true;
+                setActiveBlockId('dragging');
+            }
+        };
+
+        const handlePointerMove = () => {
+            if (isDragging) {
+                setActiveBlockId('dragging');
+            }
+        };
+
+        const handlePointerUp = () => {
+            if (isDragging) {
+                // Delay para permitir que la animación termine
+                setTimeout(() => {
+                    setActiveBlockId(null);
+                    isDragging = false;
+                }, 300);
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+        document.addEventListener('pointermove', handlePointerMove);
+        document.addEventListener('pointerup', handlePointerUp);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+            document.removeEventListener('pointermove', handlePointerMove);
+            document.removeEventListener('pointerup', handlePointerUp);
+        };
+    }, []);
 
     // Generar slug automáticamente cuando cambia el título
     useEffect(() => {
@@ -153,6 +286,12 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
 
         loadPreviewData();
     }, [studioSlug]);
+
+    // Calcular tamaño total de todos los componentes
+    const totalComponentsSize = useMemo(() => {
+        const allMedia = contentBlocks.flatMap(block => block.media || []);
+        return calculateTotalStorage(allMedia);
+    }, [contentBlocks]);
 
     // Crear preview data con portfolio temporal usando useMemo para evitar loops
     const finalPreviewData = useMemo(() => {
@@ -434,14 +573,41 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
         const newBlock: ContentBlock = {
             id: generateId(),
             type: component.type,
-            order: contentBlocks.length,
+            order: insertAtIndex !== undefined ? insertAtIndex : contentBlocks.length,
             presentation: 'block',
             media: [],
             config
         };
 
-        setContentBlocks([...contentBlocks, newBlock]);
+        const indexToInsert = insertAtIndex !== undefined ? insertAtIndex : contentBlocks.length;
+
+        if (indexToInsert < contentBlocks.length) {
+            // Insertar en posición específica
+            const newBlocks = [...contentBlocks];
+            newBlocks.splice(indexToInsert, 0, newBlock);
+            // Reordenar los orders
+            newBlocks.forEach((block, index) => {
+                block.order = index;
+            });
+            setContentBlocks(newBlocks);
+        } else {
+            // Agregar al final
+            setContentBlocks([...contentBlocks, newBlock]);
+        }
+
         setShowComponentSelector(false);
+        setInsertAtIndex(undefined);
+
+        // Scroll automático al nuevo componente después de un breve delay
+        setTimeout(() => {
+            const newBlockElement = document.getElementById(newBlock.id);
+            if (newBlockElement) {
+                newBlockElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+        }, 100);
     };
 
     // Manejar upload de cover
@@ -541,127 +707,201 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
                                     {mode === "create" ? "Crear Nuevo Portfolio" : "Editar Portfolio"}
                                 </ZenCardTitle>
 
-                                {/* Botón de Destacar */}
-                                <ZenButton
-                                    variant={formData.is_featured ? "primary" : "outline"}
-                                    size="sm"
-                                    onClick={() => handleInputChange("is_featured", !formData.is_featured)}
-                                    className={`gap-2 transition-all ${formData.is_featured
-                                        ? "bg-yellow-500 hover:bg-yellow-600 text-black"
-                                        : "hover:bg-yellow-500/10 hover:border-yellow-500/50"
-                                        }`}
-                                >
-                                    <Star className={`h-4 w-4 ${formData.is_featured ? "fill-current" : ""}`} />
-                                    {formData.is_featured ? "Destacado" : "Destacar"}
-                                </ZenButton>
+                                <div className="flex items-center gap-4">
+                                    {/* Switch de Publicado */}
+                                    <ZenSwitch
+                                        checked={formData.is_published}
+                                        onCheckedChange={(checked) => handleInputChange("is_published", checked)}
+                                        label="Publicado"
+                                    />
+
+                                    {/* Botón de Destacar */}
+                                    <ZenButton
+                                        type="button"
+                                        variant={formData.is_featured ? undefined : "outline"}
+                                        size="sm"
+                                        onClick={() => handleInputChange("is_featured", !formData.is_featured)}
+                                        className={`rounded-full gap-2 transition-all ${formData.is_featured
+                                            ? "bg-amber-500 hover:bg-amber-600 text-black border-amber-500"
+                                            : ""
+                                            }`}
+                                    >
+                                        <Star className={`h-4 w-4 ${formData.is_featured ? 'fill-current' : ''}`} />
+                                        Destacar
+                                    </ZenButton>
+                                </div>
                             </div>
                         </ZenCardHeader>
 
                         <ZenCardContent className="space-y-4">
-                            {/* Título */}
-                            <ZenInput
-                                label="Título"
-                                value={formData.title || ""}
-                                onChange={(e) => handleInputChange("title", e.target.value)}
-                                placeholder="Título del portfolio"
-                            />
-
-                            {/* Slug */}
-                            <ZenInput
-                                label="Slug (URL)"
-                                value={formData.slug || ""}
-                                onChange={(e) => handleInputChange("slug", e.target.value)}
-                                placeholder="slug-del-portfolio"
-                                hint="Se genera automáticamente desde el título. Puedes editarlo manualmente."
-                            />
-
-                            {/* Carátula */}
-                            <div className="space-y-2">
-                                <label className="block text-sm font-medium text-zinc-300">
-                                    Carátula del Portfolio
-                                </label>
-                                <p className="text-xs text-zinc-500 mb-3">
-                                    Esta imagen se mostrará en el listado de portfolios
-                                </p>
-                                
-                                {formData.cover_image_url ? (
-                                    <div className="relative group">
-                                        <div className="aspect-square relative bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
-                                            <Image
-                                                src={formData.cover_image_url}
-                                                alt="Carátula del portfolio"
-                                                fill
-                                                className="object-cover"
-                                            />
-                                            <button
-                                                onClick={handleRemoveCover}
-                                                className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </button>
+                            {/* Layout 3 columnas: Portada | Título y Slug */}
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Columna 1: Portada */}
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-zinc-300">
+                                        Portada
+                                    </label>
+                                    {formData.cover_image_url ? (
+                                        <div className="relative group">
+                                            <div className="aspect-square relative bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
+                                                <Image
+                                                    src={formData.cover_image_url}
+                                                    alt="Carátula del portfolio"
+                                                    fill
+                                                    className="object-cover"
+                                                />
+                                                <button
+                                                    onClick={handleRemoveCover}
+                                                    className="absolute top-2 right-2 p-2 bg-red-600 hover:bg-red-700 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ) : (
-                                    <label className="block">
-                                        <div
-                                            className={`aspect-square border-2 border-dashed rounded-lg transition-colors cursor-pointer flex items-center justify-center bg-zinc-800/30 ${
-                                                isDragOverCover
+                                    ) : (
+                                        <label className="block">
+                                            <div
+                                                className={`aspect-square border-2 border-dashed rounded-lg transition-colors cursor-pointer flex items-center justify-center bg-zinc-800/30 ${isDragOverCover
                                                     ? 'border-emerald-500 bg-emerald-500/10'
                                                     : 'border-zinc-700 hover:border-emerald-500'
-                                            }`}
-                                            onDragOver={handleCoverDragOver}
-                                            onDragLeave={handleCoverDragLeave}
-                                            onDrop={handleCoverDrop}
-                                        >
-                                            {isUploadingCover ? (
-                                                <div className="flex flex-col items-center gap-2">
-                                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent"></div>
-                                                    <span className="text-sm text-zinc-400">Subiendo...</span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col items-center gap-2 text-zinc-400">
-                                                    <Upload className="h-8 w-8" />
-                                                    <span className="text-sm">Haz clic para subir carátula</span>
-                                                    <span className="text-xs">o arrastra una imagen aquí</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleCoverFileInput}
-                                            className="hidden"
-                                            disabled={isUploadingCover}
-                                        />
-                                    </label>
-                                )}
+                                                    }`}
+                                                onDragOver={handleCoverDragOver}
+                                                onDragLeave={handleCoverDragLeave}
+                                                onDrop={handleCoverDrop}
+                                            >
+                                                {isUploadingCover ? (
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent"></div>
+                                                        <span className="text-sm text-zinc-400">Subiendo...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-2 text-zinc-400">
+                                                        <Upload className="h-8 w-8" />
+                                                        <span className="text-sm text-center px-2">Haz clic para subir</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleCoverFileInput}
+                                                className="hidden"
+                                                disabled={isUploadingCover}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+
+                                {/* Columnas 2-3: Título y Slug */}
+                                <div className="col-span-2 space-y-4">
+                                    {/* Título */}
+                                    <ZenInput
+                                        label="Título"
+                                        value={formData.title || ""}
+                                        onChange={(e) => handleInputChange("title", e.target.value)}
+                                        placeholder="Título del portfolio"
+                                    />
+
+                                    {/* Slug */}
+                                    <ZenInput
+                                        label="Slug (URL)"
+                                        value={formData.slug || ""}
+                                        placeholder="slug-del-portfolio"
+                                        hint="Se genera automáticamente desde el título. Solo lectura."
+                                        readOnly
+                                    />
+                                </div>
                             </div>
 
-                            {/* Descripción */}
-                            <ZenTextarea
-                                label="Descripción"
-                                value={formData.description || ""}
-                                onChange={(e) => handleInputChange("description", e.target.value)}
-                                placeholder="Descripción del portfolio"
-                                rows={4}
+                            {/* Divisor superior */}
+                            <div className="border-t border-dotted border-zinc-800 my-8" />
+
+                            {/* Sistema de Bloques de Contenido */}
+                            <div className="space-y-2">
+                                {/* Cabecera informativa única - Siempre visible */}
+                                <div className="mb-4 pb-4 border-b border-zinc-800">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-zinc-400">
+                                            Componentes ({contentBlocks.length})
+                                        </h3>
+                                        {contentBlocks.length > 0 && (
+                                            <span className="text-xs text-zinc-500">
+                                                {formatBytes(totalComponentsSize)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {contentBlocks.length > 0 && (
+                                        <p className="text-xs text-zinc-500 mt-1">
+                                            Arrastra para reordenar o agrega nuevos componentes entre los existentes
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div data-content-blocks-container className="space-y-2">
+                                    {/* Usar un solo ContentBlocksEditor con todos los bloques para ordenamiento */}
+                                    <ContentBlocksEditor
+                                        blocks={contentBlocks}
+                                        onBlocksChange={(updatedBlocksOrFn) => {
+                                            // Manejar tanto array como función de actualización
+                                            setContentBlocks(prev => {
+                                                const updatedBlocks = typeof updatedBlocksOrFn === 'function'
+                                                    ? updatedBlocksOrFn(prev)
+                                                    : updatedBlocksOrFn;
+
+                                                // Log solo para eliminación
+                                                if (updatedBlocks.length < prev.length) {
+                                                    const removedIds = prev.map(b => b.id).filter(id => !updatedBlocks.find(b => b.id === id));
+                                                    console.log('🟢 [PortfolioEditor] ⚠️ BLOQUE ELIMINADO:', {
+                                                        previousCount: prev.length,
+                                                        newCount: updatedBlocks.length,
+                                                        removedIds,
+                                                        previousIds: prev.map(b => ({ id: b.id, order: b.order })),
+                                                        newIds: updatedBlocks.map(b => ({ id: b.id, order: b.order }))
+                                                    });
+                                                }
+
+                                                // Siempre actualizar con el array que viene de ContentBlocksEditor
+                                                return updatedBlocks.map((block, index) => ({
+                                                    ...block,
+                                                    order: index
+                                                }));
+                                            });
+                                        }}
+                                        studioSlug={studioSlug}
+                                        hideHeader={true}
+                                        onAddComponentClick={() => {
+                                            // Cuando se hace clic en agregar desde ContentBlocksEditor, usar nuestro selector completo
+                                            setInsertAtIndex(undefined);
+                                            setShowComponentSelector(true);
+                                        }}
+                                    />
+
+                                    {/* Inyectar botones después de cada bloque usando useEffect - Solo si hay componentes */}
+                                    {contentBlocks.length > 0 && (
+                                        <InjectAddButtons
+                                            contentBlocks={contentBlocks}
+                                            activeBlockId={activeBlockId}
+                                            onInsertAt={(index) => {
+                                                setInsertAtIndex(index);
+                                                setShowComponentSelector(true);
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Modal Selector - Compartido para todos los botones de agregar */}
+                            <CategorizedComponentSelector
+                                isOpen={showComponentSelector}
+                                onClose={() => {
+                                    setShowComponentSelector(false);
+                                    setInsertAtIndex(undefined);
+                                }}
+                                onSelect={handleAddComponentFromSelector}
                             />
 
-                            {/* //! Sistema de Bloques de Contenido */}
-                            <div>
-                                <ContentBlocksEditor
-                                    blocks={contentBlocks}
-                                    onBlocksChange={setContentBlocks}
-                                    studioSlug={studioSlug}
-                                    onAddComponentClick={() => setShowComponentSelector(true)}
-                                    customSelector={
-                                        <CategorizedComponentSelector
-                                            isOpen={showComponentSelector}
-                                            onClose={() => setShowComponentSelector(false)}
-                                            onSelect={handleAddComponentFromSelector}
-                                        />
-                                    }
-                                />
-                            </div>
+                            {/* Divisor inferior */}
+                            <div className="border-t border-dotted border-zinc-800 my-8" />
 
                             {/* Categoría y Tipo de Evento */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -78,11 +78,12 @@ function getComponentDisplayName(block: ContentBlock): string {
 
 interface ContentBlocksEditorProps {
     blocks: ContentBlock[];
-    onBlocksChange: (blocks: ContentBlock[]) => void;
+    onBlocksChange: (blocks: ContentBlock[] | ((prev: ContentBlock[]) => ContentBlock[])) => void;
     studioSlug: string;
     className?: string;
     customSelector?: React.ReactNode;
     onAddComponentClick?: () => void;
+    hideHeader?: boolean;
 }
 
 // Componentes esenciales - Simplificados
@@ -186,7 +187,8 @@ export function ContentBlocksEditor({
     studioSlug,
     className = '',
     customSelector,
-    onAddComponentClick
+    onAddComponentClick,
+    hideHeader = false
 }: ContentBlocksEditorProps) {
     const [activeBlock, setActiveBlock] = useState<ContentBlock | null>(null);
     const [showComponentSelector, setShowComponentSelector] = useState(false);
@@ -201,6 +203,30 @@ export function ContentBlocksEditor({
         useSensor(PointerSensor, {
             activationConstraint: {
                 distance: 8,
+            },
+            // Cancelar drag si se hace click en un botón de eliminar o cualquier botón
+            shouldCancelStart: (event: PointerEvent) => {
+                const target = event.target as HTMLElement;
+
+                // Si es un botón de eliminar o está dentro de uno, cancelar SIEMPRE
+                const deleteButton = target.closest('[data-delete-button="true"]');
+                if (deleteButton) {
+                    console.log('🟠 [SENSOR] Cancelando drag - botón de eliminar detectado');
+                    return true;
+                }
+
+                // Si es cualquier botón (excepto el handle de arrastre), cancelar
+                if (target.tagName === 'BUTTON' || target.closest('button')) {
+                    // Pero permitir drag si es el handle de arrastre
+                    const isDragHandle = target.closest('[class*="cursor-grab"]') ||
+                        target.closest('svg[viewBox="0 0 24 24"]')?.parentElement?.classList.contains('cursor-grab');
+                    if (!isDragHandle) {
+                        console.log('🟠 [SENSOR] Cancelando drag - botón detectado');
+                    }
+                    return !isDragHandle;
+                }
+
+                return false;
             },
         }),
         useSensor(KeyboardSensor, {
@@ -421,17 +447,62 @@ export function ContentBlocksEditor({
 
     // Función para solicitar eliminación con confirmación
     const requestDeleteBlock = useCallback((block: ContentBlock) => {
+        console.log('🟠 [requestDeleteBlock] Iniciando eliminación:', {
+            blockId: block.id,
+            blockType: block.type,
+            blockOrder: block.order,
+            hasMedia: block.media && block.media.length > 0,
+            mediaCount: block.media?.length || 0,
+            currentBlocksCount: blocks.length,
+            currentBlocksIds: blocks.map(b => ({ id: b.id, order: b.order })),
+            timestamp: new Date().toISOString()
+        });
+
         // Si tiene media asociada, mostrar modal de confirmación
         if (block.media && block.media.length > 0) {
+            console.log('🟠 [requestDeleteBlock] Bloque tiene media, mostrando modal');
             setBlockToDelete(block);
             setShowDeleteModal(true);
         } else {
+            console.log('🟠 [requestDeleteBlock] Bloque sin media, eliminando directamente');
             // Si no tiene media, eliminar con animación
             setDeletingBlocks(prev => new Set(prev).add(block.id));
-            
+
             // Esperar a que termine la animación antes de eliminar del estado
             setTimeout(() => {
-                onBlocksChange(blocks.filter(b => b.id !== block.id));
+                console.log('🟠 [requestDeleteBlock] Ejecutando eliminación después de timeout:', {
+                    blockIdToDelete: block.id,
+                    timestamp: new Date().toISOString()
+                });
+
+                onBlocksChange((prevBlocks: ContentBlock[]) => {
+                    console.log('🟠 [requestDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
+                        prevBlocksCount: prevBlocks.length,
+                        prevBlocksIds: prevBlocks.map(b => ({ id: b.id, order: b.order })),
+                        blockIdToDelete: block.id
+                    });
+
+                    const filteredBlocks = prevBlocks.filter((b: ContentBlock) => {
+                        const shouldKeep = b.id !== block.id;
+                        if (!shouldKeep) {
+                            console.log('🟠 [requestDeleteBlock] FILTRANDO BLOQUE:', {
+                                removedId: b.id,
+                                removedOrder: b.order,
+                                removedType: b.type
+                            });
+                        }
+                        return shouldKeep;
+                    });
+
+                    console.log('🟠 [requestDeleteBlock] onBlocksChange - Estado después de filtrar:', {
+                        filteredBlocksCount: filteredBlocks.length,
+                        filteredBlocksIds: filteredBlocks.map(b => ({ id: b.id, order: b.order })),
+                        removedCount: prevBlocks.length - filteredBlocks.length
+                    });
+
+                    return filteredBlocks;
+                });
+
                 setDeletingBlocks(prev => {
                     const newSet = new Set(prev);
                     newSet.delete(block.id);
@@ -440,27 +511,71 @@ export function ContentBlocksEditor({
                 toast.success('Componente eliminado correctamente');
             }, 300); // Duración de la animación CSS
         }
-    }, [blocks, onBlocksChange]);
+    }, [onBlocksChange, blocks]);
 
     // Función para confirmar eliminación
     const confirmDeleteBlock = useCallback(() => {
         if (blockToDelete) {
-            setDeletingBlocks(prev => new Set(prev).add(blockToDelete.id));
-            
+            const blockIdToDelete = blockToDelete.id;
+            console.log('🟡 [confirmDeleteBlock] Iniciando eliminación confirmada:', {
+                blockId: blockIdToDelete,
+                blockType: blockToDelete.type,
+                blockOrder: blockToDelete.order,
+                currentBlocksCount: blocks.length,
+                currentBlocksIds: blocks.map(b => ({ id: b.id, order: b.order })),
+                timestamp: new Date().toISOString()
+            });
+
+            setDeletingBlocks(prev => new Set(prev).add(blockIdToDelete));
+
             // Esperar a que termine la animación antes de eliminar del estado
             setTimeout(() => {
-                onBlocksChange(blocks.filter(block => block.id !== blockToDelete.id));
+                console.log('🟡 [confirmDeleteBlock] Ejecutando eliminación después de timeout:', {
+                    blockIdToDelete,
+                    timestamp: new Date().toISOString()
+                });
+
+                onBlocksChange((prevBlocks: ContentBlock[]) => {
+                    console.log('🟡 [confirmDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
+                        prevBlocksCount: prevBlocks.length,
+                        prevBlocksIds: prevBlocks.map(b => ({ id: b.id, order: b.order })),
+                        blockIdToDelete
+                    });
+
+                    const filteredBlocks = prevBlocks.filter((block: ContentBlock) => {
+                        const shouldKeep = block.id !== blockIdToDelete;
+                        if (!shouldKeep) {
+                            console.log('🟡 [confirmDeleteBlock] FILTRANDO BLOQUE:', {
+                                removedId: block.id,
+                                removedOrder: block.order,
+                                removedType: block.type
+                            });
+                        }
+                        return shouldKeep;
+                    });
+
+                    console.log('🟡 [confirmDeleteBlock] onBlocksChange - Estado después de filtrar:', {
+                        filteredBlocksCount: filteredBlocks.length,
+                        filteredBlocksIds: filteredBlocks.map(b => ({ id: b.id, order: b.order })),
+                        removedCount: prevBlocks.length - filteredBlocks.length
+                    });
+
+                    return filteredBlocks;
+                });
+
                 setDeletingBlocks(prev => {
                     const newSet = new Set(prev);
-                    newSet.delete(blockToDelete.id);
+                    newSet.delete(blockIdToDelete);
                     return newSet;
                 });
                 toast.success('Componente eliminado correctamente');
             }, 300); // Duración de la animación CSS
+        } else {
+            console.log('🟡 [confirmDeleteBlock] ERROR: blockToDelete es null');
         }
         setShowDeleteModal(false);
         setBlockToDelete(null);
-    }, [blockToDelete, blocks, onBlocksChange]);
+    }, [blockToDelete, onBlocksChange, blocks]);
 
     // Función para cancelar eliminación
     const cancelDeleteBlock = useCallback(() => {
@@ -508,37 +623,39 @@ export function ContentBlocksEditor({
     return (
         <div className={`space-y-4 ${className}`}>
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1 min-w-0 w-full sm:w-auto sm:flex-1">
-                    <h3 className="text-lg font-semibold text-zinc-300 overflow-hidden text-ellipsis whitespace-nowrap">
-                        Componentes del Post ({blocks.length})
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                        <span className="text-zinc-500">Almacenamiento:</span>
-                        <span className={`font-medium ${storageInfo.status.color}`}>
-                            {formatBytes(storageInfo.used)}
-                        </span>
-                        <span className="text-zinc-500">/ {formatBytes(storageInfo.limit)}</span>
-                        <span className="text-xs text-zinc-500">
-                            ({storageInfo.percentage.toFixed(1)}%)
-                        </span>
+            {!hideHeader && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1 min-w-0 w-full sm:w-auto sm:flex-1">
+                        <h3 className="text-lg font-semibold text-zinc-300 overflow-hidden text-ellipsis whitespace-nowrap">
+                            Componentes del Post ({blocks.length})
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                            <span className="text-zinc-500">Almacenamiento:</span>
+                            <span className={`font-medium ${storageInfo.status.color}`}>
+                                {formatBytes(storageInfo.used)}
+                            </span>
+                            <span className="text-zinc-500">/ {formatBytes(storageInfo.limit)}</span>
+                            <span className="text-xs text-zinc-500">
+                                ({storageInfo.percentage.toFixed(1)}%)
+                            </span>
+                        </div>
                     </div>
+                    <ZenButton
+                        onClick={() => {
+                            if (onAddComponentClick) {
+                                onAddComponentClick();
+                            } else {
+                                setShowComponentSelector(true);
+                            }
+                        }}
+                        className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto"
+                    >
+                        <Plus className="h-4 w-4" />
+                        <span className="hidden sm:inline">Agregar Componente</span>
+                        <span className="sm:hidden">Agregar</span>
+                    </ZenButton>
                 </div>
-                <ZenButton
-                    onClick={() => {
-                        if (onAddComponentClick) {
-                            onAddComponentClick();
-                        } else {
-                            setShowComponentSelector(true);
-                        }
-                    }}
-                    className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto"
-                >
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Agregar Componente</span>
-                    <span className="sm:hidden">Agregar</span>
-                </ZenButton>
-            </div>
+            )}
 
             {/* Modal Selector de Componentes - Todos los componentes */}
             {customSelector ? (
@@ -1091,11 +1208,9 @@ function SortableBlock({
             id={block.id}
             ref={setNodeRef}
             style={style}
-            className={`bg-zinc-800 border border-zinc-700 rounded-lg p-4 transition-all duration-300 ${
-                isDragging ? 'opacity-50' : ''
-            } ${
-                isDeleting ? 'opacity-0 scale-95 transform -translate-y-2' : 'opacity-100 scale-100'
-            }`}
+            className={`bg-zinc-800 border border-zinc-700 rounded-lg p-4 transition-all duration-300 ${isDragging ? 'opacity-50' : ''
+                } ${isDeleting ? 'opacity-0 scale-95 transform -translate-y-2' : 'opacity-100 scale-100'
+                }`}
         >
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
@@ -1103,6 +1218,13 @@ function SortableBlock({
                         {...attributes}
                         {...listeners}
                         className="cursor-grab hover:cursor-grabbing text-zinc-400 hover:text-zinc-300"
+                        onMouseDown={(e) => {
+                            // Solo permitir drag si NO es el botón de eliminar
+                            const target = e.target as HTMLElement;
+                            if (target.closest('[data-delete-button="true"]')) {
+                                e.stopPropagation();
+                            }
+                        }}
                     >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
@@ -1113,21 +1235,59 @@ function SortableBlock({
                     </span>
                 </div>
                 <button
-                    onClick={() => {
+                    type="button"
+                    onMouseDown={(e) => {
+                        // CRÍTICO: Detener inmediatamente para evitar que drag capture el evento
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (e.nativeEvent) {
+                            e.nativeEvent.stopImmediatePropagation();
+                        }
+
+                        console.log('🔴 [SORTABLE_BLOCK] MouseDown en botón eliminar:', {
+                            blockId: block.id,
+                            timestamp: new Date().toISOString()
+                        });
+                    }}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (e.nativeEvent) {
+                            e.nativeEvent.stopImmediatePropagation();
+                        }
+
+                        console.log('🔴 [SORTABLE_BLOCK] Botón eliminar clickeado:', {
+                            blockId: block.id,
+                            blockType: block.type,
+                            blockOrder: block.order,
+                            timestamp: new Date().toISOString()
+                        });
+
                         // Si es bloque de texto con contenido, mostrar confirmación
                         const textContent = block.config?.text;
                         if (block.type === 'text' && textContent && String(textContent).trim()) {
                             const confirmed = window.confirm('¿Estás seguro de que quieres eliminar este bloque de texto? El contenido se perderá permanentemente.');
                             if (confirmed) {
+                                console.log('🔴 [SORTABLE_BLOCK] Confirmación aceptada, llamando onDelete:', block.id);
                                 onDelete(block);
+                            } else {
+                                console.log('🔴 [SORTABLE_BLOCK] Eliminación cancelada por usuario');
                             }
                         } else {
+                            console.log('🔴 [SORTABLE_BLOCK] Llamando onDelete directamente:', block.id);
                             onDelete(block);
                         }
                     }}
-                    className="text-zinc-400 hover:text-red-400 transition-colors"
+                    className="text-zinc-400 hover:text-red-400 transition-colors relative z-50"
+                    style={{
+                        pointerEvents: 'auto',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        zIndex: 9999
+                    }}
+                    data-delete-button="true"
                 >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4 pointer-events-none" />
                 </button>
             </div>
             {renderContent()}

@@ -2,7 +2,6 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { MediaItem } from '@/types/content-blocks';
 import Glide from '@glidejs/glide';
 import '@glidejs/glide/dist/css/glide.core.min.css';
@@ -199,26 +198,6 @@ export function ImageCarousel({
                         ))}
                     </ul>
                 </div>
-
-                {/* Navigation Arrows - Solo flechas, sin indicadores */}
-                {showArrows && media.length > 1 && (
-                    <div className="glide__arrows absolute inset-y-0 left-0 right-0 flex items-center justify-between pointer-events-none" data-glide-el="controls">
-                        <button
-                            className="glide__arrow glide__arrow--left pointer-events-auto bg-black/70 backdrop-blur-sm text-white p-2 rounded-full ml-2 hover:bg-black/90 transition-colors"
-                            data-glide-dir="<"
-                            aria-label="Anterior"
-                        >
-                            <ChevronLeft className="h-5 w-5" />
-                        </button>
-                        <button
-                            className="glide__arrow glide__arrow--right pointer-events-auto bg-black/70 backdrop-blur-sm text-white p-2 rounded-full mr-2 hover:bg-black/90 transition-colors"
-                            data-glide-dir=">"
-                            aria-label="Siguiente"
-                        >
-                            <ChevronRight className="h-5 w-5" />
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* Lightbox */}
