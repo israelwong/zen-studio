@@ -144,7 +144,7 @@ interface ImageGridProps {
     title?: string;
     description?: string;
     columns?: 1 | 2 | 3 | 4 | 5 | 6;
-    gap?: 1 | 2 | 3 | 4 | 6 | 8;
+    gap?: 0 | 1 | 2 | 3 | 4 | 6 | 8;
     aspectRatio?: 'square' | 'video' | 'portrait' | 'landscape';
     showCaptions?: boolean;
     className?: string;
@@ -205,10 +205,14 @@ export function ImageGrid({
     const {
         columns: configColumns = columns,
         gap: configGap = gap,
-        lightbox: configLightbox = lightbox
+        lightbox: configLightbox = lightbox,
+        borderStyle = 'rounded'
     } = config;
 
+    const borderStyleClass = borderStyle === 'rounded' ? 'rounded-lg' : 'rounded-none';
+
     const gapClass = {
+        0: 'gap-0',
         1: 'gap-1',
         2: 'gap-2',
         3: 'gap-3',
@@ -312,7 +316,7 @@ export function ImageGrid({
                 }}
             >
                 <div
-                    className={`relative bg-zinc-800 rounded-lg overflow-hidden ${aspectClass} transition-all duration-200 ease-out ${isEditable
+                    className={`relative bg-zinc-800 ${borderStyleClass} overflow-hidden ${aspectClass} transition-all duration-200 ease-out ${isEditable
                         ? 'cursor-grab active:cursor-grabbing hover:scale-[1.02] hover:shadow-lg'
                         : 'cursor-pointer hover:scale-[1.02] hover:shadow-lg'
                         } ${isDragging ? 'ring-2 ring-blue-500 ring-opacity-50' : ''}`}
@@ -430,7 +434,7 @@ export function ImageGrid({
                     onDragEnd={handleDragEnd}
                 >
                     <div
-                        className={`grid ${columnsClass} ${gapClass} p-4 rounded-lg border-2 border-dashed transition-all duration-300 ease-out border-zinc-700 bg-zinc-800/30`}
+                        className={`grid ${columnsClass} ${gapClass} ${configGap === 0 && media.length > 0 ? 'p-0' : 'p-4'} rounded-lg border-2 border-dashed transition-all duration-300 ease-out border-zinc-700 bg-zinc-800/30`}
                         onDragOver={(e) => e.preventDefault()}
                         onDrop={(e) => {
                             e.preventDefault();
@@ -459,7 +463,7 @@ export function ImageGrid({
                         {(!media || media.length === 0 || isUploading) && (
                             <button
                                 type="button"
-                                className={`relative bg-zinc-800 rounded-lg text-center hover:bg-zinc-700 transition-colors ${media.length === 0 ? 'col-span-full h-32' : aspectClass
+                                className={`relative bg-zinc-800 ${borderStyleClass} text-center hover:bg-zinc-700 transition-colors ${media.length === 0 ? 'col-span-full h-32' : aspectClass
                                     } cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed`}
                                 onClick={() => {
                                     if (onUploadClick && !isUploading) {

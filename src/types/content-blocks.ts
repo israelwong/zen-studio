@@ -41,6 +41,7 @@ export interface MediaBlockConfig {
     mediaType: MediaType;
     columns?: number;
     gap?: number;
+    borderStyle?: 'normal' | 'rounded';
     aspectRatio?: 'square' | 'video' | 'portrait' | 'landscape' | 'auto';
     showCaptions?: boolean;
     showTitles?: boolean;

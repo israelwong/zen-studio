@@ -105,6 +105,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                 // Determinar el modo de visualización desde config
                 const mediaGalleryMode = (block.config as Partial<MediaBlockConfig>)?.mode || 'grid';
                 const mediaGalleryConfig = block.config as Partial<MediaBlockConfig>;
+                const borderStyle = mediaGalleryConfig.borderStyle || 'rounded';
 
                 // Si hay una sola imagen, siempre mostrar ImageSingle
                 if (block.media.length === 1) {
@@ -134,6 +135,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                                 spacing={mediaGalleryConfig.gap ?? 4}
                                 showDeleteButtons={false}
                                 onDelete={undefined}
+                                borderStyle={borderStyle}
                             />
                         );
                     case 'slide':
@@ -155,7 +157,10 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                                 media={block.media}
                                 title={block.title}
                                 description={block.description}
-                                config={block.config}
+                                config={{
+                                    ...mediaGalleryConfig,
+                                    borderStyle
+                                }}
                                 className={className}
                                 showSizeLabel={false}
                                 isEditable={false}

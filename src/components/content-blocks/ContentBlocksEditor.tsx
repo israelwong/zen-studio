@@ -316,6 +316,7 @@ export function ContentBlocksEditor({
                 mode: component.mode || 'grid',
                 columns: component.mode === 'grid' ? 3 : undefined,
                 gap: 4,
+                borderStyle: 'rounded',
                 aspectRatio: 'auto',
                 showCaptions: false,
                 showTitles: false,
@@ -1262,6 +1263,14 @@ function SortableBlock({
                             config: {
                                 ...block.config,
                                 mode
+                            }
+                        });
+                    }}
+                    onConfigChange={(newConfig) => {
+                        onUpdate(block.id, {
+                            config: {
+                                ...block.config,
+                                ...newConfig
                             }
                         });
                     }}

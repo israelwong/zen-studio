@@ -25,6 +25,7 @@ interface MasonryGalleryProps {
     showSizeLabel?: boolean;
     onDelete?: (mediaId: string) => void;
     showDeleteButtons?: boolean;
+    borderStyle?: 'normal' | 'rounded';
 }
 
 // Función para obtener las dimensiones reales de una imagen
@@ -66,7 +67,8 @@ export function MasonryGallery({
     enableLightbox = true,
     showSizeLabel = false,
     onDelete,
-    showDeleteButtons = false
+    showDeleteButtons = false,
+    borderStyle = 'rounded'
 }: MasonryGalleryProps) {
     // Estado para el lightbox
     const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -135,7 +137,7 @@ export function MasonryGallery({
                     position: "relative",
                     aspectRatio: `${width} / ${height}`,
                 }}
-                className="overflow-hidden rounded-lg bg-zinc-800 hover:shadow-xl transition-all duration-300 cursor-pointer group"
+                className={`overflow-hidden ${borderStyle === 'rounded' ? 'rounded-lg' : 'rounded-none'} bg-zinc-800 hover:shadow-xl transition-all duration-300 cursor-pointer group`}
                 onClick={() => handleImageClick(imageIndex)}
             >
                 <Image

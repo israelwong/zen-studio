@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Grid3X3, RectangleHorizontal, LayoutGrid, Upload } from 'lucide-react';
+import { Grid3X3, RectangleHorizontal, LayoutGrid, Upload, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { MediaItem, MediaMode, MediaBlockConfig } from '@/types/content-blocks';
 import { ImageSingle } from './ImageSingle';
 import { ImageGrid } from './ImageGrid';
@@ -24,6 +24,7 @@ interface MediaGalleryProps {
     isUploading?: boolean;
     // Callbacks para actualizar configuración
     onModeChange?: (mode: MediaMode) => void;
+    onConfigChange?: (config: Partial<MediaBlockConfig>) => void;
 }
 
 export function MediaGallery({
@@ -38,15 +39,45 @@ export function MediaGallery({
     onDrop,
     onUploadClick,
     isUploading = false,
-    onModeChange
+    onModeChange,
+    onConfigChange
 }: MediaGalleryProps) {
     // Estado local para el modo de visualización (puede cambiar dinámicamente)
     const [localMode, setLocalMode] = useState<MediaMode>(
         (config.mode as MediaMode) || 'grid'
     );
 
-    // Si hay una sola imagen, siempre mostrar en modo single
-    const displayMode = media.length === 1 ? 'single' : localMode;
+    // Estado para panel de configuración avanzada
+    const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+
+    // Valores de configuración con defaults
+    const columns = (config.columns ?? 3) as 2 | 3 | 4;
+    const gap = config.gap ?? 4;
+    const borderStyle = (config.borderStyle as 'normal' | 'rounded') ?? 'rounded'; // Por defecto redondo
+    const gapStyle = gap === 0 ? 'none' : gap <= 2 ? 'narrow' : 'wide'; // 'none' | 'narrow' | 'wide'
+
+    // Handlers para cambios de configuración
+    const handleConfigChange = (updates: Partial<MediaBlockConfig>) => {
+        if (onConfigChange) {
+            onConfigChange({
+                ...config,
+                ...updates
+            });
+        }
+    };
+
+    const handleColumnsChange = (newColumns: 2 | 3 | 4) => {
+        handleConfigChange({ columns: newColumns });
+    };
+
+    const handleBorderChange = (newBorderStyle: 'normal' | 'rounded') => {
+        handleConfigChange({ borderStyle: newBorderStyle });
+    };
+
+    const handleGapChange = (gapStyle: 'none' | 'narrow' | 'wide') => {
+        const gapValue = gapStyle === 'none' ? 0 : gapStyle === 'narrow' ? 2 : 4;
+        handleConfigChange({ gap: gapValue });
+    };
 
     // Actualizar modo cuando cambia el config desde fuera
     React.useEffect(() => {
@@ -123,11 +154,16 @@ export function MediaGallery({
         // En modo edición: siempre mostrar grid para poder arrastrar y ordenar
         // En modo preview: mostrar según el modo seleccionado
         if (isEditable && media.length > 1) {
-            // Siempre usar grid en el editor
+            // Siempre usar grid en el editor con configuración FIJA (no afectada por ajustes)
             return (
                 <ImageGrid
                     media={media}
-                    config={config}
+                    config={{
+                        ...config,
+                        columns: 3, // Fijo en editor
+                        gap: 4, // Fijo en editor
+                        borderStyle: 'rounded' // Fijo en editor
+                    }}
                     className={className}
                     showDeleteButtons={showDeleteButtons}
                     onDelete={onDelete}
@@ -141,13 +177,20 @@ export function MediaGallery({
             );
         }
 
-        // En preview: mostrar según el modo seleccionado
+        // En preview: mostrar según el modo seleccionado con configuración actualizada
+        const updatedConfig = {
+            ...config,
+            columns,
+            gap,
+            borderStyle
+        };
+
         switch (displayMode) {
             case 'grid':
                 return (
                     <ImageGrid
                         media={media}
-                        config={config}
+                        config={updatedConfig}
                         className={className}
                         showDeleteButtons={showDeleteButtons}
                         onDelete={onDelete}
@@ -176,12 +219,13 @@ export function MediaGallery({
                 return (
                     <MasonryGallery
                         media={media}
-                        columns={config.columns ?? 3}
-                        spacing={config.gap ?? 4}
+                        columns={columns}
+                        spacing={gap}
                         className={className}
                         enableLightbox={lightbox}
                         showDeleteButtons={showDeleteButtons}
                         onDelete={onDelete}
+                        borderStyle={borderStyle}
                     />
                 );
 
@@ -189,7 +233,7 @@ export function MediaGallery({
                 return (
                     <ImageGrid
                         media={media}
-                        config={config}
+                        config={updatedConfig}
                         className={className}
                         showDeleteButtons={showDeleteButtons}
                         onDelete={onDelete}
@@ -209,36 +253,136 @@ export function MediaGallery({
             {/* Selector de modo de visualización (solo si hay 2+ imágenes) */}
             {/* Los botones solo guardan el modo, pero en el editor siempre se muestra grid */}
             {media.length > 1 && (
-                <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-zinc-400 mr-2">Vista preview:</span>
-                    <ZenButton
-                        variant={localMode === 'grid' ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => handleModeChange('grid')}
-                        className="gap-2"
-                    >
-                        <Grid3X3 className="h-4 w-4" />
-                        Grid
-                    </ZenButton>
-                    <ZenButton
-                        variant={localMode === 'masonry' ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => handleModeChange('masonry')}
-                        className="gap-2"
-                    >
-                        <LayoutGrid className="h-4 w-4" />
-                        Masonry
-                    </ZenButton>
-                    <ZenButton
-                        variant={localMode === 'slide' ? 'primary' : 'outline'}
-                        size="sm"
-                        onClick={() => handleModeChange('slide')}
-                        className="gap-2"
-                    >
-                        <RectangleHorizontal className="h-4 w-4" />
-                        Carousel
-                    </ZenButton>
-                </div>
+                <>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-zinc-400 mr-2">Vista:</span>
+                        <ZenButton
+                            variant={localMode === 'grid' ? 'primary' : 'outline'}
+                            size="sm"
+                            onClick={() => handleModeChange('grid')}
+                            className="gap-2"
+                        >
+                            <Grid3X3 className="h-4 w-4" />
+                            Grid
+                        </ZenButton>
+                        <ZenButton
+                            variant={localMode === 'masonry' ? 'primary' : 'outline'}
+                            size="sm"
+                            onClick={() => handleModeChange('masonry')}
+                            className="gap-2"
+                        >
+                            <LayoutGrid className="h-4 w-4" />
+                            Masonry
+                        </ZenButton>
+                        <ZenButton
+                            variant={localMode === 'slide' ? 'primary' : 'outline'}
+                            size="sm"
+                            onClick={() => handleModeChange('slide')}
+                            className="gap-2"
+                        >
+                            <RectangleHorizontal className="h-4 w-4" />
+                            Carousel
+                        </ZenButton>
+                        
+                        {/* Botón Configurar */}
+                        <ZenButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
+                            className="gap-2 ml-auto"
+                        >
+                            <Settings className="h-4 w-4" />
+                            {showAdvancedConfig ? 'Ocultar' : 'Ajustes'}
+                            {showAdvancedConfig ? (
+                                <ChevronUp className="h-4 w-4" />
+                            ) : (
+                                <ChevronDown className="h-4 w-4" />
+                            )}
+                        </ZenButton>
+                    </div>
+
+                    {/* Panel de configuración avanzada */}
+                    {showAdvancedConfig && (
+                        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 space-y-4">
+                            {/* Columnas */}
+                            <div>
+                                <label className="text-sm text-zinc-300 mb-2 block">Columnas</label>
+                                <div className="flex gap-2">
+                                    <ZenButton
+                                        variant={columns === 2 ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleColumnsChange(2)}
+                                    >
+                                        2
+                                    </ZenButton>
+                                    <ZenButton
+                                        variant={columns === 3 ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleColumnsChange(3)}
+                                    >
+                                        3
+                                    </ZenButton>
+                                    <ZenButton
+                                        variant={columns === 4 ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleColumnsChange(4)}
+                                    >
+                                        4
+                                    </ZenButton>
+                                </div>
+                            </div>
+
+                            {/* Borde */}
+                            <div>
+                                <label className="text-sm text-zinc-300 mb-2 block">Borde</label>
+                                <div className="flex gap-2">
+                                    <ZenButton
+                                        variant={borderStyle === 'rounded' ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleBorderChange('rounded')}
+                                    >
+                                        Redondo
+                                    </ZenButton>
+                                    <ZenButton
+                                        variant={borderStyle === 'normal' ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleBorderChange('normal')}
+                                    >
+                                        Normal
+                                    </ZenButton>
+                                </div>
+                            </div>
+
+                            {/* Separación */}
+                            <div>
+                                <label className="text-sm text-zinc-300 mb-2 block">Separación</label>
+                                <div className="flex gap-2">
+                                    <ZenButton
+                                        variant={gapStyle === 'wide' ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleGapChange('wide')}
+                                    >
+                                        Amplio
+                                    </ZenButton>
+                                    <ZenButton
+                                        variant={gapStyle === 'narrow' ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleGapChange('narrow')}
+                                    >
+                                        Estrecho
+                                    </ZenButton>
+                                    <ZenButton
+                                        variant={gapStyle === 'none' ? 'primary' : 'outline'}
+                                        size="sm"
+                                        onClick={() => handleGapChange('none')}
+                                    >
+                                        Ninguno
+                                    </ZenButton>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Contenido renderizado */}
