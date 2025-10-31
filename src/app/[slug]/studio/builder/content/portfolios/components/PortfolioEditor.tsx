@@ -819,19 +819,27 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
                             {/* Sistema de Bloques de Contenido */}
                             <div className="space-y-2">
                                 {/* Cabecera informativa única - Siempre visible */}
-                                <div className="mb-4 pb-4 border-b border-zinc-800">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-sm font-medium text-zinc-400">
-                                            Componentes ({contentBlocks.length})
-                                        </h3>
-                                        {contentBlocks.length > 0 && (
-                                            <span className="text-xs text-zinc-500">
-                                                {formatBytes(totalComponentsSize)}
+                                <div className="mb-6 pb-4 border-b border-zinc-800/50">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="text-base font-semibold text-zinc-200">
+                                                Componentes
+                                            </h3>
+                                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+                                                {contentBlocks.length}
                                             </span>
+                                        </div>
+                                        {contentBlocks.length > 0 && (
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs text-zinc-500">Almacenamiento:</span>
+                                                <span className="text-xs font-medium text-zinc-300">
+                                                    {formatBytes(totalComponentsSize)}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
                                     {contentBlocks.length > 0 && (
-                                        <p className="text-xs text-zinc-500 mt-1">
+                                        <p className="text-xs text-zinc-500 mt-3 leading-relaxed">
                                             Arrastra para reordenar o agrega nuevos componentes entre los existentes
                                         </p>
                                     )}
