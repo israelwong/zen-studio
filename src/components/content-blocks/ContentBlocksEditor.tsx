@@ -595,6 +595,13 @@ export function ContentBlocksEditor({
                     timestamp: new Date().toISOString()
                 });
 
+                // Eliminar el botón asociado a este componente ANTES de eliminar el componente
+                const buttonToRemove = document.querySelector(`[data-injected-add-button="${block.id}"]`);
+                if (buttonToRemove) {
+                    console.log('🟠 [requestDeleteBlock] Eliminando botón asociado al componente:', block.id);
+                    buttonToRemove.remove();
+                }
+
                 onBlocksChange((prevBlocks: ContentBlock[]) => {
                     console.log('🟠 [requestDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
                         prevBlocksCount: prevBlocks.length,
@@ -654,6 +661,13 @@ export function ContentBlocksEditor({
                     blockIdToDelete,
                     timestamp: new Date().toISOString()
                 });
+
+                // Eliminar el botón asociado a este componente ANTES de eliminar el componente
+                const buttonToRemove = document.querySelector(`[data-injected-add-button="${blockIdToDelete}"]`);
+                if (buttonToRemove) {
+                    console.log('🟡 [confirmDeleteBlock] Eliminando botón asociado al componente:', blockIdToDelete);
+                    buttonToRemove.remove();
+                }
 
                 onBlocksChange((prevBlocks: ContentBlock[]) => {
                     console.log('🟡 [confirmDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
@@ -1028,6 +1042,8 @@ function SortableBlock({
                 return renderHeading3Content();
             case 'blockquote':
                 return renderBlockquoteContent();
+            case 'separator':
+                return renderSeparatorContent();
             case 'hero-contact':
                 return renderHeroContactContent();
             case 'hero-image':
@@ -1341,6 +1357,80 @@ function SortableBlock({
                     className={`w-full min-h-[100px] p-4 bg-zinc-800 border-l-4 border-emerald-500 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none text-lg font-medium italic leading-relaxed ${alignmentClasses[alignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
                     rows={3}
                 />
+            </div>
+        );
+    };
+
+    const renderSeparatorContent = () => {
+        const separatorConfig = block.config as { style?: 'space' | 'solid'; height?: number; color?: string };
+        const style = separatorConfig?.style || 'solid';
+        const height = separatorConfig?.height ?? (style === 'space' ? 24 : 0.5);
+        const color = separatorConfig?.color || 'zinc-600';
+
+        return (
+            <div className="space-y-3">
+                <div className="p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+                    <div className="space-y-3">
+                        <div>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['space', 'solid'] as const).map((sepStyle) => (
+                                    <button
+                                        key={sepStyle}
+                                        onClick={() => onUpdate(block.id, {
+                                            config: {
+                                                ...block.config,
+                                                style: sepStyle,
+                                                height: sepStyle === 'space' ? 24 : 0.5
+                                            }
+                                        })}
+                                        className={`px-3 py-2 text-sm rounded border transition-colors ${
+                                            style === sepStyle
+                                                ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                                                : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600'
+                                        }`}
+                                    >
+                                        {sepStyle === 'space' ? 'Espacio' : 'Línea'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                Altura: {height}px
+                            </label>
+                            <input
+                                type="range"
+                                min={style === 'space' ? 8 : 0.5}
+                                max={style === 'space' ? 100 : 8}
+                                value={height}
+                                step={style === 'space' ? 1 : 0.5}
+                                onChange={(e) => onUpdate(block.id, {
+                                    config: {
+                                        ...block.config,
+                                        height: parseFloat(e.target.value)
+                                    }
+                                })}
+                                className="w-full"
+                            />
+                        </div>
+
+                        {/* Preview */}
+                        <div className="pt-3 border-t border-zinc-700">
+                            <label className="block text-xs text-zinc-500 mb-2">Vista previa:</label>
+                            <div className="bg-zinc-900 p-4 rounded">
+                                {style === 'space' ? (
+                                    <div style={{ height: `${height}px` }} className="bg-zinc-800/30 rounded" />
+                                ) : (
+                                    <div
+                                        className={`w-full border-t border-solid ${color === 'zinc-600' ? 'border-zinc-600' : color === 'zinc-500' ? 'border-zinc-500' : color === 'zinc-400' ? 'border-zinc-400' : 'border-zinc-600'}`}
+                                        style={{ borderTopWidth: `${height}px` }}
+                                    />
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         );
     };

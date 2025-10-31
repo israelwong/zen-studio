@@ -3,7 +3,7 @@
  * Reutilizables entre ZEN Posts, ZEN Invitations y otros módulos
  */
 
-export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'heading-1' | 'heading-3' | 'blockquote';
+export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'heading-1' | 'heading-3' | 'blockquote' | 'separator';
 
 export type MediaMode = 'single' | 'grid' | 'masonry' | 'slide';
 
@@ -126,8 +126,14 @@ export interface HeroTextConfig {
     textColor?: string;
 }
 
+export interface SeparatorBlockConfig {
+    style: 'space' | 'solid';
+    height?: number; // Altura en píxeles (default: 24 para space, 0.5 para lines)
+    color?: string; // Color de la línea (default: zinc-600)
+}
+
 // Union type para todas las configuraciones
-export type BlockConfig = MediaBlockConfig | TextBlockConfig | HeroContactConfig | HeroImageConfig | HeroVideoConfig | HeroTextConfig;
+export type BlockConfig = MediaBlockConfig | TextBlockConfig | HeroContactConfig | HeroImageConfig | HeroVideoConfig | HeroTextConfig | SeparatorBlockConfig;
 
 // Props base para todos los componentes de bloque
 export interface BaseBlockProps {

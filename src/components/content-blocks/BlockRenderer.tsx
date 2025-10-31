@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig } from '@/types/content-blocks';
+import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig, SeparatorBlockConfig } from '@/types/content-blocks';
 import { VideoSingle } from '@/components/shared/video';
 import { ImageSingle, ImageGrid, ImageCarousel } from '@/components/shared/media';
 import { MasonryGallery } from '@/components/shared/media/MasonryGallery';
@@ -210,7 +210,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                             }`}
                     >
                         <blockquote
-                            className={`border-l-4 border-emerald-500 pl-4 py-1 text-lg font-medium italic text-zinc-300 leading-relaxed ${blockquoteAlignmentClasses[blockquoteAlignment as keyof typeof blockquoteAlignmentClasses] || blockquoteAlignmentClasses.left}`}
+                            className={`border-l-4 border-zinc-800 pl-4 py-1 text-md  italic text-zinc-400 leading-relaxed ${blockquoteAlignmentClasses[blockquoteAlignment as keyof typeof blockquoteAlignmentClasses] || blockquoteAlignmentClasses.left}`}
                             style={{
                                 color: blockquoteConfig?.color || '#e4e4e7',
                             }}
@@ -255,6 +255,40 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                     <HeroText
                         config={heroTextConfig}
                         className={className}
+                    />
+                );
+
+            case 'separator':
+                const separatorConfig = (block.config || {}) as Partial<SeparatorBlockConfig>;
+                const separatorStyle = separatorConfig.style || 'solid';
+                const separatorHeight = separatorConfig.height ?? (separatorStyle === 'space' ? 24 : 0.5);
+                const colorKey = separatorConfig.color || 'zinc-600';
+
+                // Mapeo de colores de Tailwind
+                const colorClasses: Record<string, string> = {
+                    'zinc-600': 'border-zinc-600',
+                    'zinc-500': 'border-zinc-500',
+                    'zinc-400': 'border-zinc-400',
+                    'zinc-700': 'border-zinc-700',
+                    'zinc-800': 'border-zinc-800',
+                };
+                const borderColorClass = colorClasses[colorKey] || 'border-zinc-600';
+
+                if (separatorStyle === 'space') {
+                    return (
+                        <div
+                            className={className}
+                            style={{ height: `${separatorHeight}px` }}
+                            aria-hidden="true"
+                        />
+                    );
+                }
+
+                return (
+                    <div
+                        className={`${className} w-full border-solid ${borderColorClass} border-t`}
+                        style={{ borderTopWidth: `${separatorHeight}px` }}
+                        aria-hidden="true"
                     />
                 );
 

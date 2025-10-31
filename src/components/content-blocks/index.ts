@@ -1,6 +1,4 @@
 // Content Blocks - Sistema de componentes drag & drop
-export { ComponentSelector } from './ComponentSelector';
-export { ComponentSelectorModal } from './ComponentSelectorModal';
 export { BaseModal } from './BaseModal';
 export { SortableBlock } from './SortableBlock';
 export { DropZone } from './DropZone';
@@ -22,6 +20,5 @@ export type {
     SliderBlockConfig,
     BlockConfig,
     BaseBlockProps,
-    BlockEditorProps,
-    ComponentSelectorProps
+    BlockEditorProps
 } from '@/types/content-blocks';

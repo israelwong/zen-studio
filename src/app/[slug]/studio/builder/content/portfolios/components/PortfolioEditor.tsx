@@ -94,6 +94,17 @@ function InjectAddButtons({
         const timeoutId = setTimeout(() => {
             console.log('🔵 [InjectAddButtons] Agregando botones para', contentBlocks.length, 'bloques');
 
+            // Primero, limpiar botones huérfanos (asociados a componentes que ya no existen)
+            const allButtons = document.querySelectorAll('[data-injected-add-button]');
+            allButtons.forEach(button => {
+                const buttonBlockId = button.getAttribute('data-injected-add-button');
+                const blockExists = contentBlocks.some(block => block.id === buttonBlockId);
+                if (!blockExists) {
+                    console.log('🔵 [InjectAddButtons] Eliminando botón huérfano para bloque:', buttonBlockId);
+                    button.remove();
+                }
+            });
+
             // Para cada bloque, agregar botón después (entre bloques)
             contentBlocks.forEach((block, index) => {
                 const blockElement = document.getElementById(block.id);
@@ -161,7 +172,7 @@ function InjectAddButtons({
             // NO remover botones aquí para evitar parpadeos durante interacciones
             // Solo se removerán cuando activeBlockId === 'dragging'
         };
-    }, [contentBlocks.length, activeBlockId, onInsertAt]); // Solo re-ejecutar cuando cambia la cantidad de bloques o el estado de drag
+    }, [contentBlocks, activeBlockId, onInsertAt]); // Re-ejecutar cuando cambian los bloques, el estado de drag o la función de inserción
 
     return null;
 }
@@ -486,6 +497,12 @@ export function PortfolioEditor({ studioSlug, eventTypes, mode, portfolio }: Por
             config = {
                 text: '',
                 alignment: 'left'
+            };
+        } else if (component.type === 'separator') {
+            config = {
+                style: 'solid',
+                height: 0.5,
+                color: 'zinc-600'
             };
         } else if (component.type === 'hero-contact') {
             config = {

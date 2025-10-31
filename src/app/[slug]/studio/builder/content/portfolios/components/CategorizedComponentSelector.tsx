@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Image as ImageIcon, Video, Grid3X3, Heading1, Heading3, Quote, MessageCircle, Play, FileText, Type } from 'lucide-react';
+import { X, Image as ImageIcon, Video, Grid3X3, Heading1, Heading3, Quote, MessageCircle, Play, FileText, Type, RectangleHorizontal, Minus } from 'lucide-react';
 import { ComponentType, MediaMode, MediaType } from '@/types/content-blocks';
 
 export interface ComponentOption {
@@ -54,6 +54,12 @@ const COMPONENT_CATEGORIES: Category[] = [
                 label: 'Blockquote',
                 icon: Quote,
                 description: 'Cita destacada',
+            },
+            {
+                type: 'separator',
+                label: 'Separador',
+                icon: Minus,
+                description: 'Espacio o línea divisoria',
             },
         ],
     },
@@ -127,8 +133,8 @@ const COMPONENT_CATEGORIES: Category[] = [
                 type: 'gallery',
                 mode: 'slide',
                 mediaType: 'images',
-                label: 'Galería Slide',
-                icon: ImageIcon,
+                label: 'Galería Carousel',
+                icon: RectangleHorizontal,
                 description: 'Carrusel de imágenes',
             },
             {
