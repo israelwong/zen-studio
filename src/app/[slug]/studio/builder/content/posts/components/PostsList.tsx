@@ -4,9 +4,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PostCard } from "./PostCard";
 import { EmptyState } from "./EmptyState";
 import { getStudioPostsBySlug } from "@/lib/actions/studio/builder/posts";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { StudioPost } from "@/types/studio-posts";
 import { toast } from "sonner";
+import { ZenButton } from "@/components/ui/zen";
 
 interface PostsListProps {
     studioSlug: string;
@@ -17,10 +18,12 @@ export function PostsList({ studioSlug, onPostsChange }: PostsListProps) {
     const [allPosts, setAllPosts] = useState<StudioPost[]>([]); // Todos los posts cargados
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>("all");
+    const [currentPage, setCurrentPage] = useState<number>(1);
     const [error, setError] = useState<string | null>(null);
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const previousFilteredPostsRef = useRef<StudioPost[]>([]);
     const onPostsChangeRef = useRef(onPostsChange);
+    const POSTS_PER_PAGE = 5;
 
     // Actualizar ref cuando cambia onPostsChange
     useEffect(() => {
@@ -38,19 +41,35 @@ export function PostsList({ studioSlug, onPostsChange }: PostsListProps) {
         });
     }, [allPosts, filter]);
 
-    // Notificar cambios de posts al componente padre (solo cuando cambian realmente los posts filtrados)
+    // Posts para la página actual (estos son los que se muestran en la lista y en el preview móvil)
+    const paginatedPosts = useMemo(() => {
+        const startIndex = (currentPage - 1) * POSTS_PER_PAGE;
+        return filteredPosts.slice(startIndex, startIndex + POSTS_PER_PAGE);
+    }, [filteredPosts, currentPage]);
+
+    // Calcular total de páginas
+    const totalPages = useMemo(() => {
+        return Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+    }, [filteredPosts.length]);
+
+    // Resetear a página 1 cuando cambia el filtro
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filter]);
+
+    // Notificar cambios de posts al componente padre (posts de la página actual para preview móvil)
     useEffect(() => {
         if (onPostsChangeRef.current) {
             // Comparar IDs para evitar notificaciones innecesarias
-            const currentIds = filteredPosts.map(p => p.id).sort().join(',');
+            const currentIds = paginatedPosts.map(p => p.id).sort().join(',');
             const previousIds = previousFilteredPostsRef.current.map(p => p.id).sort().join(',');
 
             if (currentIds !== previousIds) {
-                onPostsChangeRef.current(filteredPosts);
-                previousFilteredPostsRef.current = filteredPosts;
+                onPostsChangeRef.current(paginatedPosts);
+                previousFilteredPostsRef.current = paginatedPosts;
             }
         }
-    }, [filteredPosts]); // Solo depender de filteredPosts
+    }, [paginatedPosts]); // Depender de paginatedPosts (página actual)
 
     // Limpiar timeout al desmontar
     useEffect(() => {
@@ -158,74 +177,119 @@ export function PostsList({ studioSlug, onPostsChange }: PostsListProps) {
             {filteredPosts.length === 0 ? (
                 <EmptyState />
             ) : (
-                <div className="space-y-3">
-                    {filteredPosts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            studioSlug={studioSlug}
-                            onUpdate={(updatedPost) => {
-                                if (updatedPost === null) {
-                                    // Eliminación: remover post de la lista local
-                                    setAllPosts(prevPosts =>
-                                        prevPosts.filter(p => p.id !== post.id)
-                                    );
-                                } else {
-                                    // Actualización optimista local - actualiza y reordena
-                                    setAllPosts(prevPosts => {
-                                        const updated = prevPosts.map(p =>
-                                            p.id === updatedPost.id ? updatedPost : p
+                <>
+                    <div className="space-y-3">
+                        {paginatedPosts.map((post) => (
+                            <PostCard
+                                key={post.id}
+                                post={post}
+                                studioSlug={studioSlug}
+                                onUpdate={(updatedPost) => {
+                                    if (updatedPost === null) {
+                                        // Eliminación: remover post de la lista local
+                                        setAllPosts(prevPosts =>
+                                            prevPosts.filter(p => p.id !== post.id)
                                         );
-                                        // Reordenar: destacados primero, luego por creación
-                                        return updated.sort((a, b) => {
-                                            if (a.is_featured && !b.is_featured) return -1;
-                                            if (!a.is_featured && b.is_featured) return 1;
-                                            const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                                            const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                                            return dateB - dateA;
+                                    } else {
+                                        // Actualización optimista local - actualiza y reordena
+                                        setAllPosts(prevPosts => {
+                                            const updated = prevPosts.map(p =>
+                                                p.id === updatedPost.id ? updatedPost : p
+                                            );
+                                            // Reordenar: destacados primero, luego por creación
+                                            return updated.sort((a, b) => {
+                                                if (a.is_featured && !b.is_featured) return -1;
+                                                if (!a.is_featured && b.is_featured) return 1;
+                                                const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                                                const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                                                return dateB - dateA;
+                                            });
                                         });
-                                    });
-                                }
-
-                                // Sincronización silenciosa en background (sin mostrar loading)
-                                // Solo sincronizar si NO es solo un cambio de is_featured
-                                const isOnlyFeaturedChange = updatedPost !== null &&
-                                    updatedPost.id === post.id &&
-                                    updatedPost.is_featured !== post.is_featured &&
-                                    updatedPost.is_published === post.is_published;
-
-                                if (!isOnlyFeaturedChange) {
-                                    // Cancela sincronización anterior si hay otra actualización
-                                    if (syncTimeoutRef.current) {
-                                        clearTimeout(syncTimeoutRef.current);
                                     }
 
-                                    syncTimeoutRef.current = setTimeout(async () => {
-                                        try {
-                                            // Recargar todos los posts del servidor
-                                            const result = await getStudioPostsBySlug(studioSlug, undefined);
-                                            if (result.success && result.data) {
-                                                // Actualizar con datos del servidor y asegurar orden correcto
-                                                const sortedPosts = result.data.sort((a, b) => {
-                                                    if (a.is_featured && !b.is_featured) return -1;
-                                                    if (!a.is_featured && b.is_featured) return 1;
-                                                    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-                                                    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-                                                    return dateB - dateA;
-                                                });
-                                                setAllPosts(sortedPosts);
-                                            }
-                                        } catch (error) {
-                                            // Fallar silenciosamente, la UI ya está actualizada
-                                            console.error("Error sincronizando posts:", error);
+                                    // Sincronización silenciosa en background (sin mostrar loading)
+                                    // Solo sincronizar si NO es solo un cambio de is_featured
+                                    const isOnlyFeaturedChange = updatedPost !== null &&
+                                        updatedPost.id === post.id &&
+                                        updatedPost.is_featured !== post.is_featured &&
+                                        updatedPost.is_published === post.is_published;
+
+                                    if (!isOnlyFeaturedChange) {
+                                        // Cancela sincronización anterior si hay otra actualización
+                                        if (syncTimeoutRef.current) {
+                                            clearTimeout(syncTimeoutRef.current);
                                         }
-                                        syncTimeoutRef.current = null;
-                                    }, 2000);
-                                }
-                            }}
-                        />
-                    ))}
-                </div>
+
+                                        syncTimeoutRef.current = setTimeout(async () => {
+                                            try {
+                                                // Recargar todos los posts del servidor
+                                                const result = await getStudioPostsBySlug(studioSlug, undefined);
+                                                if (result.success && result.data) {
+                                                    // Actualizar con datos del servidor y asegurar orden correcto
+                                                    const sortedPosts = result.data.sort((a, b) => {
+                                                        if (a.is_featured && !b.is_featured) return -1;
+                                                        if (!a.is_featured && b.is_featured) return 1;
+                                                        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                                                        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                                                        return dateB - dateA;
+                                                    });
+                                                    setAllPosts(sortedPosts);
+                                                }
+                                            } catch (error) {
+                                                // Fallar silenciosamente, la UI ya está actualizada
+                                                console.error("Error sincronizando posts:", error);
+                                            }
+                                            syncTimeoutRef.current = null;
+                                        }, 2000);
+                                    }
+                                }}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Paginación */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between pt-4 border-t border-zinc-800">
+                            <div className="text-sm text-zinc-400">
+                                Mostrando {paginatedPosts.length} de {filteredPosts.length} posts
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <ZenButton
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                >
+                                    <ChevronLeft className="h-4 w-4" />
+                                </ZenButton>
+
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                        <button
+                                            key={page}
+                                            onClick={() => setCurrentPage(page)}
+                                            className={`px-3 py-1 text-sm rounded-md transition-colors ${currentPage === page
+                                                ? 'bg-emerald-500 text-white'
+                                                : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <ZenButton
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    <ChevronRight className="h-4 w-4" />
+                                </ZenButton>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );
