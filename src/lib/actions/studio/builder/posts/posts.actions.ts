@@ -186,8 +186,9 @@ export async function getStudioPosts(studioId: string, filters?: PostFilters): P
         const posts = await prisma.studio_posts.findMany({
             where: {
                 studio_id: studioId,
-                is_published: filters?.is_published,
-                event_type_id: filters?.event_type_id,
+                ...(filters?.is_published !== undefined && { is_published: filters.is_published }),
+                ...(filters?.is_featured !== undefined && { is_featured: filters.is_featured }),
+                ...(filters?.event_type_id && { event_type_id: filters.event_type_id }),
             },
             include: {
                 event_type: { select: { id: true, name: true } },

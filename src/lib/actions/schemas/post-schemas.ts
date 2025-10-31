@@ -43,6 +43,7 @@ export type PostFormData = z.infer<typeof postFormSchema>;
 // Filters Schema
 export const postFiltersSchema = z.object({
     is_published: z.boolean().optional(),
+    is_featured: z.boolean().optional(),
     event_type_id: z.string().cuid().optional(),
 });
 
