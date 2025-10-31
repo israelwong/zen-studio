@@ -214,6 +214,10 @@ export function MasonryGallery({
                     on={{
                         view: ({ index }) => setLightboxIndex(index),
                     }}
+                    controller={{
+                        closeOnPullDown: true,
+                        closeOnBackdropClick: true
+                    }}
                 />
             )}
         </div>

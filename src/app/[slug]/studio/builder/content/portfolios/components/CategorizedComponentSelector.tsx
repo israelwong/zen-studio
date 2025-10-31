@@ -106,7 +106,7 @@ const COMPONENT_CATEGORIES: Category[] = [
         label: 'Multimedia',
         components: [
             {
-                type: 'image',
+                type: 'media-gallery',
                 mode: 'single',
                 mediaType: 'images',
                 label: 'Imagen',
@@ -114,7 +114,7 @@ const COMPONENT_CATEGORIES: Category[] = [
                 description: 'Una sola imagen',
             },
             {
-                type: 'gallery',
+                type: 'media-gallery',
                 mode: 'grid',
                 mediaType: 'images',
                 label: 'Galería Grid',
@@ -122,7 +122,7 @@ const COMPONENT_CATEGORIES: Category[] = [
                 description: 'Cuadrícula de imágenes',
             },
             {
-                type: 'gallery',
+                type: 'media-gallery',
                 mode: 'masonry',
                 mediaType: 'images',
                 label: 'Galería Masonry',
@@ -130,7 +130,7 @@ const COMPONENT_CATEGORIES: Category[] = [
                 description: 'Diseño tipo Pinterest',
             },
             {
-                type: 'gallery',
+                type: 'media-gallery',
                 mode: 'slide',
                 mediaType: 'images',
                 label: 'Galería Carousel',

@@ -3,7 +3,7 @@
  * Reutilizables entre ZEN Posts, ZEN Invitations y otros módulos
  */
 
-export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'heading-1' | 'heading-3' | 'blockquote' | 'separator';
+export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'heading-1' | 'heading-3' | 'blockquote' | 'separator' | 'media-gallery';
 
 export type MediaMode = 'single' | 'grid' | 'masonry' | 'slide';
 

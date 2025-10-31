@@ -93,6 +93,77 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                         );
                 }
 
+            case 'media-gallery':
+                if (!block.media || block.media.length === 0) {
+                    return (
+                        <div className={`${className} p-8 bg-zinc-800 rounded-lg border border-zinc-700 text-center`}>
+                            <p className="text-zinc-500">No hay imágenes en la galería</p>
+                        </div>
+                    );
+                }
+
+                // Determinar el modo de visualización desde config
+                const mediaGalleryMode = (block.config as Partial<MediaBlockConfig>)?.mode || 'grid';
+                const mediaGalleryConfig = block.config as Partial<MediaBlockConfig>;
+
+                // Si hay una sola imagen, siempre mostrar ImageSingle
+                if (block.media.length === 1) {
+                    return (
+                        <ImageSingle
+                            media={block.media[0]}
+                            aspectRatio="auto"
+                            className={className}
+                            showCaption={false}
+                            studioSlug=""
+                            showSizeLabel={false}
+                            showBorder={false}
+                        />
+                    );
+                }
+
+                // Para múltiples imágenes, renderizar según el modo
+                switch (mediaGalleryMode) {
+                    case 'masonry':
+                        return (
+                            <MasonryGallery
+                                media={block.media}
+                                className={className}
+                                enableLightbox={true}
+                                showSizeLabel={false}
+                                columns={mediaGalleryConfig.columns ?? 3}
+                                spacing={mediaGalleryConfig.gap ?? 4}
+                                showDeleteButtons={false}
+                                onDelete={undefined}
+                            />
+                        );
+                    case 'slide':
+                        return (
+                            <ImageCarousel
+                                media={block.media}
+                                title={block.title}
+                                description={block.description}
+                                showArrows={mediaGalleryConfig.showArrows ?? true}
+                                showDots={mediaGalleryConfig.showDots ?? false}
+                                autoplay={mediaGalleryConfig.autoplay ?? 4000}
+                                className={className}
+                            />
+                        );
+                    case 'grid':
+                    default:
+                        return (
+                            <ImageGrid
+                                media={block.media}
+                                title={block.title}
+                                description={block.description}
+                                config={block.config}
+                                className={className}
+                                showSizeLabel={false}
+                                isEditable={false}
+                                lightbox={true}
+                            />
+                        );
+                }
+
             case 'video':
                 if (!block.media || block.media.length === 0) {
                     return (

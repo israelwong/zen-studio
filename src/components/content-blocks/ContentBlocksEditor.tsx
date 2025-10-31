@@ -26,7 +26,7 @@ import { ContentBlock, ComponentType, MediaMode, MediaType, MediaItem, MediaBloc
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { toast } from 'sonner';
 import { VideoSingle } from '@/components/shared/video';
-import { ImageSingle, ImageGrid } from '@/components/shared/media';
+import { ImageSingle, ImageGrid, MediaGallery } from '@/components/shared/media';
 import { formatBytes, calculateTotalStorage, getStorageInfo } from '@/lib/utils/storage';
 
 // Importar tipo UploadedFile
@@ -52,6 +52,15 @@ function getComponentDisplayName(block: ContentBlock): string {
                 slide: 'Galería Carousel'
             };
             return modeLabels[mode];
+        case 'media-gallery':
+            const mediaMode = (block.config?.mode as MediaMode) || 'grid';
+            const mediaModeLabels: Record<MediaMode, string> = {
+                single: 'Media Gallery',
+                grid: 'Media Gallery Grid',
+                masonry: 'Media Gallery Masonry',
+                slide: 'Media Gallery Carousel'
+            };
+            return mediaModeLabels[mediaMode] || 'Media Gallery';
         case 'video':
             return 'Video';
         case 'text':
@@ -294,6 +303,20 @@ export function ContentBlocksEditor({
                 columns: component.mode === 'grid' ? 3 : undefined,
                 gap: 4,
                 aspectRatio: 'square',
+                showCaptions: false,
+                showTitles: false,
+                lightbox: component.mode !== 'slide',
+                autoplay: component.mode === 'slide' ? 3000 : undefined,
+                perView: component.mode === 'slide' ? 1 : undefined,
+                showArrows: component.mode === 'slide',
+                showDots: component.mode === 'slide'
+            };
+        } else if (component.type === 'media-gallery') {
+            config = {
+                mode: component.mode || 'grid',
+                columns: component.mode === 'grid' ? 3 : undefined,
+                gap: 4,
+                aspectRatio: 'auto',
                 showCaptions: false,
                 showTitles: false,
                 lightbox: component.mode !== 'slide',
@@ -1092,6 +1115,8 @@ function SortableBlock({
                 return renderImageContent();
             case 'gallery':
                 return renderGalleryContent();
+            case 'media-gallery':
+                return renderMediaGalleryContent();
             case 'video':
                 return renderVideoContent();
             case 'text':
@@ -1197,6 +1222,49 @@ function SortableBlock({
                         input.click();
                     }}
                     isUploading={isUploading}
+                />
+            </div>
+        );
+    };
+
+    const renderMediaGalleryContent = () => {
+        return (
+            <div className="space-y-2">
+                <MediaGallery
+                    media={block.media || []}
+                    config={block.config as Partial<MediaBlockConfig>}
+                    className=""
+                    showDeleteButtons={true}
+                    onDelete={(mediaId) => removeMedia(mediaId)}
+                    onReorder={(reorderedMedia) => {
+                        onUpdate(block.id, { media: reorderedMedia });
+                    }}
+                    isEditable={true}
+                    lightbox={true}
+                    onDrop={(files) => onDropFiles(files, block.id)}
+                    onUploadClick={() => {
+                        // Crear input file temporal para trigger upload
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.multiple = true;
+                        input.accept = 'image/*';
+                        input.onchange = (e) => {
+                            const files = Array.from((e.target as HTMLInputElement).files || []);
+                            if (files.length > 0) {
+                                onDropFiles(files, block.id);
+                            }
+                        };
+                        input.click();
+                    }}
+                    isUploading={isUploading}
+                    onModeChange={(mode) => {
+                        onUpdate(block.id, {
+                            config: {
+                                ...block.config,
+                                mode
+                            }
+                        });
+                    }}
                 />
             </div>
         );
