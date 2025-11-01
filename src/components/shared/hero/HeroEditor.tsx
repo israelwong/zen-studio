@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Plus, X, AlignStartVertical, AlignVerticalDistributeCenter, AlignEndVertical, AlignEndHorizontal, AlignStartHorizontal, Square, RectangleVertical, Maximize2, Shrink, AlignVerticalJustifyCenter, Copy, ChevronUp, ChevronDown, Layers, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Plus, X, AlignStartVertical, AlignVerticalDistributeCenter, AlignEndVertical, AlignEndHorizontal, AlignStartHorizontal, Square, RectangleVertical, Maximize2, Shrink, AlignVerticalJustifyCenter, Copy, ChevronUp, ChevronDown, Layers, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Maximize } from 'lucide-react';
 import { ZenInput, ZenTextarea, ZenSelect, ZenButton, ZenCard, ZenCardContent, ZenSwitch } from '@/components/ui/zen';
 import { HeroConfig, ButtonConfig, MediaItem } from '@/types/content-blocks';
 import { cn } from '@/lib/utils';
@@ -44,6 +44,11 @@ export default function HeroEditor({
             if (aspectRatioValue && aspectRatioValue !== 'square' && aspectRatioValue !== 'vertical') {
                 cleanedUpdates.aspectRatio = undefined;
             }
+        }
+        // Asegurar que aspectRatio sea del tipo correcto
+        if ('aspectRatio' in cleanedUpdates && cleanedUpdates.aspectRatio !== undefined) {
+            const validValue = cleanedUpdates.aspectRatio as 'square' | 'vertical';
+            cleanedUpdates.aspectRatio = validValue;
         }
         const newConfig = { ...localConfig, ...cleanedUpdates };
         setLocalConfig(newConfig);
@@ -141,6 +146,7 @@ export default function HeroEditor({
     }, [media, onMediaChange]);
 
     const aspectRatioOptions = [
+        { value: 'original' as const, icon: Maximize, label: 'Original' },
         { value: 'square' as const, icon: Square, label: 'Cuadrado' },
         { value: 'vertical' as const, icon: RectangleVertical, label: 'Vertical' }
     ];
@@ -344,13 +350,24 @@ export default function HeroEditor({
                                 <div className="flex gap-1">
                                     {aspectRatioOptions.map((option) => {
                                         const Icon = option.icon;
-                                        const isActive = localConfig.aspectRatio === option.value;
+                                        // 'original' es activo cuando aspectRatio es undefined
+                                        const isActive = option.value === 'original'
+                                            ? !localConfig.aspectRatio
+                                            : localConfig.aspectRatio === option.value;
 
                                         return (
                                             <button
                                                 key={option.value}
                                                 type="button"
-                                                onClick={() => updateConfig({ aspectRatio: option.value })}
+                                                onClick={() => {
+                                                    if (option.value === 'original') {
+                                                        updateConfig({ aspectRatio: undefined });
+                                                    } else {
+                                                        // TypeScript sabe que aquí option.value es 'square' | 'vertical'
+                                                        const validValue = option.value === 'square' ? 'square' : 'vertical';
+                                                        updateConfig({ aspectRatio: validValue });
+                                                    }
+                                                }}
                                                 className={cn(
                                                     "p-2 rounded transition-colors",
                                                     isActive
@@ -364,6 +381,11 @@ export default function HeroEditor({
                                         );
                                     })}
                                 </div>
+                                {!localConfig.aspectRatio && (
+                                    <p className="text-xs text-zinc-500 mt-1">
+                                        Usando aspecto original del archivo (alto automático)
+                                    </p>
+                                )}
                             </div>
 
                             <div>
