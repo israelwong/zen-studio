@@ -276,8 +276,8 @@ export default function HeroEditor({
 
 
     const gradientPositionOptions = [
-        { value: 'top' as const, icon: ArrowUp, label: 'Arriba' },
         { value: 'bottom' as const, icon: ArrowDown, label: 'Abajo' },
+        { value: 'top' as const, icon: ArrowUp, label: 'Arriba' },
         { value: 'left' as const, icon: ArrowLeft, label: 'Izquierda' },
         { value: 'right' as const, icon: ArrowRight, label: 'Derecha' }
     ];
@@ -944,7 +944,16 @@ export default function HeroEditor({
                                     <span className="text-sm font-medium text-zinc-200">Degradado de Contraste</span>
                                     <ZenSwitch
                                         checked={localConfig.gradientOverlay || false}
-                                        onCheckedChange={(checked) => updateConfig({ gradientOverlay: checked })}
+                                        onCheckedChange={(checked) => {
+                                            if (checked && !localConfig.gradientPosition) {
+                                                updateConfig({
+                                                    gradientOverlay: checked,
+                                                    gradientPosition: 'bottom'
+                                                });
+                                            } else {
+                                                updateConfig({ gradientOverlay: checked });
+                                            }
+                                        }}
                                     />
                                 </div>
 
@@ -959,7 +968,7 @@ export default function HeroEditor({
                                             <div className="grid grid-cols-4 gap-2">
                                                 {gradientPositionOptions.map((option) => {
                                                     const Icon = option.icon;
-                                                    const isActive = (localConfig.gradientPosition || 'top') === option.value;
+                                                    const isActive = (localConfig.gradientPosition || 'bottom') === option.value;
                                                     return (
                                                         <button
                                                             key={option.value}

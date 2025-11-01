@@ -7,6 +7,7 @@ import { MediaItem, MediaBlockConfig } from '@/types/content-blocks';
 import { formatBytes } from '@/lib/utils/storage';
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
+import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
 import {
     DndContext,
@@ -555,7 +556,7 @@ export function ImageGrid({
                             alt: item.filename
                         };
                     })}
-                    plugins={[Video]}
+                    plugins={[Video, Zoom]}
                     video={{
                         controls: true,
                         playsInline: true,
