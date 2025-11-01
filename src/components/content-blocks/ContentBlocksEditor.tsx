@@ -27,6 +27,7 @@ import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { toast } from 'sonner';
 import { VideoSingle } from '@/components/shared/video';
 import { ImageSingle, ImageGrid, MediaGallery } from '@/components/shared/media';
+import { RichTextBlock } from '@/components/shared/text';
 import { formatBytes, calculateTotalStorage, getStorageInfo } from '@/lib/utils/storage';
 
 // Importar tipo UploadedFile
@@ -64,13 +65,14 @@ function getComponentDisplayName(block: ContentBlock): string {
         case 'video':
             return 'Video';
         case 'text':
-            return 'Bloque de Texto';
-        case 'heading-1':
-            return 'Título (H1)';
-        case 'heading-3':
-            return 'Subtítulo (H3)';
-        case 'blockquote':
-            return 'Blockquote';
+            const textType = (block.config?.textType as string) || 'text';
+            const textTypeLabels: Record<string, string> = {
+                'heading-1': 'Título (H1)',
+                'heading-3': 'Subtítulo (H3)',
+                'text': 'Párrafo',
+                'blockquote': 'Cita',
+            };
+            return textTypeLabels[textType] || 'Bloque de Texto';
         case 'hero-contact':
             return 'Hero Contacto';
         case 'hero-image':
@@ -411,26 +413,19 @@ export function ContentBlocksEditor({
                 pattern: 'dots',
                 textColor: 'text-white'
             };
-        } else if (component.type === 'heading-1') {
+        } else if (component.type === 'text') {
             config = {
-                text: 'Tu Título Principal',
-                fontSize: '2xl',
-                fontWeight: 'bold',
-                alignment: 'left'
+                text: '',
+                textType: 'text',
+                fontSize: 'base',
+                fontWeight: 'normal',
+                alignment: 'left',
+                italic: false
             };
-        } else if (component.type === 'heading-3') {
+        } else if (component.type === 'separator') {
             config = {
-                text: 'Tu Subtítulo',
-                fontSize: 'xl',
-                fontWeight: 'semibold',
-                alignment: 'left'
-            };
-        } else if (component.type === 'blockquote') {
-            config = {
-                text: 'Tu cita destacada aquí',
-                fontSize: 'lg',
-                fontWeight: 'medium',
-                alignment: 'left'
+                style: 'solid',
+                height: 0.5
             };
         }
 
@@ -1065,51 +1060,6 @@ function SortableBlock({
         console.log('onUpdate called with block.id:', block.id);
     };
 
-    // Componente TextToolbar para controles de alineación
-    const TextToolbar = ({ alignment, onAlignmentChange }: { alignment?: string; onAlignmentChange: (align: string) => void }) => {
-        const alignments = [
-            { value: 'left', icon: AlignLeft, label: 'Izquierda' },
-            { value: 'center', icon: AlignCenter, label: 'Centro' },
-            { value: 'right', icon: AlignRight, label: 'Derecha' },
-        ];
-
-        const currentAlignment = alignment || 'left';
-
-        return (
-            <div className="flex items-center gap-1 p-2 bg-zinc-900/50 border border-zinc-800 rounded-md">
-                {alignments.map(({ value, icon: Icon, label }) => (
-                    <button
-                        key={value}
-                        type="button"
-                        data-internal-button="true"
-                        onMouseDown={(e) => {
-                            // Prevenir que el evento active el drag
-                            e.stopPropagation();
-                            e.nativeEvent.stopImmediatePropagation();
-                        }}
-                        onPointerDown={(e) => {
-                            // Prevenir que el evento active el drag
-                            e.stopPropagation();
-                            e.nativeEvent.stopImmediatePropagation();
-                        }}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onAlignmentChange(value);
-                        }}
-                        className={`p-1.5 rounded transition-colors ${currentAlignment === value
-                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            : 'text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800'
-                            }`}
-                        title={label}
-                    >
-                        <Icon className="h-4 w-4 pointer-events-none" />
-                    </button>
-                ))}
-            </div>
-        );
-    };
-
-
     const renderContent = () => {
         switch (block.type) {
             case 'image':
@@ -1122,12 +1072,6 @@ function SortableBlock({
                 return renderVideoContent();
             case 'text':
                 return renderTextContent();
-            case 'heading-1':
-                return renderHeading1Content();
-            case 'heading-3':
-                return renderHeading3Content();
-            case 'blockquote':
-                return renderBlockquoteContent();
             case 'separator':
                 return renderSeparatorContent();
             case 'hero-contact':
@@ -1213,7 +1157,7 @@ function SortableBlock({
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.multiple = true;
-                        input.accept = 'image/*';
+                        input.accept = 'image/*,video/*';
                         input.onchange = (e) => {
                             const files = Array.from((e.target as HTMLInputElement).files || []);
                             if (files.length > 0) {
@@ -1248,7 +1192,7 @@ function SortableBlock({
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.multiple = true;
-                        input.accept = 'image/*';
+                        input.accept = 'image/*,video/*';
                         input.onchange = (e) => {
                             const files = Array.from((e.target as HTMLInputElement).files || []);
                             if (files.length > 0) {
@@ -1319,182 +1263,36 @@ function SortableBlock({
     };
 
     const renderTextContent = () => {
-        const alignment = (block.config?.alignment as string) || 'left';
-        const alignmentClasses = {
-            left: 'text-left',
-            center: 'text-center',
-            right: 'text-right'
-        };
+        // Migrar bloques antiguos: si el tipo es heading-1, heading-3, blockquote, convertir a text con textType
+        const currentConfig = block.config || {};
+        let textType = currentConfig.textType;
+        
+        // Si no tiene textType pero el tipo del bloque es antiguo, migrar
+        if (!textType && (block.type === 'heading-1' || block.type === 'heading-3' || block.type === 'blockquote')) {
+            textType = block.type;
+        }
 
         return (
-            <div className="space-y-3">
-                <TextToolbar
-                    alignment={alignment}
-                    onAlignmentChange={(align) => {
-                        onUpdate(block.id, {
-                            config: {
-                                ...block.config,
-                                alignment: align
-                            }
-                        });
-                    }}
-                />
-                <textarea
-                    value={String(block.config?.text || '')}
-                    onChange={(e) => onUpdate(block.id, {
+            <RichTextBlock
+                config={{
+                    ...currentConfig,
+                    textType: textType || 'text',
+                }}
+                onConfigChange={(newConfig) => {
+                    onUpdate(block.id, {
                         config: {
-                            ...block.config,
-                            text: e.target.value
+                            ...currentConfig,
+                            ...newConfig,
                         }
-                    })}
-                    onMouseDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el textarea
-                        e.stopPropagation();
-                    }}
-                    onPointerDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el textarea
-                        e.stopPropagation();
-                    }}
-                    placeholder="Escribe tu texto aquí..."
-                    className={`w-full min-h-[120px] p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none text-sm font-light leading-relaxed ${alignmentClasses[alignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
-                    rows={4}
-                />
-            </div>
-        );
-    };
-
-    const renderHeading1Content = () => {
-        const alignment = (block.config?.alignment as string) || 'left';
-        const alignmentClasses = {
-            left: 'text-left',
-            center: 'text-center',
-            right: 'text-right'
-        };
-
-        return (
-            <div className="space-y-3">
-                <TextToolbar
-                    alignment={alignment}
-                    onAlignmentChange={(align) => {
-                        onUpdate(block.id, {
-                            config: {
-                                ...block.config,
-                                alignment: align
-                            }
-                        });
-                    }}
-                />
-                <input
-                    type="text"
-                    value={String(block.config?.text || '')}
-                    onChange={(e) => onUpdate(block.id, {
-                        config: {
-                            ...block.config,
-                            text: e.target.value
-                        }
-                    })}
-                    onMouseDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el input
-                        e.stopPropagation();
-                    }}
-                    onPointerDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el input
-                        e.stopPropagation();
-                    }}
-                    placeholder="Escribe tu título principal..."
-                    className={`w-full p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none text-2xl font-bold ${alignmentClasses[alignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
-                />
-            </div>
-        );
-    };
-
-    const renderHeading3Content = () => {
-        const alignment = (block.config?.alignment as string) || 'left';
-        const alignmentClasses = {
-            left: 'text-left',
-            center: 'text-center',
-            right: 'text-right'
-        };
-
-        return (
-            <div className="space-y-3">
-                <TextToolbar
-                    alignment={alignment}
-                    onAlignmentChange={(align) => {
-                        onUpdate(block.id, {
-                            config: {
-                                ...block.config,
-                                alignment: align
-                            }
-                        });
-                    }}
-                />
-                <input
-                    type="text"
-                    value={String(block.config?.text || '')}
-                    onChange={(e) => onUpdate(block.id, {
-                        config: {
-                            ...block.config,
-                            text: e.target.value
-                        }
-                    })}
-                    onMouseDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el input
-                        e.stopPropagation();
-                    }}
-                    onPointerDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el input
-                        e.stopPropagation();
-                    }}
-                    placeholder="Escribe tu subtítulo..."
-                    className={`w-full p-4 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none text-xl font-semibold ${alignmentClasses[alignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
-                />
-            </div>
-        );
-    };
-
-    const renderBlockquoteContent = () => {
-        const alignment = (block.config?.alignment as string) || 'left';
-        const alignmentClasses = {
-            left: 'text-left',
-            center: 'text-center',
-            right: 'text-right'
-        };
-
-        return (
-            <div className="space-y-3">
-                <TextToolbar
-                    alignment={alignment}
-                    onAlignmentChange={(align) => {
-                        onUpdate(block.id, {
-                            config: {
-                                ...block.config,
-                                alignment: align
-                            }
-                        });
-                    }}
-                />
-                <textarea
-                    value={String(block.config?.text || '')}
-                    onChange={(e) => onUpdate(block.id, {
-                        config: {
-                            ...block.config,
-                            text: e.target.value
-                        }
-                    })}
-                    onMouseDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el textarea
-                        e.stopPropagation();
-                    }}
-                    onPointerDown={(e) => {
-                        // Prevenir que el drag se active cuando se interactúa con el textarea
-                        e.stopPropagation();
-                    }}
-                    placeholder="Escribe tu cita destacada..."
-                    className={`w-full min-h-[100px] p-4 bg-zinc-800 border-l-4 border-emerald-500 rounded-lg text-zinc-300 placeholder-zinc-500 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none resize-none text-lg font-medium italic leading-relaxed ${alignmentClasses[alignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
-                    rows={3}
-                />
-            </div>
+                    });
+                }}
+                placeholder={
+                    textType === 'heading-1' ? 'Escribe tu título principal...' :
+                    textType === 'heading-3' ? 'Escribe tu subtítulo...' :
+                    textType === 'blockquote' ? 'Escribe tu cita destacada...' :
+                    'Escribe tu texto aquí...'
+                }
+            />
         );
     };
 

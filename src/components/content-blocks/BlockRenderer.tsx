@@ -97,7 +97,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                 if (!block.media || block.media.length === 0) {
                     return (
                         <div className={`${className} p-8 bg-zinc-800 rounded-lg border border-zinc-700 text-center`}>
-                            <p className="text-zinc-500">No hay imágenes en la galería</p>
+                            <p className="text-zinc-500">No hay contenido en la galería</p>
                         </div>
                     );
                 }
@@ -107,11 +107,33 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                 const mediaGalleryConfig = block.config as Partial<MediaBlockConfig>;
                 const borderStyle = mediaGalleryConfig.borderStyle || 'rounded';
 
-                // Si hay una sola imagen, siempre mostrar ImageSingle
+                // Si hay un solo archivo (imagen o video)
                 if (block.media.length === 1) {
+                    const singleMedia = block.media[0];
+
+                    // Si es video, usar VideoSingle
+                    if (singleMedia.file_type === 'video') {
+                        return (
+                            <VideoSingle
+                                src={singleMedia.file_url}
+                                config={{
+                                    autoPlay: false,
+                                    muted: false,
+                                    loop: false,
+                                    poster: singleMedia.thumbnail_url || undefined,
+                                    maxWidth: 'max-w-full'
+                                }}
+                                storageBytes={singleMedia.storage_bytes}
+                                className={className}
+                                showSizeLabel={false}
+                            />
+                        );
+                    }
+
+                    // Si es imagen, usar ImageSingle
                     return (
                         <ImageSingle
-                            media={block.media[0]}
+                            media={singleMedia}
                             aspectRatio="auto"
                             className={className}
                             showCaption={false}
@@ -122,7 +144,7 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                     );
                 }
 
-                // Para múltiples imágenes, renderizar según el modo
+                // Para múltiples archivos (imágenes y/o videos), renderizar según el modo
                 switch (mediaGalleryMode) {
                     case 'masonry':
                         return (
@@ -191,116 +213,70 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                 const textConfig = block.config as TextBlockConfig;
                 const textContent = textConfig?.text || block.description || '';
                 const textAlignment = textConfig?.alignment || 'left';
+                const textType = textConfig?.textType || 'text';
+                const fontSize = textConfig?.fontSize || 'base';
+                const fontWeight = textConfig?.fontWeight || 'normal';
+                const italic = textConfig?.italic || false;
+
                 const alignmentClasses = {
                     left: 'text-left',
                     center: 'text-center',
                     right: 'text-right'
                 };
 
+                // Mapeo de tamaños de fuente
+                const fontSizeClasses = {
+                    sm: 'text-sm',
+                    base: 'text-base',
+                    lg: 'text-lg',
+                    xl: 'text-xl',
+                    '2xl': 'text-2xl',
+                };
+
+                // Estilos según el tipo de texto
+                const textTypeStyles = {
+                    'heading-1': {
+                        tag: 'h1' as const,
+                        className: `text-2xl font-bold text-zinc-300 leading-tight break-words overflow-wrap-anywhere ${alignmentClasses[textAlignment as keyof typeof alignmentClasses] || alignmentClasses.left}`,
+                        containerClass: `${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'} mt-5`,
+                    },
+                    'heading-3': {
+                        tag: 'h3' as const,
+                        className: `text-xl font-semibold text-zinc-300 leading-tight break-words overflow-wrap-anywhere ${alignmentClasses[textAlignment as keyof typeof alignmentClasses] || alignmentClasses.left}`,
+                        containerClass: `${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'}`,
+                    },
+                    'text': {
+                        tag: 'div' as const,
+                        className: `${fontSizeClasses[fontSize]} font-${fontWeight} ${italic ? 'italic' : ''} leading-relaxed break-words overflow-wrap-anywhere ${alignmentClasses[textAlignment as keyof typeof alignmentClasses] || alignmentClasses.left}`,
+                        containerClass: `${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'} mb-5 overflow-hidden`,
+                    },
+                    'blockquote': {
+                        tag: 'blockquote' as const,
+                        className: `border-l-4 border-zinc-800 pl-4 py-1 text-md italic ${fontSizeClasses[fontSize]} font-${fontWeight} leading-relaxed break-words overflow-wrap-anywhere ${alignmentClasses[textAlignment as keyof typeof alignmentClasses] || alignmentClasses.left}`,
+                        containerClass: `${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'}`,
+                    },
+                };
+
+                const style = textTypeStyles[textType as keyof typeof textTypeStyles] || textTypeStyles.text;
+                const Tag = style.tag;
+
                 return (
-                    <div
-                        className={`${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'
-                            } mb-5 overflow-hidden`}
-                    >
-                        {block.title && (
+                    <div className={style.containerClass}>
+                        {block.title && textType === 'text' && (
                             <h3 className="text-xl font-semibold text-zinc-300 mb-3">
                                 {block.title}
                             </h3>
                         )}
-                        <div
-                            className={`text-sm font-light leading-relaxed break-words overflow-wrap-anywhere ${alignmentClasses[textAlignment as keyof typeof alignmentClasses] || alignmentClasses.left}`}
+                        <Tag
+                            className={style.className}
                             style={{
-                                color: textConfig?.color || '#d4d4d8',
+                                color: textConfig?.color || (textType === 'blockquote' ? '#a1a1aa' : textType === 'heading-1' || textType === 'heading-3' ? '#e4e4e7' : '#d4d4d8'),
                                 wordBreak: 'break-word',
                                 overflowWrap: 'break-word',
                             }}
                         >
                             {textContent}
-                        </div>
-                    </div>
-                );
-
-            case 'heading-1':
-                const heading1Config = block.config as TextBlockConfig;
-                const heading1Content = heading1Config?.text || block.description || '';
-                const heading1Alignment = heading1Config?.alignment || 'left';
-                const heading1AlignmentClasses = {
-                    left: 'text-left',
-                    center: 'text-center',
-                    right: 'text-right'
-                };
-
-                return (
-                    <div
-                        className={`${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'
-                            } mt-5`}
-                    >
-                        <h1
-                            className={`text-2xl font-bold text-zinc-300 leading-tight break-words overflow-wrap-anywhere ${heading1AlignmentClasses[heading1Alignment as keyof typeof heading1AlignmentClasses] || heading1AlignmentClasses.left}`}
-                            style={{
-                                color: heading1Config?.color || '#e4e4e7',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word',
-                            }}
-                        >
-                            {heading1Content}
-                        </h1>
-                    </div>
-                );
-
-            case 'heading-3':
-                const heading3Config = block.config as TextBlockConfig;
-                const heading3Content = heading3Config?.text || block.description || '';
-                const heading3Alignment = heading3Config?.alignment || 'left';
-                const heading3AlignmentClasses = {
-                    left: 'text-left',
-                    center: 'text-center',
-                    right: 'text-right'
-                };
-
-                return (
-                    <div
-                        className={`${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'
-                            }`}
-                    >
-                        <h3
-                            className={`text-xl font-semibold text-zinc-300 leading-tight break-words overflow-wrap-anywhere ${heading3AlignmentClasses[heading3Alignment as keyof typeof heading3AlignmentClasses] || heading3AlignmentClasses.left}`}
-                            style={{
-                                color: heading3Config?.color || '#e4e4e7',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word',
-                            }}
-                        >
-                            {heading3Content}
-                        </h3>
-                    </div>
-                );
-
-            case 'blockquote':
-                const blockquoteConfig = block.config as TextBlockConfig;
-                const blockquoteContent = blockquoteConfig?.text || block.description || '';
-                const blockquoteAlignment = blockquoteConfig?.alignment || 'left';
-                const blockquoteAlignmentClasses = {
-                    left: 'text-left',
-                    center: 'text-center',
-                    right: 'text-right'
-                };
-
-                return (
-                    <div
-                        className={`${className} ${block.presentation === 'fullwidth' ? 'w-full' : 'max-w-4xl mx-auto'
-                            }`}
-                    >
-                        <blockquote
-                            className={`border-l-4 border-zinc-800 pl-4 py-1 text-md italic text-zinc-400 leading-relaxed break-words overflow-wrap-anywhere ${blockquoteAlignmentClasses[blockquoteAlignment as keyof typeof blockquoteAlignmentClasses] || blockquoteAlignmentClasses.left}`}
-                            style={{
-                                color: blockquoteConfig?.color || '#e4e4e7',
-                                wordBreak: 'break-word',
-                                overflowWrap: 'break-word',
-                            }}
-                        >
-                            {blockquoteContent}
-                        </blockquote>
+                        </Tag>
                     </div>
                 );
 

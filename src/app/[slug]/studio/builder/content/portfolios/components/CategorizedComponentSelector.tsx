@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Image as ImageIcon, Video, Grid3X3, Heading1, Heading3, Quote, MessageCircle, Play, FileText, Type, RectangleHorizontal, Minus } from 'lucide-react';
+import { X, Image as ImageIcon, MessageCircle, FileText, Type, Minus } from 'lucide-react';
 import { ComponentType, MediaMode, MediaType } from '@/types/content-blocks';
 
 export interface ComponentOption {
@@ -32,34 +32,30 @@ const COMPONENT_CATEGORIES: Category[] = [
         label: 'Texto',
         components: [
             {
-                type: 'heading-1',
-                label: 'Título',
-                icon: Heading1,
-                description: 'Título principal (H1)',
-            },
-            {
-                type: 'heading-3',
-                label: 'Subtítulo',
-                icon: Heading3,
-                description: 'Subtítulo (H3)',
-            },
-            {
                 type: 'text',
-                label: 'Párrafo',
+                label: 'Texto',
                 icon: Type,
-                description: 'Bloque de texto',
-            },
-            {
-                type: 'blockquote',
-                label: 'Blockquote',
-                icon: Quote,
-                description: 'Cita destacada',
+                description: 'Bloque de texto con formato completo',
             },
             {
                 type: 'separator',
                 label: 'Separador',
                 icon: Minus,
                 description: 'Espacio o línea divisoria',
+            },
+        ],
+    },
+    {
+        id: 'multimedia',
+        label: 'Multimedia',
+        components: [
+            {
+                type: 'media-gallery',
+                mode: 'grid',
+                mediaType: 'images',
+                label: 'Multimedia',
+                icon: ImageIcon,
+                description: 'Sube una o más fotos y videos y personaliza cómo se ven',
             },
         ],
     },
@@ -88,7 +84,7 @@ const COMPONENT_CATEGORIES: Category[] = [
                 mode: 'single',
                 mediaType: 'videos',
                 label: 'Hero Video',
-                icon: Play,
+                icon: ImageIcon,
                 description: 'Hero con video de fondo',
                 isPremium: true,
             },
@@ -98,52 +94,6 @@ const COMPONENT_CATEGORIES: Category[] = [
                 icon: FileText,
                 description: 'Hero con fondo decorativo',
                 isPremium: true,
-            },
-        ],
-    },
-    {
-        id: 'multimedia',
-        label: 'Multimedia',
-        components: [
-            {
-                type: 'media-gallery',
-                mode: 'single',
-                mediaType: 'images',
-                label: 'Imagen',
-                icon: ImageIcon,
-                description: 'Una sola imagen',
-            },
-            {
-                type: 'media-gallery',
-                mode: 'grid',
-                mediaType: 'images',
-                label: 'Galería Grid',
-                icon: Grid3X3,
-                description: 'Cuadrícula de imágenes',
-            },
-            {
-                type: 'media-gallery',
-                mode: 'masonry',
-                mediaType: 'images',
-                label: 'Galería Masonry',
-                icon: Grid3X3,
-                description: 'Diseño tipo Pinterest',
-            },
-            {
-                type: 'media-gallery',
-                mode: 'slide',
-                mediaType: 'images',
-                label: 'Galería Carousel',
-                icon: RectangleHorizontal,
-                description: 'Carrusel de imágenes',
-            },
-            {
-                type: 'video',
-                mode: 'single',
-                mediaType: 'videos',
-                label: 'Video',
-                icon: Video,
-                description: 'Un solo video',
             },
         ],
     },

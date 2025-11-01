@@ -431,142 +431,132 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
         let config: Record<string, unknown> = {};
 
         // Configuración específica por tipo
-        if (component.type === 'image') {
-            config = {
-                aspectRatio: 'square',
-                showCaptions: false
-            };
-        } else if (component.type === 'gallery') {
-            config = {
-                mode: component.mode,
-                columns: component.mode === 'grid' ? 3 : undefined,
-                gap: 4,
-                aspectRatio: 'square',
-                showCaptions: false,
-                showTitles: false,
-                lightbox: component.mode !== 'slide',
-                autoplay: component.mode === 'slide' ? 3000 : undefined,
-                perView: component.mode === 'slide' ? 1 : undefined,
-                showArrows: component.mode === 'slide',
-                showDots: component.mode === 'slide'
-            };
-        } else if (component.type === 'video') {
-            config = {
-                autoPlay: false,
-                muted: true,
-                loop: false,
-                controls: true
-            };
-        } else if (component.type === 'heading-1') {
-            config = {
-                text: 'Tu Título Principal',
-                fontSize: '2xl',
-                fontWeight: 'bold',
-                alignment: 'left'
-            };
-        } else if (component.type === 'heading-3') {
-            config = {
-                text: 'Tu Subtítulo',
-                fontSize: 'xl',
-                fontWeight: 'semibold',
-                alignment: 'left'
-            };
-        } else if (component.type === 'blockquote') {
-            config = {
-                text: 'Tu cita destacada aquí',
-                fontSize: 'lg',
-                fontWeight: 'medium',
-                alignment: 'left'
-            };
-        } else if (component.type === 'text') {
-            config = {
-                text: '',
-                alignment: 'left'
-            };
-        } else if (component.type === 'separator') {
-            config = {
-                style: 'solid',
-                height: 0.5,
-                color: 'zinc-600'
-            };
-        } else if (component.type === 'hero-contact') {
-            config = {
-                evento: 'Eventos',
-                titulo: 'Contáctanos Hoy Mismo',
-                descripcion: 'Nos emociona saber que nos estás considerando para cubrir tu evento. Especialistas en bodas, XV años y eventos corporativos.',
-                gradientFrom: 'from-purple-600',
-                gradientTo: 'to-blue-600',
-                showScrollIndicator: true
-            };
-        } else if (component.type === 'hero-image') {
-            config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
-                    {
-                        text: 'Ver Trabajo',
-                        variant: 'primary',
-                        size: 'lg'
-                    },
-                    {
-                        text: 'Contactar',
-                        variant: 'outline',
-                        size: 'lg'
-                    }
-                ],
-                overlay: true,
-                overlayOpacity: 50,
-                textAlignment: 'center',
-                imagePosition: 'center'
-            };
-        } else if (component.type === 'hero-video') {
-            config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
-                    {
-                        text: 'Ver Trabajo',
-                        variant: 'primary',
-                        size: 'lg'
-                    },
-                    {
-                        text: 'Contactar',
-                        variant: 'outline',
-                        size: 'lg'
-                    }
-                ],
-                overlay: true,
-                overlayOpacity: 50,
-                textAlignment: 'center',
-                autoPlay: true,
-                muted: true,
-                loop: true
-            };
-        } else if (component.type === 'hero-text') {
-            config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
-                    {
-                        text: 'Ver Trabajo',
-                        variant: 'primary',
-                        size: 'lg'
-                    },
-                    {
-                        text: 'Contactar',
-                        variant: 'outline',
-                        size: 'lg'
-                    }
-                ],
-                backgroundVariant: 'gradient',
-                backgroundGradient: 'from-zinc-900 via-zinc-800 to-zinc-900',
-                textAlignment: 'center',
-                pattern: 'dots',
-                textColor: 'text-white'
-            };
+        switch (component.type) {
+            case 'media-gallery':
+                config = {
+                    mode: component.mode || 'grid',
+                    columns: component.mode === 'grid' ? 3 : undefined,
+                    gap: 4,
+                    borderStyle: 'rounded',
+                    aspectRatio: 'auto',
+                    showCaptions: false,
+                    showTitles: false,
+                    lightbox: component.mode !== 'slide',
+                    autoplay: component.mode === 'slide' ? 3000 : undefined,
+                    perView: component.mode === 'slide' ? 1 : undefined,
+                    showArrows: component.mode === 'slide',
+                    showDots: component.mode === 'slide'
+                };
+                break;
+            case 'video':
+                config = {
+                    autoPlay: false,
+                    muted: true,
+                    loop: false,
+                    controls: true
+                };
+                break;
+            case 'text':
+                config = {
+                    text: '',
+                    textType: 'text',
+                    fontSize: 'base',
+                    fontWeight: 'normal',
+                    alignment: 'left',
+                    italic: false
+                };
+                break;
+            case 'separator':
+                config = {
+                    style: 'solid',
+                    height: 0.5
+                };
+                break;
+            case 'hero-contact':
+                config = {
+                    evento: 'Eventos',
+                    titulo: 'Contáctanos Hoy Mismo',
+                    descripcion: 'Nos emociona saber que nos estás considerando para cubrir tu evento. Especialistas en bodas, XV años y eventos corporativos.',
+                    gradientFrom: 'from-purple-600',
+                    gradientTo: 'to-blue-600',
+                    showScrollIndicator: true
+                };
+                break;
+            case 'hero-image':
+                config = {
+                    title: 'Tu Título Aquí',
+                    subtitle: 'Subtítulo Impactante',
+                    description: 'Descripción que cautive a tus prospectos',
+                    buttons: [
+                        {
+                            text: 'Ver Trabajo',
+                            variant: 'primary',
+                            size: 'lg'
+                        },
+                        {
+                            text: 'Contactar',
+                            variant: 'outline',
+                            size: 'lg'
+                        }
+                    ],
+                    overlay: true,
+                    overlayOpacity: 50,
+                    textAlignment: 'center',
+                    imagePosition: 'center'
+                };
+                break;
+            case 'hero-video':
+                config = {
+                    title: 'Tu Título Aquí',
+                    subtitle: 'Subtítulo Impactante',
+                    description: 'Descripción que cautive a tus prospectos',
+                    buttons: [
+                        {
+                            text: 'Ver Trabajo',
+                            variant: 'primary',
+                            size: 'lg'
+                        },
+                        {
+                            text: 'Contactar',
+                            variant: 'outline',
+                            size: 'lg'
+                        }
+                    ],
+                    overlay: true,
+                    overlayOpacity: 50,
+                    textAlignment: 'center',
+                    autoPlay: true,
+                    muted: true,
+                    loop: true
+                };
+                break;
+            case 'hero-text':
+                config = {
+                    title: 'Tu Título Aquí',
+                    subtitle: 'Subtítulo Impactante',
+                    description: 'Descripción que cautive a tus prospectos',
+                    buttons: [
+                        {
+                            text: 'Ver Trabajo',
+                            variant: 'primary',
+                            size: 'lg'
+                        },
+                        {
+                            text: 'Contactar',
+                            variant: 'outline',
+                            size: 'lg'
+                        }
+                    ],
+                    backgroundVariant: 'gradient',
+                    backgroundGradient: 'from-zinc-900 via-zinc-800 to-zinc-900',
+                    textAlignment: 'center',
+                    pattern: 'dots',
+                    textColor: 'text-white'
+                };
+                break;
+            default:
+                // Tipo no reconocido o sin configuración específica
+                config = {};
         }
 
         const newBlock: ContentBlock = {

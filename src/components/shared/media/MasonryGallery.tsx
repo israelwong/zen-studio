@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Play } from 'lucide-react';
 import { MasonryPhotoAlbum, RenderImageProps, RenderImageContext } from "react-photo-album";
 import Lightbox from "yet-another-react-lightbox";
+import Video from "yet-another-react-lightbox/plugins/video";
 import "react-photo-album/masonry.css";
 import "yet-another-react-lightbox/styles.css";
 import { MediaItem } from '@/types/content-blocks';
@@ -28,6 +29,108 @@ interface MasonryGalleryProps {
     borderStyle?: 'normal' | 'rounded';
 }
 
+// Componente para mostrar thumbnail de video
+function VideoThumbnail({ videoUrl, thumbnailUrl, alt }: { videoUrl: string; thumbnailUrl?: string; alt: string }) {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [thumbnailDataUrl, setThumbnailDataUrl] = useState<string | null>(null);
+    const [hasThumbnail, setHasThumbnail] = useState(!!thumbnailUrl);
+
+    useEffect(() => {
+        // Si hay thumbnail_url, usarlo directamente
+        if (thumbnailUrl) {
+            setHasThumbnail(true);
+            return;
+        }
+
+        // Si no hay thumbnail, intentar capturar el primer frame
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        
+        if (!video || !canvas) return;
+
+        const captureFrame = () => {
+            try {
+                video.currentTime = 0.1; // Ir al primer frame
+                const onSeeked = () => {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                        setThumbnailDataUrl(dataUrl);
+                        setHasThumbnail(true);
+                    }
+                };
+                video.addEventListener('seeked', onSeeked, { once: true });
+            } catch (error) {
+                console.error('Error capturing video frame:', error);
+            }
+        };
+
+        video.addEventListener('loadedmetadata', captureFrame, { once: true });
+        video.load(); // Forzar carga del video
+
+        return () => {
+            video.removeEventListener('loadedmetadata', captureFrame);
+        };
+    }, [videoUrl, thumbnailUrl]);
+
+    return (
+        <>
+            {/* Video oculto para capturar frame */}
+            <video
+                ref={videoRef}
+                src={videoUrl}
+                className="hidden"
+                preload="metadata"
+                muted
+                crossOrigin="anonymous"
+            />
+            <canvas ref={canvasRef} className="hidden" />
+            
+            {/* Mostrar thumbnail si existe o fue capturado */}
+            {hasThumbnail ? (
+                <>
+                    {thumbnailUrl ? (
+                        <Image
+                            src={thumbnailUrl}
+                            alt={alt}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            unoptimized
+                        />
+                    ) : thumbnailDataUrl ? (
+                        <Image
+                            src={thumbnailDataUrl}
+                            alt={alt}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            unoptimized
+                        />
+                    ) : null}
+                    {/* Indicador de video */}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <div className="bg-black/60 rounded-full p-2">
+                            <Play className="w-6 h-6 text-white fill-white" />
+                        </div>
+                    </div>
+                </>
+            ) : (
+                // Fallback: mostrar fondo con indicador mientras carga
+                <div className="absolute inset-0 bg-zinc-900 flex items-center justify-center">
+                    <div className="bg-black/60 rounded-full p-2">
+                        <Play className="w-6 h-6 text-white fill-white" />
+                    </div>
+                </div>
+            )}
+        </>
+    );
+}
+
 // Función para obtener las dimensiones reales de una imagen
 const getImageDimensions = (src: string): Promise<{ width: number; height: number }> => {
     return new Promise((resolve, reject) => {
@@ -48,7 +151,38 @@ const createMasonryPhoto = async (
     mediaItem: MediaItem,
     index: number
 ): Promise<MasonryPhoto> => {
-    // Obtener dimensiones reales de la imagen
+    // Si es video, usar dimensiones por defecto o poster
+    if (mediaItem.file_type === 'video') {
+        // Intentar usar dimensiones del poster si existe
+        if (mediaItem.thumbnail_url) {
+            try {
+                const dimensions = await getImageDimensions(mediaItem.thumbnail_url);
+                return {
+                    src: mediaItem.thumbnail_url || mediaItem.file_url,
+                    width: dimensions.width,
+                    height: dimensions.height,
+                    alt: mediaItem.filename || `Video ${index + 1}`
+                };
+            } catch {
+                // Si falla, usar dimensiones por defecto para video
+                return {
+                    src: mediaItem.thumbnail_url || mediaItem.file_url,
+                    width: 1920,
+                    height: 1080,
+                    alt: mediaItem.filename || `Video ${index + 1}`
+                };
+            }
+        }
+        // Si no hay poster, usar dimensiones por defecto
+        return {
+            src: mediaItem.file_url,
+            width: 1920,
+            height: 1080,
+            alt: mediaItem.filename || `Video ${index + 1}`
+        };
+    }
+
+    // Para imágenes, obtener dimensiones reales
     const dimensions = await getImageDimensions(mediaItem.file_url);
 
     return {
@@ -111,10 +245,32 @@ export function MasonryGallery({
     }, [media]);
 
     // Preparar slides para el lightbox
-    const lightboxSlides = photos.map(photo => ({
-        src: photo.src,
-        alt: photo.alt || 'Imagen de galería'
-    }));
+    const lightboxSlides = media.map((mediaItem, index) => {
+        const photo = photos[index];
+        if (!photo) return null;
+        
+        if (mediaItem.file_type === 'video') {
+            return {
+                type: 'video' as const,
+                sources: [{
+                    src: mediaItem.file_url,
+                    type: 'video/mp4'
+                }],
+                poster: mediaItem.thumbnail_url || mediaItem.file_url,
+                autoPlay: true,
+                muted: false,
+                controls: true,
+                playsInline: true
+            };
+        }
+        
+        return {
+            src: photo.src,
+            alt: photo.alt || 'Imagen de galería',
+            width: photo.width,
+            height: photo.height
+        };
+    }).filter(Boolean);
 
     // Función para manejar el click en una imagen
     const handleImageClick = (index: number) => {
@@ -124,10 +280,14 @@ export function MasonryGallery({
         }
     };
 
-    // Render personalizado para las imágenes
+    // Render personalizado para las imágenes y videos
     const renderNextJSImage = ({ alt, title, sizes }: RenderImageProps, { photo, width, height }: RenderImageContext) => {
         const imageIndex = photos.findIndex(p => p.src === photo.src);
         const mediaItem = media[imageIndex];
+
+        if (!mediaItem) return null;
+
+        const isVideo = mediaItem.file_type === 'video';
 
         return (
             <div
@@ -140,15 +300,23 @@ export function MasonryGallery({
                 className={`overflow-hidden ${borderStyle === 'rounded' ? 'rounded-lg' : 'rounded-none'} bg-zinc-800 hover:shadow-xl transition-all duration-300 cursor-pointer group`}
                 onClick={() => handleImageClick(imageIndex)}
             >
-                <Image
-                    fill
-                    src={photo.src}
-                    alt={alt || photo.alt || 'Imagen de galería'}
-                    title={title}
-                    sizes={sizes}
-                    className="object-cover hover:scale-105 transition-transform duration-300"
-                    priority={imageIndex < 6} // Priorizar las primeras 6 imágenes
-                />
+                {isVideo ? (
+                    <VideoThumbnail
+                        videoUrl={mediaItem.file_url}
+                        thumbnailUrl={mediaItem.thumbnail_url}
+                        alt={alt || mediaItem.filename || 'Video de galería'}
+                    />
+                ) : (
+                    <Image
+                        fill
+                        src={photo.src}
+                        alt={alt || photo.alt || 'Imagen de galería'}
+                        title={title}
+                        sizes={sizes}
+                        className="object-cover hover:scale-105 transition-transform duration-300"
+                        priority={imageIndex < 6} // Priorizar las primeras 6 imágenes
+                    />
+                )}
 
                 {/* Storage Size Label */}
                 {showSizeLabel && mediaItem?.storage_bytes && (
@@ -165,7 +333,7 @@ export function MasonryGallery({
                             onDelete(mediaItem.id);
                         }}
                         className="absolute bottom-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 z-20"
-                        title="Eliminar imagen"
+                        title={`Eliminar ${isVideo ? 'video' : 'imagen'}`}
                         style={{ pointerEvents: 'auto' }}
                     >
                         <Trash2 className="h-3 w-3" />
@@ -213,6 +381,14 @@ export function MasonryGallery({
                     close={() => setLightboxOpen(false)}
                     index={lightboxIndex}
                     slides={lightboxSlides}
+                    plugins={[Video]}
+                    video={{
+                        controls: true,
+                        playsInline: true,
+                        autoPlay: true,
+                        muted: false,
+                        loop: false
+                    }}
                     on={{
                         view: ({ index }) => setLightboxIndex(index),
                     }}

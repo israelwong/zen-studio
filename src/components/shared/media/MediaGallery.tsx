@@ -7,6 +7,7 @@ import { ImageSingle } from './ImageSingle';
 import { ImageGrid } from './ImageGrid';
 import { ImageCarousel } from './ImageCarousel';
 import { MasonryGallery } from './MasonryGallery';
+import { VideoSingle } from '../video/VideoSingle';
 import { ZenButton } from '@/components/ui/zen';
 
 interface MediaGalleryProps {
@@ -103,7 +104,9 @@ export function MediaGallery({
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                         e.preventDefault();
-                        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                        const files = Array.from(e.dataTransfer.files).filter(f => 
+                            f.type.startsWith('image/') || f.type.startsWith('video/')
+                        );
                         if (files.length > 0 && onDrop) {
                             onDrop(files);
                         }
@@ -113,12 +116,12 @@ export function MediaGallery({
                         {isUploading ? (
                             <>
                                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-emerald-400 border-t-transparent mx-auto"></div>
-                                <div className="text-sm text-zinc-500">Subiendo imágenes...</div>
+                                <div className="text-sm text-zinc-500">Subiendo archivos...</div>
                             </>
                         ) : (
                             <>
                                 <Upload className="h-8 w-8 text-zinc-500 mx-auto" />
-                                <div className="text-sm text-zinc-500">Arrastra imágenes aquí o</div>
+                                <div className="text-sm text-zinc-500">Arrastra imágenes o videos aquí o</div>
                                 {onUploadClick && (
                                     <button
                                         onClick={onUploadClick}
@@ -134,11 +137,36 @@ export function MediaGallery({
             );
         }
 
-        // Si hay solo una imagen, mostrar en full sin recorte
+        // Si hay solo un archivo (imagen o video)
         if (media.length === 1) {
+            const singleMedia = media[0];
+            
+            // Si es video, usar VideoSingle
+            if (singleMedia.file_type === 'video') {
+                return (
+                    <div className={`${className} relative`}>
+                        <VideoSingle
+                            src={singleMedia.file_url}
+                            config={{
+                                autoPlay: false,
+                                muted: false,
+                                loop: false,
+                                poster: singleMedia.thumbnail_url || undefined,
+                                maxWidth: 'max-w-full'
+                            }}
+                            storageBytes={singleMedia.storage_bytes}
+                            onDelete={showDeleteButtons && onDelete ? () => onDelete(singleMedia.id) : undefined}
+                            showDeleteButton={showDeleteButtons}
+                            showSizeLabel={true}
+                        />
+                    </div>
+                );
+            }
+            
+            // Si es imagen, usar ImageSingle
             return (
                 <ImageSingle
-                    media={media[0]}
+                    media={singleMedia}
                     className={className}
                     aspectRatio="auto"
                     showDeleteButton={showDeleteButtons}
@@ -150,7 +178,7 @@ export function MediaGallery({
             );
         }
 
-        // Si hay múltiples imágenes
+        // Si hay múltiples archivos (imágenes y/o videos)
         // En modo edición: siempre mostrar grid para poder arrastrar y ordenar
         // En modo preview: mostrar según el modo seleccionado
         if (isEditable && media.length > 1) {
@@ -185,7 +213,7 @@ export function MediaGallery({
             borderStyle
         };
 
-        switch (displayMode) {
+        switch (localMode) {
             case 'grid':
                 return (
                     <ImageGrid
