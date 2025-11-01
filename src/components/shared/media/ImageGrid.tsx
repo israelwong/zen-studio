@@ -45,7 +45,7 @@ function VideoThumbnail({ videoUrl, thumbnailUrl, alt, limitHeight = false, isPr
         // Si no hay thumbnail, intentar capturar el primer frame
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        
+
         if (!video || !canvas) return;
 
         const captureFrame = () => {
@@ -88,7 +88,7 @@ function VideoThumbnail({ videoUrl, thumbnailUrl, alt, limitHeight = false, isPr
                 crossOrigin="anonymous"
             />
             <canvas ref={canvasRef} className="hidden" />
-            
+
             {/* Mostrar thumbnail si existe o fue capturado */}
             {hasThumbnail ? (
                 <div className={isPreview ? "relative w-full" : "absolute inset-0"}>
@@ -305,7 +305,7 @@ export function ImageGrid({
         // Estilo con transformación suave usando CSS.Transform
         const style = {
             transform: CSS.Transform.toString(transform),
-            transition: isDragging 
+            transition: isDragging
                 ? undefined // Sin transición mientras se arrastra para respuesta inmediata
                 : transition || 'transform 300ms cubic-bezier(0.4, 0.0, 0.2, 1)', // Animación suave para empujar items
             zIndex: isDragging ? 1000 : isBeingReplaced ? 10 : 'auto',
@@ -319,8 +319,8 @@ export function ImageGrid({
                 className={`relative group ${isDragging || isActive
                     ? 'scale-105 shadow-2xl z-50'
                     : isBeingReplaced
-                    ? 'scale-[1.01]'
-                    : 'scale-100'
+                        ? 'scale-[1.01]'
+                        : 'scale-100'
                     } transition-all duration-300 ease-out`}
                 {...(isEditable ? { ...attributes, ...listeners } : {})}
                 onMouseDown={(e) => {
@@ -530,7 +530,6 @@ export function ImageGrid({
                 </div>
             )}
 
-
             {/* Lightbox - Solo en modo no editable */}
             {configLightbox && !isEditable && (
                 <Lightbox
@@ -577,29 +576,16 @@ export function ImageGrid({
                             backgroundColor: "rgba(0, 0, 0, .98)",
                             padding: 0
                         },
-                        slide: ({ slide }) => {
-                            if (slide.type === 'video') {
-                                return {
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: '100vw',
-                                    height: '100vh',
-                                    padding: 0,
-                                    margin: 0
-                                };
-                            }
-                            return {
-                                padding: 0,
-                                margin: 0,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '100vw',
-                                height: '100vh'
-                            };
-                        }
-                    }}
+                        slide: {
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '100vw',
+                            height: '100vh',
+                            padding: 0,
+                            margin: 0
+                        } as React.CSSProperties & Partial<Record<`--yarl__${string}`, string | number>>
+                    } as Record<string, React.CSSProperties & Partial<Record<`--yarl__${string}`, string | number>>>}
                 />
             )}
         </div>
