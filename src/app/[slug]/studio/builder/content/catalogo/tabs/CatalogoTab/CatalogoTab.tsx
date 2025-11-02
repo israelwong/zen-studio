@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Image, Play } from "lucide-react";
 import { ZenButton, ZenBadge } from "@/components/ui/zen";
 import {
     ZenDropdownMenu,
@@ -30,6 +30,7 @@ import {
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
 import { reordenarItems, moverItemACategoria } from "@/lib/actions/studio/builder/catalogo/items.actions";
 import { obtenerCatalogo } from "@/lib/actions/studio/config/catalogo.actions";
+import { obtenerMediaItemsMap } from "@/lib/actions/studio/builder/catalogo/media-items.actions";
 import {
     DndContext,
     closestCenter,
@@ -82,6 +83,8 @@ interface Item {
     isFeatured?: boolean;
     mediaSize?: number;
     categoriaId?: string;
+    hasPhotos?: boolean;
+    hasVideos?: boolean;
     gastos?: Array<{
         nombre: string;
         costo: number;
@@ -166,13 +169,17 @@ export function CatalogoTab({
             try {
                 setIsLoading(true);
 
-                // Cargar todo el catálogo completo de una vez (igual que paquetes)
-                const catalogoResponse = await obtenerCatalogo(studioSlug);
+                // Cargar todo el catálogo completo y media en paralelo
+                const [catalogoResponse, mediaResponse] = await Promise.all([
+                    obtenerCatalogo(studioSlug),
+                    obtenerMediaItemsMap(studioSlug),
+                ]);
 
                 if (catalogoResponse.success && catalogoResponse.data) {
                     // Pre-popular categorías Y items desde el inicio (sin loading bajo demanda)
                     const newCategoriasData: Record<string, Categoria[]> = {};
                     const newItemsData: Record<string, Item[]> = {};
+                    const mediaMap = mediaResponse.success && mediaResponse.data ? mediaResponse.data : {};
 
                     catalogoResponse.data.forEach((seccion) => {
                         // Mapear categorías con contadores
@@ -187,21 +194,26 @@ export function CatalogoTab({
 
                         // Pre-popular items para cada categoría (todo cargado de una vez)
                         seccion.categorias.forEach(cat => {
-                            newItemsData[cat.id] = cat.servicios.map(servicio => ({
-                                id: servicio.id,
-                                name: servicio.nombre,
-                                cost: servicio.costo,
-                                tipoUtilidad: servicio.tipo_utilidad === 'service' ? 'servicio' as const : 'producto' as const,
-                                order: servicio.orden,
-                                isNew: false,
-                                isFeatured: false,
-                                mediaSize: 0,
-                                categoriaId: cat.id,
-                                gastos: servicio.gastos?.map(g => ({
-                                    nombre: g.nombre,
-                                    costo: g.costo,
-                                })) || [],
-                            }));
+                            newItemsData[cat.id] = cat.servicios.map(servicio => {
+                                const itemMedia = mediaMap[servicio.id] || { hasPhotos: false, hasVideos: false };
+                                return {
+                                    id: servicio.id,
+                                    name: servicio.nombre,
+                                    cost: servicio.costo,
+                                    tipoUtilidad: servicio.tipo_utilidad === 'service' ? 'servicio' as const : 'producto' as const,
+                                    order: servicio.orden,
+                                    isNew: false,
+                                    isFeatured: false,
+                                    mediaSize: 0,
+                                    categoriaId: cat.id,
+                                    hasPhotos: itemMedia.hasPhotos,
+                                    hasVideos: itemMedia.hasVideos,
+                                    gastos: servicio.gastos?.map(g => ({
+                                        nombre: g.nombre,
+                                        costo: g.costo,
+                                    })) || [],
+                                };
+                            });
                         });
                     });
 
@@ -802,8 +814,14 @@ export function CatalogoTab({
                         <GripVertical className="h-4 w-4 text-zinc-500" />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <div className="text-sm text-zinc-300 leading-tight break-words font-light">
-                            {item.name}
+                        <div className="flex items-center gap-2 text-sm text-zinc-300 leading-tight break-words font-light">
+                            <span>{item.name}</span>
+                            {item.hasPhotos && (
+                                <Image className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" aria-label="Tiene fotos" />
+                            )}
+                            {item.hasVideos && (
+                                <Play className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" aria-label="Tiene videos" />
+                            )}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
                             <ZenBadge
@@ -1080,6 +1098,9 @@ export function CatalogoTab({
                     isNew: false,
                     isFeatured: false,
                     mediaSize: response.data.mediaSize,
+                    categoriaId: item.categoriaId,
+                    hasPhotos: false,
+                    hasVideos: false,
                     gastos: response.data.gastos,
                 };
 
@@ -1150,6 +1171,9 @@ export function CatalogoTab({
                         isNew: false,
                         isFeatured: false,
                         mediaSize: response.data.mediaSize,
+                        categoriaId: selectedCategoriaForItem!,
+                        hasPhotos: false,
+                        hasVideos: false,
                         gastos: response.data.gastos,
                     };
 

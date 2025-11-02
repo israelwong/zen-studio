@@ -225,6 +225,63 @@ export async function obtenerTamanioMediaItem(itemId: string) {
   }
 }
 
+/**
+ * Obtiene información agregada de media para múltiples items
+ * Retorna un mapa de item_id -> { hasPhotos: boolean, hasVideos: boolean }
+ */
+export async function obtenerMediaItemsMap(
+  studioSlug: string
+) {
+  try {
+    // Obtener studio_id desde slug
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: "Estudio no encontrado",
+      };
+    }
+
+    // Obtener todos los media de items del studio
+    const media = await prisma.studio_item_media.findMany({
+      where: { studio_id: studio.id },
+      select: {
+        item_id: true,
+        file_type: true,
+      },
+    });
+
+    // Crear mapa: item_id -> { hasPhotos, hasVideos }
+    const mediaMap: Record<string, { hasPhotos: boolean; hasVideos: boolean }> = {};
+
+    media.forEach((m) => {
+      if (!mediaMap[m.item_id]) {
+        mediaMap[m.item_id] = { hasPhotos: false, hasVideos: false };
+      }
+      if (m.file_type === 'IMAGE') {
+        mediaMap[m.item_id].hasPhotos = true;
+      } else if (m.file_type === 'VIDEO') {
+        mediaMap[m.item_id].hasVideos = true;
+      }
+    });
+
+    return {
+      success: true,
+      data: mediaMap,
+    };
+  } catch (error) {
+    console.error("Error obteniendo mapa de media:", error);
+    return {
+      success: false,
+      error: "Error al obtener información de media",
+    };
+  }
+}
+
 // Helper para formatear bytes
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
