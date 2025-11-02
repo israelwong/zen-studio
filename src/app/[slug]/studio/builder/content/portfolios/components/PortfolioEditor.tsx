@@ -272,6 +272,8 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
     // Estado para modal de confirmación
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [showPublishModal, setShowPublishModal] = useState(false);
+    const [isPublishingFromModal, setIsPublishingFromModal] = useState(false);
+    const [pendingPublishSwitch, setPendingPublishSwitch] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -532,33 +534,63 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
         try {
             setIsSaving(true);
 
+            // Mostrar toast de publicación solo si NO viene del modal (el modal ya muestra el estado)
+            if (shouldPublish && !isPublishingFromModal) {
+                toast.loading("Publicando portfolio...", { id: "publishing" });
+            }
+
             // Validación 1: Título requerido
             if (!formData.title?.trim()) {
+                toast.dismiss("publishing");
                 toast.error("El título es requerido");
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
             }
 
             if (!formData.slug?.trim()) {
+                toast.dismiss("publishing");
                 toast.error("El slug es requerido");
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
             }
 
             // Validación 2: Slug único
             if (titleError) {
+                toast.dismiss("publishing");
                 toast.error("Los nombres de los portfolios deben ser únicos");
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
             }
 
             // Validación 3: Al menos un componente
             if (!contentBlocks || contentBlocks.length === 0) {
+                toast.dismiss("publishing");
                 toast.error("Agrega al menos un componente de contenido");
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
             }
 
             // Validación 3: Cada componente debe tener información válida
             const invalidBlocks = contentBlocks.filter(block => !hasComponentContent(block));
             if (invalidBlocks.length > 0) {
+                toast.dismiss("publishing");
                 toast.error(`Completa la información de los componentes. ${invalidBlocks.length} componente(s) sin contenido`);
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
             }
 
@@ -588,15 +620,30 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                 result = await createStudioPortfolioFromSlug(studioSlug, portfolioData);
             } else {
                 if (!portfolioData.id) {
+                    toast.dismiss("publishing");
                     toast.error("ID del portfolio es requerido para actualizar");
+                    if (isPublishingFromModal) {
+                        setIsPublishingFromModal(false);
+                    }
+                    setIsSaving(false);
                     return;
                 }
                 result = await updateStudioPortfolioFromSlug(portfolioData.id, studioSlug, portfolioData);
             }
 
             if (!result.success) {
+                toast.dismiss("publishing");
                 toast.error(result.error || "Error al guardar el portfolio");
+                if (isPublishingFromModal) {
+                    setIsPublishingFromModal(false);
+                }
+                setIsSaving(false);
                 return;
+            }
+
+            // Dismiss el toast de publicación si existe
+            if (shouldPublish) {
+                toast.dismiss("publishing");
             }
 
             let actionMessage: string;
@@ -618,14 +665,30 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
             // Actualizar almacenamiento
             triggerRefresh();
 
+            // Si se estaba publicando desde el modal, cerrarlo y resetear estado
+            if (isPublishingFromModal) {
+                setIsPublishingFromModal(false);
+                setShowPublishModal(false);
+            }
+
             // Redirigir a la lista de portfolios
             router.push(`/${studioSlug}/studio/builder/content/portfolios`);
 
         } catch (error) {
             console.error("Error saving portfolio:", error);
             toast.error("Error al guardar el portfolio");
+
+            // Si viene del modal y hay error, resetear el estado para permitir reintentar
+            if (isPublishingFromModal) {
+                setIsPublishingFromModal(false);
+            }
         } finally {
-            setIsSaving(false);
+            if (!isPublishingFromModal) {
+                setIsSaving(false);
+            } else {
+                // Si viene del modal, isSaving se maneja desde el modal
+                setIsSaving(false);
+            }
         }
     };
 
@@ -999,8 +1062,23 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                         {/* Switch Publicado */}
                                         <div className="flex items-center gap-3">
                                             <ZenSwitch
-                                                checked={formData.is_published}
-                                                onCheckedChange={(checked) => handleInputChange("is_published", checked)}
+                                                checked={formData.is_published || pendingPublishSwitch}
+                                                disabled={isSaving || isDeleting}
+                                                onCheckedChange={(checked) => {
+                                                    // No permitir cambios si se está guardando
+                                                    if (isSaving || isDeleting) return;
+
+                                                    // Si estamos en modo borrador y se activa, mostrar modal
+                                                    if (isDraft && mode === "edit" && checked && !formData.is_published) {
+                                                        // Activar visualmente el switch pero esperar confirmación
+                                                        setPendingPublishSwitch(true);
+                                                        setShowPublishModal(true);
+                                                    } else {
+                                                        // Si se desactiva o no es borrador, cambiar directamente
+                                                        setPendingPublishSwitch(false);
+                                                        handleInputChange("is_published", checked);
+                                                    }
+                                                }}
                                                 label="Publicado"
                                             />
                                         </div>
@@ -1341,16 +1419,45 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
             {/* Modal de Confirmación - Publicar */}
             <ZenConfirmModal
                 isOpen={showPublishModal}
-                onClose={() => setShowPublishModal(false)}
-                onConfirm={async () => {
+                onClose={() => {
+                    // No permitir cerrar si se está publicando
+                    if (isPublishingFromModal) return;
+
+                    // Si se cancela, revertir el switch a false
+                    setPendingPublishSwitch(false);
                     setShowPublishModal(false);
-                    await handleSave(true);
+                }}
+                onConfirm={async () => {
+                    // No permitir múltiples confirmaciones
+                    if (isPublishingFromModal || isSaving) return;
+
+                    setIsPublishingFromModal(true);
+                    setIsSaving(true);
+
+                    // Confirmar el cambio del switch y publicar
+                    setPendingPublishSwitch(false);
+                    handleInputChange("is_published", true);
+
+                    // Esperar un momento para que el estado se actualice
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    try {
+                        await handleSave(true);
+                        // El modal se cerrará y redirigirá desde handleSave si es exitoso
+                    } catch (error) {
+                        console.error("Error publishing portfolio:", error);
+                        setIsPublishingFromModal(false);
+                        setIsSaving(false);
+                        // No cerrar el modal en caso de error para que el usuario pueda intentar de nuevo
+                    }
                 }}
                 title="Publicar Portfolio"
                 description="¿Estás seguro de publicar tu portfolio? Al publicar será visible y accesible inmediatamente en tu lista pública de portfolios."
-                confirmText="Sí, Publicar"
+                confirmText={isPublishingFromModal ? "Publicando..." : "Sí, Publicar"}
                 cancelText="Cancelar"
                 variant="default"
+                loading={isPublishingFromModal}
+                disabled={isPublishingFromModal}
             />
 
             {/* Modal de Confirmación - Eliminar */}
