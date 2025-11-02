@@ -24,6 +24,41 @@ function generateSlug(title: string): string {
         .replace(/(^-|-$)/g, "");
 }
 
+// Helper para generar slug único verificando en BD
+async function generateUniqueSlug(studioId: string, baseSlug: string): Promise<string> {
+    let slug = baseSlug;
+    let counter = 1;
+    
+    while (true) {
+        const existing = await prisma.studio_portfolios.findUnique({
+            where: {
+                studio_id_slug: {
+                    studio_id: studioId,
+                    slug: slug,
+                },
+            },
+            select: { id: true },
+        });
+        
+        if (!existing) {
+            return slug;
+        }
+        
+        // Si existe, agregar número al final
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+        
+        // Límite de seguridad para evitar loops infinitos
+        if (counter > 1000) {
+            // Usar timestamp como último recurso
+            slug = `${baseSlug}-${Date.now()}`;
+            break;
+        }
+    }
+    
+    return slug;
+}
+
 // Helper para obtener studio_id desde slug
 async function getStudioIdFromSlug(studioSlug: string): Promise<string | null> {
     try {
@@ -80,17 +115,49 @@ export async function createStudioPortfolio(studioId: string, data: PortfolioFor
     try {
         const validatedData = portfolioFormSchema.parse(data);
         
-        // Generar slug si no se proporciona
-        const slug = validatedData.slug || generateSlug(validatedData.title);
+        // Generar slug base si no se proporciona
+        const baseSlug = validatedData.slug || generateSlug(validatedData.title);
+        
+        // Generar slug único verificando en BD
+        const slug = await generateUniqueSlug(studioId, baseSlug);
 
         // Crear portfolio con transacción para media y content_blocks
         const portfolio = await prisma.$transaction(async (tx) => {
+            // Verificar slug único dentro de la transacción (evita race conditions)
+            let finalSlug = slug;
+            let counter = 1;
+            while (true) {
+                const existing = await tx.studio_portfolios.findUnique({
+                    where: {
+                        studio_id_slug: {
+                            studio_id: studioId,
+                            slug: finalSlug,
+                        },
+                    },
+                    select: { id: true },
+                });
+                
+                if (!existing) {
+                    break;
+                }
+                
+                // Generar nuevo slug si existe
+                const baseSlug = validatedData.slug || generateSlug(validatedData.title);
+                finalSlug = `${baseSlug}-${counter}`;
+                counter++;
+                
+                if (counter > 1000) {
+                    finalSlug = `${baseSlug}-${Date.now()}`;
+                    break;
+                }
+            }
+            
             // Crear portfolio base
             const newPortfolio = await tx.studio_portfolios.create({
                 data: {
                     studio_id: studioId,
                     title: validatedData.title,
-                    slug: slug,
+                    slug: finalSlug,
                     description: validatedData.description || null,
                     caption: validatedData.caption || null,
                     cover_image_url: validatedData.cover_image_url || null,

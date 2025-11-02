@@ -195,20 +195,31 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
                                 studioSlug={studioSlug}
                                 onDuplicatingStart={() => setIsDuplicating(true)}
                                 onUpdate={(updatedPortfolio) => {
-                                    // Ocultar skeleton cuando se completa la actualización
-                                    setIsDuplicating(false);
-
                                     if (updatedPortfolio === null) {
-                                        // Eliminación: remover portfolio de la lista local
+                                        // Eliminación: remover portfolio de la lista local (sin sincronización inmediata)
                                         setAllPortfolios(prevPortfolios =>
                                             prevPortfolios.filter(p => p.id !== portfolio.id)
                                         );
+                                        // No sincronizar después de eliminación, solo actualizar localmente
+                                        return;
                                     } else {
-                                        // Actualización optimista local - actualiza y reordena
+                                        // Actualización optimista local - inserta nuevo o actualiza existente
                                         setAllPortfolios(prevPortfolios => {
-                                            const updated = prevPortfolios.map(p =>
-                                                p.id === updatedPortfolio.id ? updatedPortfolio : p
-                                            );
+                                            // Verificar si es un nuevo portfolio (duplicación) usando el estado anterior
+                                            const isNewPortfolio = !prevPortfolios.some(p => p.id === updatedPortfolio.id);
+
+                                            let updated: StudioPortfolio[];
+
+                                            if (isNewPortfolio) {
+                                                // Duplicación: insertar nuevo portfolio al inicio de la lista
+                                                updated = [updatedPortfolio, ...prevPortfolios];
+                                            } else {
+                                                // Actualización: reemplazar portfolio existente
+                                                updated = prevPortfolios.map(p =>
+                                                    p.id === updatedPortfolio.id ? updatedPortfolio : p
+                                                );
+                                            }
+
                                             // Reordenar: destacados primero, luego por creación
                                             return updated.sort((a, b) => {
                                                 if (a.is_featured && !b.is_featured) return -1;
@@ -218,6 +229,9 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
                                                 return dateB - dateA;
                                             });
                                         });
+
+                                        // Ocultar skeleton después de actualizar la lista (reemplazo instantáneo)
+                                        setIsDuplicating(false);
                                     }
 
                                     // Sincronización silenciosa en background (sin mostrar loading)

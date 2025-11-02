@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { ZenCard, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from "@/components/ui/zen";
 import {
     Edit,
@@ -48,6 +48,7 @@ function generateSlug(title: string): string {
 
 export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingStart }: PortfolioCardProps) {
     const router = useRouter();
+    const pathname = usePathname();
     const { triggerRefresh, triggerLocalUpdate } = useStorageRefresh(studioSlug);
     const [isDeleting, setIsDeleting] = useState(false);
     const [isToggling, setIsToggling] = useState(false);
@@ -81,16 +82,32 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
             const result = await deleteStudioPortfolio(localPortfolio.id);
             if (result.success) {
                 toast.success("Portfolio eliminado");
+
+                // Verificar ANTES si estamos en la ruta de edición (para no perder el pathname)
+                // Verificar de manera más precisa: debe ser exactamente la ruta de edición de este portfolio
+                const editingRoute = `/portfolios/${localPortfolio.id}/editar`;
+                const isEditingThisPortfolio = pathname?.includes(editingRoute) &&
+                    (pathname.endsWith(editingRoute) || pathname.endsWith(`${editingRoute}/`));
+
                 // Actualizar almacenamiento localmente (restar bytes)
                 if (portfolioTotalBytes > 0) {
                     triggerLocalUpdate(-portfolioTotalBytes);
                 }
+
+                // Notificar eliminación para actualizar lista local
                 onUpdate(null);
                 setShowDeleteModal(false);
+
+                // Si estamos en la ruta de edición, redirigir a la lista SOLO en ese caso
+                // IMPORTANTE: Solo redirigir si realmente estamos en esa página, no desde la lista
+                if (isEditingThisPortfolio) {
+                    // Usar replace inmediatamente para evitar navegación accidental
+                    router.replace(`/${studioSlug}/studio/builder/content/portfolios`);
+                }
             } else {
                 toast.error(result.error || "Error al eliminar portfolio");
             }
-        } catch (error) {
+        } catch {
             toast.error("Error al eliminar portfolio");
         } finally {
             setIsDeleting(false);
@@ -126,7 +143,7 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
                 onUpdate(portfolio);
                 toast.error(result.error || "Error al cambiar estado");
             }
-        } catch (error) {
+        } catch {
             // Revertir en caso de error
             setLocalPortfolio(portfolio);
             onUpdate(portfolio);
@@ -181,7 +198,7 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
                 onUpdate(portfolio);
                 toast.error(result.error || "Error al cambiar destacado");
             }
-        } catch (error) {
+        } catch {
             // Revertir en caso de error
             setLocalPortfolio(portfolio);
             onUpdate(portfolio);
@@ -247,8 +264,9 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
                 })),
             }));
 
-            // Crear título para la copia
-            const duplicatedTitle = `${sourcePortfolio.title} (copia)`;
+            // Crear título único para la copia con timestamp
+            const timestamp = Date.now();
+            const duplicatedTitle = `${sourcePortfolio.title} (copia ${timestamp})`;
             const duplicatedSlug = generateSlug(duplicatedTitle);
 
             // Crear el portfolio duplicado
@@ -382,6 +400,10 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
         : null;
 
     const handleCardClick = () => {
+        // No navegar si estamos eliminando o si el portfolio ya no existe
+        if (isDeleting || showDeleteModal) {
+            return;
+        }
         router.push(`/${studioSlug}/studio/builder/content/portfolios/${localPortfolio.id}/editar`);
     };
 
