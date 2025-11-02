@@ -5,12 +5,10 @@ import { useParams } from 'next/navigation';
 import { Store, DollarSign } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
-import { SectionLayout } from '../../components';
-import { UtilidadTab, CatalogoTab, CatalogoTabSkeleton } from './components';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { UtilidadTab, CatalogoTab, CatalogoTabSkeleton } from './tabs';
+import { GuiaDeUso } from './guia';
 import { obtenerSeccionesConStats } from '@/lib/actions/studio/builder/catalogo';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
-import type { BuilderProfileData } from '@/types/builder-profile';
 import type { TabValue } from './types';
 import type { ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
 import { toast } from 'sonner';
@@ -30,32 +28,9 @@ export default function CatalogoPage() {
     const studioSlug = params.slug as string;
 
     const [activeTab, setActiveTab] = useState<TabValue>('items');
-    const [loading, setLoading] = useState(true);
-    const [builderData, setBuilderData] = useState<BuilderProfileData | null>(null);
     const [secciones, setSecciones] = useState<Seccion[]>([]);
     const [studioConfig, setStudioConfig] = useState<ConfiguracionPrecios | null>(null);
 
-    // Cargar datos del builder (para preview móvil)
-    useEffect(() => {
-        const loadBuilderData = async () => {
-            try {
-                setLoading(true);
-                const result = await getBuilderProfileData(studioSlug);
-
-                if (result.success && result.data) {
-                    setBuilderData(result.data);
-                } else {
-                    console.error('Error loading builder data:', result.error);
-                }
-            } catch (error) {
-                console.error('Error in loadBuilderData:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadBuilderData();
-    }, [studioSlug]);
 
     // Inicializar tab desde hash después de hidratación
     useEffect(() => {
@@ -126,98 +101,77 @@ export default function CatalogoPage() {
         loadCatalogoData();
     }, [studioSlug]);
 
-    // Datos para el preview móvil
-    const previewData = builderData ? {
-        // Para ProfileIdentity
-        studio_name: builderData.studio.studio_name,
-        logo_url: builderData.studio.logo_url,
-        slogan: builderData.studio.slogan,
-        // Para ProfileContent (sección catálogo)
-        studio: builderData.studio,
-        items: builderData.items,
-        // Para ProfileFooter
-        pagina_web: builderData.studio.website,
-        palabras_clave: builderData.studio.keywords,
-        redes_sociales: builderData.socialNetworks.map(network => ({
-            plataforma: network.platform?.name || 'Red Social',
-            url: network.url
-        })),
-        email: null, // No hay email en BuilderProfileData
-        telefonos: builderData.contactInfo.phones.map(phone => ({
-            numero: phone.number,
-            tipo: phone.type === 'principal' ? 'ambos' as const :
-                phone.type === 'whatsapp' ? 'whatsapp' as const : 'llamadas' as const,
-            is_active: true
-        })),
-        direccion: builderData.contactInfo.address,
-        google_maps_url: builderData.studio.maps_url
-    } : null;
-
     return (
-        <SectionLayout
-            section="catalogo"
-            studioSlug={studioSlug}
-            data={previewData as unknown as Record<string, unknown>}
-            loading={loading}
-        >
-            <ZenCard variant="default" padding="none">
-                <ZenCardHeader className="border-b border-zinc-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-600/20 rounded-lg">
-                            <Store className="h-5 w-5 text-purple-400" />
-                        </div>
-                        <div>
-                            <ZenCardTitle>Catálogo</ZenCardTitle>
-                            <ZenCardDescription>
-                                Gestiona tus servicios, paquetes y configuración de precios
-                            </ZenCardDescription>
-                        </div>
-                    </div>
-                </ZenCardHeader>
+        <div className="space-y-8">
+            {/* Grid de 2 columnas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Columna 1: Catálogo */}
+                <div className="space-y-6">
+                    <ZenCard variant="default" padding="none">
+                        <ZenCardHeader className="border-b border-zinc-800">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-600/20 rounded-lg">
+                                    <Store className="h-5 w-5 text-purple-400" />
+                                </div>
+                                <div>
+                                    <ZenCardTitle>Catálogo</ZenCardTitle>
+                                    <ZenCardDescription>
+                                        Gestiona tus servicios, paquetes y configuración de precios
+                                    </ZenCardDescription>
+                                </div>
+                            </div>
+                        </ZenCardHeader>
 
-                <ZenCardContent className="p-6">
-                    <div className="space-y-6">
-                        {/* Tabs */}
-                        <Tabs value={activeTab} onValueChange={(v) => {
-                            setActiveTab(v as TabValue);
-                            // Actualizar URL hash
-                            window.location.hash = v;
-                        }}>
-                            <TabsList className="grid w-full grid-cols-2 mb-6 bg-zinc-800/50 p-1 rounded-lg">
-                                <TabsTrigger
-                                    value="items"
-                                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
-                                >
-                                    <Store className="h-4 w-4" />
-                                    <span>Catálogo</span>
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value="utilidad"
-                                    className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
-                                >
-                                    <DollarSign className="h-4 w-4" />
-                                    <span>Utilidad</span>
-                                </TabsTrigger>
-                            </TabsList>
+                        <ZenCardContent className="p-6">
+                            <div className="space-y-6">
+                                {/* Tabs */}
+                                <Tabs value={activeTab} onValueChange={(v) => {
+                                    setActiveTab(v as TabValue);
+                                    // Actualizar URL hash
+                                    window.location.hash = v;
+                                }}>
+                                    <TabsList className="grid w-full grid-cols-2 mb-6 bg-zinc-800/50 p-1 rounded-lg">
+                                        <TabsTrigger
+                                            value="items"
+                                            className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
+                                        >
+                                            <Store className="h-4 w-4" />
+                                            <span>Catálogo</span>
+                                        </TabsTrigger>
+                                        <TabsTrigger
+                                            value="utilidad"
+                                            className="flex items-center gap-2 data-[state=active]:bg-zinc-900 data-[state=active]:text-purple-400 data-[state=active]:shadow-lg transition-all duration-200"
+                                        >
+                                            <DollarSign className="h-4 w-4" />
+                                            <span>Utilidad</span>
+                                        </TabsTrigger>
+                                    </TabsList>
 
-                            <TabsContent value="items">
-                                {!studioConfig ? (
-                                    <CatalogoTabSkeleton />
-                                ) : (
-                                    <CatalogoTab
-                                        studioSlug={studioSlug}
-                                        secciones={secciones}
-                                    />
-                                )}
-                            </TabsContent>
+                                    <TabsContent value="items">
+                                        {!studioConfig ? (
+                                            <CatalogoTabSkeleton />
+                                        ) : (
+                                            <CatalogoTab
+                                                studioSlug={studioSlug}
+                                                secciones={secciones}
+                                            />
+                                        )}
+                                    </TabsContent>
 
-                            <TabsContent value="utilidad">
-                                <UtilidadTab studioSlug={studioSlug} />
-                            </TabsContent>
-                        </Tabs>
-                    </div>
-                </ZenCardContent>
-            </ZenCard>
-        </SectionLayout>
+                                    <TabsContent value="utilidad">
+                                        <UtilidadTab studioSlug={studioSlug} />
+                                    </TabsContent>
+                                </Tabs>
+                            </div>
+                        </ZenCardContent>
+                    </ZenCard>
+                </div>
+
+                {/* Columna 2: Guía de uso */}
+                <div className="space-y-6">
+                    <GuiaDeUso />
+                </div>
+            </div>
+        </div>
     );
 }
