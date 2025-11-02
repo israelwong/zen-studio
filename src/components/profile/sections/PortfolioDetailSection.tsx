@@ -1,7 +1,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
-import { Eye, Calendar, Tag, Star } from 'lucide-react';
+import { Eye, Calendar, Star } from 'lucide-react';
 import { ContentBlocksPreview } from '@/components/content-blocks';
 import { ContentBlock } from '@/types/content-blocks';
 
@@ -45,26 +45,12 @@ interface PortfolioDetailSectionProps {
  * Usado en el editor para preview del portfolio que se está editando
  */
 export function PortfolioDetailSection({ portfolio, hideHeader = false }: PortfolioDetailSectionProps) {
-    // Si hideHeader es true (modo editor), mostrar bloques de contenido y palabras clave
+    // Si hideHeader es true (modo editor), mostrar solo bloques de contenido
     if (hideHeader) {
         return (
             <div className="space-y-6">
                 {/* Bloques de Contenido */}
                 <ContentBlocksPreview blocks={portfolio.content_blocks || []} />
-
-                {/* Tags/Palabras Clave - Minimalista */}
-                {portfolio.tags && portfolio.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                        {portfolio.tags.map((tag, index) => (
-                            <span
-                                key={index}
-                                className="text-xs text-zinc-400 px-2 py-0.5"
-                            >
-                                #{tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
             </div>
         );
     }
@@ -173,30 +159,6 @@ export function PortfolioDetailSection({ portfolio, hideHeader = false }: Portfo
 
             {/* Bloques de Contenido */}
             <ContentBlocksPreview blocks={portfolio.content_blocks || []} />
-
-            {/* Tags/Palabras Clave */}
-            {portfolio.tags && portfolio.tags.length > 0 && (
-                <ZenCard>
-                    <ZenCardHeader>
-                        <ZenCardTitle className="text-sm flex items-center gap-2">
-                            <Tag className="h-4 w-4" />
-                            Palabras Clave
-                        </ZenCardTitle>
-                    </ZenCardHeader>
-                    <ZenCardContent className="p-4 pt-0">
-                        <div className="flex flex-wrap justify-start gap-2">
-                            {portfolio.tags.map((tag, index) => (
-                                <span
-                                    key={index}
-                                    className="text-xs text-zinc-300 bg-zinc-700 px-2 py-0.5 rounded-full border border-zinc-600 text-center"
-                                >
-                                    #{tag}
-                                </span>
-                            ))}
-                        </div>
-                    </ZenCardContent>
-                </ZenCard>
-            )}
 
             {/* Media Adicional */}
             {portfolio.media.length > 1 && (

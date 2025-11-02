@@ -25,6 +25,7 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const previousFilteredPortfoliosRef = useRef<StudioPortfolio[]>([]);
     const onPortfoliosChangeRef = useRef(onPortfoliosChange);
+    // Constante para paginación: siempre 5 portfolios por página
     const PORTFOLIOS_PER_PAGE = 5;
 
     // Actualizar ref cuando cambia onPortfoliosChange
@@ -45,15 +46,17 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
     }, [allPortfolios, filter]);
 
     // Portfolios para la página actual (estos son los que se muestran en la lista y en el preview móvil)
+    // Siempre muestra exactamente PORTFOLIOS_PER_PAGE (5) portfolios por página
     const paginatedPortfolios = useMemo(() => {
         const startIndex = (currentPage - 1) * PORTFOLIOS_PER_PAGE;
-        return filteredPortfolios.slice(startIndex, startIndex + PORTFOLIOS_PER_PAGE);
-    }, [filteredPortfolios, currentPage]);
+        const endIndex = startIndex + PORTFOLIOS_PER_PAGE;
+        return filteredPortfolios.slice(startIndex, endIndex);
+    }, [filteredPortfolios, currentPage, PORTFOLIOS_PER_PAGE]);
 
     // Calcular total de páginas
     const totalPages = useMemo(() => {
         return Math.ceil(filteredPortfolios.length / PORTFOLIOS_PER_PAGE);
-    }, [filteredPortfolios.length]);
+    }, [filteredPortfolios.length, PORTFOLIOS_PER_PAGE]);
 
     // Resetear a página 1 cuando cambia el filtro
     useEffect(() => {

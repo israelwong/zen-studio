@@ -11,12 +11,13 @@ import {
     getStudioPortfoliosBySlug,
     createStudioPortfolioFromSlug,
     updateStudioPortfolioFromSlug,
-    checkPortfolioSlugExists
+    checkPortfolioSlugExists,
+    deleteStudioPortfolio
 } from "@/lib/actions/studio/builder/portfolios/portfolios.actions";
 import { PortfolioFormData } from "@/lib/actions/schemas/portfolio-schemas";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X, Star, Upload, HardDrive, Loader2, Copy, Check } from "lucide-react";
+import { ArrowLeft, Plus, X, Star, Upload, HardDrive, Loader2, Copy, Check, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
 import Image from "next/image";
@@ -270,6 +271,9 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
 
     // Estado para modal de confirmación
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [showPublishModal, setShowPublishModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [showTagModal, setShowTagModal] = useState(false);
     const [showComponentSelector, setShowComponentSelector] = useState(false);
@@ -884,7 +888,7 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                     {!isPublished && (
                                         <ZenBadge
                                             variant={isDraft ? "secondary" : "success"}
-                                            className="capitalize"
+                                            className="capitalize rounded-full"
                                         >
                                             {isDraft ? "Borrador" : "Despublicado"}
                                         </ZenBadge>
@@ -1001,38 +1005,40 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                             />
                                         </div>
 
-                                        {/* Botón Copiar Link */}
-                                        {formData.slug && (
-                                            <ZenButton
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={async () => {
-                                                    const portfolioUrl = `${window.location.origin}/${studioSlug}/portfolios/${formData.slug}`;
-                                                    try {
-                                                        await navigator.clipboard.writeText(portfolioUrl);
-                                                        setLinkCopied(true);
-                                                        toast.success("Link copiado al portapapeles");
-                                                        setTimeout(() => setLinkCopied(false), 2000);
-                                                    } catch {
-                                                        toast.error("Error al copiar el link");
-                                                    }
-                                                }}
-                                                className="gap-2"
-                                            >
-                                                {linkCopied ? (
-                                                    <>
-                                                        <Check className="h-4 w-4" />
-                                                        Copiado
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Copy className="h-4 w-4" />
-                                                        Copiar link
-                                                    </>
-                                                )}
-                                            </ZenButton>
-                                        )}
+                                        <div className="flex items-center gap-3">
+                                            {/* Botón Copiar Link */}
+                                            {formData.slug && (
+                                                <ZenButton
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        const portfolioUrl = `${window.location.origin}/${studioSlug}/portfolios/${formData.slug}`;
+                                                        try {
+                                                            await navigator.clipboard.writeText(portfolioUrl);
+                                                            setLinkCopied(true);
+                                                            toast.success("Link copiado al portapapeles");
+                                                            setTimeout(() => setLinkCopied(false), 2000);
+                                                        } catch {
+                                                            toast.error("Error al copiar el link");
+                                                        }
+                                                    }}
+                                                    className="gap-2"
+                                                >
+                                                    {linkCopied ? (
+                                                        <>
+                                                            <Check className="h-4 w-4" />
+                                                            Copiado
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Copy className="h-4 w-4" />
+                                                            Copiar link
+                                                        </>
+                                                    )}
+                                                </ZenButton>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1233,48 +1239,70 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                 </div>
                             ) : isDraft ? (
                                 // Modo EDITAR - Borrador
-                                <div className="flex gap-3 pt-4">
+                                // El switch controla si publicar o mantener como borrador
+                                <div className="flex items-center gap-3 pt-4">
+                                    <div className="flex gap-3 flex-1">
+                                        <ZenButton
+                                            onClick={() => handleSave(formData.is_published)}
+                                            className="flex-1"
+                                            loading={isSaving}
+                                            disabled={isSaving}
+                                        >
+                                            {formData.is_published ? "Publicar ahora" : "Actualizar borrador"}
+                                        </ZenButton>
+                                        <ZenButton
+                                            variant="outline"
+                                            onClick={() => setShowPublishModal(true)}
+                                            disabled={isSaving}
+                                        >
+                                            Publicar portfolio
+                                        </ZenButton>
+                                        <ZenButton
+                                            variant="outline"
+                                            onClick={handleCancel}
+                                            disabled={isSaving}
+                                        >
+                                            Cancelar
+                                        </ZenButton>
+                                    </div>
                                     <ZenButton
-                                        onClick={() => handleSave(true)}
-                                        className="flex-1"
-                                        loading={isSaving}
-                                        disabled={isSaving}
-                                    >
-                                        Publicar ahora
-                                    </ZenButton>
-                                    <ZenButton
+                                        type="button"
                                         variant="outline"
-                                        onClick={() => handleSave(false)}
-                                        loading={isSaving}
-                                        disabled={isSaving}
+                                        onClick={() => setShowDeleteModal(true)}
+                                        disabled={isSaving || isDeleting}
+                                        className="text-red-400 hover:text-red-300 hover:bg-red-950/20 border-red-800/50"
                                     >
-                                        Actualizar borrador
-                                    </ZenButton>
-                                    <ZenButton
-                                        variant="outline"
-                                        onClick={handleCancel}
-                                        disabled={isSaving}
-                                    >
-                                        Cancelar
+                                        <Trash2 className="h-4 w-4" />
                                     </ZenButton>
                                 </div>
                             ) : (
                                 // Modo EDITAR - Publicado/Despublicado
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex items-center gap-3 pt-4">
+                                    <div className="flex gap-3 flex-1">
+                                        <ZenButton
+                                            onClick={() => handleSave(formData.is_published)}
+                                            className="flex-1"
+                                            loading={isSaving}
+                                            disabled={isSaving}
+                                        >
+                                            Actualizar Portfolio
+                                        </ZenButton>
+                                        <ZenButton
+                                            variant="outline"
+                                            onClick={handleCancel}
+                                            disabled={isSaving}
+                                        >
+                                            Cancelar
+                                        </ZenButton>
+                                    </div>
                                     <ZenButton
-                                        onClick={() => handleSave(formData.is_published)}
-                                        className="flex-1"
-                                        loading={isSaving}
-                                        disabled={isSaving}
-                                    >
-                                        Actualizar Portfolio
-                                    </ZenButton>
-                                    <ZenButton
+                                        type="button"
                                         variant="outline"
-                                        onClick={handleCancel}
-                                        disabled={isSaving}
+                                        onClick={() => setShowDeleteModal(true)}
+                                        disabled={isSaving || isDeleting}
+                                        className="text-red-400 hover:text-red-300 hover:bg-red-950/20 border-red-800/50"
                                     >
-                                        Cancelar
+                                        <Trash2 className="h-4 w-4" />
                                     </ZenButton>
                                 </div>
                             )}
@@ -1298,7 +1326,7 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                 </div>
             </div>
 
-            {/* Modal de Confirmación */}
+            {/* Modal de Confirmación - Cancelar */}
             <ZenConfirmModal
                 isOpen={showCancelModal}
                 onClose={() => setShowCancelModal(false)}
@@ -1308,6 +1336,55 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                 confirmText="Sí, Cancelar"
                 cancelText="Continuar Editando"
                 variant="destructive"
+            />
+
+            {/* Modal de Confirmación - Publicar */}
+            <ZenConfirmModal
+                isOpen={showPublishModal}
+                onClose={() => setShowPublishModal(false)}
+                onConfirm={async () => {
+                    setShowPublishModal(false);
+                    await handleSave(true);
+                }}
+                title="Publicar Portfolio"
+                description="¿Estás seguro de publicar tu portfolio? Al publicar será visible y accesible inmediatamente en tu lista pública de portfolios."
+                confirmText="Sí, Publicar"
+                cancelText="Cancelar"
+                variant="default"
+            />
+
+            {/* Modal de Confirmación - Eliminar */}
+            <ZenConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={async () => {
+                    if (!portfolio?.id) {
+                        toast.error("No se puede eliminar: portfolio no encontrado");
+                        return;
+                    }
+
+                    setIsDeleting(true);
+                    try {
+                        const result = await deleteStudioPortfolio(portfolio.id);
+                        if (result.success) {
+                            toast.success("Portfolio eliminado exitosamente");
+                            router.push(`/${studioSlug}/studio/builder/content/portfolios`);
+                        } else {
+                            toast.error(result.error || "Error al eliminar portfolio");
+                            setIsDeleting(false);
+                        }
+                    } catch (error) {
+                        console.error("Error deleting portfolio:", error);
+                        toast.error("Error al eliminar portfolio");
+                        setIsDeleting(false);
+                    }
+                }}
+                title="Eliminar Portfolio"
+                description="¿Estás seguro de que quieres eliminar este portfolio? Esta acción no se puede deshacer."
+                confirmText="Sí, Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                loading={isDeleting}
             />
 
             <ZenTagModal

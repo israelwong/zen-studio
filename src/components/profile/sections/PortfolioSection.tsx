@@ -54,27 +54,13 @@ export function PortfolioSection({ portfolios }: PortfolioSectionProps) {
                                 )}
                             </div>
 
-                            {/* Content: Title and Tags */}
+                            {/* Content: Title */}
                             <ZenCardContent className="p-6">
                                 <div className="space-y-4">
                                     {/* Title */}
                                     <ZenCardTitle className="text-xl font-semibold text-white">
                                         {portfolio.title}
                                     </ZenCardTitle>
-
-                                    {/* Tags/Palabras Clave */}
-                                    {portfolio.tags && portfolio.tags.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {portfolio.tags.map((tag, index) => (
-                                                <span
-                                                    key={index}
-                                                    className="text-xs text-zinc-300 bg-zinc-800/50 px-3 py-1.5 rounded-full border border-zinc-700/50"
-                                                >
-                                                    #{tag}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </ZenCardContent>
                         </div>
