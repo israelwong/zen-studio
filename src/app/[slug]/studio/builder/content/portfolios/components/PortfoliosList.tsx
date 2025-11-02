@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { PortfolioCard } from "./PortfolioCard";
+import { PortfolioCardSkeleton } from "./PortfolioCardSkeleton";
 import { EmptyState } from "./EmptyState";
 import { getStudioPortfoliosBySlug } from "@/lib/actions/studio/builder/portfolios/portfolios.actions";
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react";
@@ -20,6 +21,7 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
     const [filter, setFilter] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState<number>(1);
     const [error, setError] = useState<string | null>(null);
+    const [isDuplicating, setIsDuplicating] = useState(false);
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const previousFilteredPortfoliosRef = useRef<StudioPortfolio[]>([]);
     const onPortfoliosChangeRef = useRef(onPortfoliosChange);
@@ -155,7 +157,7 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
         <div className="space-y-6">
             {/* Filters - Botones en línea con scroll horizontal - Siempre visibles */}
             <div className="flex items-center gap-2">
-                <div 
+                <div
                     className="flex items-center gap-2 overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                 >
                     {filterOptions.map((option) => (
@@ -182,12 +184,20 @@ export function PortfoliosList({ studioSlug, onPortfoliosChange }: PortfoliosLis
             ) : (
                 <>
                     <div className="space-y-3">
+                        {/* Skeleton mientras se duplica */}
+                        {isDuplicating && (
+                            <PortfolioCardSkeleton />
+                        )}
                         {paginatedPortfolios.map((portfolio) => (
                             <PortfolioCard
                                 key={portfolio.id}
                                 portfolio={portfolio}
                                 studioSlug={studioSlug}
+                                onDuplicatingStart={() => setIsDuplicating(true)}
                                 onUpdate={(updatedPortfolio) => {
+                                    // Ocultar skeleton cuando se completa la actualización
+                                    setIsDuplicating(false);
+
                                     if (updatedPortfolio === null) {
                                         // Eliminación: remover portfolio de la lista local
                                         setAllPortfolios(prevPortfolios =>

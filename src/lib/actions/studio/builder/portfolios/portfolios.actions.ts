@@ -147,45 +147,64 @@ export async function createStudioPortfolio(studioId: string, data: PortfolioFor
 
                     // Crear relaciones con media si existen
                     if (block.media && block.media.length > 0) {
-                        // Primero crear los media items si no existen
-                        const mediaItems = await Promise.all(
-                            block.media.map(async (mediaItem) => {
-                                const existingMedia = await tx.studio_portfolio_media.findFirst({
-                                    where: {
-                                        portfolio_id: newPortfolio.id,
-                                        file_url: mediaItem.file_url,
-                                    },
-                                });
+                        // Optimización: Obtener todos los media items existentes en una sola consulta
+                        const fileUrls = block.media.map(item => item.file_url);
+                        const existingMediaItems = await tx.studio_portfolio_media.findMany({
+                            where: {
+                                portfolio_id: newPortfolio.id,
+                                file_url: { in: fileUrls },
+                            },
+                        });
 
-                                if (existingMedia) {
-                                    return existingMedia.id;
-                                }
-
-                                const newMedia = await tx.studio_portfolio_media.create({
-                                    data: {
-                                        portfolio_id: newPortfolio.id,
-                                        studio_id: studioId,
-                                        file_url: mediaItem.file_url,
-                                        file_type: mediaItem.file_type,
-                                        filename: mediaItem.filename,
-                                        storage_bytes: BigInt(mediaItem.storage_bytes || 0),
-                                        mime_type: mediaItem.mime_type || "",
-                                        dimensions: mediaItem.dimensions || null,
-                                        duration_seconds: mediaItem.duration_seconds || null,
-                                        display_order: mediaItem.display_order || 0,
-                                        alt_text: mediaItem.alt_text || null,
-                                        thumbnail_url: mediaItem.thumbnail_url || null,
-                                        storage_path: mediaItem.storage_path,
-                                    },
-                                });
-
-                                return newMedia.id;
-                            })
+                        // Crear un Map para búsqueda rápida
+                        const existingMediaMap = new Map(
+                            existingMediaItems.map(item => [item.file_url, item.id])
                         );
+
+                        // Crear media items que no existen
+                        const mediaItemsToCreate = block.media
+                            .filter(item => !existingMediaMap.has(item.file_url))
+                            .map(item => ({
+                                portfolio_id: newPortfolio.id,
+                                studio_id: studioId,
+                                file_url: item.file_url,
+                                file_type: item.file_type,
+                                filename: item.filename,
+                                storage_bytes: BigInt(item.storage_bytes || 0),
+                                mime_type: item.mime_type || "",
+                                dimensions: item.dimensions || null,
+                                duration_seconds: item.duration_seconds || null,
+                                display_order: item.display_order || 0,
+                                alt_text: item.alt_text || null,
+                                thumbnail_url: item.thumbnail_url || null,
+                                storage_path: item.storage_path,
+                            }));
+
+                        // Crear nuevos media items en batch si hay alguno
+                        let newMediaItems: Array<{ id: string; file_url: string }> = [];
+                        if (mediaItemsToCreate.length > 0) {
+                            // createMany no retorna los IDs, así que usamos create con Promise.all
+                            newMediaItems = await Promise.all(
+                                mediaItemsToCreate.map(item =>
+                                    tx.studio_portfolio_media.create({
+                                        data: item,
+                                        select: { id: true, file_url: true },
+                                    })
+                                )
+                            );
+
+                            // Agregar los nuevos items al mapa
+                            newMediaItems.forEach(item => {
+                                existingMediaMap.set(item.file_url, item.id);
+                            });
+                        }
+
+                        // Obtener todos los IDs de media (existentes + nuevos) en el orden correcto
+                        const mediaIds = block.media.map(item => existingMediaMap.get(item.file_url)!);
 
                         // Crear relaciones many-to-many
                         await tx.studio_portfolio_content_block_media.createMany({
-                            data: mediaItems.map((mediaId, index) => ({
+                            data: mediaIds.map((mediaId, index) => ({
                                 content_block_id: contentBlock.id,
                                 media_id: mediaId,
                                 order: index,
@@ -196,6 +215,9 @@ export async function createStudioPortfolio(studioId: string, data: PortfolioFor
             }
 
             return newPortfolio;
+        }, {
+            maxWait: 10000, // 10 segundos para iniciar la transacción
+            timeout: 15000, // 15 segundos para completar la transacción
         });
 
         // Obtener portfolio completo con relaciones
