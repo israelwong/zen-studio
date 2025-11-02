@@ -26,11 +26,10 @@ import {
     crearItem,
     actualizarItem,
     eliminarItem,
-    obtenerCategoriasConStats,
-    obtenerItemsConStats,
 } from "@/lib/actions/studio/builder/catalogo";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
 import { reordenarItems, moverItemACategoria } from "@/lib/actions/studio/builder/catalogo/items.actions";
+import { obtenerCatalogo } from "@/lib/actions/studio/config/catalogo.actions";
 import {
     DndContext,
     closestCenter,
@@ -111,7 +110,6 @@ export function CatalogoAcordeonNavigation({
     // Estados de carga
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
-    const [loadingCategorias, setLoadingCategorias] = useState<Set<string>>(new Set());
 
     // Estados para drag & drop
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -168,41 +166,50 @@ export function CatalogoAcordeonNavigation({
             try {
                 setIsLoading(true);
 
-                // Solo cargar categorías con contadores (sin items) para mostrar números correctos
-                const categoriasPromises = secciones.map(async (seccion) => {
-                    try {
-                        const response = await obtenerCategoriasConStats(seccion.id);
-                        if (response.success && response.data) {
-                            const categorias = response.data.map(cat => ({
-                                id: cat.id,
-                                name: cat.name,
-                                description: cat.description ?? undefined,
-                                order: cat.order,
-                                items: cat.totalItems || 0, // Contador de items sin cargar los items
-                                mediaSize: cat.mediaSize,
+                // Cargar todo el catálogo completo de una vez (igual que paquetes)
+                const catalogoResponse = await obtenerCatalogo(studioSlug);
+
+                if (catalogoResponse.success && catalogoResponse.data) {
+                    // Pre-popular categorías Y items desde el inicio (sin loading bajo demanda)
+                    const newCategoriasData: Record<string, Categoria[]> = {};
+                    const newItemsData: Record<string, Item[]> = {};
+
+                    catalogoResponse.data.forEach((seccion) => {
+                        // Mapear categorías con contadores
+                        newCategoriasData[seccion.id] = seccion.categorias.map(cat => ({
+                            id: cat.id,
+                            name: cat.nombre,
+                            description: undefined,
+                            order: cat.orden,
+                            items: cat.servicios.length,
+                            mediaSize: 0,
+                        }));
+
+                        // Pre-popular items para cada categoría (todo cargado de una vez)
+                        seccion.categorias.forEach(cat => {
+                            newItemsData[cat.id] = cat.servicios.map(servicio => ({
+                                id: servicio.id,
+                                name: servicio.nombre,
+                                cost: servicio.costo,
+                                tipoUtilidad: servicio.tipo_utilidad === 'service' ? 'servicio' as const : 'producto' as const,
+                                order: servicio.orden,
+                                isNew: false,
+                                isFeatured: false,
+                                mediaSize: 0,
+                                categoriaId: cat.id,
+                                gastos: servicio.gastos?.map(g => ({
+                                    nombre: g.nombre,
+                                    costo: g.costo,
+                                })) || [],
                             }));
+                        });
+                    });
 
-                            return { seccionId: seccion.id, categorias };
-                        }
-                        return { seccionId: seccion.id, categorias: [] };
-                    } catch (error) {
-                        console.error(`Error loading categories for section ${seccion.id}:`, error);
-                        return { seccionId: seccion.id, categorias: [] };
-                    }
-                });
-
-                const categoriasResults = await Promise.all(categoriasPromises);
-
-                // Construir el objeto de categorías
-                const newCategoriasData: Record<string, Categoria[]> = {};
-                categoriasResults.forEach(({ seccionId, categorias }) => {
-                    newCategoriasData[seccionId] = categorias;
-                });
-
-                setCategoriasData(newCategoriasData);
-
-                // Los items se cargarán bajo demanda cuando se expandan las categorías
-                // Esto mantiene la carga inicial rápida pero con contadores correctos
+                    setCategoriasData(newCategoriasData);
+                    setItemsData(newItemsData);
+                } else {
+                    toast.error(catalogoResponse.error || "Error al cargar el catálogo");
+                }
 
             } catch (error) {
                 console.error("Error loading initial data:", error);
@@ -233,7 +240,7 @@ export function CatalogoAcordeonNavigation({
         }
     };
 
-    const toggleCategoria = async (categoriaId: string) => {
+    const toggleCategoria = (categoriaId: string) => {
         const isExpanded = categoriasExpandidas.has(categoriaId);
 
         if (isExpanded) {
@@ -244,45 +251,8 @@ export function CatalogoAcordeonNavigation({
                 return newSet;
             });
         } else {
-            // Expandir y cargar items si no están cargados
+            // Expandir (items ya están cargados desde el inicio, sin consulta adicional)
             setCategoriasExpandidas(prev => new Set(prev).add(categoriaId));
-
-            // Verificar si los items ya están cargados
-            if (!itemsData[categoriaId]) {
-                setLoadingCategorias(prev => new Set(prev).add(categoriaId));
-
-                try {
-                    const response = await obtenerItemsConStats(categoriaId);
-                    if (response.success && response.data) {
-                        const items = response.data.map(item => ({
-                            id: item.id,
-                            name: item.name,
-                            cost: item.cost,
-                            tipoUtilidad: item.tipoUtilidad as 'servicio' | 'producto',
-                            order: item.order,
-                            isNew: false,
-                            isFeatured: false,
-                            mediaSize: item.mediaSize,
-                            categoriaId: categoriaId,
-                            gastos: item.gastos,
-                        }));
-
-                        setItemsData(prev => ({
-                            ...prev,
-                            [categoriaId]: items
-                        }));
-                    }
-                } catch (error) {
-                    console.error(`Error loading items for category ${categoriaId}:`, error);
-                    toast.error("Error al cargar items");
-                } finally {
-                    setLoadingCategorias(prev => {
-                        const newSet = new Set(prev);
-                        newSet.delete(categoriaId);
-                        return newSet;
-                    });
-                }
-            }
         }
     };
 
@@ -292,7 +262,7 @@ export function CatalogoAcordeonNavigation({
     };
 
     // Función para manejar drag over - expandir categorías automáticamente
-    const handleDragOver = useCallback(async (event: DragOverEvent) => {
+    const handleDragOver = useCallback((event: DragOverEvent) => {
         const { over } = event;
         if (!over) return;
 
@@ -314,44 +284,11 @@ export function CatalogoAcordeonNavigation({
             }
         }
 
-        // Si encontramos una categoría y está contraída, expandirla y cargar items
+        // Si encontramos una categoría y está contraída, expandirla (items ya están cargados)
         if (categoriaId && !categoriasExpandidas.has(categoriaId)) {
-            console.log("🔍 Expandiendo categoría automáticamente:", categoriaId);
             setCategoriasExpandidas(prev => new Set([...prev, categoriaId]));
-
-            // Cargar items si no están cargados
-            if (!itemsData[categoriaId]) {
-                setLoadingCategorias(prev => new Set(prev).add(categoriaId));
-
-                try {
-                    const response = await obtenerItemsConStats(categoriaId);
-                    if (response.success && response.data) {
-                        const items = response.data.map(item => ({
-                            id: item.id,
-                            name: item.name,
-                            cost: item.cost,
-                            tipoUtilidad: item.tipoUtilidad,
-                            order: item.order,
-                            isNew: false,
-                            isFeatured: false,
-                            mediaSize: item.mediaSize,
-                            categoriaId: categoriaId,
-                            gastos: item.gastos,
-                        }));
-                        setItemsData(prev => ({ ...prev, [categoriaId]: items }));
-                    }
-                } catch (error) {
-                    console.error("Error cargando items:", error);
-                } finally {
-                    setLoadingCategorias(prev => {
-                        const newSet = new Set(prev);
-                        newSet.delete(categoriaId);
-                        return newSet;
-                    });
-                }
-            }
         }
-    }, [categoriasExpandidas, categoriasData, itemsData]);
+    }, [categoriasExpandidas, categoriasData]);
 
     // Nueva función unificada de drag & drop siguiendo la guía
     const handleDragEnd = useCallback(
@@ -796,9 +733,7 @@ export function CatalogoAcordeonNavigation({
                 {/* Contenido de la categoría */}
                 {isCategoriaExpandida && (
                     <div className="bg-zinc-800/20 border-l-2 border-zinc-700/30 ml-8">
-                        {loadingCategorias.has(categoria.id) ? (
-                            <ItemsSkeleton />
-                        ) : items.length === 0 ? (
+                        {items.length === 0 ? (
                             <EmptyCategoryDropZone categoria={categoria} />
                         ) : (
                             <SortableContext
@@ -1035,7 +970,7 @@ export function CatalogoAcordeonNavigation({
                     const newCategoria = {
                         id: response.data.id,
                         name: response.data.name,
-                        description: response.data.description || undefined,
+                        description: undefined, // CategoriaData no incluye description
                         order: response.data.order,
                         items: 0,
                         mediaSize: response.data.mediaSize,
@@ -1308,21 +1243,6 @@ export function CatalogoAcordeonNavigation({
     );
 
 
-    const ItemsSkeleton = () => (
-        <div className="space-y-1">
-            {[1, 2, 3].map((i) => (
-                <div key={i} className="p-2 pl-6 animate-pulse">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 bg-zinc-700 rounded"></div>
-                            <div className="h-4 bg-zinc-700 rounded w-20"></div>
-                        </div>
-                        <div className="h-4 bg-zinc-700 rounded w-16"></div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
 
     if (isInitialLoading) {
         return (
