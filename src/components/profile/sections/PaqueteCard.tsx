@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import { Star } from 'lucide-react';
 import type { PublicPaquete } from '@/types/public-profile';
 
 interface PaqueteCardProps {
@@ -16,11 +17,17 @@ export function PaqueteCard({ paquete }: PaqueteCardProps) {
         }).format(price);
     };
 
+    // Si no está publicado, no renderizar
+    if (paquete.status && paquete.status !== 'active') {
+        return null;
+    }
+
     // cover_url está definido en PublicPaquete (línea 55 de public-profile.ts)
     // El error del linter es un falso positivo por caché del servidor de lenguajes
     const coverUrl = (paquete as PublicPaquete & { cover_url?: string }).cover_url;
     const hasCover = !!coverUrl && typeof coverUrl === 'string' && coverUrl.trim() !== '';
     const isVideo = hasCover && coverUrl?.toLowerCase().match(/\.(mp4|mov|webm|avi)$/);
+    const isFeatured = paquete.is_featured === true;
 
     return (
         <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden group cursor-pointer bg-zinc-900">
@@ -53,6 +60,14 @@ export function PaqueteCard({ paquete }: PaqueteCardProps) {
 
             {/* Gradiente de sombra de abajo hacia arriba - semi-transparente */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-[1]" />
+
+            {/* Label "Recomendado" si está destacado */}
+            {isFeatured && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center gap-1">
+                    <Star className="h-2.5 w-2.5 fill-white text-white" />
+                    <span className="text-[10px] font-medium text-white leading-tight whitespace-nowrap">Recomendado</span>
+                </div>
+            )}
 
             {/* Contenido */}
             <div className="absolute bottom-0 left-0 right-0 p-6 z-10">

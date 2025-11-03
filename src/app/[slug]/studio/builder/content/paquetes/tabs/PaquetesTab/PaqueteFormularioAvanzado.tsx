@@ -55,6 +55,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         thumbnail_url?: string;
     }>>([]);
 
+    // Guardar cover original para comparar cambios
+    const [originalCoverUrl, setOriginalCoverUrl] = useState<string | null>(null);
+
     // Hook de upload
     const { uploadFiles, deleteFile, isUploading } = useMediaUpload();
 
@@ -114,6 +117,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
                         // Cargar cover si existe
                         const coverUrl = (paquete as { cover_url?: string }).cover_url;
+                        setOriginalCoverUrl(coverUrl || null);
                         if (coverUrl) {
                             const filename = coverUrl.split('/').pop() || 'cover.jpg';
                             const isVideo = filename.toLowerCase().includes('.mp4') ||
@@ -542,14 +546,21 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 servicios: serviciosData
             };
 
+            const newCoverUrl = coverMedia[0]?.file_url || null;
+            const coverChanged = originalCoverUrl !== newCoverUrl;
+
             let result;
             if (paquete?.id) {
                 // Actualizar paquete existente
                 result = await actualizarPaquete(studioSlug, paquete.id, data);
                 if (result.success && result.data) {
                     toast.success('Paquete actualizado exitosamente');
-                    // Actualizar storage
-                    triggerRefresh();
+                    // Actualizar storage solo si el cover cambió (se subió nueva imagen/video)
+                    if (coverChanged) {
+                        triggerRefresh();
+                    }
+                    // Actualizar cover original para futuras comparaciones
+                    setOriginalCoverUrl(newCoverUrl);
                     onSave(result.data);
                 } else {
                     toast.error(result.error || 'Error al actualizar el paquete');
@@ -559,8 +570,12 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 result = await crearPaquete(studioSlug, data);
                 if (result.success && result.data) {
                     toast.success('Paquete creado exitosamente');
-                    // Actualizar storage
-                    triggerRefresh();
+                    // Actualizar storage solo si tiene cover (se subió imagen/video)
+                    if (newCoverUrl) {
+                        triggerRefresh();
+                    }
+                    // Actualizar cover original para futuras comparaciones
+                    setOriginalCoverUrl(newCoverUrl);
                     onSave(result.data);
                 } else {
                     toast.error(result.error || 'Error al crear el paquete');

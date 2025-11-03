@@ -20,6 +20,7 @@ export interface StorageStats {
     itemsGlobalBytes: number;
     postsGlobalBytes: number;
     portfoliosGlobalBytes: number;
+    paquetesGlobalBytes: number;
 }
 
 /**
@@ -89,6 +90,33 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
 
         console.log('🔍 calculateStorageCompleto: Total portfolios bytes:', totalPortfoliosBytes);
 
+        // Obtener covers de paquetes (necesitamos obtener el tamaño desde las URLs)
+        const paquetes = await prisma.studio_paquetes.findMany({
+            where: { studio_id: studio.id },
+            select: { cover_url: true },
+        });
+
+        // Calcular tamaño de covers de paquetes (hacer HEAD requests para obtener Content-Length)
+        let totalPaquetesBytes = 0;
+        const coverSizePromises = paquetes
+            .filter(p => p.cover_url)
+            .map(async (paquete) => {
+                try {
+                    const response = await fetch(paquete.cover_url!, { method: 'HEAD' });
+                    const contentLength = response.headers.get('content-length');
+                    return contentLength ? parseInt(contentLength, 10) : 0;
+                } catch (error) {
+                    console.warn('Error obteniendo tamaño de cover:', paquete.cover_url, error);
+                    return 0;
+                }
+            });
+
+        const coverSizes = await Promise.all(coverSizePromises);
+        totalPaquetesBytes = coverSizes.reduce((sum, size) => sum + size, 0);
+
+        console.log('🔍 calculateStorageCompleto: Paquetes con cover:', paquetes.filter(p => p.cover_url).length);
+        console.log('🔍 calculateStorageCompleto: Total paquetes bytes:', totalPaquetesBytes);
+
         // Agrupar por sección
         const sectionMap = new Map<string, StorageBreakdown>();
         let totalCategoryBytes = 0;
@@ -140,7 +168,7 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
         }
 
         const sections = Array.from(sectionMap.values());
-        const totalBytes = totalCategoryBytes + totalItemBytes + totalPostsBytes + totalPortfoliosBytes;
+        const totalBytes = totalCategoryBytes + totalItemBytes + totalPostsBytes + totalPortfoliosBytes + totalPaquetesBytes;
 
         // Actualizar studio_storage_usage
         await prisma.studio_storage_usage.upsert({
@@ -160,6 +188,7 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
                 category_media_bytes: BigInt(totalCategoryBytes),
                 item_media_bytes: BigInt(totalItemBytes),
                 portfolio_media_bytes: BigInt(totalPortfoliosBytes),
+                page_media_bytes: BigInt(totalPaquetesBytes), // Usamos page_media_bytes temporalmente para paquetes
                 last_calculated_at: new Date(),
             },
         });
@@ -174,6 +203,7 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
                 itemsGlobalBytes: totalItemBytes,
                 postsGlobalBytes: totalPostsBytes,
                 portfoliosGlobalBytes: totalPortfoliosBytes,
+                paquetesGlobalBytes: totalPaquetesBytes,
             },
         };
     } catch (error) {

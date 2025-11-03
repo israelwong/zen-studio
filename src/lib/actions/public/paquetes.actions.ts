@@ -40,6 +40,7 @@ export async function getPublicPaquetes(
                 cover_url: true,
                 order: true,
                 is_featured: true,
+                status: true,
                 event_types: {
                     select: {
                         name: true,
@@ -58,6 +59,7 @@ export async function getPublicPaquetes(
             tipo_evento: paquete.event_types?.name ? paquete.event_types.name : undefined,
             cover_url: paquete.cover_url ? paquete.cover_url : undefined,
             is_featured: paquete.is_featured ?? false,
+            status: paquete.status,
             duracion_horas: undefined, // Campo no existe en schema actual
             incluye: undefined, // Campo no existe en schema actual
             no_incluye: undefined, // Campo no existe en schema actual

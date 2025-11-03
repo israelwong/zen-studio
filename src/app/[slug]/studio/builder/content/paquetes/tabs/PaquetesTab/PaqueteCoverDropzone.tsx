@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, AlertCircle, Upload, ImageIcon, Film } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -10,6 +10,7 @@ interface MediaItem {
     file_type: string;
     filename: string;
     thumbnail_url?: string;
+    file_size?: number;
 }
 
 interface PaqueteCoverDropzoneProps {
@@ -31,8 +32,49 @@ export function PaqueteCoverDropzone({
 }: PaqueteCoverDropzoneProps) {
     const [error, setError] = useState<string | null>(null);
     const [isDragging, setIsDragging] = useState(false);
+    const [fileSize, setFileSize] = useState<number | null>(null);
     const dragCounter = useRef(0);
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Función para formatear bytes
+    const formatBytes = (bytes: number): string => {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    };
+
+    // Obtener tamaño del archivo si no está disponible
+    useEffect(() => {
+        const currentMedia = media[0];
+        if (!currentMedia) {
+            setFileSize(null);
+            return;
+        }
+
+        // Si ya tiene file_size, usarlo
+        if (currentMedia.file_size) {
+            setFileSize(currentMedia.file_size);
+            return;
+        }
+
+        // Intentar obtener el tamaño mediante HEAD request
+        const fetchFileSize = async () => {
+            try {
+                const response = await fetch(currentMedia.file_url, { method: 'HEAD' });
+                const contentLength = response.headers.get('content-length');
+                if (contentLength) {
+                    setFileSize(parseInt(contentLength, 10));
+                }
+            } catch (err) {
+                console.warn('No se pudo obtener el tamaño del archivo:', err);
+                setFileSize(null);
+            }
+        };
+
+        fetchFileSize();
+    }, [media]);
 
     // Validar archivo antes de procesar (imágenes y videos)
     const validateFile = (file: File): string | null => {
@@ -194,6 +236,11 @@ export function PaqueteCoverDropzone({
                                 muted
                                 playsInline
                                 preload="metadata"
+                                onLoadedMetadata={(e) => {
+                                    // Asegurar que el video muestre el primer frame
+                                    const video = e.currentTarget;
+                                    video.currentTime = 0.1;
+                                }}
                             />
                         ) : (
                             <Image
@@ -222,6 +269,13 @@ export function PaqueteCoverDropzone({
                             >
                                 <X className="h-3 w-3" />
                             </button>
+                        )}
+
+                        {/* Mostrar tamaño del archivo */}
+                        {fileSize !== null && (
+                            <div className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-black/70 backdrop-blur-sm rounded text-[10px] text-white font-medium">
+                                {formatBytes(fileSize)}
+                            </div>
                         )}
                     </div>
                 )}

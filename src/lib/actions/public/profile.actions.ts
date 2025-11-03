@@ -258,6 +258,7 @@ export async function getStudioProfileBySlug(
                     cover_url: true,
                     order: true,
                     is_featured: true,
+                    status: true,
                     event_types: {
                         select: {
                             name: true,
@@ -298,6 +299,7 @@ export async function getStudioProfileBySlug(
                     tipo_evento: paquete.event_types?.name ? paquete.event_types.name : undefined,
                     cover_url: paquete.cover_url ? paquete.cover_url : undefined,
                     is_featured: paquete.is_featured ?? false,
+                    status: paquete.status,
                     order: paquete.order,
                 };
             });

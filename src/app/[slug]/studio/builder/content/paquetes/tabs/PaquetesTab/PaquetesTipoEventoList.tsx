@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, List, Star, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
 import {
@@ -971,6 +972,62 @@ export function PaquetesTipoEventoList({
             opacity: isDragging ? 0.5 : 1,
         };
 
+        const coverUrl = paquete.cover_url;
+        const hasCover = !!coverUrl && typeof coverUrl === 'string' && coverUrl.trim() !== '';
+        const videoRef = useRef<HTMLVideoElement>(null);
+        const [videoReady, setVideoReady] = useState(false);
+
+        // Función robusta para detectar si es video (incluso con query strings)
+        const isVideo = hasCover && (() => {
+            if (!coverUrl) return false;
+            const urlLower = coverUrl.toLowerCase();
+            // Remover query string y fragmentos para validar extensión
+            const urlPath = urlLower.split('?')[0].split('#')[0];
+            // Verificar extensión de video
+            const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.m4v', '.mkv'];
+            const isVideoFile = videoExtensions.some(ext => urlPath.endsWith(ext));
+
+            return isVideoFile;
+        })();
+
+        // Efecto para manejar el video y mostrar primer frame
+        useEffect(() => {
+            if (!isVideo || !videoRef.current) {
+                setVideoReady(false);
+                return;
+            }
+
+            const video = videoRef.current;
+
+            const handleLoadedMetadata = () => {
+                try {
+                    video.currentTime = 0.1;
+                    setVideoReady(true);
+                } catch (error) {
+                    console.error('Error setting video currentTime:', error);
+                }
+            };
+
+            const handleSeeked = () => {
+                setVideoReady(true);
+            };
+
+            const handleError = () => {
+                console.error('Error loading video:', coverUrl);
+                setVideoReady(false);
+            };
+
+            video.addEventListener('loadedmetadata', handleLoadedMetadata);
+            video.addEventListener('seeked', handleSeeked);
+            video.addEventListener('error', handleError);
+
+            return () => {
+                video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                video.removeEventListener('seeked', handleSeeked);
+                video.removeEventListener('error', handleError);
+            };
+        }, [isVideo, coverUrl]);
+
         // Si está duplicando, mostrar placeholder
         if (isDuplicating) {
             const duplicatingInfo = duplicatingPaquetes.get(paquete.id);
@@ -1011,6 +1068,46 @@ export function PaquetesTipoEventoList({
                     >
                         <GripVertical className="h-4 w-4 text-zinc-500" />
                     </button>
+                    {/* Thumbnail del paquete */}
+                    <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-800 border border-dashed border-zinc-600 relative">
+                        {hasCover ? (
+                            isVideo ? (
+                                <>
+                                    <video
+                                        ref={videoRef}
+                                        src={coverUrl || undefined}
+                                        className="w-full h-full object-cover"
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        crossOrigin="anonymous"
+                                        style={{ display: videoReady ? 'block' : 'none' }}
+                                    />
+                                    {!videoReady && (
+                                        <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                                            <div className="w-6 h-6 bg-zinc-700/50 rounded animate-pulse" />
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <Image
+                                    src={coverUrl}
+                                    alt={paquete.name}
+                                    fill
+                                    className="object-cover"
+                                    sizes="48px"
+                                    unoptimized
+                                    onError={(e) => {
+                                        console.error('Error cargando imagen thumbnail:', coverUrl, e);
+                                    }}
+                                />
+                            )
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <div className="w-6 h-6 bg-zinc-700/50 rounded" />
+                            </div>
+                        )}
+                    </div>
                     <button
                         onClick={() => handleEditPaquete(paquete)}
                         className="flex items-center gap-3 flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer"

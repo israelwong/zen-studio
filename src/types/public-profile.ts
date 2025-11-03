@@ -54,6 +54,7 @@ export interface PublicPaquete {
     tipo_evento?: string;
     cover_url?: string;
     is_featured?: boolean;
+    status?: string;
     duracion_horas?: number;
     incluye?: string[];
     no_incluye?: string[];
