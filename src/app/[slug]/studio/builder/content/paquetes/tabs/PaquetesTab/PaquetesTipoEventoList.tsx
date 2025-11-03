@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/zen";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { TipoEventoForm } from "@/app/[slug]/studio/configuracion/operacion/tipos/components/TipoEventoFormSimple";
-import { reorderPaquetes } from "@/lib/actions/studio/builder/paquetes/paquetes.actions";
+import { reorderPaquetes, obtenerPaquetes } from "@/lib/actions/studio/builder/paquetes/paquetes.actions";
 import type { TipoEventoData } from "@/lib/actions/schemas/tipos-evento-schemas";
 import type { PaqueteFromDB } from "@/lib/actions/schemas/paquete-schemas";
 
@@ -114,6 +114,10 @@ export function PaquetesTipoEventoList({
                 });
 
                 setPaquetesData(paquetesPorTipo);
+
+                // Expandir todos los tipos de evento por defecto
+                const allTipoEventoIds = new Set(initialTiposEvento.map(t => t.id));
+                setTiposEventoExpandidos(allTipoEventoIds);
 
             } catch (error) {
                 console.error("Error loading initial data:", error);
@@ -335,8 +339,24 @@ export function PaquetesTipoEventoList({
                 try {
                     const result = await reorderPaquetes(studioSlug, paquetesConOrder.map(p => p.id));
                     if (result.success) {
+                        // Recargar paquetes del backend para obtener datos actualizados (order, etc.)
+                        const paquetesResult = await obtenerPaquetes(studioSlug);
+                        if (paquetesResult.success && paquetesResult.data) {
+                            // Actualizar estado local con datos del backend
+                            const paquetesActualizados = paquetesResult.data;
+                            const paquetesPorTipo: Record<string, PaqueteFromDB[]> = {};
+                            paquetesActualizados.forEach(paquete => {
+                                const tipoEventoId = paquete.event_type_id || 'sin-tipo';
+                                if (!paquetesPorTipo[tipoEventoId]) {
+                                    paquetesPorTipo[tipoEventoId] = [];
+                                }
+                                paquetesPorTipo[tipoEventoId].push(paquete);
+                            });
+                            setPaquetesData(paquetesPorTipo);
+                            // Actualizar preview con datos completos del backend
+                            onPaquetesChange(paquetesActualizados);
+                        }
                         toast.success("Orden de paquetes actualizado");
-                        // El preview se actualiza automáticamente a través de onPaquetesChange
                     } else {
                         toast.error(result.error || "Error al actualizar el orden");
                         // Revertir cambios si falla el backend
@@ -344,6 +364,7 @@ export function PaquetesTipoEventoList({
                             ...prev,
                             [activeTipoEventoId]: paquetes
                         }));
+                        onPaquetesChange(initialPaquetes);
                     }
                 } catch (error) {
                     console.error("Error actualizando orden:", error);
@@ -353,6 +374,7 @@ export function PaquetesTipoEventoList({
                         ...prev,
                         [activeTipoEventoId]: paquetes
                     }));
+                    onPaquetesChange(initialPaquetes);
                 }
             } else if (isMovingBetweenTypes) {
                 // Movimiento entre diferentes tipos de evento
@@ -362,46 +384,68 @@ export function PaquetesTipoEventoList({
                 const paqueteAMover = paquetesOrigen.find(paquete => paquete.id === activeId);
                 if (!paqueteAMover) return;
 
-                // Remover del tipo de evento origen
-                const nuevosPaquetesOrigen = paquetesOrigen.filter(paquete => paquete.id !== activeId);
-
-                // Agregar al tipo de evento destino
-                const paqueteActualizado = {
+                // Actualización optimista: actualizar estado local inmediatamente
+                const paqueteActualizadoOptimistic = {
                     ...paqueteAMover,
                     event_type_id: overTipoEventoId,
-                    position: paquetesDestino.length
+                    position: paquetesDestino.length,
+                    // Actualizar event_types si está disponible
+                    event_types: tiposEvento.find(t => t.id === overTipoEventoId) ? {
+                        id: overTipoEventoId,
+                        name: tiposEvento.find(t => t.id === overTipoEventoId)!.nombre
+                    } : paqueteAMover.event_types
                 };
 
-                const nuevosPaquetesDestino = [...paquetesDestino, paqueteActualizado];
+                // Remover del tipo de evento origen
+                const nuevosPaquetesOrigen = paquetesOrigen.filter(paquete => paquete.id !== activeId);
+                // Agregar al tipo de evento destino inmediatamente
+                const nuevosPaquetesDestino = [...paquetesDestino, paqueteActualizadoOptimistic];
 
+                // Actualizar estado local inmediatamente para feedback visual instantáneo
                 setPaquetesData(prev => ({
                     ...prev,
                     [activeTipoEventoId]: nuevosPaquetesOrigen,
                     [overTipoEventoId]: nuevosPaquetesDestino
                 }));
 
-                // Actualizar el estado global de paquetes
-                const paquetesActualizados = initialPaquetes.map(paquete =>
-                    paquete.id === activeId
-                        ? { ...paquete, event_type_id: overTipoEventoId, position: paquetesDestino.length }
-                        : paquete
+                // Actualizar estado global inmediatamente
+                const paquetesActualizadosOptimistic = initialPaquetes.map(paquete =>
+                    paquete.id === activeId ? paqueteActualizadoOptimistic : paquete
                 );
-                onPaquetesChange(paquetesActualizados);
+                onPaquetesChange(paquetesActualizadosOptimistic);
 
-                // Actualizar en el backend
+                // Actualizar en el backend en segundo plano
                 try {
-                    // Actualizar el paquete con el nuevo event_type_id y posición
                     const { actualizarPaquete } = await import('@/lib/actions/studio/builder/paquetes/paquetes.actions');
                     const result = await actualizarPaquete(studioSlug, activeId, {
                         event_type_id: overTipoEventoId,
                         position: paquetesDestino.length
                     });
 
-                    if (result.success) {
+                    if (result.success && result.data) {
+                        const updatedPaquete = result.data;
+
+                        // Actualizar con datos completos del backend (sincronización)
+                        setPaquetesData(prev => {
+                            const nuevosOrigen = (prev[activeTipoEventoId] || []).filter(p => p.id !== activeId);
+                            const nuevosDestino = (prev[overTipoEventoId] || []).map(p =>
+                                p.id === activeId ? updatedPaquete : p
+                            );
+                            return {
+                                ...prev,
+                                [activeTipoEventoId]: nuevosOrigen,
+                                [overTipoEventoId]: nuevosDestino
+                            };
+                        });
+
+                        // Actualizar estado global con datos del backend
+                        const paquetesActualizados = initialPaquetes.map(paquete =>
+                            paquete.id === activeId ? updatedPaquete : paquete
+                        );
+                        onPaquetesChange(paquetesActualizados);
+
                         toast.success(`Paquete movido a ${tiposEvento.find(t => t.id === overTipoEventoId)?.nombre}`);
-                        // El preview se actualiza automáticamente a través de onPaquetesChange
                     } else {
-                        toast.error(result.error || "Error al mover el paquete");
                         // Revertir cambios si falla el backend
                         setPaquetesData(prev => ({
                             ...prev,
@@ -409,10 +453,10 @@ export function PaquetesTipoEventoList({
                             [overTipoEventoId]: paquetesDestino
                         }));
                         onPaquetesChange(initialPaquetes);
+                        toast.error(result.error || "Error al mover el paquete");
                     }
                 } catch (error) {
                     console.error("Error moviendo paquete:", error);
-                    toast.error("Error al mover el paquete");
                     // Revertir cambios si falla el backend
                     setPaquetesData(prev => ({
                         ...prev,
@@ -420,6 +464,7 @@ export function PaquetesTipoEventoList({
                         [overTipoEventoId]: paquetesDestino
                     }));
                     onPaquetesChange(initialPaquetes);
+                    toast.error("Error al mover el paquete");
                 }
             }
 
@@ -662,7 +707,7 @@ export function PaquetesTipoEventoList({
                     }));
                 }
 
-                // Actualizar estado global
+                // Actualizar estado global con paquete completo del backend
                 const updatedPaquetes = initialPaquetes.map(p =>
                     p.id === paquete.id ? updatedPaquete :
                         (p.event_type_id === paquete.event_type_id && p.is_featured && newFeaturedValue)
@@ -706,7 +751,7 @@ export function PaquetesTipoEventoList({
             if (result.success && result.data) {
                 const updatedPaquete = result.data;
 
-                // Actualizar estado local
+                // Actualizar estado local con paquete completo del backend
                 setPaquetesData(prev => ({
                     ...prev,
                     [paquete.event_type_id]: (prev[paquete.event_type_id] || []).map(p =>
@@ -714,7 +759,7 @@ export function PaquetesTipoEventoList({
                     )
                 }));
 
-                // Actualizar estado global
+                // Actualizar estado global con paquete completo del backend
                 const updatedPaquetes = initialPaquetes.map(p =>
                     p.id === paquete.id ? updatedPaquete : p
                 );
@@ -793,7 +838,9 @@ export function PaquetesTipoEventoList({
         return (
             <div
                 ref={setNodeRef}
-                className={`border border-zinc-700 rounded-lg overflow-hidden transition-colors ${isOver && !isDraggingTipoEvento ? 'border-purple-500 bg-purple-500/10' : ''
+                className={`border rounded-lg overflow-hidden transition-all duration-200 ${isOver && !isDraggingTipoEvento
+                    ? 'border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/20'
+                    : 'border-zinc-700'
                     }`}
             >
                 {children}
@@ -811,16 +858,19 @@ export function PaquetesTipoEventoList({
         return (
             <div
                 ref={setNodeRef}
-                className={`text-center py-8 min-h-[100px] flex items-center justify-center m-4 transition-colors ${isOver && !isDraggingTipoEvento
-                    ? 'bg-purple-500/10'
-                    : ''
+                className={`text-center py-4 min-h-[60px] flex items-center justify-center m-2 rounded-lg transition-all duration-200 ${isOver && !isDraggingTipoEvento
+                    ? 'bg-purple-500/20 border-2 border-dashed border-purple-500'
+                    : 'bg-transparent'
                     }`}
             >
                 <div className="text-center">
-                    <div className="text-zinc-500 mb-3">
-                        <List className="h-8 w-8 mx-auto" />
+                    <div className={`mb-2 transition-colors ${isOver && !isDraggingTipoEvento ? 'text-purple-400' : 'text-zinc-500'}`}>
+                        <List className="h-5 w-5 mx-auto" />
                     </div>
-                    <p className="text-sm text-zinc-400">
+                    <p className={`text-xs transition-colors ${isOver && !isDraggingTipoEvento
+                        ? 'text-purple-300 font-medium'
+                        : 'text-zinc-400'
+                        }`}>
                         {isOver && !isDraggingTipoEvento ? 'Suelta aquí para agregar a este tipo de evento' : 'Este tipo de evento no tiene paquetes asociados'}
                     </p>
                 </div>
@@ -847,13 +897,15 @@ export function PaquetesTipoEventoList({
 
         const isTipoEventoExpandido = tiposEventoExpandidos.has(tipoEvento.id);
         const paquetesDelTipo = paquetesData[tipoEvento.id] || [];
+        const isEmpty = paquetesDelTipo.length === 0;
+        const isCollapsedEmpty = !isTipoEventoExpandido && isEmpty;
 
         return (
             <div ref={setNodeRef} style={style} className="relative">
                 <div className="border border-zinc-700 rounded-lg overflow-hidden">
                     <DroppableTipoEvento tipoEvento={tipoEvento}>
                         {/* Header del tipo de evento */}
-                        <div className="flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors bg-zinc-800/30">
+                        <div className={`flex items-center justify-between hover:bg-zinc-800/50 transition-colors bg-zinc-800/30 ${isCollapsedEmpty ? 'p-2' : 'p-4'}`}>
                             <div className="flex items-center gap-3 flex-1 text-left">
                                 <button
                                     {...attributes}
@@ -934,7 +986,12 @@ export function PaquetesTipoEventoList({
                                 ) : (
                                     <div className="space-y-1">
                                         {paquetesDelTipo
-                                            .sort((a, b) => (a.position || 0) - (b.position || 0))
+                                            .sort((a, b) => {
+                                                // Usar order del schema (que viene del backend) o position como fallback
+                                                const orderA = (a as { order?: number }).order ?? (a.position || 0);
+                                                const orderB = (b as { order?: number }).order ?? (b.position || 0);
+                                                return orderA - orderB;
+                                            })
                                             .map((paquete, paqueteIndex) => (
                                                 <SortablePaquete
                                                     key={paquete.id}
@@ -968,8 +1025,8 @@ export function PaquetesTipoEventoList({
 
         const style = {
             transform: CSS.Transform.toString(transform),
-            transition,
-            opacity: isDragging ? 0.5 : 1,
+            transition: isDragging ? 'none' : transition, // Sin transición mientras se arrastra para mejor feedback
+            opacity: isDragging ? 0.4 : 1,
         };
 
         const coverUrl = paquete.cover_url;
@@ -987,32 +1044,108 @@ export function PaquetesTipoEventoList({
             return videoExtensions.some(ext => urlPath.endsWith(ext));
         })();
 
-        // Efecto para posicionar el video en el primer frame
+        // Efecto para posicionar el video en el primer frame visible
         useEffect(() => {
-            if (!isVideo || !videoRef.current) return;
+            if (!isVideo || !videoRef.current || !coverUrl) return;
 
             const video = videoRef.current;
+            let timeoutId: NodeJS.Timeout | null = null;
+            let attempts = 0;
+            const maxAttempts = 5;
 
-            const handleLoadedMetadata = () => {
+            const setVideoFrame = () => {
                 try {
-                    // Posicionar en el primer frame
+                    // Asegurar que el video esté pausado
+                    video.pause();
+
+                    // Intentar establecer el frame a 1 segundo (más confiable que 2)
                     if (video.readyState >= 2) {
-                        video.currentTime = 0.1;
+                        video.currentTime = 1;
+                    } else if (video.readyState >= 1) {
+                        // Si solo tiene metadatos, intentar igual
+                        video.currentTime = 1;
                     }
                 } catch (error) {
                     console.error('Error setting video currentTime:', error);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        // Reintentar después de un breve delay
+                        timeoutId = setTimeout(setVideoFrame, 300);
+                    }
                 }
             };
 
+            const handleLoadedMetadata = () => {
+                video.pause();
+                setVideoFrame();
+            };
+
+            const handleLoadedData = () => {
+                video.pause();
+                setVideoFrame();
+            };
+
+            const handleCanPlay = () => {
+                video.pause();
+                setVideoFrame();
+            };
+
+            const handleSeeked = () => {
+                video.pause();
+            };
+
+            const handleLoadedMetadataError = () => {
+                // Si falla, intentar con frame 0
+                try {
+                    video.pause();
+                    video.currentTime = 0;
+                } catch (e) {
+                    console.error('Error setting video to frame 0:', e);
+                }
+            };
+
+            // Limpiar eventos previos si existen
+            video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+            video.removeEventListener('loadeddata', handleLoadedData);
+            video.removeEventListener('canplay', handleCanPlay);
+            video.removeEventListener('seeked', handleSeeked);
+            video.removeEventListener('error', handleLoadedMetadataError);
+
+            // Asegurar que el video esté pausado desde el inicio
+            video.pause();
+
             // Si ya está cargado, establecer el frame directamente
             if (video.readyState >= 2) {
-                video.currentTime = 0.1;
+                video.pause();
+                video.currentTime = 1;
             } else {
                 video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+                video.addEventListener('loadeddata', handleLoadedData, { once: true });
+                video.addEventListener('canplay', handleCanPlay, { once: true });
+                video.addEventListener('seeked', handleSeeked, { once: true });
+                video.addEventListener('error', handleLoadedMetadataError, { once: true });
+
+                // Fallback: intentar después de un delay
+                timeoutId = setTimeout(() => {
+                    if (video.readyState >= 2) {
+                        video.pause();
+                        setVideoFrame();
+                    } else if (video.readyState >= 1) {
+                        video.pause();
+                        video.currentTime = 0;
+                    }
+                }, 800);
             }
 
             return () => {
                 video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+                video.removeEventListener('loadeddata', handleLoadedData);
+                video.removeEventListener('canplay', handleCanPlay);
+                video.removeEventListener('seeked', handleSeeked);
+                video.removeEventListener('error', handleLoadedMetadataError);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                }
             };
         }, [isVideo, coverUrl]);
 
@@ -1044,7 +1177,8 @@ export function PaquetesTipoEventoList({
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`flex items-center justify-between py-3 px-2 pl-10 ${paqueteIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors`}
+                className={`flex items-center justify-between py-3 px-2 pl-10 ${paqueteIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-all duration-200 ${isDragging ? 'bg-purple-500/10 border-l-2 border-purple-500' : ''
+                    }`}
             >
                 <div className="flex items-center gap-3 flex-1">
                     <button
@@ -1068,6 +1202,19 @@ export function PaquetesTipoEventoList({
                                     playsInline
                                     preload="metadata"
                                     crossOrigin="anonymous"
+                                    onLoadedMetadata={(e) => {
+                                        const video = e.currentTarget;
+                                        video.pause();
+                                        if (video.readyState >= 2) {
+                                            video.currentTime = 1;
+                                        }
+                                    }}
+                                    onLoadedData={(e) => {
+                                        e.currentTarget.pause();
+                                    }}
+                                    onCanPlay={(e) => {
+                                        e.currentTarget.pause();
+                                    }}
                                 />
                             ) : (
                                 <Image
@@ -1306,15 +1453,37 @@ export function PaquetesTipoEventoList({
 
             <DragOverlay>
                 {activeId ? (
-                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 opacity-90">
-                        <div className="flex items-center gap-3">
-                            <GripVertical className="h-4 w-4 text-zinc-500" />
-                            <span className="font-medium text-white">
-                                {tiposEvento.find(t => t.id === activeId)?.nombre ||
-                                    Object.values(paquetesData).flat().find(p => p.id === activeId)?.name || 'Elemento'}
-                            </span>
-                        </div>
-                    </div>
+                    (() => {
+                        const activePaquete = Object.values(paquetesData).flat().find(p => p.id === activeId);
+                        const activeTipoEvento = tiposEvento.find(t => t.id === activeId);
+
+                        if (activePaquete) {
+                            // Overlay para paquete
+                            return (
+                                <div className="bg-zinc-800/95 border-2 border-purple-500 rounded-lg p-3 shadow-xl shadow-purple-500/20 backdrop-blur-sm">
+                                    <div className="flex items-center gap-3">
+                                        <GripVertical className="h-4 w-4 text-purple-400" />
+                                        <span className="font-medium text-white">
+                                            {activePaquete.name}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        } else if (activeTipoEvento) {
+                            // Overlay para tipo de evento
+                            return (
+                                <div className="bg-zinc-800/95 border-2 border-purple-500 rounded-lg p-4 shadow-xl shadow-purple-500/20 backdrop-blur-sm">
+                                    <div className="flex items-center gap-3">
+                                        <GripVertical className="h-4 w-4 text-purple-400" />
+                                        <span className="font-medium text-white">
+                                            {activeTipoEvento.nombre}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()
                 ) : null}
             </DragOverlay>
 

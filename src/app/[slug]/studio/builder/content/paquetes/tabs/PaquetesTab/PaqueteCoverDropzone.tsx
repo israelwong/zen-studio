@@ -260,7 +260,9 @@ export function PaqueteCoverDropzone({
 
                         {!isUploading && (
                             <button
+                                type="button"
                                 onClick={(e) => {
+                                    e.preventDefault();
                                     e.stopPropagation();
                                     onRemoveMedia();
                                 }}

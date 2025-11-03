@@ -42,8 +42,12 @@ export default function PaquetesPage() {
             if (!prev) return prev;
             
             // Convertir PaqueteFromDB a BuilderPaquete (que es compatible con PublicPaquete)
+            // Filtrar solo paquetes activos y sin placeholders temporales
             const builderPaquetes = paquetes
-                .filter(p => !p.id.startsWith('duplicating-')) // Excluir placeholders temporales
+                .filter(p => 
+                    !p.id.startsWith('duplicating-') && // Excluir placeholders temporales
+                    p.status === 'active' // Solo paquetes activos para el preview público
+                )
                 .map(paquete => ({
                     id: paquete.id,
                     nombre: paquete.name,
@@ -56,7 +60,8 @@ export default function PaquetesPage() {
                     incluye: undefined,
                     no_incluye: undefined,
                     condiciones: undefined,
-                    order: paquete.position || 0,
+                    // Usar order del schema (que viene del backend) o position como fallback
+                    order: (paquete as { order?: number }).order ?? (paquete.position || 0),
                 }));
 
             return {
