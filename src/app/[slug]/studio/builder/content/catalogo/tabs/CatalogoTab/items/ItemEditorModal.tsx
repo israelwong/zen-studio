@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Image from "next/image";
 import { ZenButton, ZenInput, ZenCard, ZenTextarea, ZenSelect } from "@/components/ui/zen";
+import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/shadcn/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
 import { toast } from "sonner";
-import { Trash2, Upload, Loader2, GripVertical, Play, Save, Plus, Minus, Calculator } from "lucide-react";
+import { Trash2, Upload, Loader2, GripVertical, Play, Save, Plus, Minus, Calculator, Image as ImageIcon } from "lucide-react";
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios, type ResultadoPrecio } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
@@ -39,6 +40,7 @@ import {
     SortableContext,
     verticalListSortingStrategy,
     useSortable,
+    sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { arrayMove } from "@dnd-kit/sortable";
 
@@ -68,6 +70,7 @@ interface ItemEditorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave?: (data: ItemFormData) => Promise<void>;
+    onMediaChange?: (itemId: string, hasPhotos: boolean, hasVideos: boolean) => void;
     item?: ItemFormData;
     studioSlug: string;
     categoriaId: string;
@@ -82,6 +85,7 @@ export function ItemEditorModal({
     isOpen,
     onClose,
     onSave,
+    onMediaChange,
     item,
     studioSlug,
     categoriaId,
@@ -136,6 +140,11 @@ export function ItemEditorModal({
     // Estados de UI
     const [isSaving, setIsSaving] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
+    const [isDeleteFotoModalOpen, setIsDeleteFotoModalOpen] = useState(false);
+    const [isDeleteVideoModalOpen, setIsDeleteVideoModalOpen] = useState(false);
+    const [fotoToDelete, setFotoToDelete] = useState<string | null>(null);
+    const [videoToDelete, setVideoToDelete] = useState<string | null>(null);
+    const [isDeletingMedia, setIsDeletingMedia] = useState(false);
 
     // Hooks
     const { uploadFiles } = useMediaUpload();
@@ -387,6 +396,17 @@ export function ItemEditorModal({
         onClose();
     };
 
+    // Helper para notificar cambios de media al padre
+    const notifyMediaChange = (newFotos?: MediaItem[], newVideos?: MediaItem[]) => {
+        if (onMediaChange && formData.id) {
+            const currentFotos = newFotos !== undefined ? newFotos : fotos;
+            const currentVideos = newVideos !== undefined ? newVideos : videos;
+            const hasPhotos = currentFotos.length > 0;
+            const hasVideos = currentVideos.length > 0;
+            onMediaChange(formData.id, hasPhotos, hasVideos);
+        }
+    };
+
     // File upload handlers
     const handleFotosUpload = async (files: FileList) => {
         if (!files.length) return;
@@ -423,12 +443,16 @@ export function ItemEditorModal({
                 fileName: file.fileName,
             }));
 
-            setFotos(prev => [...prev, ...mediaItems]);
+            const updatedFotos = [...fotos, ...mediaItems];
+            setFotos(updatedFotos);
             toast.success(`${uploadedFiles.length} foto(s) subida(s)`);
 
             // Actualizar storage tracking
             await refreshStorageUsage();
             triggerRefresh();
+
+            // Notificar cambio de media al padre
+            notifyMediaChange(updatedFotos, videos);
         } catch (error) {
             console.error("Error uploading photos:", error);
             toast.error("Error al subir las fotos");
@@ -472,12 +496,16 @@ export function ItemEditorModal({
                 fileName: file.fileName,
             }));
 
-            setVideos(prev => [...prev, ...mediaItems]);
+            const updatedVideos = [...videos, ...mediaItems];
+            setVideos(updatedVideos);
             toast.success(`${uploadedFiles.length} video(s) subido(s)`);
 
             // Actualizar storage tracking
             await refreshStorageUsage();
             triggerRefresh();
+
+            // Notificar cambio de media al padre
+            notifyMediaChange(fotos, updatedVideos);
         } catch (error) {
             console.error("Error uploading videos:", error);
             toast.error("Error al subir los videos");
@@ -522,11 +550,28 @@ export function ItemEditorModal({
     };
 
     // Delete handlers
-    const handleDeleteFoto = async (id: string) => {
-        const foto = fotos.find(f => f.id === id);
-        if (!foto || !formData.id) return;
+    const handleDeleteFoto = (id: string) => {
+        setFotoToDelete(id);
+        setIsDeleteFotoModalOpen(true);
+    };
+
+    const handleConfirmDeleteFoto = async () => {
+        if (!fotoToDelete || !formData.id) {
+            setIsDeleteFotoModalOpen(false);
+            setFotoToDelete(null);
+            return;
+        }
+
+        const foto = fotos.find(f => f.id === fotoToDelete);
+        if (!foto) {
+            setIsDeleteFotoModalOpen(false);
+            setFotoToDelete(null);
+            return;
+        }
 
         try {
+            setIsDeletingMedia(true);
+
             // Eliminar de Supabase
             const success = await deleteFileStorage({
                 publicUrl: foto.url,
@@ -541,29 +586,64 @@ export function ItemEditorModal({
                 });
 
                 if (dbResult.success) {
-                    setFotos(fotos.filter(f => f.id !== id));
+                    // Ocultar solo después de éxito (no optimistic update)
+                    const updatedFotos = fotos.filter(f => f.id !== fotoToDelete);
+                    setFotos(updatedFotos);
+
                     toast.success("Foto eliminada");
 
                     // Actualizar storage tracking
                     await refreshStorageUsage();
                     triggerRefresh();
+
+                    // Notificar cambio de media al padre
+                    notifyMediaChange(updatedFotos, videos);
+
+                    // Cerrar modal solo después de completar la eliminación
+                    setIsDeleteFotoModalOpen(false);
+                    setFotoToDelete(null);
                 } else {
                     toast.error(`Error eliminando foto: ${dbResult.error}`);
+                    setIsDeleteFotoModalOpen(false);
+                    setFotoToDelete(null);
                 }
             } else {
                 toast.error("Error eliminando archivo de almacenamiento");
+                setIsDeleteFotoModalOpen(false);
+                setFotoToDelete(null);
             }
         } catch (error) {
             console.error("Error eliminando foto:", error);
             toast.error("Error al eliminar la foto");
+            setIsDeleteFotoModalOpen(false);
+            setFotoToDelete(null);
+        } finally {
+            setIsDeletingMedia(false);
         }
     };
 
-    const handleDeleteVideo = async (id: string) => {
-        const video = videos.find(v => v.id === id);
-        if (!video || !formData.id) return;
+    const handleDeleteVideo = (id: string) => {
+        setVideoToDelete(id);
+        setIsDeleteVideoModalOpen(true);
+    };
+
+    const handleConfirmDeleteVideo = async () => {
+        if (!videoToDelete || !formData.id) {
+            setIsDeleteVideoModalOpen(false);
+            setVideoToDelete(null);
+            return;
+        }
+
+        const video = videos.find(v => v.id === videoToDelete);
+        if (!video) {
+            setIsDeleteVideoModalOpen(false);
+            setVideoToDelete(null);
+            return;
+        }
 
         try {
+            setIsDeletingMedia(true);
+
             // Eliminar de Supabase
             const success = await deleteFileStorage({
                 publicUrl: video.url,
@@ -578,21 +658,39 @@ export function ItemEditorModal({
                 });
 
                 if (dbResult.success) {
-                    setVideos(videos.filter(v => v.id !== id));
+                    // Ocultar solo después de éxito (no optimistic update)
+                    const updatedVideos = videos.filter(v => v.id !== videoToDelete);
+                    setVideos(updatedVideos);
+
                     toast.success("Video eliminado");
 
                     // Actualizar storage tracking
                     await refreshStorageUsage();
                     triggerRefresh();
+
+                    // Notificar cambio de media al padre
+                    notifyMediaChange(fotos, updatedVideos);
+
+                    // Cerrar modal solo después de completar la eliminación
+                    setIsDeleteVideoModalOpen(false);
+                    setVideoToDelete(null);
                 } else {
                     toast.error(`Error eliminando video: ${dbResult.error}`);
+                    setIsDeleteVideoModalOpen(false);
+                    setVideoToDelete(null);
                 }
             } else {
                 toast.error("Error eliminando archivo de almacenamiento");
+                setIsDeleteVideoModalOpen(false);
+                setVideoToDelete(null);
             }
         } catch (error) {
             console.error("Error eliminando video:", error);
             toast.error("Error al eliminar el video");
+            setIsDeleteVideoModalOpen(false);
+            setVideoToDelete(null);
+        } finally {
+            setIsDeletingMedia(false);
         }
     };
 
@@ -649,9 +747,10 @@ export function ItemEditorModal({
         } = useSortable({ id: item.id });
 
         const style = {
-            transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-            transition,
-            opacity: isDragging ? 0.5 : 1,
+            transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${isDragging ? 1.08 : 1})` : undefined,
+            transition: isDragging ? undefined : (transition || 'transform 250ms cubic-bezier(0.2, 0, 0, 1)'),
+            opacity: isDragging ? 0.7 : 1,
+            zIndex: isDragging ? 50 : 1,
         };
 
         const handleOpenLightbox = () => {
@@ -692,14 +791,17 @@ export function ItemEditorModal({
             <div
                 ref={setNodeRef}
                 style={style}
-                className="aspect-square bg-zinc-900 border border-zinc-700 rounded-lg overflow-hidden group relative cursor-pointer"
+                className={`aspect-square bg-zinc-900 border rounded-lg overflow-hidden group relative cursor-pointer ${isDragging
+                    ? 'border-purple-500 shadow-2xl shadow-purple-500/50 ring-2 ring-purple-500/30'
+                    : 'border-zinc-700 hover:border-zinc-600 hover:shadow-lg'
+                    } transition-all duration-200 ease-out`}
                 onClick={handleOpenLightbox}
             >
                 {/* Drag handle */}
                 <div
                     {...attributes}
                     {...listeners}
-                    className="absolute top-1 left-1 bg-zinc-800/80 hover:bg-zinc-700 p-1 rounded cursor-grab active:cursor-grabbing z-10"
+                    className="absolute top-1 left-1 bg-zinc-800/90 hover:bg-zinc-700/90 p-1.5 rounded-md cursor-grab active:cursor-grabbing z-10 backdrop-blur-sm transition-all duration-200 hover:scale-110"
                 >
                     <GripVertical className="w-4 h-4 text-zinc-400" />
                 </div>
@@ -750,9 +852,13 @@ export function ItemEditorModal({
                 {!item.isUploading && (
                     <button
                         type="button"
-                        onClick={() => onDelete(item.id)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onDelete(item.id);
+                        }}
                         disabled={isUploading}
-                        className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="absolute top-2 right-2 bg-red-500/80 hover:bg-red-600 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed z-20"
                         title="Eliminar"
                     >
                         <Trash2 className="w-3 h-3 text-white" />
@@ -783,7 +889,11 @@ export function ItemEditorModal({
         onReorder: (newItems: MediaItem[]) => void;
     }) => {
         const sensors = useSensors(
-            useSensor(PointerSensor),
+            useSensor(PointerSensor, {
+                activationConstraint: {
+                    distance: 8, // 8px de movimiento antes de activar
+                },
+            }),
             useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
         );
 
@@ -808,8 +918,8 @@ export function ItemEditorModal({
                 onDragEnd={handleDragEnd}
             >
                 <div
-                    className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all ${isDragging
-                        ? "border-emerald-500 bg-emerald-500/10"
+                    className={`grid grid-cols-3 gap-3 p-4 rounded-lg border-2 border-dashed transition-all duration-300 ${isDragging
+                        ? "border-purple-500 bg-purple-500/5 border-solid"
                         : "border-zinc-700 bg-zinc-800/30"
                         }`}
                     onDragEnter={() => setIsDragging(true)}
@@ -1146,10 +1256,22 @@ export function ItemEditorModal({
                                 </div>
 
                                 {/* Info */}
-                                <ZenCard className="p-3 bg-blue-500/10 border-blue-500/30">
+                                <ZenCard className="p-3 bg-blue-500/10 border-blue-500/30 space-y-2">
                                     <p className="text-xs text-blue-300">
                                         📸 Soportados: JPG, PNG, GIF (máx. 5MB cada una)
                                     </p>
+                                    <div className="pt-2 border-t border-blue-500/20">
+                                        <p className="text-xs text-blue-300 mb-2">
+                                            Las fotos se mostrarán en el nombre del item con un icono interactivo. Al hacer click en el icono se abrirá el lightbox.
+                                        </p>
+                                        <p className="text-xs text-blue-300/80 mb-2">
+                                            ⚠️ Cada imagen asociada ocupará espacio en tu cuota de almacenamiento.
+                                        </p>
+                                        <div className="flex items-center gap-2 text-sm text-zinc-300 bg-zinc-800/50 px-3 py-2 rounded border border-zinc-700">
+                                            <span>Nombre del item</span>
+                                            <ImageIcon className="h-3.5 w-3.5 text-zinc-500 cursor-pointer hover:text-blue-400 transition-colors" aria-label="Icono de foto" />
+                                        </div>
+                                    </div>
                                 </ZenCard>
 
                                 {/* Botones de acción */}
@@ -1189,10 +1311,22 @@ export function ItemEditorModal({
                                 </div>
 
                                 {/* Info */}
-                                <ZenCard className="p-3 bg-purple-500/10 border-purple-500/30">
+                                <ZenCard className="p-3 bg-purple-500/10 border-purple-500/30 space-y-2">
                                     <p className="text-xs text-purple-300">
                                         🎬 Soportados: MP4, MOV, AVI (máx. 100MB cada uno)
                                     </p>
+                                    <div className="pt-2 border-t border-purple-500/20">
+                                        <p className="text-xs text-purple-300 mb-2">
+                                            Los videos se mostrarán en el nombre del item con un icono interactivo. Al hacer click en el icono se abrirá el lightbox.
+                                        </p>
+                                        <p className="text-xs text-purple-300/80 mb-2">
+                                            ⚠️ Cada video asociado ocupará espacio en tu cuota de almacenamiento.
+                                        </p>
+                                        <div className="flex items-center gap-2 text-sm text-zinc-300 bg-zinc-800/50 px-3 py-2 rounded border border-zinc-700">
+                                            <span>Nombre del item</span>
+                                            <Play className="h-3.5 w-3.5 text-zinc-500 cursor-pointer hover:text-purple-400 transition-colors" aria-label="Icono de video" />
+                                        </div>
+                                    </div>
                                 </ZenCard>
 
                                 {/* Botones de acción */}
@@ -1213,6 +1347,43 @@ export function ItemEditorModal({
                     </Tabs>
                 </SheetContent>
             </Sheet>
+
+            {/* Modales de confirmación para eliminar media */}
+            <ZenConfirmModal
+                isOpen={isDeleteFotoModalOpen}
+                onClose={() => {
+                    if (!isDeletingMedia) {
+                        setIsDeleteFotoModalOpen(false);
+                        setFotoToDelete(null);
+                    }
+                }}
+                onConfirm={handleConfirmDeleteFoto}
+                title="Eliminar foto"
+                description="¿Estás seguro de que deseas eliminar esta foto? Esta acción no se puede deshacer."
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                loading={isDeletingMedia}
+                disabled={isDeletingMedia}
+            />
+
+            <ZenConfirmModal
+                isOpen={isDeleteVideoModalOpen}
+                onClose={() => {
+                    if (!isDeletingMedia) {
+                        setIsDeleteVideoModalOpen(false);
+                        setVideoToDelete(null);
+                    }
+                }}
+                onConfirm={handleConfirmDeleteVideo}
+                title="Eliminar video"
+                description="¿Estás seguro de que deseas eliminar este video? Esta acción no se puede deshacer."
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                loading={isDeletingMedia}
+                disabled={isDeletingMedia}
+            />
 
             {/* Inputs ocultos para file upload */}
             <input
@@ -1269,9 +1440,4 @@ export function ItemEditorModal({
             />
         </>
     );
-}
-
-// Helper function for keyboard sensor
-function sortableKeyboardCoordinates() {
-    return { x: 0, y: 0 };
 }

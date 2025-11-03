@@ -140,7 +140,7 @@ export async function reordenarMediaItem(
       mediaIds.map((id, index) =>
         prisma.studio_item_media.update({
           where: { id },
-          data: { order: index },
+          data: { display_order: index },
         })
       )
     );

@@ -30,7 +30,7 @@ import {
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
 import { reordenarItems, moverItemACategoria } from "@/lib/actions/studio/builder/catalogo/items.actions";
 import { obtenerCatalogo } from "@/lib/actions/studio/config/catalogo.actions";
-import { obtenerMediaItemsMap } from "@/lib/actions/studio/builder/catalogo/media-items.actions";
+import { obtenerMediaItemsMap, obtenerMediaItem } from "@/lib/actions/studio/builder/catalogo/media-items.actions";
 import {
     DndContext,
     closestCenter,
@@ -800,7 +800,10 @@ export function CatalogoTab({
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`flex items-center justify-between p-2 pl-6 ${itemIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors cursor-pointer`}
+                className={`flex items-center justify-between p-2 pl-6 ${itemIndex > 0 ? 'border-t border-zinc-700/30' : ''} ${isItemModalOpen && itemToEdit?.id === item.id
+                    ? 'bg-zinc-700/40'
+                    : 'hover:bg-zinc-700/20'
+                    } transition-colors cursor-pointer`}
                 onClick={() => handleEditItem(item)}
             >
                 <div className="flex items-center gap-3 flex-1 text-left py-1">
@@ -814,13 +817,13 @@ export function CatalogoTab({
                         <GripVertical className="h-4 w-4 text-zinc-500" />
                     </button>
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-sm text-zinc-300 leading-tight break-words font-light">
-                            <span>{item.name}</span>
+                        <div className="text-sm text-zinc-300 leading-tight font-light">
+                            <span className="break-words">{item.name}</span>
                             {item.hasPhotos && (
-                                <Image className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" aria-label="Tiene fotos" />
+                                <Image className="h-3.5 w-3.5 text-zinc-500 inline-flex align-middle ml-1.5" aria-label="Tiene fotos" />
                             )}
                             {item.hasVideos && (
-                                <Play className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" aria-label="Tiene videos" />
+                                <Play className="h-3.5 w-3.5 text-zinc-500 inline-flex align-middle ml-1.5" aria-label="Tiene videos" />
                             )}
                         </div>
                         <div className="flex items-center gap-2 mt-1">
@@ -1143,12 +1146,28 @@ export function CatalogoTab({
                 const response = await actualizarItem(data);
                 if (!response.success) throw new Error(response.error);
 
-                // Actualizar en el estado local
+                // Obtener información de media del item actualizado
+                const mediaResponse = await obtenerMediaItem(data.id);
+                let hasPhotos = false;
+                let hasVideos = false;
+
+                if (mediaResponse.success && mediaResponse.data) {
+                    hasPhotos = mediaResponse.data.some(m => m.file_type === 'IMAGE');
+                    hasVideos = mediaResponse.data.some(m => m.file_type === 'VIDEO');
+                }
+
+                // Actualizar en el estado local con información de media
                 setItemsData(prev => {
                     const newData = { ...prev };
                     Object.keys(newData).forEach(categoriaId => {
                         newData[categoriaId] = newData[categoriaId].map(item =>
-                            item.id === data.id ? { ...item, name: data.name, cost: data.cost } : item
+                            item.id === data.id ? {
+                                ...item,
+                                name: data.name,
+                                cost: data.cost,
+                                hasPhotos,
+                                hasVideos,
+                            } : item
                         );
                     });
                     return newData;
@@ -1382,6 +1401,22 @@ export function CatalogoTab({
                     setSelectedCategoriaForItem(null);
                 }}
                 onSave={handleSaveItem}
+                onMediaChange={(itemId, hasPhotos, hasVideos) => {
+                    // Actualizar iconos de media en el estado local
+                    setItemsData(prev => {
+                        const newData = { ...prev };
+                        Object.keys(newData).forEach(categoriaId => {
+                            newData[categoriaId] = newData[categoriaId].map(item =>
+                                item.id === itemId ? {
+                                    ...item,
+                                    hasPhotos,
+                                    hasVideos,
+                                } : item
+                            );
+                        });
+                        return newData;
+                    });
+                }}
                 item={itemToEdit ? {
                     id: itemToEdit.id,
                     name: itemToEdit.name,
