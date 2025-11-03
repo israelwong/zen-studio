@@ -15,6 +15,8 @@ import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 interface PaqueteFormularioAvanzadoProps {
     studioSlug: string;
     paquete?: PaqueteFromDB | null;
+    isPublished?: boolean;
+    onPublishedChange?: (published: boolean) => void;
     onSave: (paquete: PaqueteFromDB) => void;
     onCancel: () => void;
 }
@@ -26,6 +28,8 @@ export interface PaqueteFormularioRef {
 export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, PaqueteFormularioAvanzadoProps>(({
     studioSlug,
     paquete,
+    isPublished: isPublishedProp,
+    onPublishedChange,
     onSave,
     onCancel
 }, ref) => {
@@ -33,6 +37,10 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const [nombre, setNombre] = useState(paquete?.name || '');
     const [descripcion, setDescripcion] = useState('');
     const [precioPersonalizado, setPrecioPersonalizado] = useState<string | number>('');
+    const [isPublishedInternal, setIsPublishedInternal] = useState(paquete?.status === 'active' || false);
+
+    // Usar prop si está disponible, sino usar estado interno
+    const isPublished = isPublishedProp !== undefined ? isPublishedProp : isPublishedInternal;
     const [items, setItems] = useState<{ [servicioId: string]: number }>({});
     const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
     const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
@@ -74,6 +82,11 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         setNombre(paquete.name || '');
                         setDescripcion(''); // No hay descripcion en PaqueteFromDB
                         setPrecioPersonalizado(paquete.precio || '');
+                        if (onPublishedChange) {
+                            onPublishedChange(paquete.status === 'active');
+                        } else {
+                            setIsPublishedInternal(paquete.status === 'active');
+                        }
 
                         // Cargar items del paquete si existen
                         if (paquete.paquete_items && paquete.paquete_items.length > 0) {
@@ -477,6 +490,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 descripcion,
                 event_type_id: 'temp', // Se manejará automáticamente en la acción
                 precio: calculoPrecio.total,
+                status: isPublished ? 'active' : 'inactive',
                 servicios: serviciosData
             };
 
@@ -735,7 +749,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         <h3 className="text-lg font-semibold text-white mb-4">Configuración</h3>
 
                         <ZenInput
-                            label="Nombre del Paquete *"
+                            label="Nombre del Paquete"
                             value={nombre}
                             onChange={(e) => setNombre(e.target.value)}
                             placeholder="Ej: Paquete Fotógrafo Boda"
@@ -786,7 +800,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
                             {/* Ganarás */}
                             <div>
-                                <label className="text-sm font-semibold text-zinc-300 mb-2 block">Ganarás</label>
+                                <label className="text-sm font-semibold text-amber-500 mb-2 block">Ganancia bruta</label>
                                 <div className={`text-2xl font-bold ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {formatearMoneda(calculoPrecio.utilidadNeta)}
                                 </div>

@@ -93,6 +93,7 @@ export async function crearPaquete(
             expense?: number;
             utilidad?: number;
             precio?: number;
+            status?: string;
             servicios?: Array<{
                 servicioId: string;
                 cantidad: number;
@@ -153,7 +154,7 @@ export async function crearPaquete(
                 utilidad: paqueteData.utilidad,
                 precio: paqueteData.precio,
                 order: newPosition,
-                status: "active",
+                status: paqueteData.status || "active",
                 // Crear paquete_items si existen servicios
                 paquete_items: paqueteData.servicios && paqueteData.servicios.length > 0 ? {
                     create: paqueteData.servicios.map((servicio, index) => ({
@@ -234,6 +235,7 @@ export async function actualizarPaquete(
             expense?: number;
             utilidad?: number;
             precio?: number;
+            status?: string;
             servicios?: Array<{
                 servicioId: string;
                 cantidad: number;
@@ -371,16 +373,29 @@ export async function actualizarPaquete(
             }
         }
 
+        // Preparar datos de actualización
+        const updateData: {
+            event_type_id?: string;
+            name?: string;
+            cost?: number;
+            expense?: number;
+            utilidad?: number;
+            precio?: number;
+            status?: string;
+        } = {};
+
+        if (eventTypeId) updateData.event_type_id = eventTypeId;
+        if (paqueteData.name) updateData.name = paqueteData.name;
+        if (typeof paqueteData.cost === "number") updateData.cost = paqueteData.cost;
+        if (typeof paqueteData.expense === "number") updateData.expense = paqueteData.expense;
+        if (typeof paqueteData.utilidad === "number") updateData.utilidad = paqueteData.utilidad;
+        if (typeof paqueteData.precio === "number") updateData.precio = paqueteData.precio;
+        // Siempre actualizar status si viene en los datos
+        if (paqueteData.status !== undefined) updateData.status = paqueteData.status;
+
         const updatedPaquete = await prisma.studio_paquetes.update({
             where: { id: paqueteId },
-            data: {
-                ...(eventTypeId && { event_type_id: eventTypeId }),
-                ...(paqueteData.name && { name: paqueteData.name }),
-                ...(typeof paqueteData.cost === "number" && { cost: paqueteData.cost }),
-                ...(typeof paqueteData.expense === "number" && { expense: paqueteData.expense }),
-                ...(typeof paqueteData.utilidad === "number" && { utilidad: paqueteData.utilidad }),
-                ...(typeof paqueteData.precio === "number" && { precio: paqueteData.precio }),
-            },
+            data: updateData,
             include: {
                 event_types: true,
                 paquete_items: true,

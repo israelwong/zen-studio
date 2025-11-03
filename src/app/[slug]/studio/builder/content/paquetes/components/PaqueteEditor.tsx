@@ -2,7 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
-import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
+import { useState, useEffect } from 'react';
+import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenSwitch } from '@/components/ui/zen';
 import { PaqueteFormularioAvanzado } from '../tabs/PaquetesTab/PaqueteFormularioAvanzado';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 
@@ -14,6 +15,12 @@ interface PaqueteEditorProps {
 
 export function PaqueteEditor({ studioSlug, mode, paquete }: PaqueteEditorProps) {
     const router = useRouter();
+    const [isPublished, setIsPublished] = useState(paquete?.status === 'active' || false);
+
+    // Sincronizar estado cuando cambia el paquete
+    useEffect(() => {
+        setIsPublished(paquete?.status === 'active' || false);
+    }, [paquete?.status]);
 
     const handleBack = () => {
         router.push(`/${studioSlug}/studio/builder/content/paquetes`);
@@ -50,14 +57,25 @@ export function PaqueteEditor({ studioSlug, mode, paquete }: PaqueteEditorProps)
             {/* Contenedor del formulario */}
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
-                    <ZenCardTitle>
-                        {mode === 'create' ? 'Crear Nuevo Paquete' : 'Editar Paquete'}
-                    </ZenCardTitle>
+                    <div className="flex items-center justify-between">
+                        <ZenCardTitle>
+                            {mode === 'create' ? 'Crear Nuevo Paquete' : 'Editar Paquete'}
+                        </ZenCardTitle>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-zinc-400">Publicado</span>
+                            <ZenSwitch
+                                checked={isPublished}
+                                onCheckedChange={setIsPublished}
+                            />
+                        </div>
+                    </div>
                 </ZenCardHeader>
                 <ZenCardContent className="p-6">
                     <PaqueteFormularioAvanzado
                         studioSlug={studioSlug}
                         paquete={paquete}
+                        isPublished={isPublished}
+                        onPublishedChange={setIsPublished}
                         onSave={handleSave}
                         onCancel={handleCancel}
                     />

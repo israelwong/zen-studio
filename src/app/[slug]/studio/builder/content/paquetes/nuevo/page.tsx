@@ -1,4 +1,4 @@
-import { PaqueteEditor } from '../../components/PaqueteEditor';
+import { PaqueteEditor } from '../components/PaqueteEditor';
 
 interface NuevoPaquetePageProps {
     params: Promise<{
