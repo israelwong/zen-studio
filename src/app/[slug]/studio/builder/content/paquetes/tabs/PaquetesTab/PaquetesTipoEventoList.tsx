@@ -332,6 +332,7 @@ export function PaquetesTipoEventoList({
                     const result = await reorderPaquetes(studioSlug, paquetesConOrder.map(p => p.id));
                     if (result.success) {
                         toast.success("Orden de paquetes actualizado");
+                        // El preview se actualiza automáticamente a través de onPaquetesChange
                     } else {
                         toast.error(result.error || "Error al actualizar el orden");
                         // Revertir cambios si falla el backend
@@ -394,6 +395,7 @@ export function PaquetesTipoEventoList({
 
                     if (result.success) {
                         toast.success(`Paquete movido a ${tiposEvento.find(t => t.id === overTipoEventoId)?.nombre}`);
+                        // El preview se actualiza automáticamente a través de onPaquetesChange
                     } else {
                         toast.error(result.error || "Error al mover el paquete");
                         // Revertir cambios si falla el backend
@@ -541,7 +543,7 @@ export function PaquetesTipoEventoList({
                     [paquete.event_type_id]: [...(prev[paquete.event_type_id] || []), paqueteDuplicado]
                 }));
 
-                // Actualizar el estado global
+                // Actualizar el estado global (esto ya actualiza el preview localmente)
                 onPaquetesChange([...initialPaquetes, paqueteDuplicado]);
                 toast.success("Paquete duplicado correctamente");
             } else {
@@ -556,6 +558,9 @@ export function PaquetesTipoEventoList({
     };
 
     const handleDeletePaquete = (paquete: PaqueteFromDB) => {
+        // Prevenir múltiples aperturas del modal
+        if (isDeletePaqueteModalOpen) return;
+
         setPaqueteToDelete(paquete);
         setIsDeletePaqueteModalOpen(true);
     };
@@ -563,35 +568,40 @@ export function PaquetesTipoEventoList({
     const handleConfirmDeletePaquete = async () => {
         if (!paqueteToDelete) return;
 
+        const paqueteIdToDelete = paqueteToDelete.id;
+        const eventTypeId = paqueteToDelete.event_type_id;
+
         try {
             setIsLoading(true);
             // Importar la función de eliminación existente
             const { eliminarPaquete } = await import('@/lib/actions/studio/builder/paquetes/paquetes.actions');
 
-            const result = await eliminarPaquete(studioSlug, paqueteToDelete.id);
+            const result = await eliminarPaquete(studioSlug, paqueteIdToDelete);
 
             if (result.success) {
+                // Cerrar el modal primero antes de actualizar el estado para evitar parpadeos
+                setIsDeletePaqueteModalOpen(false);
+                setPaqueteToDelete(null);
+
                 // Actualizar el estado local
                 setPaquetesData(prev => ({
                     ...prev,
-                    [paqueteToDelete.event_type_id]: (prev[paqueteToDelete.event_type_id] || []).filter(p => p.id !== paqueteToDelete.id)
+                    [eventTypeId]: (prev[eventTypeId] || []).filter(p => p.id !== paqueteIdToDelete)
                 }));
 
-                // Actualizar el estado global
-                const updatedPaquetes = initialPaquetes.filter(p => p.id !== paqueteToDelete.id);
+                // Actualizar el estado global (esto ya actualiza el preview localmente)
+                const updatedPaquetes = initialPaquetes.filter(p => p.id !== paqueteIdToDelete);
                 onPaquetesChange(updatedPaquetes);
 
                 toast.success("Paquete eliminado correctamente");
             } else {
                 toast.error(result.error || "Error al eliminar paquete");
+                setIsLoading(false);
             }
         } catch (error) {
             console.error("Error eliminando paquete:", error);
             toast.error("Error al eliminar paquete");
-        } finally {
             setIsLoading(false);
-            setIsDeletePaqueteModalOpen(false);
-            setPaqueteToDelete(null);
         }
     };
 
@@ -834,7 +844,11 @@ export function PaquetesTipoEventoList({
                                 </ZenDropdownMenuItem>
                                 <ZenDropdownMenuSeparator />
                                 <ZenDropdownMenuItem
-                                    onClick={() => handleDeletePaquete(paquete)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDeletePaquete(paquete);
+                                    }}
                                     className="text-red-400 focus:text-red-300"
                                 >
                                     <Trash2 className="h-4 w-4 mr-2" />
@@ -987,20 +1001,25 @@ export function PaquetesTipoEventoList({
                 loading={isLoading}
             />
 
-            <ZenConfirmModal
-                isOpen={isDeletePaqueteModalOpen}
-                onClose={() => {
-                    setIsDeletePaqueteModalOpen(false);
-                    setPaqueteToDelete(null);
-                }}
-                onConfirm={handleConfirmDeletePaquete}
-                title="Eliminar paquete"
-                description={`¿Estás seguro de que deseas eliminar el paquete "${paqueteToDelete?.name}"? Esta acción no se puede deshacer.`}
-                confirmText="Eliminar"
-                cancelText="Cancelar"
-                variant="destructive"
-                loading={isLoading}
-            />
+            {isDeletePaqueteModalOpen && (
+                <ZenConfirmModal
+                    isOpen={isDeletePaqueteModalOpen}
+                    onClose={() => {
+                        if (!isLoading) {
+                            setIsDeletePaqueteModalOpen(false);
+                            setPaqueteToDelete(null);
+                        }
+                    }}
+                    onConfirm={handleConfirmDeletePaquete}
+                    title="Eliminar paquete"
+                    description={`¿Estás seguro de que deseas eliminar el paquete "${paqueteToDelete?.name}"? Esta acción no se puede deshacer.`}
+                    confirmText="Eliminar"
+                    cancelText="Cancelar"
+                    variant="destructive"
+                    loading={isLoading}
+                    disabled={isLoading}
+                />
+            )}
 
             {/* Modal para crear tipo de evento */}
             <TipoEventoForm

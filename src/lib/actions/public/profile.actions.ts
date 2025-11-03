@@ -4,19 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { retryDatabaseOperation } from "@/lib/actions/utils/database-retry";
 import {
     GetStudioProfileInputSchema,
-    GetStudioProfileOutputSchema,
     type GetStudioProfileInputForm,
     type GetStudioProfileOutputForm
 } from "@/lib/actions/schemas/public-profile-schemas";
 import {
-    PublicProfileData,
     PublicStudioProfile,
     PublicSocialNetwork,
     PublicContactInfo,
-    PublicCatalogItem,
-    PublicPortfolio,
-    PublicPaquete
+    PublicPortfolio
 } from "@/types/public-profile";
+import { PublicProfileDataSchema } from "@/lib/actions/schemas/public-profile-schemas";
 
 /**
  * Get complete public studio profile by slug
@@ -68,6 +65,8 @@ export async function getStudioProfileBySlug(
                             id: true,
                             number: true,
                             type: true,
+                            label: true,
+                            is_active: true,
                         },
                         orderBy: { order: 'asc' }
                     },
@@ -89,6 +88,11 @@ export async function getStudioProfileBySlug(
                             type: true,
                             cost: true,
                             order: true,
+                            service_categories: {
+                                select: {
+                                    name: true,
+                                }
+                            }
                         },
                         take: 50,
                         orderBy: { order: 'asc' }
@@ -187,6 +191,8 @@ export async function getStudioProfileBySlug(
                     id: phone.id,
                     number: phone.number,
                     type: phone.type,
+                    label: phone.label,
+                    is_active: phone.is_active,
                 })),
                 address: studio.address,
                 website: studio.website,
@@ -207,11 +213,13 @@ export async function getStudioProfileBySlug(
             console.log('  - contactInfo.horarios type:', typeof contactInfo.horarios);
             console.log('  - contactInfo.horarios is array:', Array.isArray(contactInfo.horarios));
 
-            const items: PublicCatalogItem[] = studio.items.map(item => ({
+            const items = studio.items.map(item => ({
                 id: item.id,
                 name: item.name,
-                type: item.type as 'PRODUCTO' | 'SERVICIO',
-                cost: item.cost,
+                description: null,
+                price: item.cost,
+                image_url: null,
+                category: item.service_categories?.name || null,
                 order: item.order,
             }));
 
@@ -223,15 +231,17 @@ export async function getStudioProfileBySlug(
                 cover_image_url: portfolio.cover_image_url,
                 category: portfolio.category,
                 order: portfolio.order,
-                items: portfolio.items.map(item => ({
-                    id: item.id,
-                    title: item.title,
-                    description: item.description,
-                    image_url: item.image_url,
-                    video_url: item.video_url,
-                    item_type: item.item_type as 'PHOTO' | 'VIDEO',
-                    order: item.order,
-                })),
+                items: portfolio.items
+                    .filter(item => item.title !== null)
+                    .map(item => ({
+                        id: item.id,
+                        title: item.title as string,
+                        description: item.description,
+                        image_url: item.image_url,
+                        video_url: item.video_url,
+                        item_type: item.item_type as 'PHOTO' | 'VIDEO',
+                        order: item.order,
+                    })),
             }));
 
             // Obtener paquetes del estudio
@@ -240,7 +250,13 @@ export async function getStudioProfileBySlug(
                     studio_id: studio.id,
                     status: "active",
                 },
-                include: {
+                select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    precio: true,
+                    cover_url: true,
+                    order: true,
                     event_types: {
                         select: {
                             name: true,
@@ -250,20 +266,53 @@ export async function getStudioProfileBySlug(
                 orderBy: { order: "asc" },
             });
 
-            const publicPaquetes: PublicPaquete[] = paquetes.map(paquete => ({
-                id: paquete.id,
-                nombre: paquete.nombre,
-                descripcion: paquete.descripcion || undefined,
-                precio: paquete.precio,
-                tipo_evento: paquete.event_types?.name || undefined,
-                duracion_horas: paquete.duracion_horas || undefined,
-                incluye: paquete.incluye || undefined,
-                no_incluye: paquete.no_incluye || undefined,
-                condiciones: paquete.condiciones || undefined,
-                order: paquete.order,
-            }));
+            // Debug: Verificar cover_url en la consulta
+            console.log('🔍 [getStudioProfileBySlug] Paquetes from DB:', paquetes.map(p => ({
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                cover_url: p.cover_url,
+                hasDescription: !!p.description,
+                hasCoverUrl: !!p.cover_url,
+                description_type: typeof p.description,
+                cover_url_type: typeof p.cover_url,
+            })));
 
-            const profileData: PublicProfileData = {
+            const publicPaquetes = paquetes.map(paquete => {
+                // Debug: Verificar cada paquete individual
+                console.log('🔍 [getStudioProfileBySlug] Mapping paquete:', {
+                    id: paquete.id,
+                    name: paquete.name,
+                    description_raw: paquete.description,
+                    cover_url_raw: paquete.cover_url,
+                    cover_url_type: typeof paquete.cover_url,
+                });
+
+                // Preservar cover_url y descripcion tal cual vienen de la DB (null se convierte a undefined para Zod)
+                return {
+                    id: paquete.id,
+                    nombre: paquete.name,
+                    descripcion: paquete.description ? paquete.description : undefined,
+                    precio: paquete.precio ?? 0,
+                    tipo_evento: paquete.event_types?.name ? paquete.event_types.name : undefined,
+                    cover_url: paquete.cover_url ? paquete.cover_url : undefined,
+                    order: paquete.order,
+                };
+            });
+
+            // Debug: Verificar cover_url después del mapeo
+            console.log('🔍 [getStudioProfileBySlug] PublicPaquetes mapped:', publicPaquetes.map(p => ({
+                id: p.id,
+                nombre: p.nombre,
+                descripcion: p.descripcion,
+                cover_url: p.cover_url,
+                hasDescription: !!p.descripcion,
+                hasCoverUrl: !!p.cover_url,
+                descripcion_type: typeof p.descripcion,
+                cover_url_type: typeof p.cover_url,
+            })));
+
+            const profileDataRaw = {
                 studio: studioProfile,
                 socialNetworks,
                 contactInfo,
@@ -271,6 +320,27 @@ export async function getStudioProfileBySlug(
                 portfolios,
                 paquetes: publicPaquetes,
             };
+
+            // Debug: Verificar datos antes de validar con Zod
+            console.log('🔍 [getStudioProfileBySlug] profileDataRaw.paquetes:', profileDataRaw.paquetes.map(p => ({
+                id: p.id,
+                nombre: p.nombre,
+                cover_url: p.cover_url,
+                hasCoverUrl: !!p.cover_url
+            })));
+
+            const profileData = PublicProfileDataSchema.parse(profileDataRaw);
+
+            // Debug: Verificar datos después de validar con Zod
+            const profileDataAny = profileData as unknown as { paquetes?: Array<{ id: string; nombre: string; descripcion?: string | null; cover_url?: string | null }> };
+            console.log('🔍 [getStudioProfileBySlug] profileData.paquetes (after Zod):', profileDataAny.paquetes?.map((p: { id: string; nombre: string; descripcion?: string | null; cover_url?: string | null }) => ({
+                id: p.id,
+                nombre: p.nombre,
+                descripcion: p.descripcion,
+                cover_url: p.cover_url,
+                hasDescription: !!p.descripcion,
+                hasCoverUrl: !!p.cover_url
+            })));
 
             console.log('✅ [getStudioProfileBySlug] Profile data fetched successfully');
             console.log('📊 [getStudioProfileBySlug] Data summary:', {

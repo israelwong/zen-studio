@@ -14,9 +14,11 @@ type TabType = 'paquetes' | 'configuracion';
 
 interface PaquetesWrapperProps {
     studioSlug: string;
+    onPreviewRefresh?: () => Promise<void>;
+    onPreviewPaquetesUpdate?: (paquetes: PaqueteFromDB[]) => void;
 }
 
-export function PaquetesWrapper({ studioSlug }: PaquetesWrapperProps) {
+export function PaquetesWrapper({ studioSlug, onPreviewRefresh, onPreviewPaquetesUpdate }: PaquetesWrapperProps) {
     // Estado de pestañas
     const [activeTab, setActiveTab] = useState<TabType>('paquetes');
 
@@ -63,6 +65,8 @@ export function PaquetesWrapper({ studioSlug }: PaquetesWrapperProps) {
     // Handlers para actualizar datos
     const handlePaquetesChange = (newPaquetes: PaqueteFromDB[]) => {
         setPaquetes(newPaquetes);
+        // Actualizar preview localmente sin recargar todo
+        onPreviewPaquetesUpdate?.(newPaquetes);
     };
 
     const handleTipoEventoChange = (newTiposEvento: TipoEventoData[]) => {

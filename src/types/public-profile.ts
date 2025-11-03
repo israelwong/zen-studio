@@ -52,6 +52,7 @@ export interface PublicPaquete {
     descripcion?: string;
     precio: number;
     tipo_evento?: string;
+    cover_url?: string;
     duracion_horas?: number;
     incluye?: string[];
     no_incluye?: string[];

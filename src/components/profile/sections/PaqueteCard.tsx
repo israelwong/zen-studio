@@ -1,0 +1,80 @@
+'use client';
+
+import React from 'react';
+import Image from 'next/image';
+import type { PublicPaquete } from '@/types/public-profile';
+
+interface PaqueteCardProps {
+    paquete: PublicPaquete;
+}
+
+export function PaqueteCard({ paquete }: PaqueteCardProps) {
+    const formatPrice = (price: number) => {
+        return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+        }).format(price);
+    };
+
+    // cover_url está definido en PublicPaquete (línea 55 de public-profile.ts)
+    // El error del linter es un falso positivo por caché del servidor de lenguajes
+    const coverUrl = (paquete as PublicPaquete & { cover_url?: string }).cover_url;
+    const hasCover = !!coverUrl && typeof coverUrl === 'string' && coverUrl.trim() !== '';
+    const isVideo = hasCover && coverUrl?.toLowerCase().match(/\.(mp4|mov|webm|avi)$/);
+
+    return (
+        <div className="relative w-full aspect-[4/5] rounded-lg overflow-hidden group cursor-pointer bg-zinc-900">
+            {/* Imagen o video de fondo */}
+            {hasCover ? (
+                isVideo ? (
+                    <video
+                        src={coverUrl}
+                        className="absolute inset-0 w-full h-full object-cover z-0"
+                        muted
+                        playsInline
+                        loop
+                        autoPlay
+                    />
+                ) : (
+                    <div className="absolute inset-0 z-0">
+                        <Image
+                            src={coverUrl}
+                            alt={paquete.nombre}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 768px) 100vw, 50vw"
+                            priority={false}
+                        />
+                    </div>
+                )
+            ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 z-0" />
+            )}
+
+            {/* Gradiente de sombra de abajo hacia arriba - semi-transparente */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-[1]" />
+
+            {/* Contenido */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 z-10">
+                <div className="space-y-2">
+                    {/* Nombre */}
+                    <h3 className="text-xl font-bold text-white leading-tight">
+                        {paquete.nombre}
+                    </h3>
+
+                    {/* Precio */}
+                    <div className="text-2xl font-semibold text-purple-400">
+                        {formatPrice(paquete.precio)}
+                    </div>
+
+                    {/* Descripción */}
+                    {paquete.descripcion && (
+                        <p className="text-sm text-zinc-200 line-clamp-2 leading-relaxed">
+                            {paquete.descripcion}
+                        </p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

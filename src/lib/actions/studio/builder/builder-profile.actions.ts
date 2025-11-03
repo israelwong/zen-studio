@@ -111,8 +111,10 @@ export async function getBuilderProfileData(studioSlug: string) {
                         select: {
                             id: true,
                             name: true,
+                            description: true,
                             cost: true,
                             precio: true,
+                            cover_url: true,
                             order: true,
                             event_types: {
                                 select: {
@@ -233,9 +235,10 @@ export async function getBuilderProfileData(studioSlug: string) {
                 paquetes: studio.paquetes.map(paquete => ({
                     id: paquete.id,
                     nombre: paquete.name,
-                    descripcion: undefined, // Campo no disponible en schema actual
+                    descripcion: paquete.description ? paquete.description : undefined,
                     precio: paquete.precio || paquete.cost || 0,
                     tipo_evento: paquete.event_types?.name || undefined,
+                    cover_url: paquete.cover_url ? paquete.cover_url : undefined,
                     duracion_horas: undefined, // Campo no disponible en schema actual
                     incluye: undefined, // Campo no disponible en schema actual
                     no_incluye: undefined, // Campo no disponible en schema actual

@@ -65,14 +65,38 @@ export const PublicPortfolioSchema = z.object({
     items: z.array(PublicPortfolioItemSchema),
 });
 
+export const PublicPaqueteSchema = z.object({
+    id: z.string(),
+    nombre: z.string(),
+    descripcion: z.string().nullable().optional(),
+    precio: z.number(),
+    tipo_evento: z.string().nullable().optional(),
+    cover_url: z.string().nullable().optional(),
+    duracion_horas: z.number().nullable().optional(),
+    incluye: z.array(z.string()).nullable().optional(),
+    no_incluye: z.array(z.string()).nullable().optional(),
+    condiciones: z.string().nullable().optional(),
+    order: z.number(),
+});
+
 export const PublicContactInfoSchema = z.object({
     phones: z.array(z.object({
         id: z.string(),
         number: z.string(),
         type: z.string(),
+        label: z.string().nullable(),
+        is_active: z.boolean(),
     })),
     address: z.string().nullable(),
     website: z.string().nullable(),
+    google_maps_url: z.string().nullable(),
+    horarios: z.array(z.object({
+        id: z.string(),
+        dia: z.string(),
+        apertura: z.string(),
+        cierre: z.string(),
+        cerrado: z.boolean(),
+    })),
 });
 
 export const PublicProfileDataSchema = z.object({
@@ -81,6 +105,7 @@ export const PublicProfileDataSchema = z.object({
     contactInfo: PublicContactInfoSchema,
     items: z.array(PublicCatalogItemSchema),
     portfolios: z.array(PublicPortfolioSchema),
+    paquetes: z.array(PublicPaqueteSchema),
 });
 
 // Input schemas for server actions
@@ -101,6 +126,7 @@ export type PublicSocialNetworkForm = z.infer<typeof PublicSocialNetworkSchema>;
 export type PublicCatalogItemForm = z.infer<typeof PublicCatalogItemSchema>;
 export type PublicPortfolioItemForm = z.infer<typeof PublicPortfolioItemSchema>;
 export type PublicPortfolioForm = z.infer<typeof PublicPortfolioSchema>;
+export type PublicPaqueteForm = z.infer<typeof PublicPaqueteSchema>;
 export type PublicContactInfoForm = z.infer<typeof PublicContactInfoSchema>;
 export type PublicProfileDataForm = z.infer<typeof PublicProfileDataSchema>;
 export type GetStudioProfileInputForm = z.infer<typeof GetStudioProfileInputSchema>;

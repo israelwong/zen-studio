@@ -1,6 +1,8 @@
 import React, { useMemo } from 'react';
 import { Package } from 'lucide-react';
 import { PublicPaquete } from '@/types/public-profile';
+import { PaqueteCarousel } from './PaqueteCarousel';
+import { PaqueteCard } from './PaqueteCard';
 
 interface PaquetesSectionProps {
     paquetes: PublicPaquete[];
@@ -8,16 +10,9 @@ interface PaquetesSectionProps {
 
 /**
  * PaquetesSection - Display for studio packages
- * Shows packages grouped by event type in minimalist cards
+ * Shows packages grouped by event type with cover images and carousel for multiple packages
  */
 export function PaquetesSection({ paquetes }: PaquetesSectionProps) {
-    const formatPrice = (price: number) => {
-        return new Intl.NumberFormat('es-MX', {
-            style: 'currency',
-            currency: 'MXN',
-        }).format(price);
-    };
-
     // Agrupar paquetes por tipo de evento
     const paquetesPorTipo = useMemo(() => {
         const grouped: Record<string, PublicPaquete[]> = {};
@@ -57,69 +52,28 @@ export function PaquetesSection({ paquetes }: PaquetesSectionProps) {
     const tiposEvento = Object.keys(paquetesPorTipo);
 
     return (
-        <div className="p-4 space-y-4">
-            {/* Header */}
-            <div className="mb-6">
-                <h2 className="text-xl font-semibold text-zinc-100 mb-2">
-                    Paquetes de Servicios
-                </h2>
-                <p className="text-sm text-zinc-400">
-                    {paquetes.length} {paquetes.length === 1 ? 'paquete' : 'paquetes'} disponibles
-                </p>
-            </div>
+        <div className="p-4 space-y-8">
+            {/* Paquetes por tipo de evento */}
+            {tiposEvento.map((tipoEvento) => {
+                const paquetesDelTipo = paquetesPorTipo[tipoEvento];
+                const hasMultiple = paquetesDelTipo.length > 1;
 
-            {/* Fichas por tipo de evento */}
-            <div className="space-y-4">
-                {tiposEvento.map((tipoEvento) => {
-                    const paquetesDelTipo = paquetesPorTipo[tipoEvento];
+                return (
+                    <div key={tipoEvento} className="space-y-4">
+                        {/* Título minimalista del tipo de evento */}
+                        <h3 className="text-lg font-medium text-zinc-300">
+                            {tipoEvento}
+                        </h3>
 
-                    return (
-                        <div
-                            key={tipoEvento}
-                            className="bg-zinc-800/50 border border-zinc-700 rounded-lg overflow-hidden"
-                        >
-                            {/* Header del tipo de evento */}
-                            <div className="px-4 py-3 bg-zinc-800/70 border-b border-zinc-700">
-                                <h3 className="text-lg font-semibold text-zinc-100">
-                                    {tipoEvento}
-                                </h3>
-                            </div>
-
-                            {/* Listado de paquetes */}
-                            <div className="divide-y divide-zinc-700/50">
-                                {paquetesDelTipo.map((paquete) => (
-                                    <div
-                                        key={paquete.id}
-                                        className="px-4 py-4 hover:bg-zinc-800/30 transition-colors cursor-pointer"
-                                        onClick={() => {
-                                            // TODO: Navigate to package detail or open modal
-                                            console.log('Paquete clicked:', paquete.nombre);
-                                        }}
-                                    >
-                                        <div className="space-y-2">
-                                            {/* Nombre y Precio */}
-                                            <div className="flex items-center justify-between">
-                                                <h4 className="text-base font-semibold text-zinc-100">
-                                                    {paquete.nombre}
-                                                </h4>
-                                                <span className="text-lg font-semibold text-purple-400 ml-4 flex-shrink-0">
-                                                    {formatPrice(paquete.precio)}
-                                                </span>
-                                            </div>
-                                            {/* Descripción */}
-                                            {paquete.descripcion && (
-                                                <p className="text-sm text-zinc-400 line-clamp-2">
-                                                    {paquete.descripcion}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    );
-                })}
-            </div>
+                        {/* Paquetes: Carousel si hay múltiples, Card si solo hay uno */}
+                        {hasMultiple ? (
+                            <PaqueteCarousel paquetes={paquetesDelTipo} />
+                        ) : (
+                            <PaqueteCard paquete={paquetesDelTipo[0]} />
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

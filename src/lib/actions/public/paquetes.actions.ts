@@ -32,7 +32,13 @@ export async function getPublicPaquetes(
                 studio_id: studio.id,
                 status: "active",
             },
-            include: {
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                precio: true,
+                cover_url: true,
+                order: true,
                 event_types: {
                     select: {
                         name: true,
@@ -46,9 +52,10 @@ export async function getPublicPaquetes(
         const publicPaquetes: PublicPaquete[] = paquetes.map((paquete) => ({
             id: paquete.id,
             nombre: paquete.name,
-            descripcion: paquete.description || undefined,
-            precio: paquete.precio || 0,
-            tipo_evento: paquete.event_types?.name || undefined,
+            descripcion: paquete.description ? paquete.description : undefined,
+            precio: paquete.precio ?? 0,
+            tipo_evento: paquete.event_types?.name ? paquete.event_types.name : undefined,
+            cover_url: paquete.cover_url ? paquete.cover_url : undefined,
             duracion_horas: undefined, // Campo no existe en schema actual
             incluye: undefined, // Campo no existe en schema actual
             no_incluye: undefined, // Campo no existe en schema actual
