@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
 import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import { ZenButton, ZenInput, ZenTextarea, ZenBadge } from '@/components/ui/zen';
@@ -9,8 +9,6 @@ import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/li
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
 import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
-import { useMediaUpload } from '@/hooks/useMediaUpload';
-import { PaqueteCoverDropzone } from './PaqueteCoverDropzone';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 
@@ -46,9 +44,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const [showConfirmDialog, setShowConfirmDialog] = useState(false);
     const summaryRef = useRef<HTMLDivElement>(null);
 
-    // Estado para cover image
-    const [coverMedia, setCoverMedia] = useState<Array<{ file_url: string; file_type: string; filename: string; thumbnail_url?: string }>>([]);
-    const { uploadFiles, isUploading: isUploadingCover } = useMediaUpload();
 
     // Cargar catálogo, configuración y datos del paquete en un solo useEffect
     useEffect(() => {
@@ -79,10 +74,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         setNombre(paquete.name || '');
                         setDescripcion(''); // No hay descripcion en PaqueteFromDB
                         setPrecioPersonalizado(paquete.precio || '');
-
-                        // Cargar cover image si existe (cuando se agregue al schema)
-                        // Por ahora dejamos vacío hasta que se agregue cover_image_url al schema
-                        setCoverMedia([]);
 
                         // Cargar items del paquete si existen
                         if (paquete.paquete_items && paquete.paquete_items.length > 0) {
@@ -296,7 +287,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         totalCosto: 0,
         totalGasto: 0,
         total: 0,
-        utilidadNeta: 0
+        utilidadNeta: 0,
+        utilidadNetaCalculada: 0, // Utilidad basada solo en precio calculado
+        diferenciaPrecio: 0 // Diferencia entre precio personalizado y calculado
     });
 
     // Cálculo dinámico del precio usando useEffect
@@ -307,7 +300,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 totalCosto: 0,
                 totalGasto: 0,
                 total: 0,
-                utilidadNeta: 0
+                utilidadNeta: 0,
+                utilidadNetaCalculada: 0,
+                diferenciaPrecio: 0
             });
             return;
         }
@@ -342,7 +337,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 totalCosto: 0,
                 totalGasto: 0,
                 total: 0,
-                utilidadNeta: 0
+                utilidadNeta: 0,
+                utilidadNetaCalculada: 0,
+                diferenciaPrecio: 0
             });
             return;
         }
@@ -358,7 +355,17 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         });
 
         const precioPersonalizadoNum = precioPersonalizado === '' ? 0 : Number(precioPersonalizado) || 0;
+
+        // Utilidad basada solo en precio calculado (sin personalizar)
+        const utilidadNetaCalculada = subtotal - (totalCosto + totalGasto);
+
+        // Diferencia entre precio personalizado y precio calculado
+        const diferenciaPrecio = precioPersonalizadoNum > 0 ? precioPersonalizadoNum - subtotal : 0;
+
+        // Precio final a usar (personalizado o calculado)
         const total = precioPersonalizadoNum > 0 ? precioPersonalizadoNum : subtotal;
+
+        // Utilidad neta final (considera precio personalizado si existe)
         const utilidadNeta = total - (totalCosto + totalGasto);
 
         const resultado = {
@@ -366,7 +373,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             totalCosto: Number(totalCosto.toFixed(2)) || 0,
             totalGasto: Number(totalGasto.toFixed(2)) || 0,
             total: Number(total.toFixed(2)) || 0,
-            utilidadNeta: Number(utilidadNeta.toFixed(2)) || 0
+            utilidadNeta: Number(utilidadNeta.toFixed(2)) || 0,
+            utilidadNetaCalculada: Number(utilidadNetaCalculada.toFixed(2)) || 0,
+            diferenciaPrecio: Number(diferenciaPrecio.toFixed(2)) || 0
         };
 
         setCalculoPrecio(resultado);
@@ -407,32 +416,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     };
 
     // Handlers
-    // Handlers para cover image
-    const handleDropCoverFiles = useCallback(async (files: File[]) => {
-        if (files.length === 0) return;
-
-        try {
-            const uploadedFiles = await uploadFiles(files, studioSlug, 'paquetes', 'cover');
-
-            if (uploadedFiles.length > 0) {
-                const uploadedFile = uploadedFiles[0];
-                setCoverMedia([{
-                    file_url: uploadedFile.url,
-                    file_type: uploadedFile.fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image' : 'video',
-                    filename: uploadedFile.fileName,
-                    thumbnail_url: undefined
-                }]);
-            }
-        } catch (error) {
-            console.error('Error uploading cover:', error);
-            toast.error('Error al subir la carátula');
-        }
-    }, [studioSlug, uploadFiles]);
-
-    const handleRemoveCoverMedia = useCallback(() => {
-        setCoverMedia([]);
-    }, []);
-
     const updateQuantity = (servicioId: string, cantidad: number) => {
         const servicio = servicioMap.get(servicioId);
         const prevCantidad = items[servicioId] || 0;
@@ -537,7 +520,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6 h-full">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-6">
             {/* Columna 1: Servicios Disponibles */}
             <div className="lg:col-span-2">
                 <div className="mb-4">
@@ -746,7 +729,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             </div>
 
             {/* Columna 2: Configuración del Paquete */}
-            <div className="space-y-6 h-full">
+            <div className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2">
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                         <h3 className="text-lg font-semibold text-white mb-4">Configuración</h3>
@@ -768,66 +751,98 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         />
                     </div>
 
-                    {/* Dropzone para carátula */}
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">
-                            Carátula (opcional)
-                        </label>
-                        <PaqueteCoverDropzone
-                            media={coverMedia}
-                            onDropFiles={handleDropCoverFiles}
-                            onRemoveMedia={handleRemoveCoverMedia}
-                            isUploading={isUploadingCover}
-                        />
-                    </div>
 
                     {/* Resumen Financiero */}
-                    <div ref={summaryRef} className=" self-start">
+                    <div ref={summaryRef} className="z-10">
                         <h3 className="text-lg font-semibold text-white mb-4">
-                            Resumen Financiero
+                            Cálculo Financiero
                         </h3>
-                        <div className="bg-zinc-800/50 rounded-lg p-4 space-y-3">
-                            <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Precio público calculado:</span>
-                                <span className="text-white">{formatearMoneda(calculoPrecio.subtotal)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Costo total:</span>
-                                <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalCosto)}</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Gasto total:</span>
-                                <span className="text-zinc-400">{formatearMoneda(calculoPrecio.totalGasto)}</span>
-                            </div>
-                            <div className="border-t border-zinc-700 pt-3">
-                                <div className="flex justify-between">
-                                    <span className="text-white font-semibold">Precio final:</span>
-                                    <span className="text-emerald-400 font-semibold text-lg">
-                                        {formatearMoneda(calculoPrecio.total)}
-                                    </span>
+                        <div className="bg-zinc-800/50 rounded-lg p-4 space-y-4">
+                            {/* Precio calculado y Precio personalizado en 2 columnas */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Precio calculado */}
+                                <div>
+                                    <label className="text-xs text-zinc-500 mb-1 block">Precio calculado</label>
+                                    <ZenInput
+                                        type="text"
+                                        value={formatearMoneda(calculoPrecio.subtotal)}
+                                        readOnly
+                                        className="mt-0"
+                                    />
+                                </div>
+
+                                {/* Precio personalizado */}
+                                <div>
+                                    <label className="text-xs text-zinc-500 mb-1 block">Precio personalizado</label>
+                                    <ZenInput
+                                        type="number"
+                                        value={precioPersonalizado}
+                                        onChange={(e) => setPrecioPersonalizado(e.target.value)}
+                                        placeholder="0"
+                                        className="mt-0"
+                                    />
                                 </div>
                             </div>
-                            <div className="flex justify-between text-sm">
-                                <span className="text-zinc-400">Utilidad neta:</span>
-                                <span className={`font-medium ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'
-                                    }`}>
+
+                            {/* Ganarás */}
+                            <div>
+                                <label className="text-sm font-semibold text-zinc-300 mb-2 block">Ganarás</label>
+                                <div className={`text-2xl font-bold ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                     {formatearMoneda(calculoPrecio.utilidadNeta)}
-                                </span>
+                                </div>
+                                {calculoPrecio.diferenciaPrecio !== 0 && (
+                                    <div className="text-xs mt-2 text-zinc-400">
+                                        <span className={calculoPrecio.diferenciaPrecio > 0 ? 'text-emerald-400' : 'text-red-400'}>
+                                            {calculoPrecio.diferenciaPrecio > 0 ? '+' : ''}{formatearMoneda(calculoPrecio.diferenciaPrecio)}
+                                        </span>
+                                        {' '}sobre la ganancia calculada
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Precio personalizado dentro del resumen */}
+                            {/* Desglose colapsable */}
                             <div className="border-t border-zinc-700 pt-3">
-                                <ZenInput
-                                    label="Precio personalizado (opcional)"
-                                    type="number"
-                                    value={precioPersonalizado}
-                                    onChange={(e) => setPrecioPersonalizado(e.target.value)}
-                                    placeholder="0"
-                                    hint="Deja en 0 para usar el precio calculado automáticamente"
-                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setSeccionesExpandidas(prev => {
+                                        const newSet = new Set(prev);
+                                        if (newSet.has('desglose-financiero')) {
+                                            newSet.delete('desglose-financiero');
+                                        } else {
+                                            newSet.add('desglose-financiero');
+                                        }
+                                        return newSet;
+                                    })}
+                                    className="w-full flex items-center justify-between text-sm text-zinc-400 hover:text-zinc-300 transition-colors"
+                                >
+                                    <span>Desglose de precio</span>
+                                    {seccionesExpandidas.has('desglose-financiero') ? (
+                                        <ChevronDown className="w-4 h-4" />
+                                    ) : (
+                                        <ChevronRight className="w-4 h-4" />
+                                    )}
+                                </button>
+                                {seccionesExpandidas.has('desglose-financiero') && (
+                                    <div className="mt-3 space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-zinc-400">Total costos</span>
+                                            <span className="text-zinc-300">{formatearMoneda(calculoPrecio.totalCosto)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-zinc-400">Total gastos</span>
+                                            <span className="text-zinc-300">{formatearMoneda(calculoPrecio.totalGasto)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-zinc-400">Utilidad neta</span>
+                                            <span className={`font-medium ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                {formatearMoneda(calculoPrecio.utilidadNeta)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
-                            {/* Botones dentro del resumen */}
+                            {/* Botones */}
                             <div className="border-t border-zinc-700 pt-3">
                                 <div className="flex gap-2">
                                     <ZenButton
