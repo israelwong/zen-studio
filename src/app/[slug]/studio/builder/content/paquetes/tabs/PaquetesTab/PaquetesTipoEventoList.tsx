@@ -785,7 +785,7 @@ export function PaquetesTipoEventoList({
             <div
                 ref={setNodeRef}
                 style={style}
-                className={`flex items-center justify-between py-3 px-2 pl-6 ${paqueteIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors`}
+                className={`flex items-center justify-between py-3 px-2 pl-10 ${paqueteIndex > 0 ? 'border-t border-zinc-700/30' : ''} hover:bg-zinc-700/20 transition-colors`}
             >
                 <div className="flex items-center gap-3 flex-1">
                     <button
@@ -881,7 +881,7 @@ export function PaquetesTipoEventoList({
                     {i === 1 && (
                         <div className="bg-zinc-900/50 p-2 space-y-1">
                             {[1, 2].map((j) => (
-                                <div key={j} className="flex items-center justify-between p-2 pl-6 border-t border-zinc-700/30">
+                                <div key={j} className="flex items-center justify-between p-2 pl-10 border-t border-zinc-700/30">
                                     <div className="flex items-center gap-3 flex-1">
                                         <div className="w-4 h-4 bg-zinc-700 rounded mr-2"></div>
                                         <div className="flex-1">

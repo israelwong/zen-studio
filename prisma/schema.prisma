@@ -688,7 +688,6 @@ model platform_agent_discount_codes {
   @@index([expiration_date])
 }
 
-//! STUDIOS
 model studios {
   id                         String                           @id @default(cuid())
   studio_name                String
@@ -740,6 +739,7 @@ model studios {
   cotizaciones               studio_cotizaciones[]
   event_types                studio_event_types[]
   eventos                    studio_eventos[]
+  faq                        studio_faq[]
   gastos                     studio_gastos[]
   item_media                 studio_item_media[]              @relation("item_media")
   items                      studio_items[]
@@ -751,8 +751,10 @@ model studios {
   personal                   studio_personal[]
   personal_profiles          studio_personal_profiles[]
   phones                     studio_phones[]
-  portfolios                 studio_portfolios[]
   portfolio_media            studio_portfolio_media[]         @relation("portfolio_media")
+  portfolios                 studio_portfolios[]
+  post_media                 studio_post_media[]              @relation("post_media")
+  posts                      studio_posts[]
   revenue_transactions       studio_revenue_transactions[]
   studio_role_permissions    studio_role_permissions[]
   scheduling_rules           studio_scheduling_rules[]
@@ -765,9 +767,6 @@ model studios {
   user_profiles              studio_user_profiles[]
   studio_users               studio_users[]
   zonas_trabajo              studio_zonas_trabajo[]
-  faq                        studio_faq[]
-  posts                      studio_posts[]
-  post_media                 studio_post_media[]              @relation("post_media")
   plan                       platform_plans?                  @relation(fields: [plan_id], references: [id])
   subscriptions              subscriptions[]
   usage_tracking             usage_tracking[]
@@ -978,11 +977,11 @@ model studio_event_types {
   manager_events  manager_events[]
   marketing_leads marketing_leads[]
   quotes          studio_cotizaciones[]
-  posts           studio_posts[]
-  portfolios      studio_portfolios[]
   studio          studios               @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   events          studio_eventos[]
   packages        studio_paquetes[]
+  portfolios      studio_portfolios[]
+  posts           studio_posts[]
 
   @@index([studio_id])
   @@index([studio_id, status])
@@ -1070,11 +1069,15 @@ model studio_paquetes {
   expense       Float?
   name          String
   order         Int                    @default(0)
+  description   String?
+  cover_url     String?
+  is_featured   Boolean                @default(false)
   paquete_items studio_paquete_items[]
   event_types   studio_event_types     @relation(fields: [event_type_id], references: [id])
   studio        studios                @relation(fields: [studio_id], references: [id])
 
   @@index([studio_id, status])
+  @@index([studio_id, is_featured])
 }
 
 model studio_paquete_items {
@@ -2077,45 +2080,33 @@ model gantt_task_activity {
 }
 
 model studio_portfolios {
-  id              String  @id @default(cuid())
+  id              String                            @id @default(cuid())
   studio_id       String
   title           String
   slug            String
   description     String?
-  caption         String? // Descripción con soporte para links
   cover_image_url String?
-  cover_index     Int     @default(0) // Índice de media para cover
-
-  // Clasificación
-  category      String? // "portfolio" | "blog" | "promo"
-  event_type_id String?
-  tags          String[] @default([])
-
-  // CTA
-  cta_enabled Boolean @default(true)
-  cta_text    String  @default("Cotiza tu evento")
-  cta_action  String  @default("whatsapp") // "whatsapp" | "lead_form" | "calendar"
-  cta_link    String?
-
-  // Visibilidad
-  is_featured  Boolean   @default(false)
-  is_published Boolean   @default(false)
-  published_at DateTime?
-
-  // Orden y métricas
-  order      Int @default(0)
-  view_count Int @default(0)
-
-  // Timestamps
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  // Relations
-  items          studio_portfolio_items[]
-  media          studio_portfolio_media[]          @relation("portfolio_media")
-  content_blocks studio_portfolio_content_blocks[]
-  studio         studios                           @relation(fields: [studio_id], references: [id], onDelete: Cascade)
-  event_type     studio_event_types?               @relation(fields: [event_type_id], references: [id])
+  category        String?
+  order           Int                               @default(0)
+  is_published    Boolean                           @default(false)
+  view_count      Int                               @default(0)
+  created_at      DateTime                          @default(now())
+  updated_at      DateTime                          @updatedAt
+  caption         String?
+  cover_index     Int                               @default(0)
+  cta_action      String                            @default("whatsapp")
+  cta_enabled     Boolean                           @default(true)
+  cta_link        String?
+  cta_text        String                            @default("Cotiza tu evento")
+  event_type_id   String?
+  is_featured     Boolean                           @default(false)
+  published_at    DateTime?
+  tags            String[]                          @default([])
+  content_blocks  studio_portfolio_content_blocks[]
+  items           studio_portfolio_items[]
+  media           studio_portfolio_media[]          @relation("portfolio_media")
+  event_type      studio_event_types?               @relation(fields: [event_type_id], references: [id])
+  studio          studios                           @relation(fields: [studio_id], references: [id], onDelete: Cascade)
 
   @@unique([studio_id, slug])
   @@index([studio_id, is_published, published_at])
@@ -2145,31 +2136,26 @@ model studio_portfolio_items {
   @@index([portfolio_id, order])
 }
 
-// ============================================
-// SISTEMA DE MEDIA PARA PORTFOLIOS
-// ============================================
-
 model studio_portfolio_media {
-  id               String   @id @default(cuid())
-  portfolio_id     String
-  studio_id        String
-  file_url         String
-  file_type        String // "image" | "video"
-  filename         String
-  storage_bytes    BigInt
-  mime_type        String
-  dimensions       Json? // { width, height }
-  duration_seconds Int? // Para videos
-  display_order    Int      @default(0) // Para ordenamiento drag & drop
-  alt_text         String?
-  thumbnail_url    String? // Para videos
-  storage_path     String // Para eliminación
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
+  id                  String                                 @id @default(cuid())
+  portfolio_id        String
+  studio_id           String
+  file_url            String
+  file_type           String
+  filename            String
+  storage_bytes       BigInt
+  mime_type           String
+  dimensions          Json?
+  duration_seconds    Int?
+  display_order       Int                                    @default(0)
+  alt_text            String?
+  thumbnail_url       String?
+  storage_path        String
+  created_at          DateTime                               @default(now())
+  updated_at          DateTime                               @updatedAt
+  content_block_media studio_portfolio_content_block_media[]
   portfolio           studio_portfolios                      @relation("portfolio_media", fields: [portfolio_id], references: [id], onDelete: Cascade)
   studio              studios                                @relation("portfolio_media", fields: [studio_id], references: [id], onDelete: Cascade)
-  content_block_media studio_portfolio_content_block_media[]
 
   @@index([portfolio_id])
   @@index([studio_id])
@@ -2177,39 +2163,32 @@ model studio_portfolio_media {
   @@index([storage_bytes])
 }
 
-// ============================================
-// SISTEMA DE CONTENT BLOCKS PARA PORTFOLIOS
-// ============================================
-
 model studio_portfolio_content_blocks {
-  id           String   @id @default(cuid())
+  id           String                                 @id @default(cuid())
   portfolio_id String
-  type         String // ComponentType: 'image' | 'gallery' | 'video' | 'text' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text'
+  type         String
   title        String?
   description  String?
-  presentation String   @default("block") // "block" | "fullwidth"
-  order        Int      @default(0)
-  config       Json? // Configuración específica del tipo de bloque (MediaBlockConfig, TextBlockConfig, HeroConfig, etc.)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
-
-  portfolio   studio_portfolios                      @relation(fields: [portfolio_id], references: [id], onDelete: Cascade)
-  block_media studio_portfolio_content_block_media[]
+  presentation String                                 @default("block")
+  order        Int                                    @default(0)
+  config       Json?
+  created_at   DateTime                               @default(now())
+  updated_at   DateTime                               @updatedAt
+  block_media  studio_portfolio_content_block_media[]
+  portfolio    studio_portfolios                      @relation(fields: [portfolio_id], references: [id], onDelete: Cascade)
 
   @@index([portfolio_id, order])
   @@index([type])
 }
 
-// Tabla de unión entre content_blocks y media (many-to-many)
 model studio_portfolio_content_block_media {
-  id               String   @id @default(cuid())
+  id               String                          @id @default(cuid())
   content_block_id String
   media_id         String
-  order            Int      @default(0)
-  created_at       DateTime @default(now())
-
-  content_block studio_portfolio_content_blocks @relation(fields: [content_block_id], references: [id], onDelete: Cascade)
-  media         studio_portfolio_media          @relation(fields: [media_id], references: [id], onDelete: Cascade)
+  order            Int                             @default(0)
+  created_at       DateTime                        @default(now())
+  content_block    studio_portfolio_content_blocks @relation(fields: [content_block_id], references: [id], onDelete: Cascade)
+  media            studio_portfolio_media          @relation(fields: [media_id], references: [id], onDelete: Cascade)
 
   @@unique([content_block_id, media_id])
   @@index([content_block_id, order])
@@ -2403,6 +2382,55 @@ model studio_faq {
 
   @@index([studio_id, is_active])
   @@index([studio_id, orden])
+}
+
+model studio_posts {
+  id            String              @id @default(cuid())
+  studio_id     String
+  title         String?
+  caption       String?
+  cover_index   Int                 @default(0)
+  event_type_id String?
+  tags          String[]            @default([])
+  is_featured   Boolean             @default(false)
+  is_published  Boolean             @default(false)
+  published_at  DateTime?
+  view_count    Int                 @default(0)
+  created_at    DateTime            @default(now())
+  updated_at    DateTime            @updatedAt
+  media         studio_post_media[] @relation("post_media")
+  event_type    studio_event_types? @relation(fields: [event_type_id], references: [id])
+  studio        studios             @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+
+  @@index([studio_id, is_published, published_at])
+  @@index([studio_id, is_featured])
+  @@index([event_type_id])
+}
+
+model studio_post_media {
+  id               String       @id @default(cuid())
+  post_id          String
+  studio_id        String
+  file_url         String
+  file_type        String
+  filename         String
+  storage_bytes    BigInt
+  mime_type        String
+  dimensions       Json?
+  duration_seconds Int?
+  display_order    Int          @default(0)
+  alt_text         String?
+  thumbnail_url    String?
+  storage_path     String
+  created_at       DateTime     @default(now())
+  updated_at       DateTime     @updatedAt
+  post             studio_posts @relation("post_media", fields: [post_id], references: [id], onDelete: Cascade)
+  studio           studios      @relation("post_media", fields: [studio_id], references: [id], onDelete: Cascade)
+
+  @@index([post_id])
+  @@index([studio_id])
+  @@index([display_order])
+  @@index([storage_bytes])
 }
 
 enum ModuleCategory {
@@ -2608,70 +2636,4 @@ enum TaskAction {
 enum PortfolioItemType {
   PHOTO
   VIDEO
-}
-
-// ============================================
-// SISTEMA DE POSTS (PUBLICACIONES)
-// ============================================
-
-model studio_posts {
-  id        String @id @default(cuid())
-  studio_id String
-
-  // Content
-  title       String?
-  caption     String?
-  cover_index Int     @default(0)
-
-  // Classification
-  event_type_id String?
-  tags          String[] @default([])
-
-  // Visibility
-  is_featured  Boolean   @default(false)
-  is_published Boolean   @default(false)
-  published_at DateTime?
-
-  // Metrics
-  view_count Int @default(0)
-
-  // Timestamps
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  // Relations
-  studio     studios             @relation(fields: [studio_id], references: [id], onDelete: Cascade)
-  event_type studio_event_types? @relation(fields: [event_type_id], references: [id])
-  media      studio_post_media[] @relation("post_media")
-
-  @@index([studio_id, is_published, published_at])
-  @@index([studio_id, is_featured])
-  @@index([event_type_id])
-}
-
-model studio_post_media {
-  id               String   @id @default(cuid())
-  post_id          String
-  studio_id        String
-  file_url         String
-  file_type        String // "image" | "video"
-  filename         String
-  storage_bytes    BigInt
-  mime_type        String
-  dimensions       Json? // { width, height }
-  duration_seconds Int? // Para videos
-  display_order    Int      @default(0) // Para ordenamiento drag & drop
-  alt_text         String?
-  thumbnail_url    String? // Para videos
-  storage_path     String // Para eliminación
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-
-  post   studio_posts @relation("post_media", fields: [post_id], references: [id], onDelete: Cascade)
-  studio studios      @relation("post_media", fields: [studio_id], references: [id], onDelete: Cascade)
-
-  @@index([post_id])
-  @@index([studio_id])
-  @@index([display_order])
-  @@index([storage_bytes])
 }

@@ -45,14 +45,14 @@ export async function getPublicPaquetes(
         // Transformar datos al formato público
         const publicPaquetes: PublicPaquete[] = paquetes.map((paquete) => ({
             id: paquete.id,
-            nombre: paquete.nombre,
-            descripcion: paquete.descripcion || undefined,
-            precio: paquete.precio,
+            nombre: paquete.name,
+            descripcion: paquete.description || undefined,
+            precio: paquete.precio || 0,
             tipo_evento: paquete.event_types?.name || undefined,
-            duracion_horas: paquete.duracion_horas || undefined,
-            incluye: paquete.incluye || undefined,
-            no_incluye: paquete.no_incluye || undefined,
-            condiciones: paquete.condiciones || undefined,
+            duracion_horas: undefined, // Campo no existe en schema actual
+            incluye: undefined, // Campo no existe en schema actual
+            no_incluye: undefined, // Campo no existe en schema actual
+            condiciones: undefined, // Campo no existe en schema actual
             order: paquete.order,
         }));
 

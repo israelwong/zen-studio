@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { toast } from 'sonner';
-import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, AlertTriangle, ImageIcon } from 'lucide-react';
 import { ZenButton, ZenInput, ZenTextarea, ZenBadge } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
@@ -11,12 +11,17 @@ import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalo
 import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
+import { useMediaUpload } from '@/hooks/useMediaUpload';
+import { useStorageRefresh } from '@/hooks/useStorageRefresh';
+import { PaqueteCoverDropzone } from './PaqueteCoverDropzone';
 
 interface PaqueteFormularioAvanzadoProps {
     studioSlug: string;
     paquete?: PaqueteFromDB | null;
     isPublished?: boolean;
     onPublishedChange?: (published: boolean) => void;
+    isFeatured?: boolean;
+    onFeaturedChange?: (featured: boolean) => void;
     onSave: (paquete: PaqueteFromDB) => void;
     onCancel: () => void;
 }
@@ -30,17 +35,36 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     paquete,
     isPublished: isPublishedProp,
     onPublishedChange,
+    isFeatured: isFeaturedProp,
+    onFeaturedChange,
     onSave,
     onCancel
 }, ref) => {
     // Estado del formulario
     const [nombre, setNombre] = useState(paquete?.name || '');
     const [descripcion, setDescripcion] = useState('');
+    const [isFeaturedInternal, setIsFeaturedInternal] = useState((paquete as { is_featured?: boolean })?.is_featured || false);
     const [precioPersonalizado, setPrecioPersonalizado] = useState<string | number>('');
     const [isPublishedInternal, setIsPublishedInternal] = useState(paquete?.status === 'active' || false);
 
+    // Estado para cover
+    const [coverMedia, setCoverMedia] = useState<Array<{
+        file_url: string;
+        file_type: string;
+        filename: string;
+        thumbnail_url?: string;
+    }>>([]);
+
+    // Hook de upload
+    const { uploadFiles, deleteFile, isUploading } = useMediaUpload();
+
+    // Hook para actualizar storage
+    const { triggerRefresh } = useStorageRefresh(studioSlug);
+
     // Usar prop si está disponible, sino usar estado interno
     const isPublished = isPublishedProp !== undefined ? isPublishedProp : isPublishedInternal;
+    const isFeatured = isFeaturedProp !== undefined ? isFeaturedProp : isFeaturedInternal;
+    const setIsFeatured = onFeaturedChange || setIsFeaturedInternal;
     const [items, setItems] = useState<{ [servicioId: string]: number }>({});
     const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
     const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
@@ -80,8 +104,30 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     if (paquete?.id) {
                         console.log('🔍 Cargando datos del paquete para editar:', paquete);
                         setNombre(paquete.name || '');
-                        setDescripcion(''); // No hay descripcion en PaqueteFromDB
+                        setDescripcion((paquete as { description?: string }).description || '');
+                        if (onFeaturedChange) {
+                            onFeaturedChange((paquete as { is_featured?: boolean }).is_featured || false);
+                        } else {
+                            setIsFeaturedInternal((paquete as { is_featured?: boolean }).is_featured || false);
+                        }
                         setPrecioPersonalizado(paquete.precio || '');
+
+                        // Cargar cover si existe
+                        const coverUrl = (paquete as { cover_url?: string }).cover_url;
+                        if (coverUrl) {
+                            const filename = coverUrl.split('/').pop() || 'cover.jpg';
+                            const isVideo = filename.toLowerCase().includes('.mp4') ||
+                                filename.toLowerCase().includes('.mov') ||
+                                filename.toLowerCase().includes('.webm') ||
+                                filename.toLowerCase().includes('.avi');
+                            setCoverMedia([{
+                                file_url: coverUrl,
+                                file_type: isVideo ? 'video' : 'image',
+                                filename: filename
+                            }]);
+                        } else {
+                            setCoverMedia([]);
+                        }
                         if (onPublishedChange) {
                             onPublishedChange(paquete.status === 'active');
                         } else {
@@ -487,10 +533,12 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
 
             const data = {
                 name: nombre,
-                descripcion,
+                description: descripcion,
+                cover_url: coverMedia[0]?.file_url || null,
                 event_type_id: 'temp', // Se manejará automáticamente en la acción
                 precio: calculoPrecio.total,
                 status: isPublished ? 'active' : 'inactive',
+                is_featured: isFeatured,
                 servicios: serviciosData
             };
 
@@ -500,6 +548,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 result = await actualizarPaquete(studioSlug, paquete.id, data);
                 if (result.success && result.data) {
                     toast.success('Paquete actualizado exitosamente');
+                    // Actualizar storage
+                    triggerRefresh();
                     onSave(result.data);
                 } else {
                     toast.error(result.error || 'Error al actualizar el paquete');
@@ -509,6 +559,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 result = await crearPaquete(studioSlug, data);
                 if (result.success && result.data) {
                     toast.success('Paquete creado exitosamente');
+                    // Actualizar storage
+                    triggerRefresh();
                     onSave(result.data);
                 } else {
                     toast.error(result.error || 'Error al crear el paquete');
@@ -762,7 +814,63 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             value={descripcion}
                             onChange={(e) => setDescripcion(e.target.value)}
                             placeholder="Describe los servicios incluidos..."
+                            className="min-h-[80px]"
                         />
+
+                        {/* Cover */}
+                        <div className="mt-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <ImageIcon className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                                <span className="font-medium text-white text-sm">
+                                    Carátula <span className="text-zinc-400 font-normal">(opcional)</span>
+                                </span>
+                            </div>
+                            <PaqueteCoverDropzone
+                                media={coverMedia}
+                                onDropFiles={async (files) => {
+                                    try {
+                                        const uploadedFiles = await uploadFiles(
+                                            files,
+                                            studioSlug,
+                                            'paquetes',
+                                            paquete?.id
+                                        );
+
+                                        if (uploadedFiles.length > 0) {
+                                            const newCover = uploadedFiles[0];
+                                            const isVideo = newCover.fileName.toLowerCase().includes('.mp4') ||
+                                                newCover.fileName.toLowerCase().includes('.mov') ||
+                                                newCover.fileName.toLowerCase().includes('.webm') ||
+                                                newCover.fileName.toLowerCase().includes('.avi');
+                                            setCoverMedia([{
+                                                file_url: newCover.url,
+                                                file_type: isVideo ? 'video' : 'image',
+                                                filename: newCover.fileName,
+                                                thumbnail_url: newCover.url
+                                            }]);
+                                        }
+                                    } catch (error) {
+                                        console.error('Error uploading cover:', error);
+                                        toast.error('Error al subir la carátula');
+                                    }
+                                }}
+                                onRemoveMedia={async () => {
+                                    if (coverMedia[0]?.file_url) {
+                                        try {
+                                            await deleteFile(coverMedia[0].file_url, studioSlug);
+                                            setCoverMedia([]);
+                                        } catch (error) {
+                                            console.error('Error deleting cover:', error);
+                                            toast.error('Error al eliminar la carátula');
+                                        }
+                                    } else {
+                                        setCoverMedia([]);
+                                    }
+                                }}
+                                isUploading={isUploading}
+                            />
+                        </div>
+
                     </div>
 
 

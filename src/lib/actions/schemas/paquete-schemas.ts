@@ -61,6 +61,9 @@ export type PaqueteFromDB = {
     studio_id: string;
     event_type_id: string;
     name: string;
+    description?: string | null;
+    cover_url?: string | null;
+    is_featured?: boolean;
     cost?: number | null;
     expense?: number | null;
     utilidad?: number | null;

@@ -89,11 +89,14 @@ export async function crearPaquete(
         const paqueteData = data as {
             event_type_id: string;
             name: string;
+            description?: string;
+            cover_url?: string | null;
             cost?: number;
             expense?: number;
             utilidad?: number;
             precio?: number;
             status?: string;
+            is_featured?: boolean;
             servicios?: Array<{
                 servicioId: string;
                 cantidad: number;
@@ -144,17 +147,34 @@ export async function crearPaquete(
 
         const newPosition = (maxPosition?.order ?? -1) + 1;
 
+        // Si se marca como recomendado, desactivar otros del mismo tipo de evento
+        if (paqueteData.is_featured) {
+            await prisma.studio_paquetes.updateMany({
+                where: {
+                    studio_id: studio.id,
+                    event_type_id: eventTypeId,
+                    is_featured: true
+                },
+                data: {
+                    is_featured: false
+                }
+            });
+        }
+
         const paquete = await prisma.studio_paquetes.create({
             data: {
                 studio_id: studio.id,
                 event_type_id: eventTypeId,
                 name: paqueteData.name,
+                description: paqueteData.description,
+                cover_url: paqueteData.cover_url || null,
                 cost: paqueteData.cost,
                 expense: paqueteData.expense,
                 utilidad: paqueteData.utilidad,
                 precio: paqueteData.precio,
                 order: newPosition,
                 status: paqueteData.status || "active",
+                is_featured: paqueteData.is_featured || false,
                 // Crear paquete_items si existen servicios
                 paquete_items: paqueteData.servicios && paqueteData.servicios.length > 0 ? {
                     create: paqueteData.servicios.map((servicio, index) => ({
@@ -231,11 +251,14 @@ export async function actualizarPaquete(
         const paqueteData = data as {
             event_type_id?: string;
             name?: string;
+            description?: string;
+            cover_url?: string | null;
             cost?: number;
             expense?: number;
             utilidad?: number;
             precio?: number;
             status?: string;
+            is_featured?: boolean;
             servicios?: Array<{
                 servicioId: string;
                 cantidad: number;
@@ -347,51 +370,79 @@ export async function actualizarPaquete(
             await Promise.all(operaciones);
         }
 
-        // Manejar event_type_id si es 'temp'
-        let eventTypeId = paqueteData.event_type_id;
+        // Manejar event_type_id solo si se proporciona y no es 'temp'
+        // Si es 'temp' o no se proporciona, mantener el event_type_id actual del paquete
+        let eventTypeIdToUpdate: string | null = null;
 
-        if (!eventTypeId || eventTypeId === 'temp') {
-            // Buscar un tipo de evento existente
-            const existingEventType = await prisma.studio_event_types.findFirst({
-                where: { studio_id: studio.id, status: 'active' },
+        if (paqueteData.event_type_id && paqueteData.event_type_id !== 'temp') {
+            // Verificar que el tipo de evento existe y pertenece al studio
+            const eventType = await prisma.studio_event_types.findFirst({
+                where: {
+                    id: paqueteData.event_type_id,
+                    studio_id: studio.id,
+                },
                 select: { id: true },
             });
 
-            if (existingEventType) {
-                eventTypeId = existingEventType.id;
-            } else {
-                // Crear un tipo de evento por defecto
-                const defaultEventType = await prisma.studio_event_types.create({
-                    data: {
-                        studio_id: studio.id,
-                        name: 'Evento General',
-                        status: 'active',
-                        order: 0,
-                    },
-                });
-                eventTypeId = defaultEventType.id;
+            if (eventType && eventType.id !== paquete.event_type_id) {
+                eventTypeIdToUpdate = eventType.id;
             }
         }
 
-        // Preparar datos de actualización
+        // Preparar datos de actualización (sin event_type_id, se actualiza por separado si es necesario)
         const updateData: {
-            event_type_id?: string;
             name?: string;
-            cost?: number;
-            expense?: number;
-            utilidad?: number;
-            precio?: number;
+            description?: string | null;
+            cover_url?: string | null;
+            cost?: number | null;
+            expense?: number | null;
+            utilidad?: number | null;
+            precio?: number | null;
             status?: string;
+            is_featured?: boolean;
         } = {};
 
-        if (eventTypeId) updateData.event_type_id = eventTypeId;
+        // Actualizar event_type_id en una operación separada si es necesario
+        if (eventTypeIdToUpdate) {
+            await prisma.studio_paquetes.update({
+                where: { id: paqueteId },
+                data: { event_type_id: eventTypeIdToUpdate }
+            });
+        }
         if (paqueteData.name) updateData.name = paqueteData.name;
+        if (paqueteData.description !== undefined) updateData.description = paqueteData.description;
+        if (paqueteData.cover_url !== undefined) updateData.cover_url = paqueteData.cover_url;
         if (typeof paqueteData.cost === "number") updateData.cost = paqueteData.cost;
         if (typeof paqueteData.expense === "number") updateData.expense = paqueteData.expense;
         if (typeof paqueteData.utilidad === "number") updateData.utilidad = paqueteData.utilidad;
         if (typeof paqueteData.precio === "number") updateData.precio = paqueteData.precio;
         // Siempre actualizar status si viene en los datos
         if (paqueteData.status !== undefined) updateData.status = paqueteData.status;
+        // Actualizar is_featured si viene en los datos
+        if (paqueteData.is_featured !== undefined) {
+            // Si se marca como recomendado, desactivar otros paquetes del mismo tipo de evento
+            if (paqueteData.is_featured) {
+                const paqueteActual = await prisma.studio_paquetes.findUnique({
+                    where: { id: paqueteId },
+                    select: { event_type_id: true },
+                });
+
+                if (paqueteActual) {
+                    await prisma.studio_paquetes.updateMany({
+                        where: {
+                            studio_id: studio.id,
+                            event_type_id: paqueteActual.event_type_id,
+                            is_featured: true,
+                            NOT: { id: paqueteId }
+                        },
+                        data: {
+                            is_featured: false
+                        }
+                    });
+                }
+            }
+            updateData.is_featured = paqueteData.is_featured;
+        }
 
         const updatedPaquete = await prisma.studio_paquetes.update({
             where: { id: paqueteId },
@@ -529,7 +580,7 @@ export async function obtenerPaquetePorId(
         };
     } catch (error: unknown) {
         console.error("[obtenerPaquetePorId] Error:", error);
-        
+
         // Manejar específicamente errores de pool de conexiones
         if (error && typeof error === 'object' && 'code' in error) {
             const errorCode = error.code as string;
