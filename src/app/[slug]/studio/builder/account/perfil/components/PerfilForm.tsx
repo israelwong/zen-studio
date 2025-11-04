@@ -112,7 +112,7 @@ export function PerfilForm({
             if (result.success && result.data) {
                 // Disparar actualización del avatar en el header
                 triggerRefresh();
-                
+
                 onPerfilUpdate(result.data);
                 toast.success('Avatar actualizado exitosamente');
             } else {
