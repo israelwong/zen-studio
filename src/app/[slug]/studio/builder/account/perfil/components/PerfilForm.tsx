@@ -139,69 +139,74 @@ export function PerfilForm({
 
             <CardContent>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-                    {/* Layout de 2 columnas */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Columna 1: Avatar */}
-                        <div className="flex items-center justify-center min-h-full">
-                            <AvatarManager
-                                url={localAvatarUrl}
-                                onUpdate={handleAvatarUpdate}
-                                onLocalUpdate={handleAvatarLocalUpdate}
-                                studioSlug={studioSlug}
-                                category="identidad"
-                                subcategory="avatars"
-                                size="lg"
-                                loading={loading}
-                                cropTitle="Ajustar foto de perfil"
-                                cropDescription="Arrastra y redimensiona el área circular para ajustar tu foto de perfil."
-                                cropInstructions={[
-                                    "• Arrastra para mover el área de recorte",
-                                    "• Usa las esquinas para redimensionar",
-                                    "• El área circular será tu foto de perfil"
-                                ]}
-                                successMessage="¡Perfecto! Tu foto de perfil se ha actualizado correctamente"
-                                deleteMessage="Tu foto de perfil se ha eliminado"
-                            />
+                    {/* Sección 1: Avatar circular grande + Información básica */}
+                    <div className="flex flex-col lg:flex-row gap-8 items-start">
+                        {/* Avatar circular - Izquierda */}
+                        <div className="flex justify-center lg:justify-start flex-shrink-0 w-full lg:w-auto">
+                            <div className="flex flex-col items-center gap-4">
+                                <AvatarManager
+                                    url={localAvatarUrl}
+                                    onUpdate={handleAvatarUpdate}
+                                    onLocalUpdate={handleAvatarLocalUpdate}
+                                    studioSlug={studioSlug}
+                                    category="identidad"
+                                    subcategory="avatars"
+                                    size="lg"
+                                    variant="default"
+                                    loading={loading}
+                                    cropTitle="Ajustar foto de perfil"
+                                    cropDescription="Arrastra y redimensiona el área circular para ajustar tu foto de perfil."
+                                    cropInstructions={[
+                                        "• Arrastra para mover el área de recorte",
+                                        "• Usa las esquinas para redimensionar",
+                                        "• El área circular será tu foto de perfil"
+                                    ]}
+                                    successMessage="¡Perfecto! Tu foto de perfil se ha actualizado correctamente"
+                                    deleteMessage="Tu foto de perfil se ha eliminado"
+                                    showAdjustButton={true}
+                                />
+                                <p className="text-xs text-zinc-400 text-center">
+                                    Foto de perfil (máximo 2MB)
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Columna 2: Información Personal */}
-                        <div className="space-y-6">
-                            <div>
-                                <div className="space-y-4">
-                                    {/* Nombre */}
-                                    <ZenInput
-                                        id="name"
-                                        label="Nombre Completo"
-                                        icon={User}
-                                        required
-                                        {...register('name')}
-                                        placeholder="Tu nombre completo"
-                                        error={errors.name?.message}
-                                    />
+                        {/* Información Personal - Derecha */}
+                        <div className="flex-1 w-full space-y-6">
+                            <div className="space-y-4">
+                                {/* Nombre */}
+                                <ZenInput
+                                    id="name"
+                                    label="Nombre Completo"
+                                    icon={User}
+                                    required
+                                    {...register('name')}
+                                    placeholder="Tu nombre completo"
+                                    error={errors.name?.message}
+                                />
 
-                                    {/* Email */}
-                                    <ZenInput
-                                        id="email"
-                                        label="Correo Electrónico"
-                                        icon={Mail}
-                                        required
-                                        type="email"
-                                        {...register('email')}
-                                        placeholder="tu@email.com"
-                                        error={errors.email?.message}
-                                    />
+                                {/* Email */}
+                                <ZenInput
+                                    id="email"
+                                    label="Correo Electrónico"
+                                    icon={Mail}
+                                    required
+                                    type="email"
+                                    {...register('email')}
+                                    placeholder="tu@email.com"
+                                    error={errors.email?.message}
+                                />
 
-                                    {/* Teléfono */}
-                                    <ZenInput
-                                        id="phone"
-                                        label="Teléfono"
-                                        icon={Phone}
-                                        required
-                                        {...register('phone')}
-                                        placeholder="+52 55 1234 5678"
-                                        error={errors.phone?.message}
-                                    />
-                                </div>
+                                {/* Teléfono */}
+                                <ZenInput
+                                    id="phone"
+                                    label="Teléfono"
+                                    icon={Phone}
+                                    required
+                                    {...register('phone')}
+                                    placeholder="+52 55 1234 5678"
+                                    error={errors.phone?.message}
+                                />
                             </div>
                         </div>
                     </div>
