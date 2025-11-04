@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useParams, usePathname } from 'next/navigation';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/shadcn/dropdown-menu';
 import { ZenSidebarMenuButton } from '@/components/ui/zen';
 import { useStudioData } from '@/hooks/useStudioData';
+import { useLogoRefreshListener } from '@/hooks/useLogoRefresh';
 
 interface StudioHeaderModalProps {
     className?: string;
@@ -31,22 +32,36 @@ export function StudioHeaderModal({ className, studioData }: StudioHeaderModalPr
     // const pathname = usePathname(); // Comentado ya que no se usa actualmente
     const slug = params.slug as string;
 
-    // Variables de detección de ruta (mantenidas para futuras funcionalidades)
-    // const isDashboard = pathname.includes('/studio/dashboard');
-    // const isConfiguracion = pathname.includes('/studio/configuracion');
-    // const isBuilder = pathname.includes('/studio/builder');
+    // Memoizar callback de actualización
+    const handleStudioUpdate = useCallback((data: any) => {
+        console.log('🎯 [STUDIO_HEADER] Updated with new studio data:', data);
+    }, []);
 
     // Usar datos del studio pasados como prop o hook como fallback
     const {
         identidadData,
         loading,
-        error
+        error,
+        refetch
     } = useStudioData({
         studioSlug: studioData?.slug || slug,
-        onUpdate: (data) => {
-            console.log('🎯 [STUDIO_HEADER] Updated with new studio data:', data);
-        }
+        onUpdate: handleStudioUpdate
     });
+
+    // Escuchar cambios de logo para actualizar en tiempo real
+    const logoRefresh = useLogoRefreshListener();
+    
+    // Recargar datos cuando cambia el logo
+    useEffect(() => {
+        if (logoRefresh > 0) {
+            refetch();
+        }
+    }, [logoRefresh, refetch]);
+
+    // Variables de detección de ruta (mantenidas para futuras funcionalidades)
+    // const isDashboard = pathname.includes('/studio/dashboard');
+    // const isConfiguracion = pathname.includes('/studio/configuracion');
+    // const isBuilder = pathname.includes('/studio/builder');
 
     // Usar datos del studio pasados como prop si están disponibles
     const studioName = studioData?.studio_name || identidadData?.name || 'Studio';
@@ -93,11 +108,11 @@ export function StudioHeaderModal({ className, studioData }: StudioHeaderModalPr
         }
 
         // Si hay logo, usar la primera letra del nombre
-        if (identidadData?.logoUrl) {
+        if (identidadData?.logo_url) {
             return (
                 <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
                     <Image
-                        src={identidadData.logoUrl}
+                        src={identidadData.logo_url}
                         alt="Logo"
                         width={32}
                         height={32}

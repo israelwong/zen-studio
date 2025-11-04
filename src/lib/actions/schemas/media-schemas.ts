@@ -19,7 +19,7 @@ export const MediaCategorySchema = z.enum([
 
 // MIME types permitidos por categoría
 export const ALLOWED_MIME_TYPES = {
-  image: ["image/png", "image/svg+xml"],
+  image: ["image/png", "image/svg+xml", "image/jpeg", "image/jpg"],
   video: ["video/mp4"],
   document: ["application/pdf"],
   gallery: ["image/jpeg", "image/jpg"]

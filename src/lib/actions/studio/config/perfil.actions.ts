@@ -157,6 +157,7 @@ export async function actualizarPerfil(
         };
 
         revalidatePath(`/studio/${studioSlug}/configuracion/cuenta/perfil`);
+        revalidatePath(`/${studioSlug}/studio`); // Revalidar rutas del studio para actualizar avatar en header
 
         return {
             success: true,

@@ -8,6 +8,7 @@ import Image from "next/image";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "@/lib/actions/auth/logout.action";
 import { getCurrentUserClient } from "@/lib/auth/user-utils-client";
+import { useAvatarRefreshListener } from "@/hooks/useAvatarRefresh";
 import { ZenButton } from "@/components/ui/zen";
 import {
     ZenDropdownMenu,
@@ -34,7 +35,11 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
     } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [imageError, setImageError] = useState(false);
     const pathname = usePathname();
+
+    // Escuchar cambios en el avatar
+    const avatarRefreshTrigger = useAvatarRefreshListener();
 
     useEffect(() => {
         const getUser = async () => {
@@ -45,11 +50,19 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
 
                 if (user) {
                     // Obtener perfil completo del usuario desde la base de datos
-                    const authUser = await getCurrentUserClient();
+                    // Pasar studioSlug si está disponible para buscar por studio_id
+                    const authUser = studioSlug
+                        ? await getCurrentUserClient(studioSlug)
+                        : await getCurrentUserClient();
                     if (authUser) {
+                        // Validar que avatarUrl no sea null ni cadena vacía
+                        const avatarUrl = authUser.profile.avatarUrl && authUser.profile.avatarUrl.trim() !== ''
+                            ? authUser.profile.avatarUrl
+                            : null;
+
                         setUserProfile({
                             fullName: authUser.profile.fullName,
-                            avatarUrl: authUser.profile.avatarUrl
+                            avatarUrl: avatarUrl
                         });
                     }
                 }
@@ -61,7 +74,14 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
         };
 
         getUser();
-    }, []);
+    }, [studioSlug, avatarRefreshTrigger]); // Recargar cuando cambie el studioSlug o se actualice el avatar
+
+    // Resetear error de imagen cuando cambie el avatarUrl
+    useEffect(() => {
+        if (userProfile?.avatarUrl) {
+            setImageError(false);
+        }
+    }, [userProfile?.avatarUrl]);
 
     const handleLogout = async () => {
         if (isLoggingOut) return;
@@ -91,7 +111,12 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
     // Obtener información del usuario con fallbacks
     const userName = userProfile?.fullName || user?.user_metadata?.full_name || user?.email || "Usuario";
     const userEmail = user?.email;
-    const avatarUrl = userProfile?.avatarUrl;
+    // Validar que avatarUrl sea una URL válida (no null, no vacía)
+    const avatarUrl = userProfile?.avatarUrl &&
+        typeof userProfile.avatarUrl === 'string' &&
+        userProfile.avatarUrl.trim() !== ''
+        ? userProfile.avatarUrl.trim()
+        : null;
 
     // Generar iniciales para el fallback
     const userInitials = userName
@@ -121,23 +146,23 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                     size="icon"
                     className={`rounded-full hover:bg-zinc-800 ${className}`}
                 >
-                    {avatarUrl ? (
-                        <div className="w-8 h-8 rounded-full overflow-hidden">
+                    {avatarUrl && !imageError ? (
+                        <div className="w-8 h-8 rounded-full overflow-hidden relative">
                             <Image
                                 src={avatarUrl}
                                 alt={userName}
-                                width={32}
-                                height={32}
-                                className="w-full h-full object-cover"
+                                fill
+                                className="object-cover"
                                 onError={(e) => {
-                                    // Si la imagen falla al cargar, mostrar fallback
-                                    e.currentTarget.style.display = 'none';
-                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                    console.error('[UserAvatar] Error al cargar imagen:', avatarUrl, e);
+                                    setImageError(true);
                                 }}
+                                onLoad={() => {
+                                    console.log('[UserAvatar] Imagen cargada exitosamente:', avatarUrl);
+                                    setImageError(false);
+                                }}
+                                unoptimized
                             />
-                            <div className="w-full h-full bg-gradient-to-br from-zinc-600 to-zinc-800 items-center justify-center text-white text-sm font-medium hidden">
-                                {userInitials}
-                            </div>
                         </div>
                     ) : (
                         <div className="w-8 h-8 bg-gradient-to-br from-zinc-600 to-zinc-800 rounded-full flex items-center justify-center text-white text-sm font-medium">

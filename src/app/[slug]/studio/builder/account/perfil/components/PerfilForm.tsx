@@ -12,6 +12,7 @@ import { actualizarPerfil } from '@/lib/actions/studio/config/perfil.actions';
 import { PerfilSchema, type PerfilForm as PerfilFormType } from '@/lib/actions/schemas/perfil-schemas';
 import { PerfilData } from '../types';
 import { AvatarManager } from '@/components/shared/avatar';
+import { useAvatarRefresh } from '@/hooks/useAvatarRefresh';
 
 interface PerfilFormProps {
     studioSlug: string;
@@ -26,6 +27,7 @@ export function PerfilForm({
 }: PerfilFormProps) {
     const [loading, setLoading] = useState(false);
     const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(perfil.avatarUrl || null);
+    const { triggerRefresh } = useAvatarRefresh();
 
     // Sincronizar localAvatarUrl cuando el perfil se actualiza desde fuera
     useEffect(() => {
@@ -63,6 +65,9 @@ export function PerfilForm({
             if (result.success && result.data) {
                 toast.dismiss(loadingToast);
                 toast.success(result.message || 'Perfil actualizado exitosamente');
+
+                // Disparar actualización del avatar en el header
+                triggerRefresh();
 
                 if (onPerfilUpdate) {
                     onPerfilUpdate(result.data);
@@ -105,6 +110,9 @@ export function PerfilForm({
             const result = await actualizarPerfil(studioSlug, dataWithAvatar);
 
             if (result.success && result.data) {
+                // Disparar actualización del avatar en el header
+                triggerRefresh();
+                
                 onPerfilUpdate(result.data);
                 toast.success('Avatar actualizado exitosamente');
             } else {

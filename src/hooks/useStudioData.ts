@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/identidad.actions';
 import type { IdentidadData } from '@/app/studio/[slug]/configuracion/cuenta/identidad/types';
 
@@ -13,6 +13,30 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
   const [identidadData, setIdentidadData] = useState<IdentidadData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Memoizar refetch para que sea estable entre renders
+  const refetch = useCallback(async () => {
+    if (!studioSlug) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('🔄 [STUDIO_DATA] Recargando datos del studio:', studioSlug);
+
+      const data = await obtenerIdentidadStudio(studioSlug);
+      console.log('📊 [STUDIO_DATA] Datos recargados:', data);
+
+      setIdentidadData(data);
+      onUpdate?.(data);
+      console.log('✅ [STUDIO_DATA] Datos recargados exitosamente:', { name: data.name });
+    } catch (err) {
+      console.error('❌ [STUDIO_DATA] Error reloading studio data:', err);
+      setError('Error al recargar datos del estudio');
+    } finally {
+      setLoading(false);
+      console.log('🏁 [STUDIO_DATA] Reload completado');
+    }
+  }, [studioSlug, onUpdate]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -56,31 +80,7 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
     };
 
     loadStudioData();
-  }, [studioSlug]); // Solo depender de studioSlug
-
-  // Función para recargar datos
-  const refetch = async () => {
-    if (!studioSlug) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('🔄 [STUDIO_DATA] Recargando datos del studio:', studioSlug);
-
-      const data = await obtenerIdentidadStudio(studioSlug);
-      console.log('📊 [STUDIO_DATA] Datos recargados:', data);
-
-      setIdentidadData(data);
-      onUpdate?.(data);
-      console.log('✅ [STUDIO_DATA] Datos recargados exitosamente:', { name: data.name });
-    } catch (err) {
-      console.error('❌ [STUDIO_DATA] Error reloading studio data:', err);
-      setError('Error al recargar datos del estudio');
-    } finally {
-      setLoading(false);
-      console.log('🏁 [STUDIO_DATA] Reload completado');
-    }
-  };
+  }, [studioSlug, onUpdate]);
 
   return {
     identidadData,

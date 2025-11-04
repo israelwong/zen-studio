@@ -8,4 +8,3 @@ export {
   getSocialNetworks,
   getContactEvents
 } from './contacts.actions';
-

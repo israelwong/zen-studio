@@ -13,6 +13,7 @@ import {
   type FileDeleteResult,
   type FileInfo
 } from '@/lib/actions/schemas/media-schemas';
+import { optimizeAvatarImage } from '@/lib/utils/image-optimizer';
 
 // Configuración de Supabase
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -139,9 +140,21 @@ export async function uploadFileStorage(
 
     console.log(`[Studio] Subiendo archivo: ${BUCKET_NAME}/${filePath}`);
 
+    // Optimizar avatares con menos compresión
+    let fileToUpload = file;
+    if (category === 'identidad' && file.type.startsWith('image/')) {
+      try {
+        const optimized = await optimizeAvatarImage(file);
+        fileToUpload = optimized.optimizedFile;
+        console.log(`[Studio] Avatar optimizado: ${optimized.compressionRatio}% comprimido`);
+      } catch (error) {
+        console.warn(`[Studio] No se pudo optimizar avatar, usando original:`, error);
+      }
+    }
+
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
-      .upload(filePath, file, {
+      .upload(filePath, fileToUpload, {
         cacheControl: '3600',
         upsert: true,
         contentType: file.type

@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { ALLOWED_MIME_TYPES } from '@/lib/actions/schemas/media-schemas';
 import { Dropzone } from '@/components/ui/shadcn/dropzone';
+import { useLogoRefresh } from '@/hooks/useLogoRefresh';
 
 interface LogoManagerZenProps {
     tipo: 'logo' | 'isotipo';
@@ -26,6 +27,7 @@ export function LogoManagerZen({
     loading = false
 }: LogoManagerZenProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const { triggerRefresh } = useLogoRefresh();
 
     // Hook para upload de archivos
     const { uploading, progress, error, uploadFile, deleteFile } = useFileUpload({
@@ -45,8 +47,8 @@ export function LogoManagerZen({
 
     const handleFileSelect = async (file: File) => {
         // Validar tipo de archivo
-        if (!ALLOWED_MIME_TYPES.image.includes(file.type as "image/png" | "image/svg+xml")) {
-            toast.error('Tipo de archivo no permitido. Solo se permiten PNG y SVG.');
+        if (!ALLOWED_MIME_TYPES.image.includes(file.type as "image/png" | "image/svg+xml" | "image/jpeg" | "image/jpg")) {
+            toast.error('Tipo de archivo no permitido. Solo se permiten PNG, SVG, JPG y JPEG.');
             return;
         }
 
@@ -64,6 +66,8 @@ export function LogoManagerZen({
             if (result.success && result.publicUrl) {
                 await onUpdate(result.publicUrl);
                 toast.success(`${tipo === 'logo' ? 'Logo' : 'Isotipo'} subido exitosamente`);
+                // Notificar a otros componentes que se actualizó el logo
+                triggerRefresh();
             } else {
                 // Revertir cambios en caso de error
                 onLocalUpdate(url || null);
@@ -89,6 +93,8 @@ export function LogoManagerZen({
             }
             await onUpdate('');
             toast.success(`${tipo === 'logo' ? 'Logo' : 'Isotipo'} eliminado`);
+            // Notificar a otros componentes que se eliminó el logo
+            triggerRefresh();
         } catch (error) {
             // Revertir cambios en caso de error
             onLocalUpdate(originalUrl);

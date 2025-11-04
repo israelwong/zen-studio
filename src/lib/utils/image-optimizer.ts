@@ -89,6 +89,94 @@ export async function optimizeImage(file: File): Promise<{
 }
 
 /**
+ * Optimiza avatares/fotos de perfil CON MENOS COMPRESIÓN
+ * - Dimensiones pequeñas (máximo 500px) para avatares
+ * - Calidad MÁS ALTA (96%) para mantener detalles faciales
+ * - Especialmente optimizado para perfiles
+ */
+export async function optimizeAvatarImage(file: File): Promise<{
+  optimizedFile: File;
+  originalSize: number;
+  optimizedSize: number;
+  compressionRatio: number;
+}> {
+  const originalSize = file.size;
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+
+    reader.onload = (event) => {
+      try {
+        const img = new Image();
+        img.src = event.target?.result as string;
+
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = img;
+
+          // Avatar: máximo 500px (suficiente para cualquier tamaño de pantalla)
+          const MAX_SIZE = 500;
+
+          if (width > height) {
+            if (width > MAX_SIZE) {
+              height = Math.round((height * MAX_SIZE) / width);
+              width = MAX_SIZE;
+            }
+          } else {
+            if (height > MAX_SIZE) {
+              width = Math.round((width * MAX_SIZE) / height);
+              height = MAX_SIZE;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('No se pudo obtener contexto del canvas');
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convertir a blob con MENOS compresión para avatares
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) throw new Error('No se pudo crear blob');
+
+              const optimizedSize = blob.size;
+              const compressionRatio = Math.round(
+                ((originalSize - optimizedSize) / originalSize) * 100
+              );
+
+              // Crear nuevo File con el blob optimizado
+              const optimizedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+
+              resolve({
+                optimizedFile,
+                originalSize,
+                optimizedSize,
+                compressionRatio,
+              });
+            },
+            'image/jpeg',
+            0.96 // Calidad 96% - MÁS ALTA para avatares (detalles faciales)
+          );
+        };
+
+        img.onerror = () => reject(new Error('Error al cargar imagen'));
+      } catch (error) {
+        reject(error);
+      }
+    };
+
+    reader.onerror = () => reject(new Error('Error al leer archivo'));
+  });
+}
+
+/**
  * Comprime videos (sin conversión, solo análisis de tamaño)
  * Nota: Conversión real se haría server-side con ffmpeg si es necesario
  */

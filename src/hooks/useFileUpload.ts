@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { uploadFileStorage, deleteFileStorage, updateFileStorage } from '@/lib/actions/shared/media.actions';
+import { optimizeAvatarImage } from '@/lib/utils/image-optimizer';
 import type { FileUploadResult, FileDeleteResult } from '@/lib/actions/schemas/media-schemas';
 
 interface UseFileUploadOptions {

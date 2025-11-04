@@ -5,7 +5,15 @@ import { ZenInput, ZenDialog, ZenTextarea, ZenSelect } from '@/components/ui/zen
 import { Skeleton } from '@/components/ui/shadcn/Skeleton';
 import type { ZenSelectOption } from '@/components/ui/zen';
 import { toast } from 'sonner';
-import { createContact, updateContact, getContactById, getAcquisitionChannels, getSocialNetworks, getContacts, getContactEvents } from '@/lib/actions/studio/builder/commercial/contacts';
+import {
+    createContact,
+    updateContact,
+    getContactById,
+    getAcquisitionChannels,
+    getSocialNetworks,
+    getContacts,
+    getContactEvents
+} from '@/lib/actions/studio/builder/commercial/contacts';
 import type { CreateContactData, Contact } from '@/lib/actions/schemas/contacts-schemas';
 import { AvatarManager } from '@/components/shared/avatar';
 import { useStorageRefresh } from '@/hooks/useStorageRefresh';
