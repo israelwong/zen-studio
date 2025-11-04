@@ -379,6 +379,7 @@ export function ContactModal({
                                 variant="compact"
                                 loading={loading}
                                 disabled={loading}
+                                showAdjustButton={false}
                                 cropTitle="Ajustar foto de contacto"
                                 cropDescription="Arrastra y redimensiona el área circular para ajustar la foto."
                                 cropInstructions={[

@@ -237,6 +237,7 @@ export function ImageCropModal({
 
             <div className="flex items-center gap-3">
               <ZenButton
+                type="button"
                 variant="outline"
                 onClick={onClose}
                 className="text-sm"
@@ -244,6 +245,7 @@ export function ImageCropModal({
                 Cancelar
               </ZenButton>
               <ZenButton
+                type="button"
                 onClick={handleCropComplete}
                 className="text-sm"
               >

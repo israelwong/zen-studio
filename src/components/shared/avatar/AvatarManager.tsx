@@ -25,6 +25,7 @@ interface AvatarManagerProps {
     cropInstructions?: string[];
     successMessage?: string;
     deleteMessage?: string;
+    showAdjustButton?: boolean;
 }
 
 export function AvatarManager({
@@ -46,7 +47,8 @@ export function AvatarManager({
         "• El área circular será tu imagen"
     ],
     successMessage = "Avatar actualizado exitosamente",
-    deleteMessage = "Avatar eliminado"
+    deleteMessage = "Avatar eliminado",
+    showAdjustButton = true
 }: AvatarManagerProps) {
     const [showCropModal, setShowCropModal] = useState(false);
     const [cropImageUrl, setCropImageUrl] = useState<string>('');
@@ -200,26 +202,33 @@ export function AvatarManager({
                         {/* Overlay con opciones al hacer hover */}
                         {!isDeleting && (
                             <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-20 pointer-events-none ${variant === 'compact' ? 'gap-1.5' : 'gap-2'}`}>
-                                {/* Botón Ajustar */}
-                                <button
-                                    onClick={() => {
-                                        setCropImageUrl(url);
-                                        setShowCropModal(true);
-                                    }}
-                                    disabled={isDisabled}
-                                    className={`${variant === 'compact'
-                                        ? 'w-8 h-8 flex items-center justify-center bg-zinc-800/90 hover:bg-zinc-700 rounded-full transition-colors'
-                                        : 'flex flex-col items-center gap-1 px-2 py-1.5 bg-zinc-800/90 hover:bg-zinc-700 rounded-lg transition-colors'} disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto`}
-                                    title="Ajustar avatar"
-                                >
-                                    <Crop className={variant === 'compact' ? 'h-3.5 w-3.5 text-blue-400' : 'h-3 w-3 text-blue-400'} />
-                                    {variant === 'default' && <span className="text-white text-xs font-medium">Ajustar</span>}
-                                </button>
+                                {/* Botón Ajustar - Solo si showAdjustButton es true */}
+                                {showAdjustButton && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            e.preventDefault();
+                                            setCropImageUrl(url);
+                                            setShowCropModal(true);
+                                        }}
+                                        disabled={isDisabled}
+                                        className={`${variant === 'compact'
+                                            ? 'w-8 h-8 flex items-center justify-center bg-zinc-800/90 hover:bg-zinc-700 rounded-full transition-colors'
+                                            : 'flex flex-col items-center gap-1 px-2 py-1.5 bg-zinc-800/90 hover:bg-zinc-700 rounded-lg transition-colors'} disabled:opacity-50 disabled:cursor-not-allowed pointer-events-auto`}
+                                        title="Ajustar avatar"
+                                    >
+                                        <Crop className={variant === 'compact' ? 'h-3.5 w-3.5 text-blue-400' : 'h-3 w-3 text-blue-400'} />
+                                        {variant === 'default' && <span className="text-white text-xs font-medium">Ajustar</span>}
+                                    </button>
+                                )}
 
                                 {/* Botón Eliminar */}
                                 <button
+                                    type="button"
                                     onClick={(e) => {
                                         e.stopPropagation();
+                                        e.preventDefault();
                                         handleRemoveUrl();
                                     }}
                                     disabled={isDisabled}
