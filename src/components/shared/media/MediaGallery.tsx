@@ -96,6 +96,17 @@ export function MediaGallery({
     const renderContent = () => {
         // En modo edición: siempre mostrar grid para poder arrastrar y ordenar
         if (isEditable) {
+            // Determinar aspectRatio apropiado para el slot
+            let slotAspectRatio: 'square' | 'video' | 'portrait' | 'landscape' = 'square';
+            
+            // Si el config tiene aspectRatio válido y no es 'auto', usarlo
+            if (config.aspectRatio && config.aspectRatio !== 'auto') {
+                slotAspectRatio = config.aspectRatio as 'square' | 'video' | 'portrait' | 'landscape';
+            } else if (localMode === 'masonry') {
+                // En modo masonry, usar landscape para slot más grande
+                slotAspectRatio = 'landscape';
+            }
+            
             return (
                 <ImageGrid
                     media={media}
@@ -103,7 +114,8 @@ export function MediaGallery({
                         ...config,
                         columns: 3, // Fijo en editor
                         gap: 4, // Fijo en editor
-                        borderStyle: 'rounded' // Fijo en editor
+                        borderStyle: 'rounded', // Fijo en editor
+                        aspectRatio: slotAspectRatio // AspectRatio dinámico según modo
                     }}
                     className={className}
                     showDeleteButtons={showDeleteButtons}

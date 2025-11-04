@@ -224,8 +224,12 @@ export function ImageGrid({
         columns: configColumns = columns,
         gap: configGap = gap,
         lightbox: configLightbox = lightbox,
-        borderStyle = 'rounded'
+        borderStyle = 'rounded',
+        aspectRatio: configAspectRatio = aspectRatio
     } = config;
+
+    // Normalizar aspectRatio: si viene 'auto' desde config, usar 'square' por defecto
+    const effectiveAspectRatio = configAspectRatio === 'auto' ? 'square' : configAspectRatio;
 
     const borderStyleClass = borderStyle === 'rounded' ? 'rounded-lg' : 'rounded-none';
 
@@ -255,7 +259,7 @@ export function ImageGrid({
         landscape: 'aspect-[4/3]'
     };
 
-    const aspectClass = aspectRatioClasses[aspectRatio];
+    const aspectClass = aspectRatioClasses[effectiveAspectRatio] || aspectRatioClasses.square;
 
     // Detectar si hay múltiples videos para limitar altura
     const hasMultipleVideos = media.length > 1 && media.some(item => item.file_type === 'video');
@@ -514,7 +518,7 @@ export function ImageGrid({
                         {isEditable && (
                             <button
                                 type="button"
-                                className={`relative bg-zinc-800 ${borderStyleClass} text-center hover:bg-zinc-700 transition-colors ${media.length === 0 ? 'col-span-full h-32' : 'w-24 h-24'} border-2 border-dashed border-zinc-600 hover:border-emerald-500 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed`}
+                                className={`relative bg-zinc-800 ${borderStyleClass} text-center hover:bg-zinc-700 transition-colors ${media.length === 0 ? 'col-span-full h-32' : aspectClass} border-2 border-dashed border-zinc-600 hover:border-emerald-500 cursor-pointer group disabled:opacity-50 disabled:cursor-not-allowed`}
                                 onClick={() => {
                                     if (onUploadClick && !isUploading) {
                                         onUploadClick();

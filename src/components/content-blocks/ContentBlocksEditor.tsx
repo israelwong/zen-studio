@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Image as ImageIcon, Video, Type, Grid3X3, X, LayoutGrid, MessageCircle, Play, FileText, Copy } from 'lucide-react';
 import {
     DndContext,
@@ -203,7 +203,13 @@ export function ContentBlocksEditor({
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [blockToDelete, setBlockToDelete] = useState<ContentBlock | null>(null);
     const [deletingBlocks, setDeletingBlocks] = useState<Set<string>>(new Set());
+    const [isHydrated, setIsHydrated] = useState(false);
     const { uploadFiles } = useMediaUpload();
+
+    // Evitar problemas de hidratación con @dnd-kit
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
 
     // Configuración de sensores
     const sensors = useSensors(
@@ -920,6 +926,28 @@ export function ContentBlocksEditor({
                         <span>Agregar Componente</span>
                     </ZenButton>
                 </div>
+            ) : !isHydrated ? (
+                // Renderizar versión estática durante la hidratación (sin DndContext pero con SortableContext para evitar errores)
+                <SortableContext
+                    items={blocks.map(block => block.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <div className="space-y-4">
+                        {blocks.map((block) => (
+                            <SortableBlock
+                                key={block.id}
+                                block={block}
+                                onUpdate={handleUpdateBlock}
+                                onDelete={requestDeleteBlock}
+                                onDuplicate={handleDuplicateBlock}
+                                studioSlug={studioSlug}
+                                isUploading={uploadingBlocks.has(block.id)}
+                                isDeleting={deletingBlocks.has(block.id)}
+                                onDropFiles={handleDropFiles}
+                            />
+                        ))}
+                    </div>
+                </SortableContext>
             ) : (
                 <DndContext
                     sensors={sensors}
@@ -1459,12 +1487,14 @@ function SortableBlock({
                     e.stopPropagation();
                 }
             }}
+            suppressHydrationWarning
         >
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2">
                     <div
                         {...attributes}
                         {...listeners}
+                        suppressHydrationWarning
                         className="cursor-grab hover:cursor-grabbing text-zinc-400 hover:text-zinc-300"
                         onMouseDown={(e) => {
                             // Solo permitir drag si NO es el botón de eliminar o duplicar
@@ -1474,6 +1504,7 @@ function SortableBlock({
                             }
                         }}
                         data-sortable-handle={block.id}
+                        suppressHydrationWarning
                     >
                         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
