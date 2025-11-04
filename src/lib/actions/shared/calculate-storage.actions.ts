@@ -90,31 +90,21 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
 
         console.log('🔍 calculateStorageCompleto: Total portfolios bytes:', totalPortfoliosBytes);
 
-        // Obtener covers de paquetes (necesitamos obtener el tamaño desde las URLs)
+        // Obtener covers de paquetes con su tamaño almacenado
         const paquetes = await prisma.studio_paquetes.findMany({
             where: { studio_id: studio.id },
-            select: { cover_url: true },
+            select: { cover_storage_bytes: true },
         });
 
-        // Calcular tamaño de covers de paquetes (hacer HEAD requests para obtener Content-Length)
-        let totalPaquetesBytes = 0;
-        const coverSizePromises = paquetes
-            .filter(p => p.cover_url)
-            .map(async (paquete) => {
-                try {
-                    const response = await fetch(paquete.cover_url!, { method: 'HEAD' });
-                    const contentLength = response.headers.get('content-length');
-                    return contentLength ? parseInt(contentLength, 10) : 0;
-                } catch (error) {
-                    console.warn('Error obteniendo tamaño de cover:', paquete.cover_url, error);
-                    return 0;
-                }
-            });
+        // Calcular tamaño de covers de paquetes desde la DB
+        const totalPaquetesBytes = paquetes.reduce(
+            (sum: number, paquete: { cover_storage_bytes: bigint | null }) => {
+                return sum + (paquete.cover_storage_bytes ? Number(paquete.cover_storage_bytes) : 0);
+            },
+            0
+        );
 
-        const coverSizes = await Promise.all(coverSizePromises);
-        totalPaquetesBytes = coverSizes.reduce((sum, size) => sum + size, 0);
-
-        console.log('🔍 calculateStorageCompleto: Paquetes con cover:', paquetes.filter(p => p.cover_url).length);
+        console.log('🔍 calculateStorageCompleto: Paquetes con cover:', paquetes.filter(p => p.cover_storage_bytes).length);
         console.log('🔍 calculateStorageCompleto: Total paquetes bytes:', totalPaquetesBytes);
 
         // Agrupar por sección

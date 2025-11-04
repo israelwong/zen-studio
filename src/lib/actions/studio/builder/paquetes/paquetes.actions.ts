@@ -100,6 +100,7 @@ export async function crearPaquete(
             name: string;
             description?: string;
             cover_url?: string | null;
+            cover_storage_bytes?: bigint | null;
             cost?: number;
             expense?: number;
             utilidad?: number;
@@ -177,6 +178,7 @@ export async function crearPaquete(
                 name: paqueteData.name,
                 description: paqueteData.description,
                 cover_url: paqueteData.cover_url || null,
+                cover_storage_bytes: paqueteData.cover_storage_bytes || null,
                 cost: paqueteData.cost,
                 expense: paqueteData.expense,
                 utilidad: paqueteData.utilidad,
@@ -262,6 +264,7 @@ export async function actualizarPaquete(
             name?: string;
             description?: string;
             cover_url?: string | null;
+            cover_storage_bytes?: bigint | null;
             cost?: number;
             expense?: number;
             utilidad?: number;
@@ -403,6 +406,7 @@ export async function actualizarPaquete(
             name?: string;
             description?: string | null;
             cover_url?: string | null;
+            cover_storage_bytes?: bigint | null;
             cost?: number | null;
             expense?: number | null;
             utilidad?: number | null;
@@ -421,6 +425,7 @@ export async function actualizarPaquete(
         if (paqueteData.name) updateData.name = paqueteData.name;
         if (paqueteData.description !== undefined) updateData.description = paqueteData.description;
         if (paqueteData.cover_url !== undefined) updateData.cover_url = paqueteData.cover_url;
+        if (paqueteData.cover_storage_bytes !== undefined) updateData.cover_storage_bytes = paqueteData.cover_storage_bytes;
         if (typeof paqueteData.cost === "number") updateData.cost = paqueteData.cost;
         if (typeof paqueteData.expense === "number") updateData.expense = paqueteData.expense;
         if (typeof paqueteData.utilidad === "number") updateData.utilidad = paqueteData.utilidad;

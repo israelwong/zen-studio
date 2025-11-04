@@ -1071,6 +1071,7 @@ model studio_paquetes {
   order         Int                    @default(0)
   description   String?
   cover_url     String?
+  cover_storage_bytes BigInt?
   is_featured   Boolean                @default(false)
   paquete_items studio_paquete_items[]
   event_types   studio_event_types     @relation(fields: [event_type_id], references: [id])

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, List, Star, CheckCircle, XCircle, Eye, EyeOff } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, List, Star, CheckCircle, XCircle, Eye, EyeOff, HardDrive } from "lucide-react";
 import {
     DndContext,
     closestCenter,
@@ -1143,6 +1143,18 @@ export function PaquetesTipoEventoList({
         const hasCover = !!coverUrl && typeof coverUrl === 'string' && coverUrl.trim() !== '';
         const videoRef = useRef<HTMLVideoElement>(null);
 
+        // Obtener tamaño del archivo desde la DB (cover_storage_bytes)
+        const fileSize = paquete.cover_storage_bytes ? Number(paquete.cover_storage_bytes) : null;
+
+        // Función para formatear bytes
+        const formatBytes = (bytes: number): string => {
+            if (bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+        };
+
         // Función robusta para detectar si es video (incluso con query strings)
         const isVideo = hasCover && (() => {
             if (!coverUrl) return false;
@@ -1372,6 +1384,14 @@ export function PaquetesTipoEventoList({
                             <div className="text-sm text-white leading-tight mt-1">
                                 {paquete.name}
                             </div>
+                            {fileSize !== null && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                    <HardDrive className="h-3 w-3 text-zinc-400" />
+                                    <span className="text-xs text-zinc-400">
+                                        {formatBytes(fileSize)}
+                                    </span>
+                                </div>
+                            )}
                         </div>
                     </button>
                 </div>

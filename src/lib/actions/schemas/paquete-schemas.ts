@@ -63,6 +63,7 @@ export type PaqueteFromDB = {
     name: string;
     description?: string | null;
     cover_url?: string | null;
+    cover_storage_bytes?: bigint | null;
     is_featured?: boolean;
     cost?: number | null;
     expense?: number | null;

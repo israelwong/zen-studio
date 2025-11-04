@@ -53,6 +53,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         file_type: string;
         filename: string;
         thumbnail_url?: string;
+        file_size?: number;
     }>>([]);
 
     // Guardar cover original para comparar cambios
@@ -539,6 +540,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 name: nombre,
                 description: descripcion,
                 cover_url: coverMedia[0]?.file_url || null,
+                cover_storage_bytes: coverMedia[0]?.file_size ? BigInt(coverMedia[0].file_size) : null,
                 event_type_id: 'temp', // Se manejará automáticamente en la acción
                 precio: calculoPrecio.total,
                 status: isPublished ? 'active' : 'inactive',
@@ -861,7 +863,8 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                                 file_url: newCover.url,
                                                 file_type: isVideo ? 'video' : 'image',
                                                 filename: newCover.fileName,
-                                                thumbnail_url: newCover.url
+                                                thumbnail_url: newCover.url,
+                                                file_size: newCover.size
                                             }]);
                                         }
                                     } catch (error) {
@@ -872,7 +875,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                 onRemoveMedia={async () => {
                                     if (coverMedia[0]?.file_url) {
                                         try {
-                                            await deleteFile(coverMedia[0].file_url, studioSlug);
+                                            await deleteFile(coverMedia[0].file_url, studioSlug, coverMedia[0].file_size);
                                             setCoverMedia([]);
                                         } catch (error) {
                                             console.error('Error deleting cover:', error);
