@@ -194,6 +194,12 @@ export function StorageBadge({
                                     {formatBytes(storageStats.paquetesGlobalBytes ?? 0)}
                                 </span>
                             </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-zinc-400">Contactos</span>
+                                <span className="text-zinc-300 font-medium">
+                                    {formatBytes(storageStats.contactosAvatarsBytes ?? 0)}
+                                </span>
+                            </div>
                         </div>
 
                         {/* Advertencia si está cerca del límite */}

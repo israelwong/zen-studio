@@ -419,6 +419,7 @@ model platform_social_networks {
   is_active              Boolean                  @default(true)
   updated_at             DateTime                 @updatedAt
   studio_social_networks studio_social_networks[]
+  contact_social_networks studio_contacts[]      @relation("ContactSocialNetwork")
 
   @@index([is_active])
   @@index([order])
@@ -1213,11 +1214,12 @@ model studio_contacts {
   studio_id             String
   name                  String
   phone                 String
-  email                 String
+  email                 String?
   address               String?
   avatar_url            String?
-  status                String                         @default("active")
+  status                String                         @default("prospecto")
   acquisition_channel_id String?
+  social_network_id     String?
   referrer_contact_id   String?
   referrer_name         String?
   notes                 String?
@@ -1225,6 +1227,7 @@ model studio_contacts {
   updated_at            DateTime                      @updatedAt
   studio                studios                       @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   acquisition_channel   platform_acquisition_channels? @relation(fields: [acquisition_channel_id], references: [id])
+  social_network        platform_social_networks?     @relation("ContactSocialNetwork", fields: [social_network_id], references: [id])
   referrer_contact      studio_contacts?             @relation("ContactReferrer", fields: [referrer_contact_id], references: [id])
   referred_contacts     studio_contacts[]            @relation("ContactReferrer")
   cotizaciones          studio_cotizaciones[]
@@ -1233,6 +1236,7 @@ model studio_contacts {
   @@index([studio_id, phone])
   @@index([studio_id, status])
   @@index([acquisition_channel_id])
+  @@index([social_network_id])
   @@index([referrer_contact_id])
   @@unique([studio_id, phone])
 }

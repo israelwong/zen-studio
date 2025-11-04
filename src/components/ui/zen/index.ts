@@ -58,6 +58,7 @@ export { ZenConfirmModal } from './overlays/ZenConfirmModal';
 // MODAL COMPONENTS (DISPONIBLES)
 // =============================================================================
 export { ZenTagModal } from './modals/ZenTagModal';
+export { ZenDialog } from './modals/ZenDialog';
 export {
   ZenDropdownMenu,
   ZenDropdownMenuTrigger,
@@ -101,6 +102,7 @@ export type { SeparadorZenProps } from './SeparadorZen';
 // MODAL TYPES (DISPONIBLES)
 // =============================================================================
 export type { ZenTagModalProps } from './modals/ZenTagModal';
+export type { ZenDialogProps } from './modals/ZenDialog';
 
 // =============================================================================
 // COMPONENTES PENDIENTES (comentados hasta implementación)

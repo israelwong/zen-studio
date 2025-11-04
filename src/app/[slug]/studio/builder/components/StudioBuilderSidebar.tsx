@@ -88,11 +88,11 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
             icon: ShoppingCart,
             items: [
                 { id: 'marketing', name: 'Marketing', href: `/marketing`, icon: Users },
-                { id: 'email', name: 'Email Marketing', href: `/business/email`, icon: Mail },
+                { id: 'email', name: 'Email Marketing', href: `/commercial/email`, icon: Mail },
                 { id: 'cotizaciones', name: 'Prospects', href: `/cotizaciones`, icon: File },
-                { id: 'contactos', name: 'Contacts', href: `/contactos`, icon: ContactRound },
-                { id: 'scheduling', name: 'Scheduling', href: `/agendamientos`, icon: Calendar },
-                { id: 'condiciones-comerciales', name: 'Terms', href: `/business/condiciones-comerciales`, icon: FileSignature },
+                { id: 'contactos', name: 'Contacts', href: `/commercial/contacts`, icon: ContactRound },
+                { id: 'scheduling', name: 'Scheduling', href: `/commercial/agendamiento`, icon: Calendar },
+                { id: 'condiciones-comerciales', name: 'Terms', href: `/commercial/condiciones-comerciales`, icon: FileSignature },
             ],
         },
 

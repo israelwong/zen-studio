@@ -13,6 +13,7 @@ export interface ZenSelectProps {
     value: string;
     onValueChange: (value: string) => void;
     options: readonly ZenSelectOption[] | ZenSelectOption[];
+    label?: string;
     placeholder?: string;
     error?: string;
     disabled?: boolean;
@@ -24,6 +25,7 @@ export function ZenSelect({
     value,
     onValueChange,
     options,
+    label,
     placeholder = "Selecciona una opción",
     error,
     disabled = false,
@@ -34,7 +36,7 @@ export function ZenSelect({
     const [searchTerm, setSearchTerm] = React.useState('');
     const containerRef = React.useRef<HTMLDivElement>(null);
 
-    const filteredOptions = disableSearch 
+    const filteredOptions = disableSearch
         ? [...options]
         : [...options].filter(option =>
             option.label?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -67,7 +69,12 @@ export function ZenSelect({
     }, [isOpen]);
 
     return (
-        <div className="relative" ref={containerRef}>
+        <div className="relative space-y-2" ref={containerRef}>
+            {label && (
+                <label className="text-sm font-medium text-zinc-300 block">
+                    {label}
+                </label>
+            )}
             <button
                 type="button"
                 onClick={() => !disabled && setIsOpen(!isOpen)}

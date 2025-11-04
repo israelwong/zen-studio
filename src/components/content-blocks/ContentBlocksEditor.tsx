@@ -1340,8 +1340,8 @@ function SortableBlock({
                                     }
                                 })}
                                 className={`px-2 py-1 text-xs rounded transition-colors ${style === sepStyle
-                                        ? 'bg-emerald-500/20 text-emerald-400'
-                                        : 'text-zinc-500 hover:text-zinc-300'
+                                    ? 'bg-emerald-500/20 text-emerald-400'
+                                    : 'text-zinc-500 hover:text-zinc-300'
                                     }`}
                             >
                                 {sepStyle === 'space' ? 'Espacio' : sepStyle === 'solid' ? 'Línea' : 'Puntos'}

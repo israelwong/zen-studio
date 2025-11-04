@@ -1,6 +1,18 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAdmin = supabaseUrl && supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  })
+  : null;
+
+const BUCKET_NAME = 'Studio';
 
 export interface StorageBreakdown {
     sectionId: string;
@@ -21,6 +33,7 @@ export interface StorageStats {
     postsGlobalBytes: number;
     portfoliosGlobalBytes: number;
     paquetesGlobalBytes: number;
+    contactosAvatarsBytes: number;
 }
 
 /**
@@ -107,6 +120,71 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
         console.log('🔍 calculateStorageCompleto: Paquetes con cover:', paquetes.filter(p => p.cover_storage_bytes).length);
         console.log('🔍 calculateStorageCompleto: Total paquetes bytes:', totalPaquetesBytes);
 
+        // Calcular storage de avatares de contactos desde Supabase Storage
+        let totalContactosAvatarsBytes = 0;
+        if (supabaseAdmin) {
+            try {
+                const studioSlugData = await prisma.studios.findUnique({
+                    where: { id: studio.id },
+                    select: { slug: true }
+                });
+
+                if (studioSlugData?.slug) {
+                    const contactosAvatarsPath = `studios/${studioSlugData.slug}/clientes/contactos-avatars`;
+                    
+                    // Listar archivos recursivamente
+                    const listFilesRecursive = async (path: string): Promise<number> => {
+                        let totalBytes = 0;
+                        const { data: files, error } = await supabaseAdmin.storage
+                            .from(BUCKET_NAME)
+                            .list(path, {
+                                limit: 1000,
+                                offset: 0,
+                                sortBy: { column: 'name', order: 'asc' }
+                            });
+
+                        if (error) {
+                            console.warn(`Error listando ${path}:`, error.message);
+                            return 0;
+                        }
+
+                        if (files) {
+                            for (const file of files) {
+                                // Si es una carpeta, listar recursivamente
+                                if (!file.id) {
+                                    const subPath = path ? `${path}/${file.name}` : file.name;
+                                    totalBytes += await listFilesRecursive(subPath);
+                                } else {
+                                    // Es un archivo, obtener su tamaño
+                                    const filePath = path ? `${path}/${file.name}` : file.name;
+                                    const { data: fileInfo } = await supabaseAdmin.storage
+                                        .from(BUCKET_NAME)
+                                        .list(filePath, {
+                                            limit: 1
+                                        });
+                                    
+                                    if (fileInfo && fileInfo[0]?.metadata?.size) {
+                                        totalBytes += parseInt(fileInfo[0].metadata.size, 10);
+                                    } else if (file.metadata?.size) {
+                                        totalBytes += parseInt(file.metadata.size, 10);
+                                    }
+                                }
+                            }
+                        }
+
+                        return totalBytes;
+                    };
+
+                    totalContactosAvatarsBytes = await listFilesRecursive(contactosAvatarsPath);
+                }
+            } catch (error) {
+                console.error('Error calculando storage de avatares de contactos:', error);
+                // No fallar el cálculo completo si hay error aquí
+            }
+        }
+
+        console.log('🔍 calculateStorageCompleto: Total contactos avatars bytes:', totalContactosAvatarsBytes);
+
         // Agrupar por sección
         const sectionMap = new Map<string, StorageBreakdown>();
         let totalCategoryBytes = 0;
@@ -158,7 +236,7 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
         }
 
         const sections = Array.from(sectionMap.values());
-        const totalBytes = totalCategoryBytes + totalItemBytes + totalPostsBytes + totalPortfoliosBytes + totalPaquetesBytes;
+        const totalBytes = totalCategoryBytes + totalItemBytes + totalPostsBytes + totalPortfoliosBytes + totalPaquetesBytes + totalContactosAvatarsBytes;
 
         // Actualizar studio_storage_usage
         await prisma.studio_storage_usage.upsert({
@@ -194,6 +272,7 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
                 postsGlobalBytes: totalPostsBytes,
                 portfoliosGlobalBytes: totalPortfoliosBytes,
                 paquetesGlobalBytes: totalPaquetesBytes,
+                contactosAvatarsBytes: totalContactosAvatarsBytes,
             },
         };
     } catch (error) {
