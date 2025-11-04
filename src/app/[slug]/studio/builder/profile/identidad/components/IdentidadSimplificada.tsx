@@ -8,6 +8,7 @@ import { IdentidadData } from '../types';
 import { AvatarManager } from '@/components/shared/avatar';
 import { actualizarIdentidadCompleta } from '@/lib/actions/studio/builder/identidad';
 import { actualizarContacto } from '@/lib/actions/studio/builder/contacto';
+import { useLogoRefresh } from '@/hooks/useLogoRefresh';
 import { toast } from 'sonner';
 
 interface IdentidadSimplificadaProps {
@@ -31,6 +32,7 @@ export function IdentidadSimplificada({
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [showPalabrasModal, setShowPalabrasModal] = useState(false);
     const [nuevaPalabra, setNuevaPalabra] = useState('');
+    const { triggerRefresh } = useLogoRefresh();
 
     const handleInputChange = (field: keyof IdentidadData, value: string) => {
         onLocalUpdate({ [field]: value });
@@ -115,6 +117,8 @@ export function IdentidadSimplificada({
                                 url={data.logo_url}
                                 onUpdate={async (url: string) => {
                                     await onLogoUpdate(url);
+                                    // Disparar evento para actualizar logo en otros componentes
+                                    triggerRefresh();
                                 }}
                                 onLocalUpdate={(url: string | null) => {
                                     onLogoLocalUpdate(url);
