@@ -11,19 +11,19 @@ import { toast } from 'sonner';
 import { actualizarPerfil } from '@/lib/actions/studio/config/perfil.actions';
 import { PerfilSchema, type PerfilForm as PerfilFormType } from '@/lib/actions/schemas/perfil-schemas';
 import { PerfilData } from '../types';
-import { AvatarManagerZen } from './AvatarManagerZen';
+import { AvatarManager } from '@/components/shared/avatar';
 
-interface PerfilFormSimpleProps {
+interface PerfilFormProps {
     studioSlug: string;
     perfil: PerfilData;
     onPerfilUpdate: (perfil: PerfilData) => void;
 }
 
-export function PerfilFormSimple({
+export function PerfilForm({
     studioSlug,
     perfil,
     onPerfilUpdate
-}: PerfilFormSimpleProps) {
+}: PerfilFormProps) {
     const [loading, setLoading] = useState(false);
     const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(perfil.avatarUrl || null);
 
@@ -135,12 +135,24 @@ export function PerfilFormSimple({
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         {/* Columna 1: Avatar */}
                         <div className="flex items-center justify-center min-h-full">
-                            <AvatarManagerZen
+                            <AvatarManager
                                 url={localAvatarUrl}
                                 onUpdate={handleAvatarUpdate}
                                 onLocalUpdate={handleAvatarLocalUpdate}
                                 studioSlug={studioSlug}
+                                category="identidad"
+                                subcategory="avatars"
+                                size="lg"
                                 loading={loading}
+                                cropTitle="Ajustar foto de perfil"
+                                cropDescription="Arrastra y redimensiona el área circular para ajustar tu foto de perfil."
+                                cropInstructions={[
+                                    "• Arrastra para mover el área de recorte",
+                                    "• Usa las esquinas para redimensionar",
+                                    "• El área circular será tu foto de perfil"
+                                ]}
+                                successMessage="¡Perfecto! Tu foto de perfil se ha actualizado correctamente"
+                                deleteMessage="Tu foto de perfil se ha eliminado"
                             />
                         </div>
 
@@ -204,3 +216,4 @@ export function PerfilFormSimple({
         </Card>
     );
 }
+

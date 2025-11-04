@@ -1,54 +1,72 @@
 "use client";
 
 import React, { useState, useRef, useCallback } from "react";
-// import Image from "next/image";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/shadcn/dialog";
 import { ZenButton } from "@/components/ui/zen";
 import ReactCrop, { Crop, centerCrop, makeAspectCrop } from "react-image-crop";
 import { RotateCcw } from "lucide-react";
 import "react-image-crop/dist/ReactCrop.css";
 
-interface AvatarCropData {
+export interface ImageCropData {
   x: number;
   y: number;
   scale: number;
   rotation: number;
 }
 
-interface AvatarCropModalProps {
+export interface ImageCropModalProps {
   isOpen: boolean;
   onClose: () => void;
   imageUrl: string;
-  onCrop: (cropData: AvatarCropData, croppedImageUrl: string) => void;
-  initialCrop?: AvatarCropData;
+  onCrop: (cropData: ImageCropData, croppedImageUrl: string) => void;
+  initialCrop?: ImageCropData;
+  // Configuración opcional
+  title?: string;
+  description?: string;
+  initialCropSize?: number; // Porcentaje inicial del crop (default: 75)
+  outputSize?: number; // Tamaño de salida en píxeles (default: 192)
+  aspectRatio?: number; // Ratio de aspecto (default: 1 para cuadrado)
+  circularCrop?: boolean; // Si es crop circular (default: true)
+  instructions?: string[]; // Instrucciones personalizadas
 }
 
-export function AvatarCropModal({
+export function ImageCropModal({
   isOpen,
   onClose,
   imageUrl,
-  onCrop
-}: AvatarCropModalProps) {
+  onCrop,
+  title = "Ajustar imagen",
+  description = "Arrastra y redimensiona el área para ajustar la imagen.",
+  initialCropSize = 75,
+  outputSize = 192,
+  aspectRatio = 1,
+  circularCrop = true,
+  instructions = [
+    "• Arrastra para mover el área de recorte",
+    "• Usa las esquinas para redimensionar",
+    "• El área seleccionada será tu imagen"
+  ]
+}: ImageCropModalProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const [crop, setCrop] = useState<Crop>({
     unit: "%",
-    width: 75,
-    height: 75,
-    x: 12.5,
-    y: 12.5
+    width: initialCropSize,
+    height: initialCropSize,
+    x: (100 - initialCropSize) / 2,
+    y: (100 - initialCropSize) / 2
   });
 
   const onImageLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
     const { naturalWidth, naturalHeight } = e.currentTarget;
 
-    // Crear un crop centrado y cuadrado
+    // Crear un crop centrado
     const crop = centerCrop(
       makeAspectCrop(
         {
           unit: "%",
-          width: 75,
+          width: initialCropSize,
         },
-        1, // Aspect ratio 1:1 para avatar circular
+        aspectRatio,
         naturalWidth,
         naturalHeight
       ),
@@ -57,9 +75,9 @@ export function AvatarCropModal({
     );
 
     setCrop(crop);
-  }, []);
+  }, [initialCropSize, aspectRatio]);
 
-  // Función corregida para obtener imagen cropeada
+  // Función para obtener imagen cropeada
   const getCroppedImg = useCallback((image: HTMLImageElement, crop: Crop): Promise<Blob | null> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas');
@@ -90,10 +108,10 @@ export function AvatarCropModal({
         cropHeight = crop.height! * scaleY;
       }
 
-      // Avatar cuadrado 192x192
-      const outputSize = 192;
-      canvas.width = outputSize;
-      canvas.height = outputSize;
+      // Tamaño de salida configurable
+      const finalSize = outputSize;
+      canvas.width = finalSize;
+      canvas.height = finalSize;
 
       // Dibujar la imagen cropeada y redimensionada
       ctx.drawImage(
@@ -104,8 +122,8 @@ export function AvatarCropModal({
         cropHeight,
         0,
         0,
-        outputSize,
-        outputSize
+        finalSize,
+        finalSize
       );
 
       // Convertir a blob con calidad alta
@@ -117,7 +135,7 @@ export function AvatarCropModal({
         0.95
       );
     });
-  }, []);
+  }, [outputSize]);
 
   const handleCropComplete = useCallback(async () => {
     if (!imgRef.current || !crop.width || !crop.height) {
@@ -126,32 +144,19 @@ export function AvatarCropModal({
     }
 
     try {
-      console.log('🎯 Aplicando crop:', {
-        crop,
-        naturalSize: {
-          width: imgRef.current.naturalWidth,
-          height: imgRef.current.naturalHeight
-        },
-        displaySize: {
-          width: imgRef.current.width,
-          height: imgRef.current.height
-        }
-      });
-
       const croppedImageBlob = await getCroppedImg(imgRef.current, crop);
 
       if (croppedImageBlob) {
         const croppedUrl = URL.createObjectURL(croppedImageBlob);
 
         // Convertir crop data a nuestro formato
-        const cropData: AvatarCropData = {
+        const cropData: ImageCropData = {
           x: crop.x || 0,
           y: crop.y || 0,
-          scale: (crop.width || 50) / 100,
+          scale: (crop.width || initialCropSize) / 100,
           rotation: 0
         };
 
-        console.log('✅ Crop aplicado exitosamente');
         onCrop(cropData, croppedUrl);
         onClose();
       } else {
@@ -160,7 +165,7 @@ export function AvatarCropModal({
     } catch (error) {
       console.error("❌ Error al procesar el crop:", error);
     }
-  }, [crop, onCrop, onClose, getCroppedImg]);
+  }, [crop, onCrop, onClose, getCroppedImg, initialCropSize]);
 
   const handleReset = () => {
     if (imgRef.current) {
@@ -169,9 +174,9 @@ export function AvatarCropModal({
         makeAspectCrop(
           {
             unit: "%",
-            width: 75,
+            width: initialCropSize,
           },
-          1,
+          aspectRatio,
           naturalWidth,
           naturalHeight
         ),
@@ -187,10 +192,10 @@ export function AvatarCropModal({
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            Ajustar foto de perfil
+            {title}
           </DialogTitle>
           <DialogDescription>
-            Arrastra y redimensiona el área circular para ajustar tu foto de perfil.
+            {description}
           </DialogDescription>
         </DialogHeader>
 
@@ -201,8 +206,8 @@ export function AvatarCropModal({
               <ReactCrop
                 crop={crop}
                 onChange={(_, percentCrop) => setCrop(percentCrop)}
-                aspect={1}
-                circularCrop
+                aspect={aspectRatio}
+                circularCrop={circularCrop}
               >
                 <img
                   ref={imgRef}
@@ -249,12 +254,13 @@ export function AvatarCropModal({
 
           {/* Instrucciones */}
           <div className="text-sm text-muted-foreground text-center">
-            <p>• Arrastra para mover el área de recorte</p>
-            <p>• Usa las esquinas para redimensionar</p>
-            <p>• El área circular será tu foto de perfil</p>
+            {instructions.map((instruction, index) => (
+              <p key={index}>{instruction}</p>
+            ))}
           </div>
         </div>
       </DialogContent>
     </Dialog>
   );
 }
+

@@ -1,4 +1,2 @@
-export { PerfilFormSimple } from './PerfilFormSimple';
+export { PerfilForm } from './PerfilForm';
 export { PerfilSkeleton } from './PerfilSkeleton';
-export { AvatarManagerZen } from './AvatarManagerZen';
-export { AvatarCropModal } from './AvatarCropModal';
