@@ -140,9 +140,9 @@ export async function uploadFileStorage(
 
     console.log(`[Studio] Subiendo archivo: ${BUCKET_NAME}/${filePath}`);
 
-    // Optimizar avatares con menos compresión
+    // Optimizar avatares con menos compresión (solo para JPEG y PNG, no SVG)
     let fileToUpload = file;
-    if (category === 'identidad' && file.type.startsWith('image/')) {
+    if (category === 'identidad' && file.type.startsWith('image/') && file.type !== 'image/svg+xml') {
       try {
         const optimized = await optimizeAvatarImage(file);
         fileToUpload = optimized.optimizedFile;
