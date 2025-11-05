@@ -5,7 +5,7 @@ import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from 
 import { MapPin, Plus, GripVertical, Edit3, Trash2 } from 'lucide-react';
 import { ZonaTrabajo } from '../../types';
 import { ZonaTrabajoModal } from './ZonaTrabajoModal';
-import { crearZonaTrabajo, actualizarZonaTrabajo, eliminarZonaTrabajo, reordenarZonasTrabajo } from '@/lib/actions/studio/builder/contacto';
+import { crearZonaTrabajo, actualizarZonaTrabajo, eliminarZonaTrabajo, reordenarZonasTrabajo } from '@/lib/actions/studio/builder/profile/zonas-trabajo';
 import { toast } from 'sonner';
 import {
     DndContext,
@@ -108,7 +108,7 @@ export function ZonasTrabajoSection({ studioId, zonas: initialZonas, onLocalUpda
         try {
             if (zona.id) {
                 // Actualizar zona existente
-                const result = await actualizarZonaTrabajo(zona.id, { nombre: zona.nombre });
+                const result = await actualizarZonaTrabajo(studioId, zona.id, { nombre: zona.nombre });
                 if (result.success && result.zona) {
                     const updated = zonasTrabajo.map(z => z.id === zona.id ? result.zona : z);
                     setZonasTrabajo(updated);
@@ -140,7 +140,7 @@ export function ZonasTrabajoSection({ studioId, zonas: initialZonas, onLocalUpda
 
     const handleZonaDelete = async (zonaId: string) => {
         try {
-            const result = await eliminarZonaTrabajo(zonaId);
+            const result = await eliminarZonaTrabajo(studioId, zonaId);
             if (result.success) {
                 const updated = zonasTrabajo.filter(z => z.id !== zonaId);
                 setZonasTrabajo(updated);

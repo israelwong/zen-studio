@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { Clock } from 'lucide-react';
 import { Horario } from '../../types';
-import { toggleHorarioEstado, actualizarHorario, inicializarHorariosPorDefecto } from '@/lib/actions/studio/builder/contacto';
+import { toggleHorarioEstado, actualizarHorario, inicializarHorariosPorDefecto } from '@/lib/actions/studio/builder/profile/horarios';
 import { toast } from 'sonner';
 
 interface HorariosSectionProps {
@@ -17,34 +17,58 @@ interface HorariosSectionProps {
 export function HorariosSection({ studioSlug, horarios: initialHorarios, onLocalUpdate, loading = false }: HorariosSectionProps) {
     const [horarios, setHorarios] = useState<Horario[]>(initialHorarios);
     const [loadingHorarios, setLoadingHorarios] = useState(false);
+    const isInitialMount = useRef(true);
+    const hasInitialized = useRef(false);
 
-    // Sync with parent data
+    // Sync with parent data (only if data actually changed)
     useEffect(() => {
-        setHorarios(initialHorarios);
-    }, [initialHorarios]);
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
 
-    // Initialize with defaults if empty (only once on mount)
+        // Only update if data actually changed (deep comparison)
+        const hasChanged = JSON.stringify(horarios) !== JSON.stringify(initialHorarios);
+        if (hasChanged) {
+            setHorarios(initialHorarios);
+        }
+    }, [initialHorarios]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Initialize with defaults if empty (only after loading completes, and only once)
     useEffect(() => {
         const initIfEmpty = async () => {
-            if (initialHorarios.length === 0) {
+            // Solo inicializar si:
+            // 1. Ya terminó la carga
+            // 2. No hay horarios
+            // 3. No se ha inicializado antes
+            if (!loading && initialHorarios.length === 0 && !hasInitialized.current) {
+                hasInitialized.current = true;
                 setLoadingHorarios(true);
                 try {
-                    await inicializarHorariosPorDefecto(studioSlug);
-                    toast.success('Horarios inicializados. Recarga la página.');
+                    const wasInitialized = await inicializarHorariosPorDefecto(studioSlug);
+                    // Solo mostrar toast si realmente se inicializaron horarios
+                    if (wasInitialized) {
+                        toast.success('Horarios inicializados. Recarga la página.');
+                    }
                 } catch (error) {
                     console.error('Error initializing horarios:', error);
                     toast.error('Error al inicializar horarios');
+                    hasInitialized.current = false; // Permitir reintentar si falla
                 } finally {
                     setLoadingHorarios(false);
                 }
             }
         };
         initIfEmpty();
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [loading, initialHorarios.length, studioSlug]);
 
     const handleHorarioUpdate = async (id: string, field: 'start_time' | 'end_time', value: string) => {
         const horario = horarios.find(h => h.id === id);
-        if (!horario) return;
+        if (!horario || !horario.id) return;
+
+        // Validar que el valor realmente cambió
+        const currentValue = field === 'start_time' ? horario.apertura : horario.cierre;
+        if (currentValue === value) return;
 
         try {
             // Actualizar optimísticamente
@@ -52,8 +76,8 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios, onLocal
                 h.id === id
                     ? {
                         ...h,
-                        apertura: field === 'start_time' ? value : h.apertura,
-                        cierre: field === 'end_time' ? value : h.cierre
+                        apertura: field === 'start_time' ? value : (h.apertura || ''),
+                        cierre: field === 'end_time' ? value : (h.cierre || '')
                     }
                     : h
             );
@@ -61,14 +85,14 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios, onLocal
             onLocalUpdate({ horarios: updated });
 
             // Llamar Server Action
-            await actualizarHorario(id, {
-                id,
+            await actualizarHorario(studioSlug, id, {
+                id: id,
                 studio_slug: studioSlug,
-                day_of_week: horario.dia,
-                start_time: field === 'start_time' ? value : horario.apertura,
-                end_time: field === 'end_time' ? value : horario.cierre,
+                day_of_week: horario.dia as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
+                start_time: field === 'start_time' ? value : (horario.apertura || '09:00'),
+                end_time: field === 'end_time' ? value : (horario.cierre || '18:00'),
                 is_active: !horario.cerrado,
-                order: horario.order || 0
+                order: 0
             });
 
             toast.success('Horario actualizado exitosamente');
@@ -83,7 +107,10 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios, onLocal
     const handleHorarioToggle = async (id: string, cerrado: boolean) => {
         try {
             const horario = horarios.find(h => h.id === id);
-            if (!horario) return;
+            if (!horario || !horario.id) return;
+
+            // Validar que el estado realmente cambió
+            if (horario.cerrado === cerrado) return;
 
             // Actualizar optimísticamente
             const updated = horarios.map(h =>
@@ -93,8 +120,8 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios, onLocal
             onLocalUpdate({ horarios: updated });
 
             // Llamar Server Action
-            await toggleHorarioEstado(id, {
-                id,
+            await toggleHorarioEstado(studioSlug, id, {
+                id: horario.id,
                 studio_slug: studioSlug,
                 is_active: !cerrado
             });

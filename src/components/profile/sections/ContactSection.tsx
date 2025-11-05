@@ -178,11 +178,11 @@ export function ContactSection({ studio, contactInfo }: InfoViewProps) {
         <div className="px-4 space-y-6">
 
             {/* Business Description */}
-            {studio.description && (
+            {studio.presentation && (
                 <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Descripción del negocio</h3>
+                    <h3 className="text-sm font-medium text-zinc-500">Presentación del negocio</h3>
                     <p className="text-zinc-300 leading-relaxed">
-                        {studio.description.charAt(0).toUpperCase() + studio.description.slice(1)}
+                        {studio.presentation.charAt(0).toUpperCase() + studio.presentation.slice(1)}
                     </p>
                 </div>
             )}

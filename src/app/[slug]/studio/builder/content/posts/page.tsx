@@ -10,7 +10,7 @@ import { SectionLayout } from "../../components";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { FileText } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import { getStudioPostsBySlug } from '@/lib/actions/studio/builder/posts';
 import { BuilderProfileData } from '@/types/builder-profile';
 import { StudioPost } from "@/types/studio-posts";
@@ -29,7 +29,7 @@ export default function PostsPage() {
 
                 // Cargar datos del builder y posts en paralelo
                 const [builderResult, postsResult] = await Promise.all([
-                    getBuilderProfileData(studioSlug),
+                    getBuilderData(studioSlug),
                     getStudioPostsBySlug(studioSlug, { is_published: true }) // Solo posts publicados para preview
                 ]);
 

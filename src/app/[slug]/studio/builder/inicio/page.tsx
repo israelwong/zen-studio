@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { InicioEditorZen } from './components/InicioEditorZen';
 import { SectionLayout } from '../components';
 import { useParams } from 'next/navigation';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import { InicioData } from './types';
 import { BuilderProfileData } from '@/types/builder-profile';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
@@ -23,7 +23,7 @@ export default function InicioPage() {
         const loadBuilderData = async () => {
             try {
                 setLoading(true);
-                const result = await getBuilderProfileData(studioSlug);
+                const result = await getBuilderData(studioSlug);
 
                 if (result.success && result.data) {
                     setBuilderData(result.data);
@@ -32,7 +32,7 @@ export default function InicioPage() {
                     const transformedData: InicioData = {
                         studio: {
                             studio_name: result.data.studio.studio_name,
-                            description: result.data.studio.description,
+                            presentation: result.data.studio.presentation,
                             slogan: result.data.studio.slogan,
                             logo_url: result.data.studio.logo_url,
                             website: result.data.studio.website,

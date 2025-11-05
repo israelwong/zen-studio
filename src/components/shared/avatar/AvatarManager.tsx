@@ -93,6 +93,27 @@ export function AvatarManager({
             return;
         }
 
+        // SVG no necesita crop, subir directamente
+        if (file.type === 'image/svg+xml') {
+            try {
+                const result = await uploadFile(file);
+                if (result.success && result.publicUrl) {
+                    if (onLocalUpdate) {
+                        onLocalUpdate(result.publicUrl);
+                    }
+                    await onUpdate(result.publicUrl);
+                    toast.success(successMessage);
+                } else {
+                    toast.error(result.error || 'No pudimos subir la imagen. Inténtalo de nuevo.');
+                }
+            } catch (error) {
+                console.error('Error al subir SVG:', error);
+                toast.error('Error al procesar la imagen');
+            }
+            return;
+        }
+
+        // JPG y PNG pasan por el modal de crop
         setCropImageUrl(URL.createObjectURL(file));
         setShowCropModal(true);
     };
@@ -204,7 +225,7 @@ export function AvatarManager({
                         {!isDeleting && (
                             <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-20 pointer-events-none ${variant === 'compact' ? 'gap-1.5' : 'gap-2'}`}>
                                 {/* Botón Ajustar - Solo si showAdjustButton es true */}
-                                {showAdjustButton && (
+                                {showAdjustButton && url && !url.toLowerCase().endsWith('.svg') && (
                                     <button
                                         type="button"
                                         onClick={(e) => {
@@ -251,7 +272,8 @@ export function AvatarManager({
                         onFileSelect={handleFileSelect}
                         acceptedFileTypes={{
                             'image/jpeg': ['.jpg', '.jpeg'],
-                            'image/png': ['.png']
+                            'image/png': ['.png'],
+                            'image/svg+xml': ['.svg']
                         }}
                         maxSize={10}
                         maxFiles={1}
@@ -274,7 +296,7 @@ export function AvatarManager({
                                                 Subir Avatar
                                             </h3>
                                             <p className="text-zinc-400 text-xs">
-                                                JPG, PNG hasta 10MB
+                                                PNG, JPG, SVG hasta 10MB
                                             </p>
                                         </>
                                     )}

@@ -6,7 +6,7 @@ import { MobilePreviewFull } from "../../../components/MobilePreviewFull";
 import { ContentBlocksEditor } from "@/components/content-blocks";
 import { ContentBlock } from "@/types/content-blocks";
 import { CategorizedComponentSelector, ComponentOption } from "./CategorizedComponentSelector";
-import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
+import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/profile/identidad";
 import {
     getStudioPortfoliosBySlug,
     createStudioPortfolioFromSlug,

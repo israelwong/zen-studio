@@ -13,7 +13,7 @@ export interface PublicZonaTrabajo {
 export interface PublicStudioProfile {
     id: string;
     studio_name: string;
-    description: string | null;
+    presentation: string | null;
     keywords: string | null;
     logo_url: string | null;
     slogan: string | null;

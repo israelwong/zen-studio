@@ -15,12 +15,8 @@ import {
 // Crear nuevo horario
 export async function crearHorario(studioSlug: string, data: HorarioCreateForm) {
     try {
-        console.log('➕ [crearHorario] Creando horario para studio:', studioSlug, 'con datos:', data);
-
-        // Validar datos
         const validatedData = HorarioCreateSchema.parse(data);
 
-        // Obtener studio
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: { id: true },
@@ -30,7 +26,6 @@ export async function crearHorario(studioSlug: string, data: HorarioCreateForm) 
             throw new Error("Studio no encontrado");
         }
 
-        // Crear horario usando el nuevo schema
         const horario = await retryDatabaseOperation(async () => {
             return await prisma.studio_business_hours.create({
                 data: {
@@ -54,27 +49,19 @@ export async function crearHorario(studioSlug: string, data: HorarioCreateForm) 
             });
         });
 
-        console.log('✅ [crearHorario] Horario creado:', horario);
-
-        // Revalidar cache
-        revalidatePath(`/studio/${studioSlug}/configuracion/studio/horarios`);
-
+        revalidatePath(`/studio/${studioSlug}/builder/profile/horarios`);
         return horario;
     } catch (error) {
-        console.error('❌ [crearHorario] Error:', error);
+        console.error('Error creando horario:', error);
         throw new Error("Error al crear el horario");
     }
 }
 
 // Actualizar horario
-export async function actualizarHorario(id: string, data: HorarioUpdateForm) {
+export async function actualizarHorario(studioSlug: string, id: string, data: HorarioUpdateForm) {
     try {
-        console.log('✏️ [actualizarHorario] Actualizando horario:', id, 'con datos:', data);
-
-        // Validar datos
         const validatedData = HorarioUpdateSchema.parse(data);
 
-        // Actualizar horario usando el nuevo schema
         const horario = await retryDatabaseOperation(async () => {
             return await prisma.studio_business_hours.update({
                 where: { id },
@@ -98,27 +85,19 @@ export async function actualizarHorario(id: string, data: HorarioUpdateForm) {
             });
         });
 
-        console.log('✅ [actualizarHorario] Horario actualizado:', horario);
-
-        // Revalidar cache
-        revalidatePath(`/studio/${data.studio_slug}/configuracion/studio/horarios`);
-
+        revalidatePath(`/studio/${studioSlug}/builder/profile/horarios`);
         return horario;
     } catch (error) {
-        console.error('❌ [actualizarHorario] Error:', error);
+        console.error('Error actualizando horario:', error);
         throw new Error("Error al actualizar el horario");
     }
 }
 
 // Toggle estado del horario
-export async function toggleHorarioEstado(id: string, data: HorarioToggleForm) {
+export async function toggleHorarioEstado(studioSlug: string, id: string, data: HorarioToggleForm) {
     try {
-        console.log('🔄 [toggleHorarioEstado] Toggle horario:', id, 'activo:', data.is_active);
-
-        // Validar datos
         const validatedData = HorarioToggleSchema.parse(data);
 
-        // Actualizar estado usando el nuevo schema
         const horario = await retryDatabaseOperation(async () => {
             return await prisma.studio_business_hours.update({
                 where: { id },
@@ -138,24 +117,17 @@ export async function toggleHorarioEstado(id: string, data: HorarioToggleForm) {
             });
         });
 
-        console.log('✅ [toggleHorarioEstado] Estado actualizado:', horario);
-
-        // Revalidar cache
-        revalidatePath(`/studio/${data.studio_slug}/configuracion/studio/horarios`);
-
+        revalidatePath(`/studio/${studioSlug}/builder/profile/horarios`);
         return horario;
     } catch (error) {
-        console.error('❌ [toggleHorarioEstado] Error:', error);
+        console.error('Error cambiando estado del horario:', error);
         throw new Error("Error al cambiar el estado del horario");
     }
 }
 
 // Inicializar horarios por defecto
-export async function inicializarHorariosPorDefecto(studioSlug: string) {
+export async function inicializarHorariosPorDefecto(studioSlug: string): Promise<boolean> {
     try {
-        console.log('🚀 [inicializarHorariosPorDefecto] Inicializando horarios para studio:', studioSlug);
-
-        // Obtener studio
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: { id: true },
@@ -165,17 +137,15 @@ export async function inicializarHorariosPorDefecto(studioSlug: string) {
             throw new Error("Studio no encontrado");
         }
 
-        // Verificar si ya existen horarios
         const existingHorarios = await prisma.studio_business_hours.count({
             where: { studio_id: studio.id },
         });
 
+        // Si ya hay horarios, retornar false para indicar que no se inicializaron
         if (existingHorarios > 0) {
-            console.log('ℹ️ [inicializarHorariosPorDefecto] Ya existen horarios, saltando inicialización');
-            return;
+            return false;
         }
 
-        // Crear horarios por defecto
         const diasSemana = [
             { day: 'monday', name: 'Lunes' },
             { day: 'tuesday', name: 'Martes' },
@@ -191,7 +161,7 @@ export async function inicializarHorariosPorDefecto(studioSlug: string) {
             day_of_week: dia.day,
             start_time: '09:00',
             end_time: '18:00',
-            is_active: index < 5, // Lunes a Viernes activos por defecto
+            is_active: index < 5,
             order: index,
         }));
 
@@ -201,14 +171,11 @@ export async function inicializarHorariosPorDefecto(studioSlug: string) {
             });
         });
 
-        console.log('✅ [inicializarHorariosPorDefecto] Horarios inicializados:', horariosPorDefecto.length);
-
-        // Revalidar cache
-        revalidatePath(`/studio/${studioSlug}/configuracion/studio/horarios`);
-
-        return horariosPorDefecto;
+        revalidatePath(`/studio/${studioSlug}/builder/profile/horarios`);
+        return true; // Retornar true para indicar que se inicializaron horarios
     } catch (error) {
-        console.error('❌ [inicializarHorariosPorDefecto] Error:', error);
+        console.error('Error inicializando horarios por defecto:', error);
         throw new Error("Error al inicializar los horarios por defecto");
     }
 }
+

@@ -6,7 +6,7 @@ import { Star } from "lucide-react";
 import { MobilePreviewFull } from "../../../components/MobilePreviewFull";
 import { ImageGrid } from "@/components/shared/media";
 import { MediaItem } from "@/types/content-blocks";
-import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/identidad.actions";
+import { obtenerIdentidadStudio } from "@/lib/actions/studio/builder/profile/identidad";
 import { getStudioPostsBySlug, createStudioPostBySlug, updateStudioPost } from "@/lib/actions/studio/builder/posts";
 import { PostFormData, MediaItem as PostMediaItem } from "@/lib/actions/schemas/post-schemas";
 import { useTempCuid } from "@/hooks/useTempCuid";

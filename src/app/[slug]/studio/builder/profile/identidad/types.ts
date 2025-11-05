@@ -11,9 +11,7 @@ export interface IdentidadData {
     studio_name: string;
     slug: string;
     slogan: string | null;
-    descripcion: string | null;
-    direccion?: string;
-    google_maps_url?: string;
+    presentacion: string | null;
     palabras_clave: string[];
     logo_url: string | null;
     pagina_web?: string | null;
@@ -23,7 +21,7 @@ export interface IdentidadData {
 export interface IdentidadUpdate {
     nombre: string;
     slogan?: string;
-    descripcion?: string;
+    presentacion?: string;
     palabras_clave?: string;
     logo_url?: string;
     pagina_web?: string;

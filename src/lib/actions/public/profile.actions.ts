@@ -39,7 +39,7 @@ export async function getStudioProfileBySlug(
                 select: {
                     id: true,
                     studio_name: true,
-                    description: true,
+                    presentation: true,
                     keywords: true,
                     logo_url: true,
                     slogan: true,
@@ -161,7 +161,7 @@ export async function getStudioProfileBySlug(
             const studioProfile: PublicStudioProfile = {
                 id: studio.id,
                 studio_name: studio.studio_name,
-                description: studio.description,
+                presentation: studio.presentation,
                 keywords: studio.keywords,
                 logo_url: studio.logo_url,
                 slogan: studio.slogan,

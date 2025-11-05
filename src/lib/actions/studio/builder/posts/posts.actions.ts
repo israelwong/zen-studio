@@ -167,7 +167,7 @@ export async function createStudioPost(studioId: string, data: PostFormData) {
         revalidatePath(`/${post.studio.slug}/studio/builder/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/builder/posts`);
         if (post.is_published) {
-            revalidatePath(`/${post.studio.slug}/p/${post.id}`);
+            revalidatePath(`/${post.studio.slug}/post/${post.id}`);
         }
 
         return { success: true, data: convertedPost };
@@ -397,7 +397,7 @@ export async function updateStudioPost(
         revalidatePath(`/${post.studio.slug}/studio/builder/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/builder/posts`);
         if (post.is_published) {
-            revalidatePath(`/${post.studio.slug}/p/${post.id}`);
+            revalidatePath(`/${post.studio.slug}/post/${post.id}`);
         }
 
         return { success: true, data: convertedPost };
@@ -475,7 +475,7 @@ export async function toggleStudioPostPublish(postId: string) {
         });
 
         revalidatePath(`/${post.studio.slug}/studio/builder/posts`);
-        revalidatePath(`/${post.studio.slug}/p/${postId}`);
+        revalidatePath(`/${post.studio.slug}/post/${postId}`);
 
         return { success: true, data: updatedPost };
     } catch (error) {

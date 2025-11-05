@@ -12,7 +12,7 @@ import {
     Star, Phone, Camera, X, CreditCard, File, User, Grid3X3, Store, Package, Calendar,
     Newspaper, Briefcase, Users, Sparkles, Mail, ImageIcon, FileText, UserCheck,
     ChevronDown, ChevronRight, Share2, HelpCircle, MapPin, Shield,
-    FileSignature, UserCog, DollarSign, ShoppingCart, ContactRound
+    FileSignature, UserCog, DollarSign, ShoppingCart, ContactRound, Navigation
 } from 'lucide-react';
 
 interface StudioBuilderSidebarProps {
@@ -52,6 +52,7 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
                 { id: 'faq', name: 'FAQ', href: `/profile/faq`, icon: HelpCircle },
                 { id: 'telefonos', name: 'Teléfonos', href: `/profile/telefonos`, icon: Phone },
                 { id: 'horarios', name: 'Horarios', href: `/profile/horarios`, icon: Calendar },
+                { id: 'ubicacion', name: 'Ubicación', href: `/profile/ubicacion`, icon: Navigation },
                 { id: 'zonas-trabajo', name: 'Zonas de Trabajo', href: `/profile/zonas-trabajo`, icon: MapPin },
             ],
         },

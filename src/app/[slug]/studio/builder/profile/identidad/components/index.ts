@@ -1,6 +1,4 @@
 export { IdentidadForm } from './IdentidadForm';
-export { HeaderSection } from './HeaderSection';
-export { FooterSection } from './FooterSection';
 
 // Re-exportar componentes compartidos desde profile/components
 export { FAQSection } from '../../faq/components/FAQSection';

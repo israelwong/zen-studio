@@ -6,7 +6,7 @@ import { Users } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { SectionLayout, StorageIndicator } from '../components';
 import { PortalClienteWrapper } from './components';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import type { BuilderProfileData } from '@/types/builder-profile';
 import { toast } from 'sonner';
 
@@ -22,7 +22,7 @@ export default function PortalClientePage() {
         const loadBuilderData = async () => {
             try {
                 setLoading(true);
-                const result = await getBuilderProfileData(studioSlug);
+                const result = await getBuilderData(studioSlug);
 
                 if (result.success && result.data) {
                     setBuilderData(result.data);

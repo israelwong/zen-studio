@@ -73,7 +73,7 @@ export async function generateMetadata({ params }: PublicProfilePageProps): Prom
 
         const { studio } = result.data;
         const title = `${studio.studio_name}${studio.slogan ? ` - ${studio.slogan}` : ''}`;
-        const description = studio.description || `Perfil profesional de ${studio.studio_name}`;
+        const description = studio.presentation || `Perfil profesional de ${studio.studio_name}`;
 
         return {
             title,

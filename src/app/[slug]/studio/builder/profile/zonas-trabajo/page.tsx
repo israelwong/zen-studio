@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { ZonasTrabajoSection } from './components/ZonasTrabajoSection';
 import { SectionLayout } from '../../components';
 import { useParams } from 'next/navigation';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import { BuilderProfileData } from '@/types/builder-profile';
 
 export default function ZonasTrabajoPage() {
@@ -16,7 +16,7 @@ export default function ZonasTrabajoPage() {
     useEffect(() => {
         const loadData = async () => {
             try {
-                const result = await getBuilderProfileData(studioSlug);
+                const result = await getBuilderData(studioSlug);
                 if (result.success && result.data) {
                     setBuilderData(result.data);
                 } else {

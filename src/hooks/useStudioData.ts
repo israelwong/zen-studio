@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/identidad.actions';
-import type { IdentidadData } from '@/app/studio/[slug]/configuracion/cuenta/identidad/types';
+import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/profile/identidad';
+import type { IdentidadData } from '@/app/[slug]/studio/builder/profile/identidad/types';
 
 interface UseStudioDataOptions {
   studioSlug: string;
@@ -26,9 +26,13 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
       const data = await obtenerIdentidadStudio(studioSlug);
       console.log('📊 [STUDIO_DATA] Datos recargados:', data);
 
+      if ('error' in data) {
+        throw new Error(data.error);
+      }
+
       setIdentidadData(data);
       onUpdate?.(data);
-      console.log('✅ [STUDIO_DATA] Datos recargados exitosamente:', { name: data.name });
+      console.log('✅ [STUDIO_DATA] Datos recargados exitosamente:', { name: data.studio_name });
     } catch (err) {
       console.error('❌ [STUDIO_DATA] Error reloading studio data:', err);
       setError('Error al recargar datos del estudio');
@@ -51,9 +55,13 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
         const data = await obtenerIdentidadStudio(studioSlug);
         console.log('📊 [STUDIO_DATA] Datos recibidos:', data);
 
+        if ('error' in data) {
+          throw new Error(data.error);
+        }
+
         setIdentidadData(data);
         onUpdate?.(data);
-        console.log('✅ [STUDIO_DATA] Datos cargados exitosamente:', { name: data.name });
+        console.log('✅ [STUDIO_DATA] Datos cargados exitosamente:', { name: data.studio_name });
       } catch (err) {
         console.error('❌ [STUDIO_DATA] Error loading studio data:', err);
         setError('Error al cargar datos del estudio');
@@ -61,13 +69,12 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
         // Fallback a datos por defecto
         const fallbackData: IdentidadData = {
           id: studioSlug,
-          name: 'Studio',
+          studio_name: 'Studio',
           slug: studioSlug,
           slogan: null,
-          descripcion: null,
+          presentacion: null,
           palabras_clave: [],
-          logoUrl: null,
-          isotipo_url: null
+          logo_url: null
         };
 
         setIdentidadData(fallbackData);

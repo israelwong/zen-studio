@@ -6,7 +6,7 @@ import { MediaItem } from '@/types/content-blocks';
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
-import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/identidad.actions';
+import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/profile/identidad';
 import { Skeleton } from '@/components/ui/shadcn/Skeleton';
 
 // Función para formatear tiempo relativo corto (1h, 2d)

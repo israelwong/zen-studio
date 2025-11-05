@@ -12,7 +12,7 @@ import {
     eliminarFAQ,
     toggleFAQ,
     reordenarFAQ
-} from '@/lib/actions/studio/builder/identidad';
+} from '@/lib/actions/studio/builder/profile/identidad';
 import { toast } from 'sonner';
 import {
     DndContext,
@@ -75,7 +75,7 @@ export function FAQSection({
             try {
                 // Reordenar en backend
                 const faqIds = newOrder.map(faq => faq.id);
-                await reordenarFAQ(faqIds);
+                await reordenarFAQ(studioSlug, faqIds);
                 toast.success("Orden de FAQ actualizado");
 
                 // Actualizar datos locales
@@ -164,7 +164,7 @@ export function FAQSection({
         if (editingFAQ && nuevaPregunta.trim() && nuevaRespuesta.trim()) {
             try {
                 setLoadingFAQ(true);
-                const updatedFAQ = await actualizarFAQ(editingFAQ.id, {
+                const updatedFAQ = await actualizarFAQ(studioSlug, editingFAQ.id, {
                     pregunta: nuevaPregunta.trim(),
                     respuesta: nuevaRespuesta.trim()
                 });
@@ -200,7 +200,7 @@ export function FAQSection({
             onLocalUpdate({ faq: updatedFAQ });
 
             // Eliminar en servidor
-            await eliminarFAQ(faqId);
+            await eliminarFAQ(studioSlug, faqId);
             toast.success('FAQ eliminada correctamente');
         } catch (error) {
             console.error('Error eliminando FAQ:', error);
@@ -242,7 +242,7 @@ export function FAQSection({
                 onLocalUpdate({ faq: updatedFAQ });
 
                 // Llamada al servidor en segundo plano
-                await toggleFAQ(faqId, !faq.is_active);
+                await toggleFAQ(studioSlug, faqId, !faq.is_active);
                 toast.success(`FAQ ${!faq.is_active ? 'activada' : 'desactivada'} correctamente`);
             }
         } catch (error) {

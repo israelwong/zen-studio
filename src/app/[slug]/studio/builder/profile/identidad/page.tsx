@@ -4,8 +4,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { IdentidadForm } from './components/';
 import { SectionLayout } from '../../components';
 import { useParams } from 'next/navigation';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
-import { actualizarLogo } from '@/lib/actions/studio/builder/identidad';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
+import { actualizarLogo } from '@/lib/actions/studio/builder/profile/identidad';
 import { IdentidadData } from './types';
 import { BuilderProfileData, BuilderStudioProfile } from '@/types/builder-profile';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
@@ -21,7 +21,7 @@ export default function IdentidadPage() {
         const loadData = async () => {
             try {
                 // ✅ UNA SOLA CONSULTA - Estrategia homologada con perfil público
-                const result = await getBuilderProfileData(studioSlug);
+                const result = await getBuilderData(studioSlug);
                 if (result.success && result.data) {
                     setBuilderData(result.data);
                 } else {
@@ -48,29 +48,18 @@ export default function IdentidadPage() {
 
             if ('studio_name' in updateData) studioUpdate.studio_name = updateData.studio_name;
             if ('slogan' in updateData) studioUpdate.slogan = updateData.slogan;
-            if ('descripcion' in updateData) studioUpdate.description = updateData.descripcion;
+            if ('presentacion' in updateData) studioUpdate.presentation = updateData.presentacion;
             if ('logo_url' in updateData) studioUpdate.logo_url = updateData.logo_url;
             if ('pagina_web' in updateData) studioUpdate.website = updateData.pagina_web;
-            if ('google_maps_url' in updateData) studioUpdate.maps_url = updateData.google_maps_url;
             if ('palabras_clave' in updateData) {
                 studioUpdate.keywords = Array.isArray(updateData.palabras_clave)
                     ? updateData.palabras_clave.join(', ')
                     : updateData.palabras_clave;
             }
 
-            // Manejar campos de contacto
-            const contactUpdate: Partial<typeof prev.contactInfo> = {};
-            if ('direccion' in updateData) {
-                contactUpdate.address = updateData.direccion || '';
-            }
-
             return {
                 ...prev,
                 studio: { ...prev.studio, ...studioUpdate },
-                contactInfo: {
-                    ...prev.contactInfo,
-                    ...contactUpdate
-                }
             };
         });
     }, []);
@@ -85,16 +74,14 @@ export default function IdentidadPage() {
         });
     }, []);
 
-    // ✅ Mapear datos para preview - Datos esenciales de identidad + información de contacto
+    // ✅ Mapear datos para preview - Datos esenciales de identidad
     const previewData = builderData ? {
         studio_name: builderData.studio.studio_name,
         slogan: builderData.studio.slogan,
         logo_url: builderData.studio.logo_url,
         pagina_web: builderData.studio.website,
         palabras_clave: builderData.studio.keywords,
-        descripcion: builderData.studio.description,
-        direccion: builderData.contactInfo.address,
-        google_maps_url: builderData.studio.maps_url,
+        presentacion: builderData.studio.presentation,
     } : null;
 
     return (
@@ -127,9 +114,7 @@ export default function IdentidadPage() {
                                 studio_name: builderData.studio.studio_name,
                                 slug: studioSlug,
                                 slogan: builderData.studio.slogan,
-                                descripcion: builderData.studio.description,
-                                direccion: builderData.contactInfo.address || '',
-                                google_maps_url: builderData.studio.maps_url || '',
+                                presentacion: builderData.studio.presentation,
                                 palabras_clave: builderData.studio.keywords ? builderData.studio.keywords.split(',').map(k => k.trim()) : [],
                                 logo_url: builderData.studio.logo_url,
                                 pagina_web: builderData.studio.website,
@@ -138,9 +123,7 @@ export default function IdentidadPage() {
                                 studio_name: 'Mi Estudio',
                                 slug: studioSlug,
                                 slogan: null,
-                                descripcion: null,
-                                direccion: '',
-                                google_maps_url: '',
+                                presentacion: null,
                                 palabras_clave: [],
                                 logo_url: null,
                                 pagina_web: null,

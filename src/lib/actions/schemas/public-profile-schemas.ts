@@ -10,7 +10,7 @@ import { z } from 'zod';
 export const PublicStudioProfileSchema = z.object({
     id: z.string(),
     studio_name: z.string(),
-    description: z.string().nullable(),
+    presentation: z.string().nullable(),
     keywords: z.string().nullable(),
     logo_url: z.string().nullable(),
     slogan: z.string().nullable(),

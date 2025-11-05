@@ -102,7 +102,7 @@ export function PostFeedCard({ post }: PostFeedCardProps) {
 
     const processedCaption = hasCaption ? prepareCaption(post.caption!) : null;
 
-    const postDetailUrl = studioSlug ? `/${studioSlug}/p/${post.id}` : '#';
+    const postDetailUrl = studioSlug ? `/${studioSlug}/post/${post.id}` : '#';
 
     return (
         <div className="space-y-3">

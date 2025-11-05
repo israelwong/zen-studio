@@ -23,16 +23,11 @@ export interface TelefonoFormData {
     is_active?: boolean;
 }
 
-/**
- * Crear un nuevo teléfono
- */
 export async function crearTelefono(
     studioSlug: string,
     data: TelefonoFormData
 ) {
     try {
-        console.log('➕ [crearTelefono] Creando teléfono para studio:', studioSlug);
-
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: { id: true }
@@ -42,7 +37,6 @@ export async function crearTelefono(
             throw new Error("Studio no encontrado");
         }
 
-        // Obtener el siguiente orden
         const ultimoTelefono = await prisma.studio_phones.findFirst({
             where: { studio_id: studio.id },
             orderBy: { order: 'desc' }
@@ -61,32 +55,25 @@ export async function crearTelefono(
             }
         });
 
-        revalidatePath(`/studio/${studioSlug}/builder/contacto`);
-        console.log('✅ [crearTelefono] Teléfono creado exitosamente');
+        revalidatePath(`/studio/${studioSlug}/builder/profile/telefonos`);
         return telefono;
     } catch (error) {
-        console.error('❌ [crearTelefono] Error:', error);
+        console.error('Error creando teléfono:', error);
         throw error;
     }
 }
 
-/**
- * Actualizar un teléfono existente
- */
 export async function actualizarTelefono(
+    studioSlug: string,
     telefonoId: string,
     data: Partial<TelefonoFormData>
 ) {
     try {
-        console.log('✏️ [actualizarTelefono] Actualizando teléfono:', telefonoId);
-
-        // Verificar que el teléfono existe antes de actualizarlo
         const telefonoExistente = await prisma.studio_phones.findUnique({
             where: { id: telefonoId }
         });
 
         if (!telefonoExistente) {
-            console.warn('⚠️ [actualizarTelefono] Teléfono no encontrado:', telefonoId);
             throw new Error('Teléfono no encontrado');
         }
 
@@ -100,52 +87,40 @@ export async function actualizarTelefono(
             }
         });
 
-        console.log('✅ [actualizarTelefono] Teléfono actualizado exitosamente');
+        revalidatePath(`/studio/${studioSlug}/builder/profile/telefonos`);
         return telefono;
     } catch (error) {
-        console.error('❌ [actualizarTelefono] Error:', error);
+        console.error('Error actualizando teléfono:', error);
         throw error;
     }
 }
 
-/**
- * Eliminar un teléfono
- */
-export async function eliminarTelefono(telefonoId: string) {
+export async function eliminarTelefono(studioSlug: string, telefonoId: string) {
     try {
-        console.log('🗑️ [eliminarTelefono] Eliminando teléfono:', telefonoId);
-
-        // Verificar que el teléfono existe antes de eliminarlo
         const telefono = await prisma.studio_phones.findUnique({
             where: { id: telefonoId }
         });
 
         if (!telefono) {
-            console.warn('⚠️ [eliminarTelefono] Teléfono no encontrado:', telefonoId);
-            return; // No lanzar error si no existe
+            return;
         }
 
         await prisma.studio_phones.delete({
             where: { id: telefonoId }
         });
 
-        console.log('✅ [eliminarTelefono] Teléfono eliminado exitosamente');
+        revalidatePath(`/studio/${studioSlug}/builder/profile/telefonos`);
     } catch (error) {
-        console.error('❌ [eliminarTelefono] Error:', error);
+        console.error('Error eliminando teléfono:', error);
         throw error;
     }
 }
 
-/**
- * Reordenar teléfonos
- */
 export async function reordenarTelefonos(
     studioSlug: string,
     telefonos: { id: string; order: number }[]
 ) {
     try {
-        console.log('🔄 [reordenarTelefonos] Reordenando teléfonos para studio:', studioSlug);
-
         await retryDatabaseOperation(async () => {
             await prisma.$transaction(
                 telefonos.map(telefono =>
@@ -157,10 +132,10 @@ export async function reordenarTelefonos(
             );
         });
 
-        revalidatePath(`/studio/${studioSlug}/builder/contacto`);
-        console.log('✅ [reordenarTelefonos] Teléfonos reordenados exitosamente');
+        revalidatePath(`/studio/${studioSlug}/builder/profile/telefonos`);
     } catch (error) {
-        console.error('❌ [reordenarTelefonos] Error:', error);
+        console.error('Error reordenando teléfonos:', error);
         throw error;
     }
 }
+

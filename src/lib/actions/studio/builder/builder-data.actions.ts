@@ -9,9 +9,9 @@ import { BuilderProfileData } from "@/types/builder-profile";
  * Single query strategy - same as public profile
  * Fetches all data needed for builder sections
  */
-export async function getBuilderProfileData(studioSlug: string) {
+export async function getBuilderData(studioSlug: string) {
     try {
-        console.log('🔍 [getBuilderProfileData] Fetching builder data for slug:', studioSlug);
+        console.log('🔍 [getBuilderData] Fetching builder data for slug:', studioSlug);
 
         return await retryDatabaseOperation(async () => {
             // Single query to get all builder data (same strategy as public profile)
@@ -23,7 +23,7 @@ export async function getBuilderProfileData(studioSlug: string) {
                 select: {
                     id: true,
                     studio_name: true,
-                    description: true,
+                    presentation: true,
                     keywords: true,
                     logo_url: true,
                     slogan: true,
@@ -155,7 +155,7 @@ export async function getBuilderProfileData(studioSlug: string) {
             });
 
             if (!studio) {
-                console.log('❌ [getBuilderProfileData] Studio not found:', studioSlug);
+                console.log('❌ [getBuilderData] Studio not found:', studioSlug);
                 return {
                     success: false,
                     error: 'Studio not found'
@@ -168,7 +168,7 @@ export async function getBuilderProfileData(studioSlug: string) {
                 studio: {
                     id: studio.id,
                     studio_name: studio.studio_name,
-                    description: studio.description,
+                    presentation: studio.presentation,
                     keywords: studio.keywords,
                     logo_url: studio.logo_url,
                     slogan: studio.slogan,
@@ -257,8 +257,8 @@ export async function getBuilderProfileData(studioSlug: string) {
                 })),
             };
 
-            console.log('✅ [getBuilderProfileData] Builder data fetched successfully');
-            console.log('📊 [getBuilderProfileData] Data summary:', {
+            console.log('✅ [getBuilderData] Builder data fetched successfully');
+            console.log('📊 [getBuilderData] Data summary:', {
                 studio: builderData.studio.studio_name,
                 socialNetworks: builderData.socialNetworks.length,
                 phones: builderData.contactInfo.phones.length,
@@ -281,7 +281,7 @@ export async function getBuilderProfileData(studioSlug: string) {
         });
 
     } catch (error) {
-        console.error('❌ [getBuilderProfileData] Error:', error);
+        console.error('❌ [getBuilderData] Error:', error);
 
         if (error instanceof Error) {
             return {

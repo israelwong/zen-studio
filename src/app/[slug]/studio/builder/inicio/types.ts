@@ -7,7 +7,7 @@
 export interface InicioData {
     studio: {
         studio_name: string;
-        description: string | null;
+        presentation: string | null;
         slogan: string | null;
         logo_url: string | null;
         website: string | null;
@@ -40,7 +40,7 @@ export interface InicioData {
 
 export interface InicioFormData {
     studio_name: string;
-    description: string;
+    presentation: string;
     slogan: string;
     website: string;
 }

@@ -716,7 +716,7 @@ model studios {
   account_number             String?
   bank_name                  String?
   clabe_number               String?
-  description                String?
+  presentation               String?
   keywords                   String?
   latitude                   Float?
   longitude                  Float?

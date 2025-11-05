@@ -6,7 +6,7 @@ import { Mail } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { SectionLayout, StorageIndicator } from '../../components';
 import { EmailWrapper } from './components';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import type { BuilderProfileData } from '@/types/builder-profile';
 
 export default function EmailPage() {
@@ -20,7 +20,7 @@ export default function EmailPage() {
         const loadBuilderData = async () => {
             try {
                 setLoading(true);
-                const result = await getBuilderProfileData(studioSlug);
+                const result = await getBuilderData(studioSlug);
 
                 if (result.success && result.data) {
                     setBuilderData(result.data);

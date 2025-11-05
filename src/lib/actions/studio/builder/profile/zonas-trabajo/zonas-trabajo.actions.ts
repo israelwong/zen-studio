@@ -16,20 +16,22 @@ export interface ZonaTrabajoFormData {
   nombre: string;
 }
 
-/**
- * Obtener todas las zonas de trabajo de un studio
- */
-/**
- * Crear una nueva zona de trabajo
- */
 export async function crearZonaTrabajo(
-  studioId: string,
+  studioSlug: string,
   data: ZonaTrabajoFormData
 ) {
   try {
-    // Obtener el siguiente orden
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true }
+    });
+
+    if (!studio) {
+      return { success: false, error: "Studio no encontrado" };
+    }
+
     const ultimaZona = await prisma.studio_zonas_trabajo.findFirst({
-      where: { studio_id: studioId },
+      where: { studio_id: studio.id },
       orderBy: { orden: 'desc' }
     });
 
@@ -37,13 +39,13 @@ export async function crearZonaTrabajo(
 
     const zona = await prisma.studio_zonas_trabajo.create({
       data: {
-        studio_id: studioId,
+        studio_id: studio.id,
         nombre: data.nombre,
         orden: nuevoOrden
       }
     });
 
-    revalidatePath(`/studio/[slug]/builder/contacto`, 'page');
+    revalidatePath(`/studio/${studioSlug}/builder/profile/zonas-trabajo`);
     return { success: true, zona };
   } catch (error) {
     console.error("Error creando zona de trabajo:", error);
@@ -51,10 +53,8 @@ export async function crearZonaTrabajo(
   }
 }
 
-/**
- * Actualizar una zona de trabajo
- */
 export async function actualizarZonaTrabajo(
+  studioSlug: string,
   zonaId: string,
   data: ZonaTrabajoFormData
 ) {
@@ -66,7 +66,7 @@ export async function actualizarZonaTrabajo(
       }
     });
 
-    revalidatePath(`/studio/[slug]/builder/contacto`, 'page');
+    revalidatePath(`/studio/${studioSlug}/builder/profile/zonas-trabajo`);
     return { success: true, zona };
   } catch (error) {
     console.error("Error actualizando zona de trabajo:", error);
@@ -74,16 +74,13 @@ export async function actualizarZonaTrabajo(
   }
 }
 
-/**
- * Eliminar una zona de trabajo
- */
-export async function eliminarZonaTrabajo(zonaId: string) {
+export async function eliminarZonaTrabajo(studioSlug: string, zonaId: string) {
   try {
     await prisma.studio_zonas_trabajo.delete({
       where: { id: zonaId }
     });
 
-    revalidatePath(`/studio/[slug]/builder/contacto`, 'page');
+    revalidatePath(`/studio/${studioSlug}/builder/profile/zonas-trabajo`);
     return { success: true };
   } catch (error) {
     console.error("Error eliminando zona de trabajo:", error);
@@ -91,15 +88,11 @@ export async function eliminarZonaTrabajo(zonaId: string) {
   }
 }
 
-/**
- * Reordenar zonas de trabajo
- */
 export async function reordenarZonasTrabajo(
-  studioId: string,
+  studioSlug: string,
   zonasOrdenadas: { id: string; orden: number }[]
 ) {
   try {
-    // Actualizar todas las zonas en una transacción
     await prisma.$transaction(
       zonasOrdenadas.map((zona) =>
         prisma.studio_zonas_trabajo.update({
@@ -109,10 +102,11 @@ export async function reordenarZonasTrabajo(
       )
     );
 
-    revalidatePath(`/studio/[slug]/builder/contacto`, 'page');
+    revalidatePath(`/studio/${studioSlug}/builder/profile/zonas-trabajo`);
     return { success: true };
   } catch (error) {
     console.error("Error reordenando zonas de trabajo:", error);
     return { success: false, error: "Error al reordenar las zonas de trabajo" };
   }
 }
+

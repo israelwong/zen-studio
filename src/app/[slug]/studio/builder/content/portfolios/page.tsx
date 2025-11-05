@@ -10,7 +10,7 @@ import { SectionLayout } from "../../components";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { Grid3X3 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
+import { getBuilderData } from '@/lib/actions/studio/builder/builder-data.actions';
 import { getStudioPortfoliosBySlug } from '@/lib/actions/studio/builder/portfolios/portfolios.actions';
 import { BuilderProfileData } from '@/types/builder-profile';
 import { StudioPortfolio } from "@/types/studio-portfolios";
@@ -29,7 +29,7 @@ export default function PortfoliosPage() {
 
                 // Cargar datos del builder y portfolios en paralelo
                 const [builderResult, portfoliosResult] = await Promise.all([
-                    getBuilderProfileData(studioSlug),
+                    getBuilderData(studioSlug),
                     getStudioPortfoliosBySlug(studioSlug) // Sin filtros primero para debug
                 ]);
 

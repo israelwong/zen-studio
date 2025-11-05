@@ -15,7 +15,7 @@ interface InicioEditorZenProps {
 export function InicioEditorZen({ studioSlug, data, loading }: InicioEditorZenProps) {
     const [formData, setFormData] = useState<InicioFormData>({
         studio_name: data?.studio.studio_name || '',
-        description: data?.studio.description || '',
+        presentation: data?.studio.presentation || '',
         slogan: data?.studio.slogan || '',
         website: data?.studio.website || ''
     });
@@ -27,7 +27,7 @@ export function InicioEditorZen({ studioSlug, data, loading }: InicioEditorZenPr
         if (data) {
             setFormData({
                 studio_name: data.studio.studio_name,
-                description: data.studio.description || '',
+                presentation: data.studio.presentation || '',
                 slogan: data.studio.slogan || '',
                 website: data.studio.website || ''
             });
@@ -109,9 +109,9 @@ export function InicioEditorZen({ studioSlug, data, loading }: InicioEditorZenPr
                     </div>
 
                     <ZenTextarea
-                        label="Descripción"
-                        value={formData.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        label="Presentación"
+                        value={formData.presentation}
+                        onChange={(e) => handleInputChange('presentation', e.target.value)}
                         placeholder="Describe tu estudio y servicios..."
                         rows={3}
                     />

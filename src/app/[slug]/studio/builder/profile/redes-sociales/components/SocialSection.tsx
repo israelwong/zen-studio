@@ -17,7 +17,7 @@ import {
     eliminarRedSocial,
     reordenarRedesSociales,
     toggleRedSocialEstado
-} from '@/lib/actions/studio/builder/identidad';
+} from '@/lib/actions/studio/builder/profile/identidad';
 import {
     DndContext,
     closestCenter,

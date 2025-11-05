@@ -6,7 +6,7 @@ import { Phone, Plus, GripVertical, Edit3, Trash2 } from 'lucide-react';
 import { Telefono } from '../../types';
 import { TelefonoModal } from './TelefonoModal';
 import { toast } from 'sonner';
-import { crearTelefono, actualizarTelefono, eliminarTelefono } from '@/lib/actions/studio/builder/contacto';
+import { crearTelefono, actualizarTelefono, eliminarTelefono } from '@/lib/actions/studio/builder/profile/telefonos';
 import {
     DndContext,
     closestCenter,
@@ -154,7 +154,7 @@ export function TelefonosSection({ telefonos: initialTelefonos, onLocalUpdate, s
         try {
             if (telefono.id) {
                 // Actualizar teléfono existente
-                await actualizarTelefono(telefono.id, {
+                await actualizarTelefono(studioSlug, telefono.id, {
                     numero: telefono.numero,
                     tipo: telefono.tipo === 'whatsapp' ? 'WHATSAPP' :
                         telefono.tipo === 'llamadas' ? 'LLAMADAS' : 'AMBOS',
@@ -197,7 +197,7 @@ export function TelefonosSection({ telefonos: initialTelefonos, onLocalUpdate, s
 
     const handleTelefonoDelete = async (id: string) => {
         try {
-            await eliminarTelefono(id);
+            await eliminarTelefono(studioSlug, id);
             const updated = telefonos.filter(t => t.id !== id);
             setTelefonos(updated);
             onLocalUpdate({ telefonos: updated });
@@ -212,7 +212,7 @@ export function TelefonosSection({ telefonos: initialTelefonos, onLocalUpdate, s
         try {
             const telefono = telefonos.find(t => t.id === id);
             if (telefono) {
-                await actualizarTelefono(id, {
+                await actualizarTelefono(studioSlug, id, {
                     numero: telefono.numero,
                     tipo: telefono.tipo === 'whatsapp' ? 'WHATSAPP' :
                         telefono.tipo === 'llamadas' ? 'LLAMADAS' : 'AMBOS',

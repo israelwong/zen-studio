@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Horario } from '../../types';
+import type { Horario as ProfileHorario } from '../../types';
 import { ZenButton } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { Clock } from 'lucide-react';
@@ -9,8 +9,8 @@ import { Clock } from 'lucide-react';
 interface HorarioModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (horario: Horario) => void;
-    horario?: Horario;
+    onSave: (horario: ProfileHorario) => void;
+    horario?: ProfileHorario;
 }
 
 const DIAS_SEMANA = [
@@ -33,11 +33,13 @@ export function HorarioModal({ isOpen, onClose, onSave, horario }: HorarioModalP
 
     useEffect(() => {
         if (horario) {
+            // Type assertion para evitar conflicto con Horario de horarios-schemas.ts
+            const h = horario as ProfileHorario & { apertura?: string; cierre?: string };
             setFormData({
-                day_of_week: horario.dia || '',
-                start_time: horario?.apertura ?? '',
-                end_time: horario?.cierre ?? '',
-                is_active: !horario.cerrado
+                day_of_week: h.dia || '',
+                start_time: h.apertura ?? '',
+                end_time: h.cierre ?? '',
+                is_active: h.cerrado !== undefined ? !h.cerrado : true
             });
         } else {
             setFormData({
@@ -53,7 +55,7 @@ export function HorarioModal({ isOpen, onClose, onSave, horario }: HorarioModalP
         e.preventDefault();
         if (!formData.day_of_week.trim()) return;
 
-        const horarioData: Horario = {
+        const horarioData: ProfileHorario = {
             id: horario?.id,
             dia: formData.day_of_week as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday',
             ...(formData.is_active && formData.start_time && { apertura: formData.start_time }),
