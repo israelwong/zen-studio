@@ -75,7 +75,7 @@ export function AvatarManager({
         studioSlug,
         category,
         subcategory,
-        allowedMimeTypes: ['image/jpeg', 'image/png'],
+        allowedMimeTypes: ['image/jpeg', 'image/png', 'image/svg+xml'],
         maxSize: 2,
         onError: (error) => {
             toast.error(error);
@@ -83,8 +83,8 @@ export function AvatarManager({
     });
 
     const handleFileSelect = async (file: File) => {
-        if (!['image/jpeg', 'image/png'].includes(file.type)) {
-            toast.error('Solo se permiten archivos JPG y PNG.');
+        if (!['image/jpeg', 'image/png', 'image/svg+xml'].includes(file.type)) {
+            toast.error('Solo se permiten archivos JPG, PNG y SVG.');
             return;
         }
 
@@ -167,7 +167,8 @@ export function AvatarManager({
                         onFileSelect={handleFileSelect}
                         acceptedFileTypes={{
                             'image/jpeg': ['.jpg', '.jpeg'],
-                            'image/png': ['.png']
+                            'image/png': ['.png'],
+                            'image/svg+xml': ['.svg']
                         }}
                         maxSize={10}
                         maxFiles={1}
@@ -296,7 +297,7 @@ export function AvatarManager({
             <input
                 ref={fileInputRef}
                 type="file"
-                accept=".jpg,.jpeg,.png,image/jpeg,image/png"
+                accept=".jpg,.jpeg,.png,.svg,image/jpeg,image/png,image/svg+xml"
                 onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileSelect(file);
