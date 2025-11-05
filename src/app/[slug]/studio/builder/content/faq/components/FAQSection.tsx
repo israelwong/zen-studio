@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
 import { ZenCard, ZenCardContent } from '@/components/ui/zen';
 import { Edit, Trash2, GripVertical, HelpCircle } from 'lucide-react';
@@ -56,6 +56,7 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
     const [togglingItems, setTogglingItems] = useState<Set<string>>(new Set());
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [faqToDelete, setFaqToDelete] = useState<FAQItem | null>(null);
+    const hasLoadedRef = useRef(false);
 
     // Sensores para drag and drop
     const sensors = useSensors(
@@ -70,36 +71,49 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
         const { active, over } = event;
 
         if (active.id !== over?.id) {
+            // Guardar estado anterior para rollback
+            const previousOrder = [...faqItems];
+
             const oldIndex = faqItems.findIndex(item => item.id === active.id);
             const newIndex = faqItems.findIndex(item => item.id === over?.id);
 
-            const newOrder = arrayMove(faqItems, oldIndex, newIndex);
-            setFaqItems(newOrder); // Optimistic update
+            // Actualización optimista local - reordenar y actualizar valores de orden
+            const reorderedItems = arrayMove(faqItems, oldIndex, newIndex);
+            const newOrder = reorderedItems.map((item, index) => ({
+                ...item,
+                orden: index
+            }));
+            setFaqItems(newOrder);
+
+            // Actualizar preview inmediatamente con orden actualizado
+            onLocalUpdate({ faq: newOrder });
 
             try {
-                // Reordenar en backend
+                // Reordenar en backend en segundo plano
                 const faqIds = newOrder.map(faq => faq.id);
                 await reordenarFAQ(studioSlug, faqIds);
                 toast.success("Orden de FAQ actualizado");
-
-                // Actualizar datos locales
-                onLocalUpdate({ faq: newOrder });
             } catch (error) {
                 console.error('Error reordenando FAQ:', error);
+                // Revertir cambio en caso de error
+                setFaqItems(previousOrder);
+                onLocalUpdate({ faq: previousOrder });
                 toast.error("Error al reordenar las FAQ");
-                setFaqItems(faqItems); // Revert on error
             }
         }
     };
 
-    // Cargar FAQ al montar el componente
+    // Cargar FAQ al montar el componente (solo una vez)
     useEffect(() => {
+        if (hasLoadedRef.current) return;
+
         const cargarFAQ = async () => {
             try {
                 setLoadingFAQ(true);
                 const faq = await obtenerFAQ(studioSlug);
                 setFaqItems(faq);
                 onLocalUpdate({ faq });
+                hasLoadedRef.current = true;
             } catch (error) {
                 console.error('Error cargando FAQ:', error);
                 toast.error('Error al cargar las FAQ');
@@ -109,30 +123,36 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
         };
 
         cargarFAQ();
-    }, [studioSlug, onLocalUpdate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [studioSlug]); // Solo ejecutar una vez al montar
 
     const handleAddFAQ = async () => {
         if (nuevaPregunta.trim() && nuevaRespuesta.trim()) {
+            // Guardar estado anterior para rollback
+            const previousFAQ = [...faqItems];
+
+            // Crear FAQ optimista local
+            const tempId = `temp-${Date.now()}`;
+            const tempFAQ: FAQItem = {
+                id: tempId,
+                pregunta: nuevaPregunta.trim(),
+                respuesta: nuevaRespuesta.trim(),
+                orden: faqItems.length,
+                is_active: true
+            };
+
+            // Actualización optimista local
+            const updatedFAQ = [...faqItems, tempFAQ];
+            setFaqItems(updatedFAQ);
+            onLocalUpdate({ faq: updatedFAQ });
+
+            // Limpiar formulario inmediatamente
+            setNuevaPregunta('');
+            setNuevaRespuesta('');
+            setShowFAQModal(false);
+
             try {
-                // Crear FAQ optimista local
-                const tempFAQ: FAQItem = {
-                    id: `temp-${Date.now()}`, // ID temporal
-                    pregunta: nuevaPregunta.trim(),
-                    respuesta: nuevaRespuesta.trim(),
-                    orden: faqItems.length,
-                    is_active: true
-                };
-
-                const updatedFAQ = [...faqItems, tempFAQ];
-                setFaqItems(updatedFAQ);
-                onLocalUpdate({ faq: updatedFAQ });
-
-                // Limpiar formulario inmediatamente
-                setNuevaPregunta('');
-                setNuevaRespuesta('');
-                setShowFAQModal(false);
-
-                // Crear en servidor
+                // Crear en servidor en segundo plano
                 const newFAQ = await crearFAQ(studioSlug, {
                     pregunta: tempFAQ.pregunta,
                     respuesta: tempFAQ.respuesta
@@ -140,7 +160,7 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
 
                 // Reemplazar FAQ temporal con la real
                 const finalFAQ = updatedFAQ.map(faq =>
-                    faq.id === tempFAQ.id ? newFAQ : faq
+                    faq.id === tempId ? newFAQ : faq
                 );
                 setFaqItems(finalFAQ);
                 onLocalUpdate({ faq: finalFAQ });
@@ -149,9 +169,8 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
             } catch (error) {
                 console.error('Error creando FAQ:', error);
                 // Revertir cambio en caso de error
-                const revertedFAQ = faqItems.filter(faq => faq.id !== `temp-${Date.now()}`);
-                setFaqItems(revertedFAQ);
-                onLocalUpdate({ faq: revertedFAQ });
+                setFaqItems(previousFAQ);
+                onLocalUpdate({ faq: previousFAQ });
                 toast.error('Error al crear la FAQ');
             }
         }
@@ -166,58 +185,65 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
 
     const handleUpdateFAQ = async () => {
         if (editingFAQ && nuevaPregunta.trim() && nuevaRespuesta.trim()) {
+            // Guardar estado anterior para rollback
+            const previousFAQ = [...faqItems];
+
+            // Actualización optimista local
+            const updatedFAQList = faqItems.map(faq =>
+                faq.id === editingFAQ.id
+                    ? { ...faq, pregunta: nuevaPregunta.trim(), respuesta: nuevaRespuesta.trim() }
+                    : faq
+            );
+            setFaqItems(updatedFAQList);
+            onLocalUpdate({ faq: updatedFAQList });
+
+            // Cerrar modal inmediatamente
+            setEditingFAQ(null);
+            setNuevaPregunta('');
+            setNuevaRespuesta('');
+            setShowFAQModal(false);
+
             try {
-                setLoadingFAQ(true);
-                const updatedFAQ = await actualizarFAQ(studioSlug, editingFAQ.id, {
+                // Actualizar en servidor en segundo plano
+                await actualizarFAQ(studioSlug, editingFAQ.id, {
                     pregunta: nuevaPregunta.trim(),
                     respuesta: nuevaRespuesta.trim()
                 });
 
-                const updatedFAQList = faqItems.map(faq =>
-                    faq.id === editingFAQ.id ? updatedFAQ : faq
-                );
-                setFaqItems(updatedFAQList);
-                onLocalUpdate({ faq: updatedFAQList });
-
-                setEditingFAQ(null);
-                setNuevaPregunta('');
-                setNuevaRespuesta('');
-                setShowFAQModal(false);
                 toast.success('FAQ actualizada correctamente');
             } catch (error) {
                 console.error('Error actualizando FAQ:', error);
+                // Revertir cambio en caso de error
+                setFaqItems(previousFAQ);
+                onLocalUpdate({ faq: previousFAQ });
                 toast.error('Error al actualizar la FAQ');
-            } finally {
-                setLoadingFAQ(false);
             }
         }
     };
 
     const handleDeleteFAQ = async (faqId: string) => {
-        // Guardar FAQ original para rollback
-        const originalFAQ = faqItems.find(faq => faq.id === faqId);
+        // Guardar estado anterior para rollback
+        const previousFAQ = [...faqItems];
+
+        // Eliminación optimista local
+        const updatedFAQ = faqItems.filter(faq => faq.id !== faqId);
+        setFaqItems(updatedFAQ);
+        onLocalUpdate({ faq: updatedFAQ });
+
+        // Cerrar modal inmediatamente
+        setShowDeleteModal(false);
+        setFaqToDelete(null);
 
         try {
-            // Eliminación optimista local
-            const updatedFAQ = faqItems.filter(faq => faq.id !== faqId);
-            setFaqItems(updatedFAQ);
-            onLocalUpdate({ faq: updatedFAQ });
-
-            // Eliminar en servidor
+            // Eliminar en servidor en segundo plano
             await eliminarFAQ(studioSlug, faqId);
             toast.success('FAQ eliminada correctamente');
         } catch (error) {
             console.error('Error eliminando FAQ:', error);
             // Revertir cambio en caso de error
-            if (originalFAQ) {
-                const revertedFAQ = [...faqItems, originalFAQ].sort((a, b) => a.orden - b.orden);
-                setFaqItems(revertedFAQ);
-                onLocalUpdate({ faq: revertedFAQ });
-            }
+            setFaqItems(previousFAQ);
+            onLocalUpdate({ faq: previousFAQ });
             toast.error('Error al eliminar la FAQ');
-        } finally {
-            setShowDeleteModal(false);
-            setFaqToDelete(null);
         }
     };
 
@@ -232,32 +258,32 @@ export const FAQSection = forwardRef<FAQSectionRef, FAQSectionProps>(({
     };
 
     const handleToggleActive = async (faqId: string) => {
+        const faq = faqItems.find(f => f.id === faqId);
+        if (!faq) return;
+
+        // Guardar estado anterior para rollback
+        const previousFAQ = [...faqItems];
+        const previousActiveState = faq.is_active;
+
+        // Marcar item como cargando
+        setTogglingItems(prev => new Set(prev).add(faqId));
+
+        // Actualización optimista local
+        const updatedFAQ = faqItems.map(f =>
+            f.id === faqId ? { ...f, is_active: !f.is_active } : f
+        );
+        setFaqItems(updatedFAQ);
+        onLocalUpdate({ faq: updatedFAQ });
+
         try {
-            const faq = faqItems.find(f => f.id === faqId);
-            if (faq) {
-                // Marcar item como cargando
-                setTogglingItems(prev => new Set(prev).add(faqId));
-
-                // Actualización optimista local
-                const updatedFAQ = faqItems.map(f =>
-                    f.id === faqId ? { ...f, is_active: !f.is_active } : f
-                );
-                setFaqItems(updatedFAQ);
-                onLocalUpdate({ faq: updatedFAQ });
-
-                // Llamada al servidor en segundo plano
-                await toggleFAQ(studioSlug, faqId, !faq.is_active);
-                toast.success(`FAQ ${!faq.is_active ? 'activada' : 'desactivada'} correctamente`);
-            }
+            // Llamada al servidor en segundo plano
+            await toggleFAQ(studioSlug, faqId, !previousActiveState);
+            toast.success(`FAQ ${!previousActiveState ? 'activada' : 'desactivada'} correctamente`);
         } catch (error) {
             console.error('Error toggleando FAQ:', error);
-            const faq = faqItems.find(f => f.id === faqId);
             // Revertir cambio en caso de error
-            const revertedFAQ = faqItems.map(f =>
-                f.id === faqId ? { ...f, is_active: faq?.is_active || false } : f
-            );
-            setFaqItems(revertedFAQ);
-            onLocalUpdate({ faq: revertedFAQ });
+            setFaqItems(previousFAQ);
+            onLocalUpdate({ faq: previousFAQ });
             toast.error('Error al cambiar el estado de la FAQ');
         } finally {
             // Remover item de carga

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { HelpCircle, Plus } from 'lucide-react';
+import { HelpCircle, Plus, SquareStack, LayoutList } from 'lucide-react';
 import { FAQSection, type FAQSectionRef } from './components/FAQSection';
 import { SectionLayout } from '../../components';
 import { useParams } from 'next/navigation';
@@ -10,11 +10,14 @@ import { IdentidadData } from '../../profile/identidad/types';
 import { BuilderProfileData } from '@/types/builder-profile';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 
+type FAQViewMode = 'compact' | 'expanded';
+
 export default function FAQPage() {
     const params = useParams();
     const studioSlug = params.slug as string;
     const [builderData, setBuilderData] = useState<BuilderProfileData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [faqViewMode, setFaqViewMode] = useState<FAQViewMode>('compact');
     const faqSectionRef = useRef<FAQSectionRef>(null);
 
     // Función para actualizar solo los FAQ en el preview (sin recargar todo)
@@ -63,14 +66,14 @@ export default function FAQPage() {
         refreshPreviewData();
     }, [refreshPreviewData]);
 
-    // Datos para el preview móvil
+    // Datos para el preview móvil - se recalcula automáticamente cuando cambia builderData
     const previewData = builderData ? {
         // Para ProfileIdentity
         studio_name: builderData.studio.studio_name,
         logo_url: builderData.studio.logo_url,
         slogan: builderData.studio.slogan,
-        // Para ProfileContent (sección FAQ)
-        faq: builderData.faq,
+        // Para ProfileContent (sección FAQ) - ordenado por orden
+        faq: builderData.faq ? [...builderData.faq].sort((a, b) => a.orden - b.orden) : [],
         // Para ProfileFooter
         pagina_web: builderData.studio.website,
         palabras_clave: builderData.studio.keywords,
@@ -95,6 +98,7 @@ export default function FAQPage() {
             studioSlug={studioSlug}
             data={previewData as unknown as Record<string, unknown>}
             loading={loading}
+            faqViewMode={faqViewMode}
         >
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
@@ -125,6 +129,30 @@ export default function FAQPage() {
 
                 <ZenCardContent className="p-6">
                     <div className="space-y-6">
+                        {/* Opciones de visualización */}
+                        <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+                            <span className="text-sm text-zinc-400">Estilo de visualización</span>
+                            <div className="flex items-center gap-1 p-1 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                                <ZenButton
+                                    variant={faqViewMode === 'compact' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setFaqViewMode('compact')}
+                                    className="h-8 px-3"
+                                    title="Vista agrupada"
+                                >
+                                    <SquareStack className="h-4 w-4" />
+                                </ZenButton>
+                                <ZenButton
+                                    variant={faqViewMode === 'expanded' ? 'primary' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setFaqViewMode('expanded')}
+                                    className="h-8 px-3"
+                                    title="Vista separada"
+                                >
+                                    <LayoutList className="h-4 w-4" />
+                                </ZenButton>
+                            </div>
+                        </div>
                         <FAQSection
                             ref={faqSectionRef}
                             studioSlug={studioSlug}
