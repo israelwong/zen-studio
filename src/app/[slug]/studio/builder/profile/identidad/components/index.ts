@@ -1,5 +1,5 @@
 export { IdentidadEditorZen } from './IdentidadEditorZen';
-export { IdentidadSimplificada } from './IdentidadSimplificada';
+export { IdentidadForm } from './IdentidadForm';
 export { LogoManagerZen } from './LogoManagerZen';
 export { SocialSection } from './SocialSection';
 export { RedSocialItem } from './RedSocialItem';

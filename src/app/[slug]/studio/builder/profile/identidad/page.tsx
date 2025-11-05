@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { IdentidadSimplificada } from './components/';
+import { IdentidadForm } from './components/';
 import { SectionLayout } from '../../components';
 import { useParams } from 'next/navigation';
 import { getBuilderProfileData } from '@/lib/actions/studio/builder/builder-profile.actions';
@@ -121,7 +121,7 @@ export default function IdentidadPage() {
                             <div className="h-24 bg-zinc-800/50 rounded-lg animate-pulse"></div>
                         </div>
                     ) : (
-                        <IdentidadSimplificada
+                        <IdentidadForm
                             data={builderData?.studio ? {
                                 id: builderData.studio.id,
                                 studio_name: builderData.studio.studio_name,

@@ -27,7 +27,6 @@ export function FooterSection({
     const [nuevaPalabra, setNuevaPalabra] = useState('');
 
     const handleInputChange = (field: keyof IdentidadData, value: string) => {
-        console.log('🔄 handleInputChange:', field, value);
         onLocalUpdate({ [field]: value });
     };
 

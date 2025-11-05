@@ -11,7 +11,7 @@ import { actualizarContacto } from '@/lib/actions/studio/builder/contacto';
 import { useLogoRefresh } from '@/hooks/useLogoRefresh';
 import { toast } from 'sonner';
 
-interface IdentidadSimplificadaProps {
+interface IdentidadFormProps {
     data: IdentidadData;
     onLocalUpdate: (data: Partial<IdentidadData>) => void;
     onLogoUpdate: (url: string) => Promise<void>;
@@ -20,14 +20,14 @@ interface IdentidadSimplificadaProps {
     loading?: boolean;
 }
 
-export function IdentidadSimplificada({
+export function IdentidadForm({
     data,
     onLocalUpdate,
     onLogoUpdate,
     onLogoLocalUpdate,
     studioSlug,
     loading = false
-}: IdentidadSimplificadaProps) {
+}: IdentidadFormProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [showPalabrasModal, setShowPalabrasModal] = useState(false);
