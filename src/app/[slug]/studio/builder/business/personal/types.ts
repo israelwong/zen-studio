@@ -60,4 +60,3 @@ export interface PersonalStats {
     totalInactivos: number;
     perfilesProfesionales: Record<string, number>;
 }
-

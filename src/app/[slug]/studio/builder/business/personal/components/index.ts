@@ -5,4 +5,3 @@ export { PersonalItem } from './PersonalItem';
 export { PersonalStats } from './PersonalStats';
 export { CategoriasModal } from './CategoriasModal';
 export { PerfilesModal } from './PerfilesModal';
-export { PersonalWrapper } from './PersonalWrapper';

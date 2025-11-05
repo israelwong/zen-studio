@@ -214,9 +214,8 @@ export function ContactsList({
                                 <TableHead className="min-w-[180px]">Email</TableHead>
                                 <TableHead className="min-w-[100px]">Tipo</TableHead>
                                 <TableHead className="min-w-[140px]">Canal</TableHead>
-                                <TableHead className="min-w-[120px]">Creado</TableHead>
                                 <TableHead className="min-w-[120px]">Actualizado</TableHead>
-                                <TableHead className="w-20 text-right">Acciones</TableHead>
+                                <TableHead className="w-20 text-right"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -294,9 +293,6 @@ export function ContactsList({
                                         }}
                                     >
                                         {getCanalDisplay(contact)}
-                                    </TableCell>
-                                    <TableCell className="text-zinc-400 text-sm">
-                                        {formatDateTime(contact.created_at)}
                                     </TableCell>
                                     <TableCell className="text-zinc-400 text-sm">
                                         {formatDateTime(contact.updated_at)}
