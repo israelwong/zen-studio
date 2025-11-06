@@ -1,7 +1,6 @@
 export { PromisesWrapper } from './PromisesWrapper';
 export { PromisesKanban } from './PromisesKanban';
 export { PromiseCard } from './PromiseCard';
-export { PromiseModal } from './PromiseModal';
 export { PromiseForm } from './PromiseForm';
 export { PromiseLogsPanel } from './PromiseLogsPanel';
 export { PromiseQuotesPanel } from './PromiseQuotesPanel';
