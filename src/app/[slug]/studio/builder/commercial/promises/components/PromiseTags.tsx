@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Tag, Settings2, Plus, Trash2 } from 'lucide-react';
+import { X, Tag, Settings2, Trash2 } from 'lucide-react';
 import { ZenInput, ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenDialog } from '@/components/ui/zen';
 import { toast } from 'sonner';
 import {
@@ -14,7 +14,7 @@ import {
   deletePromiseTag,
   addTagToPromise as addTagToPromiseAction,
 } from '@/lib/actions/studio/builder/commercial/promises';
-import type { PromiseTag, CreatePromiseTagData, UpdatePromiseTagData } from '@/lib/actions/studio/builder/commercial/promises/promise-tags.actions';
+import type { PromiseTag, UpdatePromiseTagData } from '@/lib/actions/studio/builder/commercial/promises/promise-tags.actions';
 
 interface PromiseTagsProps {
   studioSlug: string;
@@ -79,6 +79,24 @@ export function PromiseTags({
       console.error('Error cargando tags globales:', error);
     }
   }, [studioSlug]);
+
+  // Actualizar tag localmente (sin recargar)
+  const updateTagLocally = useCallback((updatedTag: PromiseTag) => {
+    // Actualizar en tags asignados
+    setTags((prev) =>
+      prev.map((tag) => (tag.id === updatedTag.id ? { ...tag, ...updatedTag } : tag))
+    );
+    // Actualizar en tags globales (para sugerencias)
+    setGlobalTags((prev) =>
+      prev.map((tag) => (tag.id === updatedTag.id ? updatedTag : tag))
+    );
+  }, []);
+
+  // Eliminar tag localmente
+  const removeTagLocally = useCallback((tagId: string) => {
+    setTags((prev) => prev.filter((tag) => tag.id !== tagId));
+    setGlobalTags((prev) => prev.filter((tag) => tag.id !== tagId));
+  }, []);
 
   useEffect(() => {
     if (isSaved && promiseId) {
@@ -518,6 +536,8 @@ export function PromiseTags({
         onClose={() => setIsManageModalOpen(false)}
         studioSlug={studioSlug}
         onTagsUpdated={loadGlobalTags}
+        onTagUpdated={updateTagLocally}
+        onTagDeleted={removeTagLocally}
       />
     </>
   );
@@ -529,6 +549,8 @@ interface TagsManageModalProps {
   onClose: () => void;
   studioSlug: string;
   onTagsUpdated: () => void;
+  onTagUpdated?: (tag: PromiseTag) => void;
+  onTagDeleted?: (tagId: string) => void;
 }
 
 function TagsManageModal({
@@ -536,12 +558,15 @@ function TagsManageModal({
   onClose,
   studioSlug,
   onTagsUpdated,
+  onTagUpdated,
+  onTagDeleted,
 }: TagsManageModalProps) {
-  const [tags, setTags] = useState<PromiseTag[]>([]);
+  const [tags, setTags] = useState<(PromiseTag & { isPending?: boolean; tempId?: string })[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [editingTag, setEditingTag] = useState<PromiseTag | null>(null);
-  const [newTagName, setNewTagName] = useState('');
+  const [newTagInput, setNewTagInput] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
+  const [isCreatingTags, setIsCreatingTags] = useState(false);
 
   const loadTags = useCallback(async () => {
     setIsLoading(true);
@@ -564,56 +589,166 @@ function TagsManageModal({
     }
   }, [isOpen, loadTags]);
 
-  const handleCreateTag = async () => {
-    if (!newTagName.trim()) {
-      toast.error('El nombre es requerido');
+  // Procesar input: separar por coma
+  const processInput = useCallback((value: string): string[] => {
+    return value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag.length > 0);
+  }, []);
+
+  const handleCreateTags = useCallback(async () => {
+    if (!newTagInput.trim() || isCreatingTags) return;
+
+    const tagNames = processInput(newTagInput);
+    if (tagNames.length === 0) {
+      toast.error('Ingresa al menos una etiqueta');
       return;
     }
 
-    try {
-      const data: CreatePromiseTagData = {
-        name: newTagName.trim(),
-        color: newTagColor,
-        order: 0,
-      };
+    // Verificar duplicados
+    const existingNames = new Set(tags.map((t) => t.name.toLowerCase()));
+    const newTagNames = tagNames.filter((name) => !existingNames.has(name.toLowerCase()));
 
-      const result = await createPromiseTag(studioSlug, data);
-      if (result.success) {
-        toast.success('Etiqueta creada');
-        setNewTagName('');
-        setNewTagColor('#3B82F6');
-        loadTags();
+    if (newTagNames.length === 0) {
+      toast.info('Todas las etiquetas ya existen');
+      setNewTagInput('');
+      return;
+    }
+
+    setIsCreatingTags(true);
+    const inputToClear = newTagInput;
+    setNewTagInput('');
+
+    // Crear tags temporales inmediatamente (actualización optimista)
+    const tempTags = newTagNames.map((name, index) => ({
+      id: `temp-${Date.now()}-${index}`,
+      tempId: `temp-${Date.now()}-${index}`,
+      studio_id: '',
+      name,
+      slug: name.toLowerCase().replace(/\s+/g, '-'),
+      color: newTagColor,
+      description: null,
+      order: 0,
+      is_active: true,
+      isPending: true,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }));
+
+    // Agregar tags temporales inmediatamente
+    setTags((prev) => [...prev, ...tempTags]);
+
+    try {
+      const results = await Promise.all(
+        newTagNames.map((tagName) =>
+          createPromiseTag(studioSlug, {
+            name: tagName,
+            color: newTagColor,
+            order: 0,
+          })
+        )
+      );
+
+      const successfulTags: PromiseTag[] = [];
+      const errors: string[] = [];
+
+      results.forEach((result, index) => {
+        if (result.success && result.data) {
+          successfulTags.push(result.data);
+        } else {
+          console.error(`Error creando tag "${newTagNames[index]}":`, result.error);
+          errors.push(newTagNames[index]);
+        }
+      });
+
+      // Reemplazar tags temporales con los reales
+      setTags((prev) => {
+        // Remover todos los tags temporales
+        const withoutTemp = prev.filter((t) => !t.isPending);
+
+        // Agregar tags reales exitosos
+        const existingIds = new Set(withoutTemp.map((t) => t.id));
+        const newRealTags = successfulTags.filter((t) => !existingIds.has(t.id));
+
+        return [...withoutTemp, ...newRealTags];
+      });
+
+      if (errors.length > 0) {
+        toast.error(`${errors.length} etiqueta(s) no se pudieron crear`);
+      } else if (successfulTags.length > 0) {
+        toast.success(`${successfulTags.length} etiqueta(s) creada(s)`);
         onTagsUpdated();
-      } else {
-        toast.error(result.error || 'Error al crear etiqueta');
       }
     } catch (error) {
-      console.error('Error creando tag:', error);
-      toast.error('Error al crear etiqueta');
+      console.error('Error creando tags:', error);
+      // Remover todos los tags temporales en caso de error
+      setTags((prev) => prev.filter((t) => !t.isPending));
+      toast.error('Error al crear etiquetas');
+      setNewTagInput(inputToClear);
+    } finally {
+      setIsCreatingTags(false);
     }
-  };
+  }, [newTagInput, newTagColor, tags, processInput, studioSlug, onTagsUpdated, isCreatingTags]);
+
+  // Manejar Enter
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        if (newTagInput.trim()) {
+          handleCreateTags();
+        }
+      }
+    },
+    [newTagInput, handleCreateTags]
+  );
 
   const handleUpdateTag = async () => {
     if (!editingTag) return;
 
+    const tagToUpdate = { ...editingTag };
+    setEditingTag(null);
+
+    // Actualización optimista local
+    setTags((prev) =>
+      prev.map((tag) =>
+        tag.id === tagToUpdate.id ? { ...tag, name: tagToUpdate.name, color: tagToUpdate.color } : tag
+      )
+    );
+
     try {
       const data: UpdatePromiseTagData = {
-        id: editingTag.id,
-        name: editingTag.name,
-        color: editingTag.color,
+        id: tagToUpdate.id,
+        name: tagToUpdate.name,
+        color: tagToUpdate.color,
       };
 
       const result = await updatePromiseTag(studioSlug, data);
-      if (result.success) {
+      if (result.success && result.data) {
         toast.success('Etiqueta actualizada');
-        setEditingTag(null);
-        loadTags();
+        // Actualizar con datos del servidor
+        setTags((prev) =>
+          prev.map((tag) => (tag.id === result.data!.id ? result.data! : tag))
+        );
+        // Notificar al componente principal
+        if (onTagUpdated) {
+          onTagUpdated(result.data);
+        }
         onTagsUpdated();
       } else {
+        // Rollback en caso de error
+        setTags((prev) =>
+          prev.map((tag) => (tag.id === tagToUpdate.id ? tagToUpdate : tag))
+        );
         toast.error(result.error || 'Error al actualizar etiqueta');
       }
     } catch (error) {
       console.error('Error actualizando tag:', error);
+      // Rollback
+      setTags((prev) =>
+        prev.map((tag) => (tag.id === tagToUpdate.id ? tagToUpdate : tag))
+      );
       toast.error('Error al actualizar etiqueta');
     }
   };
@@ -623,17 +758,30 @@ function TagsManageModal({
       return;
     }
 
+    const tagToDelete = tags.find((t) => t.id === tagId);
+    if (!tagToDelete) return;
+
+    // Actualización optimista local
+    setTags((prev) => prev.filter((tag) => tag.id !== tagId));
+
     try {
       const result = await deletePromiseTag(studioSlug, tagId);
       if (result.success) {
         toast.success('Etiqueta eliminada');
-        loadTags();
+        // Notificar al componente principal
+        if (onTagDeleted) {
+          onTagDeleted(tagId);
+        }
         onTagsUpdated();
       } else {
+        // Rollback en caso de error
+        setTags((prev) => [...prev, tagToDelete].sort((a, b) => a.name.localeCompare(b.name)));
         toast.error(result.error || 'Error al eliminar etiqueta');
       }
     } catch (error) {
       console.error('Error eliminando tag:', error);
+      // Rollback
+      setTags((prev) => [...prev, tagToDelete].sort((a, b) => a.name.localeCompare(b.name)));
       toast.error('Error al eliminar etiqueta');
     }
   };
@@ -652,14 +800,16 @@ function TagsManageModal({
       maxWidth="2xl"
     >
       <div className="space-y-6">
-        {/* Crear nueva etiqueta */}
+        {/* Crear nuevas etiquetas */}
         <div className="space-y-3 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-          <h3 className="text-sm font-medium text-zinc-300">Crear nueva etiqueta</h3>
+          <h3 className="text-sm font-medium text-zinc-300">Crear etiquetas</h3>
           <div className="flex gap-2">
             <ZenInput
-              placeholder="Nombre de la etiqueta"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="Agregar etiquetas separadas por coma (Enter para agregar)"
+              value={newTagInput}
+              onChange={(e) => setNewTagInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isCreatingTags}
               className="flex-1"
             />
             <div className="flex gap-1">
@@ -674,9 +824,6 @@ function TagsManageModal({
                 />
               ))}
             </div>
-            <ZenButton onClick={handleCreateTag} size="sm">
-              <Plus className="h-4 w-4" />
-            </ZenButton>
           </div>
         </div>
 
@@ -693,72 +840,85 @@ function TagsManageModal({
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {tags
               .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
-              .map((tag) => (
-                <div
-                  key={tag.id}
-                  className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
-                >
+              .map((tag) => {
+                const isPending = tag.isPending || tag.id.startsWith('temp-');
+                return (
                   <div
-                    className="w-4 h-4 rounded-full flex-shrink-0"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  {editingTag?.id === tag.id ? (
-                    <div className="flex-1 flex items-center gap-2">
-                      <ZenInput
-                        value={editingTag.name}
-                        onChange={(e) =>
-                          setEditingTag({ ...editingTag, name: e.target.value })
-                        }
-                        className="flex-1"
-                      />
-                      <div className="flex gap-1">
-                        {colors.map((color) => (
-                          <button
-                            key={color}
-                            type="button"
-                            onClick={() => setEditingTag({ ...editingTag, color })}
-                            className={`w-6 h-6 rounded-full border transition-all ${editingTag.color === color ? 'border-white scale-110' : 'border-zinc-600'
-                              }`}
-                            style={{ backgroundColor: color }}
-                          />
-                        ))}
+                    key={tag.tempId || tag.id}
+                    className={`flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700 transition-opacity ${isPending ? 'opacity-70' : ''
+                      }`}
+                  >
+                    {isPending && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent flex-shrink-0" />
+                    )}
+                    <div
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {editingTag?.id === tag.id ? (
+                      <div className="flex-1 flex items-center gap-2">
+                        <ZenInput
+                          value={editingTag.name}
+                          onChange={(e) =>
+                            setEditingTag({ ...editingTag, name: e.target.value })
+                          }
+                          className="flex-1"
+                        />
+                        <div className="flex gap-1">
+                          {colors.map((color) => (
+                            <button
+                              key={color}
+                              type="button"
+                              onClick={() => setEditingTag({ ...editingTag, color })}
+                              className={`w-6 h-6 rounded-full border transition-all ${editingTag.color === color ? 'border-white scale-110' : 'border-zinc-600'
+                                }`}
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
+                        </div>
+                        <ZenButton
+                          size="sm"
+                          onClick={handleUpdateTag}
+                        >
+                          Guardar
+                        </ZenButton>
+                        <ZenButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingTag(null)}
+                        >
+                          Cancelar
+                        </ZenButton>
                       </div>
-                      <ZenButton
-                        size="sm"
-                        onClick={handleUpdateTag}
-                      >
-                        Guardar
-                      </ZenButton>
-                      <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingTag(null)}
-                      >
-                        Cancelar
-                      </ZenButton>
-                    </div>
-                  ) : (
-                    <>
-                      <span className="flex-1 text-sm text-zinc-300">{tag.name}</span>
-                      <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingTag(tag)}
-                      >
-                        Editar
-                      </ZenButton>
-                      <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteTag(tag.id)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </ZenButton>
-                    </>
-                  )}
-                </div>
-              ))}
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm text-zinc-300">{tag.name}</span>
+                        {!isPending && (
+                          <>
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingTag(tag)}
+                              disabled={isCreatingTags}
+                            >
+                              Editar
+                            </ZenButton>
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteTag(tag.id)}
+                              className="text-red-400 hover:text-red-300"
+                              disabled={isCreatingTags}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </ZenButton>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
           </div>
         )}
       </div>
