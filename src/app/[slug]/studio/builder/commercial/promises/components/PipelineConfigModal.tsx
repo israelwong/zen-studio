@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import {
   updatePipelineStage,
   reorderPipelineStages,
-} from '@/lib/actions/studio/builder/commercial/prospects';
+} from '@/lib/actions/studio/builder/commercial/promises';
 import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 
 interface PipelineConfigModalProps {

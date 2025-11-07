@@ -23,3 +23,16 @@ export {
   getEventTypes,
 } from './event-types.actions';
 
+export {
+  getPromiseTags,
+  createPromiseTag,
+  updatePromiseTag,
+  deletePromiseTag,
+  getPromiseTagsByPromiseId,
+  addTagToPromise,
+  removeTagFromPromise,
+  createOrFindTagAndAddToPromise,
+} from './promise-tags.actions';
+
+export type { PromiseTag } from './promise-tags.actions';
+

@@ -42,8 +42,16 @@ export function ZenConfirmModal({
         onConfirm();
     };
 
+    const handleOpenChange = (open: boolean) => {
+        // No cerrar si está en estado de loading
+        if (!open && loading) {
+            return;
+        }
+        onClose();
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogOverlay className="bg-black/40" />
             <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700">
                 <DialogHeader>

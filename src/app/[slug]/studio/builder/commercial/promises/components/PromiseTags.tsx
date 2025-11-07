@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Tag, Settings2, Trash2 } from 'lucide-react';
-import { ZenInput, ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenDialog } from '@/components/ui/zen';
+import { X, Settings2, Trash2 } from 'lucide-react';
+import { ZenInput, ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenDialog, ZenConfirmModal } from '@/components/ui/zen';
 import { toast } from 'sonner';
 import {
   getPromiseTagsByPromiseId,
@@ -109,6 +109,20 @@ export function PromiseTags({
 
   // Filtrar sugerencias basadas en input
   useEffect(() => {
+    // Si el input contiene "/", mostrar todas las etiquetas disponibles (o filtrar si hay texto después)
+    if (inputValue.includes('/')) {
+      const textAfterSlash = inputValue.split('/')[1]?.toLowerCase() || '';
+      const allAvailable = globalTags.filter(
+        (tag) =>
+          !tags.some((t) => t.id === tag.id && !t.isPending) &&
+          (textAfterSlash === '' || tag.name.toLowerCase().includes(textAfterSlash))
+      );
+      setSuggestions(allAvailable);
+      setShowSuggestions(allAvailable.length > 0);
+      setSelectedIndex(-1);
+      return;
+    }
+
     if (!inputValue.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -302,13 +316,13 @@ export function PromiseTags({
       const alreadyAssigned = tags.some((t) => t.id === tag.id && !t.isPending);
       if (alreadyAssigned) {
         toast.info('Esta etiqueta ya está asignada');
-        setInputValue('');
+        setInputValue((prev) => prev.replace('/', ''));
         setShowSuggestions(false);
         setSelectedIndex(-1);
         return;
       }
 
-      setInputValue('');
+      setInputValue((prev) => prev.replace('/', ''));
       setShowSuggestions(false);
       setSelectedIndex(-1);
 
@@ -355,6 +369,13 @@ export function PromiseTags({
   // Manejar navegación con teclado
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      // Detectar "/" para mostrar todas las etiquetas
+      if (e.key === '/' && !inputValue.includes('/')) {
+        e.preventDefault();
+        setInputValue((prev) => prev + '/');
+        return;
+      }
+
       if (showSuggestions && suggestions.length > 0) {
         if (e.key === 'ArrowDown') {
           e.preventDefault();
@@ -386,6 +407,10 @@ export function PromiseTags({
           e.preventDefault();
           setShowSuggestions(false);
           setSelectedIndex(-1);
+          // Limpiar "/" si está presente
+          if (inputValue.includes('/')) {
+            setInputValue((prev) => prev.replace('/', ''));
+          }
           return;
         }
       }
@@ -393,7 +418,7 @@ export function PromiseTags({
       // Enter normal si no hay sugerencias o no hay selección
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        if (inputValue.trim()) {
+        if (inputValue.trim() && !inputValue.includes('/')) {
           handleAddTags();
         }
       }
@@ -408,19 +433,18 @@ export function PromiseTags({
   return (
     <>
       <ZenCard>
-        <ZenCardHeader className="border-b border-zinc-800">
+        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <ZenCardTitle className="flex items-center gap-2">
-              <Tag className="h-4 w-4" />
+            <ZenCardTitle className="text-sm font-medium flex items-center pt-1">
               Etiquetas
             </ZenCardTitle>
             <ZenButton
               variant="ghost"
               size="sm"
               onClick={() => setIsManageModalOpen(true)}
-              className="text-zinc-400 hover:text-zinc-300"
+              className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-300"
             >
-              <Settings2 className="h-4 w-4" />
+              <Settings2 className="h-3.5 w-3.5" />
             </ZenButton>
           </div>
         </ZenCardHeader>
@@ -430,7 +454,7 @@ export function PromiseTags({
             <div className="relative">
               <ZenInput
                 ref={inputRef}
-                placeholder="Agregar etiquetas separadas por coma (Enter para agregar)"
+                placeholder="Ingresa etiquetas separadas por coma"
                 value={inputValue}
                 onChange={(e) => {
                   setInputValue(e.target.value);
@@ -447,7 +471,7 @@ export function PromiseTags({
               {showSuggestions && suggestions.length > 0 && (
                 <div
                   ref={suggestionsRef}
-                  className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                  className="absolute z-10 w-full top-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg max-h-48 overflow-y-auto"
                 >
                   {suggestions.map((tag, index) => (
                     <button
@@ -472,6 +496,10 @@ export function PromiseTags({
                 </div>
               )}
             </div>
+            {/* Instrucción */}
+            <p className="text-xs font-normal leading-normal text-zinc-500 mt-1">
+              Usa / para listar todas las etiquetas
+            </p>
 
             {/* Lista de tags */}
             {isLoadingTags ? (
@@ -567,6 +595,8 @@ function TagsManageModal({
   const [newTagInput, setNewTagInput] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [isCreatingTags, setIsCreatingTags] = useState(false);
+  const [tagToDelete, setTagToDelete] = useState<{ id: string; name: string; usageCount: number } | null>(null);
+  const [isDeletingTag, setIsDeletingTag] = useState(false);
 
   const loadTags = useCallback(async () => {
     setIsLoading(true);
@@ -753,13 +783,28 @@ function TagsManageModal({
     }
   };
 
-  const handleDeleteTag = async (tagId: string) => {
-    if (!confirm('¿Estás seguro de eliminar esta etiqueta? Se eliminará de todas las promesas.')) {
+  const handleDeleteTag = (tagId: string) => {
+    const tag = tags.find((t) => t.id === tagId);
+    if (!tag) return;
+
+    const usageCount = tag.usage_count || 0;
+
+    // Si no hay uso, eliminar directamente sin confirmación
+    if (usageCount === 0) {
+      performDeleteTag(tagId, tag);
       return;
     }
 
-    const tagToDelete = tags.find((t) => t.id === tagId);
-    if (!tagToDelete) return;
+    // Si hay uso, mostrar confirmación
+    setTagToDelete({
+      id: tagId,
+      name: tag.name,
+      usageCount,
+    });
+  };
+
+  const performDeleteTag = async (tagId: string, tagToDelete: PromiseTag & { isPending?: boolean; tempId?: string }) => {
+    setIsDeletingTag(true);
 
     // Actualización optimista local
     setTags((prev) => prev.filter((tag) => tag.id !== tagId));
@@ -773,16 +818,34 @@ function TagsManageModal({
           onTagDeleted(tagId);
         }
         onTagsUpdated();
+        setTagToDelete(null);
       } else {
         // Rollback en caso de error
         setTags((prev) => [...prev, tagToDelete].sort((a, b) => a.name.localeCompare(b.name)));
         toast.error(result.error || 'Error al eliminar etiqueta');
+        setTagToDelete(null);
       }
     } catch (error) {
       console.error('Error eliminando tag:', error);
       // Rollback
       setTags((prev) => [...prev, tagToDelete].sort((a, b) => a.name.localeCompare(b.name)));
       toast.error('Error al eliminar etiqueta');
+      setTagToDelete(null);
+    } finally {
+      setIsDeletingTag(false);
+    }
+  };
+
+  const handleConfirmDelete = () => {
+    if (!tagToDelete || isDeletingTag) return;
+    const tag = tags.find((t) => t.id === tagToDelete.id);
+    if (!tag) return;
+    performDeleteTag(tagToDelete.id, tag);
+  };
+
+  const handleCloseDeleteModal = () => {
+    if (!isDeletingTag) {
+      setTagToDelete(null);
     }
   };
 
@@ -829,8 +892,21 @@ function TagsManageModal({
 
         {/* Lista de etiquetas */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-500"></div>
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {[...Array(4)].map((_, index) => (
+              <div
+                key={`skeleton-${index}`}
+                className="flex items-center gap-3 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700 animate-pulse"
+              >
+                <div className="w-4 h-4 rounded-full bg-zinc-700 flex-shrink-0" />
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="h-4 bg-zinc-700 rounded w-24" />
+                  <div className="h-5 bg-zinc-700 rounded-full w-16" />
+                </div>
+                <div className="h-8 w-16 bg-zinc-700 rounded" />
+                <div className="h-8 w-16 bg-zinc-700 rounded" />
+              </div>
+            ))}
           </div>
         ) : tags.length === 0 ? (
           <div className="text-center py-8 text-zinc-500 text-sm">
@@ -892,7 +968,14 @@ function TagsManageModal({
                       </div>
                     ) : (
                       <>
-                        <span className="flex-1 text-sm text-zinc-300">{tag.name}</span>
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className="text-sm text-zinc-300">{tag.name}</span>
+                          {tag.usage_count !== undefined && tag.usage_count > 0 && (
+                            <span className="text-xs text-zinc-500 bg-zinc-700/50 px-2 py-0.5 rounded-full">
+                              {tag.usage_count} {tag.usage_count === 1 ? 'promesa' : 'promesas'}
+                            </span>
+                          )}
+                        </div>
                         {!isPending && (
                           <>
                             <ZenButton
@@ -922,6 +1005,24 @@ function TagsManageModal({
           </div>
         )}
       </div>
+
+      {/* Modal de confirmación de eliminación */}
+      <ZenConfirmModal
+        isOpen={!!tagToDelete}
+        onClose={handleCloseDeleteModal}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar etiqueta"
+        description={
+          tagToDelete
+            ? `¿Estás seguro de eliminar la etiqueta "${tagToDelete.name}"? Se eliminará de ${tagToDelete.usageCount} ${tagToDelete.usageCount === 1 ? 'promesa' : 'promesas'}. Esta acción no se puede deshacer.`
+            : ''
+        }
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={isDeletingTag}
+        disabled={isDeletingTag}
+      />
     </ZenDialog>
   );
 }

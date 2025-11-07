@@ -4,9 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, MessageSquare } from 'lucide-react';
 import { ZenInput, ZenButton } from '@/components/ui/zen';
 import { toast } from 'sonner';
-import { getPromiseLogs, createPromiseLog } from '@/lib/actions/studio/builder/commercial/prospects';
+import { getPromiseLogs, createPromiseLog } from '@/lib/actions/studio/builder/commercial/promises';
 import { formatDateTime } from '@/lib/actions/utils/formatting';
-import type { PromiseLog } from '@/lib/actions/studio/builder/commercial/prospects/promise-logs.actions';
+import type { PromiseLog } from '@/lib/actions/studio/builder/commercial/promises/promise-logs.actions';
 
 interface PromiseLogsPanelProps {
   studioSlug: string;

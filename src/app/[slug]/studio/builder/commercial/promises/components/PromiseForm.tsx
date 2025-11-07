@@ -10,11 +10,11 @@ import { toast } from 'sonner';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
-import { createPromise, updatePromise, getEventTypes, getPromiseIdByContactId } from '@/lib/actions/studio/builder/commercial/prospects';
+import { createPromise, updatePromise, getEventTypes, getPromiseIdByContactId } from '@/lib/actions/studio/builder/commercial/promises';
 import { getContacts, getAcquisitionChannels, getSocialNetworks } from '@/lib/actions/studio/builder/commercial/contacts';
 import { PromiseLogsPanel } from './PromiseLogsPanel';
 import { PromiseQuotesPanel } from './PromiseQuotesPanel';
-import { PromiseQuickActions } from './PromiseQuickActions';
+import { PromiseTags } from './PromiseTags';
 import type { CreatePromiseData, UpdatePromiseData } from '@/lib/actions/schemas/promises-schemas';
 
 interface PromiseFormProps {
@@ -41,6 +41,13 @@ export interface PromiseFormRef {
   cancel: () => void;
   loading: boolean;
   isEditMode: boolean;
+  contactData: {
+    contactId: string | null;
+    contactName: string;
+    phone: string;
+    email: string | null;
+    promiseId: string | null;
+  } | null;
 }
 
 export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
@@ -91,7 +98,7 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
   const [isFormDirty, setIsFormDirty] = useState(false);
-  
+
   // Estado para saber si la promesa está guardada
   const isSaved = promiseId !== null;
 
@@ -332,31 +339,31 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
 
       if (result.success && result.data) {
         const contactId = result.data.id;
-        
+
         // Obtener promiseId después de crear/actualizar
         if (contactId) {
           const promiseResult = await getPromiseIdByContactId(contactId);
           if (promiseResult.success && promiseResult.data) {
             setPromiseId(promiseResult.data.promise_id);
           }
-          
+
           // Actualizar contactId actual
           setCurrentContactId(contactId);
-          
+
           // Si es creación (no estaba en modo edición), actualizar URL sin recargar
           if (!isEditMode && promiseResult.success && promiseResult.data) {
             // Actualizar URL sin recargar la página usando promiseId
             router.replace(`/${studioSlug}/studio/builder/commercial/promises/${promiseResult.data.promise_id}`);
-            
+
             // Actualizar estado interno para modo edición
             setIsEditMode(true);
           }
         }
-        
+
         toast.success(isEditMode ? 'Promesa actualizada exitosamente' : 'Promesa registrada exitosamente');
         // Marcar formulario como limpio después de guardar
         setIsFormDirty(false);
-        
+
         if (onSuccess) {
           onSuccess();
         }
@@ -486,7 +493,14 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
     },
     loading,
     isEditMode,
-  }), [loading, isEditMode, handleNavigation, handleSubmit, router]);
+    contactData: isSaved && currentContactId ? {
+      contactId: currentContactId,
+      contactName: formData.name,
+      phone: formData.phone,
+      email: formData.email || null,
+      promiseId: promiseId,
+    } : null,
+  }), [loading, isEditMode, handleNavigation, handleSubmit, router, isSaved, currentContactId, formData.name, formData.phone, formData.email, promiseId]);
 
   useEffect(() => {
     if (selectedDates.length > 0) {
@@ -521,7 +535,9 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
     return `${selectedDates.length} fechas seleccionadas`;
   };
 
-  if (isInitialLoading) {
+  // Solo mostrar skeleton si no hay initialData (nueva promesa)
+  // Si hay initialData, la página ya maneja el loading state
+  if (isInitialLoading && !initialData) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
         <div className="space-y-4">
@@ -918,17 +934,15 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
           />
         </div>
 
-        {/* Columna 3: Quick Actions y Bitácora */}
+        {/* Columna 3: Etiquetas, Quick Actions y Bitácora */}
         <div className="lg:col-span-1 space-y-6">
-          {/* Quick Actions (solo si está guardado) */}
-          {isSaved && currentContactId && (
+          {/* Etiquetas (solo si está guardado) */}
+          {isSaved && promiseId && (
             <div>
-              <PromiseQuickActions
+              <PromiseTags
                 studioSlug={studioSlug}
-                contactId={currentContactId}
-                contactName={formData.name}
-                phone={formData.phone}
-                email={formData.email}
+                promiseId={promiseId}
+                isSaved={isSaved}
               />
             </div>
           )}

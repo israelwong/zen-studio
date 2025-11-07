@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { PromisesKanban, PromisesSkeleton } from './';
-import { getPromises, getPipelineStages } from '@/lib/actions/studio/builder/commercial/prospects';
+import { getPromises, getPipelineStages } from '@/lib/actions/studio/builder/commercial/promises';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 
 interface PromisesWrapperProps {

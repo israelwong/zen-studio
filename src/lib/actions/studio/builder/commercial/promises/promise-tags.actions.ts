@@ -31,6 +31,7 @@ export interface PromiseTag {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+  usage_count?: number;
 }
 
 export interface PromiseTagsResponse {
@@ -67,6 +68,13 @@ export async function getPromiseTags(
         is_active: true,
       },
       orderBy: { order: 'asc' },
+      include: {
+        _count: {
+          select: {
+            promises: true,
+          },
+        },
+      },
     });
 
     const promiseTags: PromiseTag[] = tags.map((tag) => ({
@@ -80,6 +88,7 @@ export async function getPromiseTags(
       is_active: tag.is_active,
       created_at: tag.created_at,
       updated_at: tag.updated_at,
+      usage_count: tag._count.promises,
     }));
 
     return { success: true, data: promiseTags };

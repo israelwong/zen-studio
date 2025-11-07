@@ -738,6 +738,7 @@ model studios {
   clientes                   studio_clientes[]
   contacts                   studio_contacts[]
   promise_pipeline_stages  studio_promise_pipeline_stages[]
+  promise_tags             studio_promise_tags[]
   condiciones_comerciales    studio_condiciones_comerciales[]
   configuraciones            studio_configuraciones[]
   cotizaciones               studio_cotizaciones[]
@@ -1383,6 +1384,7 @@ model studio_promises {
   quotes            studio_cotizaciones[]
   event             studio_eventos?
   logs              studio_promise_logs[]
+  tags              studio_promises_tags[]
 
   @@index([studio_id, contact_id])
   @@index([studio_id, status])
@@ -1402,6 +1404,40 @@ model studio_promise_logs {
 
   @@index([promise_id, created_at])
   @@index([user_id])
+}
+
+//! PROMISES TAGS
+
+model studio_promise_tags {
+  id          String                @id @default(cuid())
+  studio_id   String
+  name        String
+  slug        String
+  color       String                 @default("#3B82F6")
+  description String?
+  order       Int                    @default(0)
+  is_active   Boolean                @default(true)
+  created_at  DateTime               @default(now())
+  updated_at  DateTime               @updatedAt
+  studio      studios                @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  promises    studio_promises_tags[]
+
+  @@unique([studio_id, slug])
+  @@index([studio_id, order])
+  @@index([studio_id, is_active])
+}
+
+model studio_promises_tags {
+  id          String            @id @default(cuid())
+  promise_id  String
+  tag_id      String
+  created_at  DateTime          @default(now())
+  promise     studio_promises   @relation(fields: [promise_id], references: [id], onDelete: Cascade)
+  tag         studio_promise_tags @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@unique([promise_id, tag_id])
+  @@index([promise_id])
+  @@index([tag_id])
 }
 
 //! COMMERCIAL (EVENTOS)

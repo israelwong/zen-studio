@@ -23,7 +23,7 @@ import {
 import { ZenButton, ZenInput } from '@/components/ui/zen';
 import { PromiseCard } from './PromiseCard';
 import { PipelineConfigModal } from './PipelineConfigModal';
-import { movePromise } from '@/lib/actions/studio/builder/commercial/prospects';
+import { movePromise } from '@/lib/actions/studio/builder/commercial/promises';
 import { toast } from 'sonner';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 import confetti from 'canvas-confetti';

@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Share2, MessageCircle, Phone, ExternalLink } from 'lucide-react';
-import { ZenButton } from '@/components/ui/zen';
+import { Share2, MessageCircle, Phone, Mail } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PromiseQuickActionsProps {
   studioSlug: string;
@@ -28,61 +28,64 @@ export function PromiseQuickActions({
     window.open(`tel:${phone}`, '_self');
   };
 
-  const handleShareProfile = () => {
-    // TODO: Implementar compartir perfil digital
+  const handleShareProfile = async () => {
     const profileUrl = `${window.location.origin}/${studioSlug}/cliente/profile/${contactId}`;
     if (navigator.share) {
-      navigator.share({
-        title: `Perfil de ${contactName}`,
-        text: `Revisa el perfil de ${contactName}`,
-        url: profileUrl,
-      });
+      try {
+        await navigator.share({
+          title: `Perfil de ${contactName}`,
+          text: `Revisa el perfil de ${contactName}`,
+          url: profileUrl,
+        });
+      } catch (error) {
+        // Usuario canceló el share
+      }
     } else {
-      navigator.clipboard.writeText(profileUrl);
-      // toast.success('Link copiado al portapapeles');
+      await navigator.clipboard.writeText(profileUrl);
+      toast.success('Link copiado al portapapeles');
     }
   };
 
+  const handleEmail = () => {
+    window.open(`mailto:${email}`, '_self');
+  };
+
   return (
-    <div className="flex flex-wrap gap-2 p-4 bg-zinc-900/30 rounded-lg border border-zinc-800">
-      <ZenButton
-        variant="outline"
-        size="sm"
+    <div className="flex items-center gap-2">
+      <button
         onClick={handleWhatsApp}
-        className="flex items-center gap-2"
+        className="p-2 rounded-lg bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 hover:text-emerald-300 transition-colors"
+        title="WhatsApp"
+        aria-label="Abrir WhatsApp"
       >
         <MessageCircle className="h-4 w-4" />
-        WhatsApp
-      </ZenButton>
-      <ZenButton
-        variant="outline"
-        size="sm"
+      </button>
+      <button
         onClick={handleCall}
-        className="flex items-center gap-2"
+        className="p-2 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 hover:text-blue-300 transition-colors"
+        title="Llamar"
+        aria-label="Llamar"
       >
         <Phone className="h-4 w-4" />
-        Llamar
-      </ZenButton>
-      <ZenButton
-        variant="outline"
-        size="sm"
+      </button>
+      {email && (
+        <button
+          onClick={handleEmail}
+          className="p-2 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 hover:text-purple-300 transition-colors"
+          title="Email"
+          aria-label="Enviar email"
+        >
+          <Mail className="h-4 w-4" />
+        </button>
+      )}
+      <button
         onClick={handleShareProfile}
-        className="flex items-center gap-2"
+        className="p-2 rounded-lg bg-zinc-600/10 hover:bg-zinc-600/20 text-zinc-400 hover:text-zinc-300 transition-colors"
+        title="Compartir perfil"
+        aria-label="Compartir perfil"
       >
         <Share2 className="h-4 w-4" />
-        Compartir Perfil
-      </ZenButton>
-      {email && (
-        <ZenButton
-          variant="outline"
-          size="sm"
-          onClick={() => window.open(`mailto:${email}`, '_self')}
-          className="flex items-center gap-2"
-        >
-          <ExternalLink className="h-4 w-4" />
-          Email
-        </ZenButton>
-      )}
+      </button>
     </div>
   );
 }

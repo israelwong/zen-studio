@@ -5,9 +5,9 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { PromiseForm, type PromiseFormRef } from '../components/PromiseForm';
-import { getPromiseById } from '@/lib/actions/studio/builder/commercial/prospects';
+import { PromiseQuickActions } from '../components/PromiseQuickActions';
+import { getPromiseById } from '@/lib/actions/studio/builder/commercial/promises';
 import { toast } from 'sonner';
-import { PromisesSkeleton } from '../components';
 
 export default function EditarPromesaPage() {
   const params = useParams();
@@ -17,6 +17,29 @@ export default function EditarPromesaPage() {
   const formRef = useRef<PromiseFormRef>(null);
   const [loading, setLoading] = useState(true);
   const [isFormLoading, setIsFormLoading] = useState(false);
+  const [contactData, setContactData] = useState<{
+    contactId: string;
+    contactName: string;
+    phone: string;
+    email: string | null;
+    promiseId: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (formRef.current?.contactData) {
+        setContactData(formRef.current.contactData as {
+          contactId: string;
+          contactName: string;
+          phone: string;
+          email: string | null;
+          promiseId: string;
+        });
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, []);
   const [initialData, setInitialData] = useState<{
     id: string;
     name: string;
@@ -74,8 +97,33 @@ export default function EditarPromesaPage() {
     return (
       <div className="w-full max-w-7xl mx-auto">
         <ZenCard variant="default" padding="none">
+          <ZenCardHeader className="border-b border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-zinc-800 rounded animate-pulse" />
+              <div className="space-y-2">
+                <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+              </div>
+            </div>
+          </ZenCardHeader>
           <ZenCardContent className="p-6">
-            <PromisesSkeleton />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-1 space-y-4">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-10 w-full bg-zinc-800 rounded animate-pulse" />
+                  </div>
+                ))}
+              </div>
+              <div className="lg:col-span-1 space-y-4">
+                <div className="h-64 bg-zinc-800 rounded-lg animate-pulse" />
+              </div>
+              <div className="lg:col-span-1 space-y-4">
+                <div className="h-32 bg-zinc-800 rounded-lg animate-pulse" />
+                <div className="h-64 bg-zinc-800 rounded-lg animate-pulse" />
+              </div>
+            </div>
           </ZenCardContent>
         </ZenCard>
       </div>
@@ -90,21 +138,32 @@ export default function EditarPromesaPage() {
     <div className="w-full max-w-7xl mx-auto">
       <ZenCard variant="default" padding="none">
         <ZenCardHeader className="border-b border-zinc-800">
-          <div className="flex items-center gap-3">
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={() => formRef.current?.cancel()}
-              className="p-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </ZenButton>
-            <div>
-              <ZenCardTitle>Editar Promesa</ZenCardTitle>
-              <ZenCardDescription>
-                Actualiza la información de la promesa
-              </ZenCardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={() => formRef.current?.cancel()}
+                className="p-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </ZenButton>
+              <div>
+                <ZenCardTitle>Editar Promesa</ZenCardTitle>
+                <ZenCardDescription>
+                  Actualiza la información de la promesa
+                </ZenCardDescription>
+              </div>
             </div>
+            {contactData && (
+              <PromiseQuickActions
+                studioSlug={studioSlug}
+                contactId={contactData.contactId}
+                contactName={contactData.contactName}
+                phone={contactData.phone}
+                email={contactData.email}
+              />
+            )}
           </div>
         </ZenCardHeader>
         <ZenCardContent className="p-6">
