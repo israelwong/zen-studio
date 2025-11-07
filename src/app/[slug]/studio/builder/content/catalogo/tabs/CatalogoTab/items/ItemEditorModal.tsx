@@ -229,6 +229,11 @@ export function ItemEditorModal({
             setShowDesglosePrecios(false);
 
             if (item) {
+                // Asegurar que los gastos se carguen correctamente
+                const gastosDelItem = item.gastos && Array.isArray(item.gastos) && item.gastos.length > 0
+                    ? item.gastos
+                    : [];
+
                 const initialData: ItemFormData = {
                     id: item.id,
                     name: item.name,
@@ -236,10 +241,10 @@ export function ItemEditorModal({
                     description: item.description || "",
                     categoriaeId: categoriaId,
                     tipoUtilidad: (item.tipoUtilidad || "servicio") as 'servicio' | 'producto',
-                    gastos: item.gastos || [],
+                    gastos: gastosDelItem,
                     status: item.status || "active",
                 };
-                const initialGastosData = item.gastos?.map((g) => ({ nombre: g.nombre, costo: g.costo })) || [];
+                const initialGastosData = gastosDelItem.map((g) => ({ nombre: g.nombre, costo: g.costo }));
 
                 setFormData(initialData);
                 setGastos(initialGastosData);
@@ -357,19 +362,25 @@ export function ItemEditorModal({
         try {
             setIsSaving(true);
 
+            // Asegurar que los gastos estén sincronizados con el estado actual
+            const formDataConGastos = {
+                ...formData,
+                gastos: gastos.length > 0 ? gastos : (formData.gastos || [])
+            };
+
             if (onSave) {
                 // Usar callback del padre para mantener sincronización
-                await onSave(formData);
+                await onSave(formDataConGastos);
             } else {
                 // Fallback: llamar directamente a las acciones (comportamiento anterior)
-                if (formData.id) {
+                if (formDataConGastos.id) {
                     const result = await actualizarItem({
-                        id: formData.id,
-                        name: formData.name,
-                        cost: formData.cost,
-                        tipoUtilidad: formData.tipoUtilidad,
-                        gastos: formData.gastos || [],
-                        status: formData.status,
+                        id: formDataConGastos.id,
+                        name: formDataConGastos.name,
+                        cost: formDataConGastos.cost,
+                        tipoUtilidad: formDataConGastos.tipoUtilidad,
+                        gastos: formDataConGastos.gastos || [],
+                        status: formDataConGastos.status,
                     });
 
                     if (!result.success) {
@@ -381,10 +392,10 @@ export function ItemEditorModal({
                 } else {
                     const result = await crearItem({
                         categoriaeId: categoriaId,
-                        name: formData.name,
-                        cost: formData.cost,
-                        gastos: formData.gastos || [],
-                        status: formData.status || 'active',
+                        name: formDataConGastos.name,
+                        cost: formDataConGastos.cost,
+                        gastos: formDataConGastos.gastos || [],
+                        status: formDataConGastos.status || 'active',
                     });
 
                     if (!result.success) {
@@ -398,7 +409,7 @@ export function ItemEditorModal({
             }
 
             // Actualizar estado inicial después de guardar
-            setInitialFormData({ ...formData });
+            setInitialFormData({ ...formDataConGastos });
             setInitialGastos([...gastos]);
 
             setLocalIsOpen(false);

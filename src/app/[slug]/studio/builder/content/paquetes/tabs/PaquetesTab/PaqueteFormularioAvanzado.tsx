@@ -6,6 +6,7 @@ import { X, ChevronDown, ChevronRight, AlertTriangle, ImageIcon } from 'lucide-r
 import { ZenButton, ZenInput, ZenTextarea, ZenBadge } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
+import { PrecioDesglosePaquete } from '@/components/shared/precio';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
 import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/builder/paquetes/paquetes.actions';
@@ -356,6 +357,16 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         diferenciaPrecio: 0 // Diferencia entre precio personalizado y calculado
     });
 
+    // Items del paquete para el desglose
+    const [itemsParaDesglose, setItemsParaDesglose] = useState<Array<{
+        id: string;
+        nombre: string;
+        costo: number;
+        gasto: number;
+        tipo_utilidad: 'service' | 'product';
+        cantidad: number;
+    }>>([]);
+
     // Cálculo dinámico del precio usando useEffect
     useEffect(() => {
         if (!configuracionPrecios) {
@@ -368,6 +379,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 utilidadNetaCalculada: 0,
                 diferenciaPrecio: 0
             });
+            setItemsParaDesglose([]);
             return;
         }
 
@@ -390,7 +402,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 return {
                     ...servicio,
                     precioUnitario: precios.precio_final,
-                    cantidad
+                    cantidad,
+                    resultadoPrecio: precios, // Guardar el resultado completo para el desglose
+                    tipoUtilidad
                 };
             })
             .filter(Boolean);
@@ -405,6 +419,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 utilidadNetaCalculada: 0,
                 diferenciaPrecio: 0
             });
+            setItemsParaDesglose([]);
             return;
         }
 
@@ -443,6 +458,30 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         };
 
         setCalculoPrecio(resultado);
+
+        // Preparar items para el desglose del paquete
+        const itemsDesglose = serviciosSeleccionados
+            .filter((s): s is NonNullable<typeof s> => s !== null)
+            .map(s => {
+                const tipoUtilidad: 'service' | 'product' = s.tipo_utilidad === 'service' ? 'service' : 'product';
+                return {
+                    id: s.id,
+                    nombre: s.nombre,
+                    costo: s.costo || 0,
+                    gasto: s.gasto || 0,
+                    tipo_utilidad: tipoUtilidad,
+                    cantidad: s.cantidad,
+                };
+            });
+
+        setItemsParaDesglose(itemsDesglose as Array<{
+            id: string;
+            nombre: string;
+            costo: number;
+            gasto: number;
+            tipo_utilidad: 'service' | 'product';
+            cantidad: number;
+        }>);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [items, precioPersonalizado, configKey]); // servicioMap depende de configKey, evitar dependencias anidadas
 
@@ -962,22 +1001,14 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                         <ChevronRight className="w-4 h-4" />
                                     )}
                                 </button>
-                                {seccionesExpandidas.has('desglose-financiero') && (
-                                    <div className="mt-3 space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-zinc-400">Total costos</span>
-                                            <span className="text-zinc-300">{formatearMoneda(calculoPrecio.totalCosto)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-zinc-400">Total gastos</span>
-                                            <span className="text-zinc-300">{formatearMoneda(calculoPrecio.totalGasto)}</span>
-                                        </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-zinc-400">Utilidad neta</span>
-                                            <span className={`font-medium ${calculoPrecio.utilidadNeta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                                                {formatearMoneda(calculoPrecio.utilidadNeta)}
-                                            </span>
-                                        </div>
+                                {seccionesExpandidas.has('desglose-financiero') && itemsParaDesglose.length > 0 && configuracionPrecios && (
+                                    <div className="mt-3">
+                                        <PrecioDesglosePaquete
+                                            items={itemsParaDesglose}
+                                            configuracion={configuracionPrecios}
+                                            precioPersonalizado={precioPersonalizado === '' ? undefined : Number(precioPersonalizado) || undefined}
+                                            showCard={false}
+                                        />
                                     </div>
                                 )}
                             </div>

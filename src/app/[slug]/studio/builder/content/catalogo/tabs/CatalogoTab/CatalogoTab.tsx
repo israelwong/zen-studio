@@ -1317,6 +1317,7 @@ export function CatalogoTab({
                                 status: (data as unknown as { status?: string }).status || item.status || 'active',
                                 hasPhotos,
                                 hasVideos,
+                                gastos: data.gastos || [], // Incluir gastos actualizados
                             } : item
                         );
                     });
@@ -1330,6 +1331,7 @@ export function CatalogoTab({
                     cost: data.cost,
                     tipoUtilidad: data.tipoUtilidad || prev.tipoUtilidad || 'servicio',
                     status: (data as unknown as { status?: string }).status || prev.status || 'active',
+                    gastos: data.gastos || [], // Incluir gastos actualizados
                 } : null);
                 toast.success("Item actualizado");
             } else {

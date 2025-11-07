@@ -5,7 +5,7 @@ import { formatearMoneda, type ResultadoPrecio } from "@/lib/actions/studio/buil
 
 interface PrecioDesgloseProps {
     resultado: ResultadoPrecio;
-    tipoUtilidad?: 'servicio' | 'producto';
+    tipoUtilidad?: 'servicio' | 'producto' | 'paquete';
     showCard?: boolean;
 }
 
@@ -48,7 +48,10 @@ export function PrecioDesglose({
                 <div className="text-xs text-zinc-500 mb-2 font-medium">Utilidad Base</div>
                 <div className="flex justify-between items-center">
                     <span className="text-sm text-zinc-400">
-                        Utilidad {tipoUtilidad === 'servicio' ? 'Servicio' : 'Producto'} ({resultado.porcentaje_utilidad}% sobre subtotal costos)
+                        {tipoUtilidad === 'paquete' 
+                            ? `Utilidad Agregada (${resultado.porcentaje_utilidad}% sobre subtotal costos)`
+                            : `Utilidad ${tipoUtilidad === 'servicio' ? 'Servicio' : 'Producto'} (${resultado.porcentaje_utilidad}% sobre subtotal costos)`
+                        }
                     </span>
                     <span className="text-sm font-medium text-emerald-400">{formatearMoneda(resultado.utilidad_base)}</span>
                 </div>
