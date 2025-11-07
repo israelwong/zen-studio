@@ -87,6 +87,7 @@ export async function getPromiseById(
   referrer_contact_id: string | null;
   referrer_name: string | null;
   pipeline_stage_slug: string | null;
+  pipeline_stage_id: string | null;
 }>> {
   try {
     const promise = await prisma.studio_promises.findUnique({
@@ -106,6 +107,7 @@ export async function getPromiseById(
         },
         pipeline_stage: {
           select: {
+            id: true,
             slug: true,
           },
         },
@@ -133,6 +135,7 @@ export async function getPromiseById(
         referrer_contact_id: promise.contact.referrer_contact_id,
         referrer_name: promise.contact.referrer_name,
         pipeline_stage_slug: promise.pipeline_stage?.slug || null,
+        pipeline_stage_id: promise.pipeline_stage_id || null,
       },
     };
   } catch (error) {

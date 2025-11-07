@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
 import { PromiseForm, type PromiseFormRef } from '../components/PromiseForm';
 import { PromiseQuickActions } from '../components/PromiseQuickActions';
-import { getPromiseById, archivePromise, unarchivePromise, deletePromise } from '@/lib/actions/studio/builder/commercial/promises';
+import { getPromiseById, archivePromise, unarchivePromise, deletePromise, getPipelineStages, movePromise } from '@/lib/actions/studio/builder/commercial/promises';
+import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 import { toast } from 'sonner';
+import confetti from 'canvas-confetti';
 
 export default function EditarPromesaPage() {
   const params = useParams();
@@ -30,6 +32,9 @@ export default function EditarPromesaPage() {
   const [isArchiving, setIsArchiving] = useState(false);
   const [isUnarchiving, setIsUnarchiving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [currentPipelineStageId, setCurrentPipelineStageId] = useState<string | null>(null);
+  const [isChangingStage, setIsChangingStage] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -81,8 +86,9 @@ export default function EditarPromesaPage() {
             referrer_name: result.data.referrer_name || undefined,
             promiseId: result.data.promise_id,
           });
-          // Verificar si está archivada
+          // Verificar si está archivada y guardar pipeline stage id
           setIsArchived(result.data.pipeline_stage_slug === 'archived');
+          setCurrentPipelineStageId(result.data.pipeline_stage_id);
         } else {
           toast.error(result.error || 'Promesa no encontrada');
           router.push(`/${studioSlug}/studio/builder/commercial/promises`);
@@ -101,15 +107,74 @@ export default function EditarPromesaPage() {
     }
   }, [promiseId, studioSlug, router]);
 
+  // Cargar pipeline stages
+  useEffect(() => {
+    const loadPipelineStages = async () => {
+      try {
+        const result = await getPipelineStages(studioSlug);
+        if (result.success && result.data) {
+          setPipelineStages(result.data);
+        }
+      } catch (error) {
+        console.error('Error cargando pipeline stages:', error);
+      }
+    };
+    loadPipelineStages();
+  }, [studioSlug]);
+
+  const handlePipelineStageChange = async (newStageId: string) => {
+    if (!promiseId || newStageId === currentPipelineStageId) return;
+
+    setIsChangingStage(true);
+    try {
+      const result = await movePromise(studioSlug, {
+        promise_id: promiseId,
+        new_stage_id: newStageId,
+      });
+
+      if (result.success) {
+        setCurrentPipelineStageId(newStageId);
+        const newStage = pipelineStages.find((s) => s.id === newStageId);
+        setIsArchived(newStage?.slug === 'archived');
+        
+        // Disparar confetti si cambió a "aprobado"
+        const isApprovedStage = newStage?.slug === 'approved' || newStage?.slug === 'aprobado' || 
+                                newStage?.name.toLowerCase().includes('aprobado');
+        
+        if (isApprovedStage) {
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 1 }, // Desde abajo de la ventana
+          });
+        }
+        
+        toast.success('Etapa actualizada correctamente');
+      } else {
+        toast.error(result.error || 'Error al cambiar etapa');
+      }
+    } catch (error) {
+      console.error('Error cambiando etapa:', error);
+      toast.error('Error al cambiar etapa');
+    } finally {
+      setIsChangingStage(false);
+    }
+  };
+
 
   const handleArchive = async () => {
     setIsArchiving(true);
     try {
       const result = await archivePromise(studioSlug, promiseId);
       if (result.success) {
+        setIsArchived(true);
+        // Actualizar pipeline stage id al stage archivado
+        const archivedStage = pipelineStages.find((s) => s.slug === 'archived');
+        if (archivedStage) {
+          setCurrentPipelineStageId(archivedStage.id);
+        }
         toast.success('Promesa archivada correctamente');
         setShowArchiveModal(false);
-        setIsArchived(true);
       } else {
         toast.error(result.error || 'Error al archivar promesa');
       }
@@ -126,8 +191,15 @@ export default function EditarPromesaPage() {
     try {
       const result = await unarchivePromise(studioSlug, promiseId);
       if (result.success) {
-        toast.success('Promesa desarchivada correctamente');
         setIsArchived(false);
+        // Actualizar pipeline stage id a la primera etapa activa
+        const firstActiveStage = pipelineStages
+          .filter((s) => s.slug !== 'archived')
+          .sort((a, b) => a.order - b.order)[0];
+        if (firstActiveStage) {
+          setCurrentPipelineStageId(firstActiveStage.id);
+        }
+        toast.success('Promesa desarchivada correctamente');
       } else {
         toast.error(result.error || 'Error al desarchivar promesa');
       }
@@ -171,15 +243,19 @@ export default function EditarPromesaPage() {
                   <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Skeleton de QuickActions */}
+              <div className="flex items-center gap-3">
+                {/* Skeleton del select */}
+                <div className="h-8 w-32 bg-zinc-800 rounded-lg animate-pulse" />
                 <div className="flex items-center gap-2">
-                  <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
-                  <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                  {/* Skeleton de QuickActions */}
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                    <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                    <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                  </div>
+                  {/* Skeleton del menú modal */}
                   <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
                 </div>
-                {/* Skeleton del menú modal */}
-                <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
               </div>
             </div>
           </ZenCardHeader>
@@ -213,7 +289,10 @@ export default function EditarPromesaPage() {
 
   return (
     <div className="w-full max-w-7xl mx-auto">
-      <ZenCard variant="default" padding="none">
+      <ZenCard 
+        variant="default" 
+        padding="none"
+      >
         <ZenCardHeader className="border-b border-zinc-800">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -232,7 +311,51 @@ export default function EditarPromesaPage() {
                 </ZenCardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              {pipelineStages.length > 0 && currentPipelineStageId && (() => {
+                const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
+                const isApprovedStage = currentStage?.slug === 'approved' || currentStage?.slug === 'aprobado' || 
+                                       currentStage?.name.toLowerCase().includes('aprobado');
+                
+                return (
+                  <div className="relative flex items-center">
+                    <select
+                      value={currentPipelineStageId}
+                      onChange={(e) => handlePipelineStageChange(e.target.value)}
+                      disabled={isChangingStage || loading}
+                      className={`pl-3 pr-8 py-1.5 text-sm bg-zinc-900 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed appearance-none ${
+                        isChangingStage
+                          ? "border-zinc-700 focus:ring-emerald-500/50 focus:border-emerald-500"
+                          : isArchived 
+                          ? "border-amber-500 focus:ring-amber-500/50 focus:border-amber-500"
+                          : isApprovedStage
+                          ? "border-emerald-500 focus:ring-emerald-500/50 focus:border-emerald-500"
+                          : "border-zinc-700 focus:ring-emerald-500/50 focus:border-emerald-500"
+                      }`}
+                    >
+                      {isChangingStage ? (
+                        <option value={currentPipelineStageId}>Actualizando estado...</option>
+                      ) : (
+                        pipelineStages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    {isChangingStage ? (
+                      <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-zinc-400 pointer-events-none" />
+                    ) : (
+                      <div className="absolute right-2 pointer-events-none">
+                        <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              <div className="flex items-center gap-2">
               {contactData && (
                 <PromiseQuickActions
                   studioSlug={studioSlug}
@@ -282,6 +405,7 @@ export default function EditarPromesaPage() {
                   </ZenDropdownMenuItem>
                 </ZenDropdownMenuContent>
               </ZenDropdownMenu>
+              </div>
             </div>
           </div>
         </ZenCardHeader>
