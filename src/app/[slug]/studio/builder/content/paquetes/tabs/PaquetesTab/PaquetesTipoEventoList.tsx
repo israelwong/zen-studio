@@ -1621,7 +1621,7 @@ export function PaquetesTipoEventoList({
                                 className="flex items-center gap-2"
                             >
                                 <Plus className="w-4 h-4" />
-                                Crear
+                                Crear nuevo
                             </ZenButton>
                         </ZenDropdownMenuTrigger>
                         <ZenDropdownMenuContent align="end" className="w-56">
@@ -1640,7 +1640,7 @@ export function PaquetesTipoEventoList({
                                                 onClick={() => handleCrearPaquete(tipo.id)}
                                             >
                                                 <Plus className="h-4 w-4 mr-2" />
-                                                Nuevo paquete de {tipo.nombre}
+                                                Paquete de {tipo.nombre}
                                             </ZenDropdownMenuItem>
                                         ))}
                                 </>
