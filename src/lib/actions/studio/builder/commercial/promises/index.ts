@@ -3,6 +3,9 @@ export {
   createPromise,
   updatePromise,
   movePromise,
+  archivePromise,
+  unarchivePromise,
+  deletePromise,
 } from './promises.actions';
 
 export {

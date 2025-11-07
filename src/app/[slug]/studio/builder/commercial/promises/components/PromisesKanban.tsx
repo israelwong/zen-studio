@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, Settings } from 'lucide-react';
+import { Search, Plus, Settings, Archive } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -57,6 +57,7 @@ export function PromisesKanban({
   const [localPromises, setLocalPromises] = useState<PromiseWithContact[]>(promises);
   const prevPromisesRef = useRef<PromiseWithContact[]>(promises);
   const isDraggingRef = useRef(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Sincronizar estado local cuando cambian las promesas desde el padre
   // Evitar sincronización durante drag and drop para prevenir parpadeos
@@ -130,15 +131,23 @@ export function PromisesKanban({
     });
   }, [filteredPromises]);
 
+  // Filtrar stages según toggle de archivados
+  const visibleStages = useMemo(() => {
+    if (showArchived) {
+      return pipelineStages;
+    }
+    return pipelineStages.filter((stage) => stage.slug !== 'archived');
+  }, [pipelineStages, showArchived]);
+
   // Agrupar promises por stage (ya ordenadas)
   const promisesByStage = useMemo(() => {
-    return pipelineStages.reduce((acc: Record<string, PromiseWithContact[]>, stage: PipelineStage) => {
+    return visibleStages.reduce((acc: Record<string, PromiseWithContact[]>, stage: PipelineStage) => {
       acc[stage.id] = sortedPromises.filter(
         (p: PromiseWithContact) => p.promise_pipeline_stage_id === stage.id
       );
       return acc;
     }, {} as Record<string, PromiseWithContact[]>);
-  }, [sortedPromises, pipelineStages]);
+  }, [sortedPromises, visibleStages]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -269,6 +278,14 @@ export function PromisesKanban({
 
         <div className="flex gap-2 w-full sm:w-auto">
           <ZenButton
+            variant={showArchived ? 'default' : 'outline'}
+            onClick={() => setShowArchived(!showArchived)}
+            className="w-full sm:w-auto"
+          >
+            <Archive className="h-4 w-4 mr-2" />
+            {showArchived ? 'Ocultar' : 'Mostrar'} Archivados
+          </ZenButton>
+          <ZenButton
             variant="ghost"
             onClick={() => setIsConfigModalOpen(true)}
             className="w-full sm:w-auto"
@@ -291,7 +308,7 @@ export function PromisesKanban({
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {pipelineStages.map((stage: PipelineStage) => (
+          {visibleStages.map((stage: PipelineStage) => (
             <KanbanColumn
               key={stage.id}
               stage={stage}

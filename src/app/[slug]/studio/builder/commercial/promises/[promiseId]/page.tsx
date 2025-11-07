@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
+import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2 } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
 import { PromiseForm, type PromiseFormRef } from '../components/PromiseForm';
 import { PromiseQuickActions } from '../components/PromiseQuickActions';
-import { getPromiseById } from '@/lib/actions/studio/builder/commercial/promises';
+import { getPromiseById, archivePromise, unarchivePromise, deletePromise } from '@/lib/actions/studio/builder/commercial/promises';
 import { toast } from 'sonner';
 
 export default function EditarPromesaPage() {
@@ -24,6 +24,12 @@ export default function EditarPromesaPage() {
     email: string | null;
     promiseId: string;
   } | null>(null);
+  const [isArchived, setIsArchived] = useState(false);
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -75,6 +81,8 @@ export default function EditarPromesaPage() {
             referrer_name: result.data.referrer_name || undefined,
             promiseId: result.data.promise_id,
           });
+          // Verificar si está archivada
+          setIsArchived(result.data.pipeline_stage_slug === 'archived');
         } else {
           toast.error(result.error || 'Promesa no encontrada');
           router.push(`/${studioSlug}/studio/builder/commercial/promises`);
@@ -93,16 +101,85 @@ export default function EditarPromesaPage() {
     }
   }, [promiseId, studioSlug, router]);
 
+
+  const handleArchive = async () => {
+    setIsArchiving(true);
+    try {
+      const result = await archivePromise(studioSlug, promiseId);
+      if (result.success) {
+        toast.success('Promesa archivada correctamente');
+        setShowArchiveModal(false);
+        setIsArchived(true);
+      } else {
+        toast.error(result.error || 'Error al archivar promesa');
+      }
+    } catch (error) {
+      console.error('Error archivando promesa:', error);
+      toast.error('Error al archivar promesa');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setIsUnarchiving(true);
+    try {
+      const result = await unarchivePromise(studioSlug, promiseId);
+      if (result.success) {
+        toast.success('Promesa desarchivada correctamente');
+        setIsArchived(false);
+      } else {
+        toast.error(result.error || 'Error al desarchivar promesa');
+      }
+    } catch (error) {
+      console.error('Error desarchivando promesa:', error);
+      toast.error('Error al desarchivar promesa');
+    } finally {
+      setIsUnarchiving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const result = await deletePromise(studioSlug, promiseId);
+      if (result.success) {
+        toast.success('Promesa eliminada correctamente');
+        setShowDeleteModal(false);
+        router.push(`/${studioSlug}/studio/builder/commercial/promises`);
+      } else {
+        toast.error(result.error || 'Error al eliminar promesa');
+      }
+    } catch (error) {
+      console.error('Error eliminando promesa:', error);
+      toast.error('Error al eliminar promesa');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="w-full max-w-7xl mx-auto">
         <ZenCard variant="default" padding="none">
           <ZenCardHeader className="border-b border-zinc-800">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-zinc-800 rounded animate-pulse" />
-              <div className="space-y-2">
-                <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
-                <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-zinc-800 rounded animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Skeleton de QuickActions */}
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                  <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                  <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
+                </div>
+                {/* Skeleton del menú modal */}
+                <div className="h-8 w-8 bg-zinc-800 rounded-lg animate-pulse" />
               </div>
             </div>
           </ZenCardHeader>
@@ -155,15 +232,57 @@ export default function EditarPromesaPage() {
                 </ZenCardDescription>
               </div>
             </div>
-            {contactData && (
-              <PromiseQuickActions
-                studioSlug={studioSlug}
-                contactId={contactData.contactId}
-                contactName={contactData.contactName}
-                phone={contactData.phone}
-                email={contactData.email}
-              />
-            )}
+            <div className="flex items-center gap-2">
+              {contactData && (
+                <PromiseQuickActions
+                  studioSlug={studioSlug}
+                  contactId={contactData.contactId}
+                  contactName={contactData.contactName}
+                  phone={contactData.phone}
+                  email={contactData.email}
+                />
+              )}
+              <ZenDropdownMenu>
+                <ZenDropdownMenuTrigger asChild>
+                  <ZenButton
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={isArchiving || isUnarchiving || isDeleting}
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </ZenButton>
+                </ZenDropdownMenuTrigger>
+                <ZenDropdownMenuContent align="end">
+                  {isArchived ? (
+                    <ZenDropdownMenuItem
+                      onClick={() => handleUnarchive()}
+                      disabled={isUnarchiving}
+                    >
+                      <ArchiveRestore className="h-4 w-4 mr-2" />
+                      {isUnarchiving ? 'Desarchivando...' : 'Desarchivar'}
+                    </ZenDropdownMenuItem>
+                  ) : (
+                    <ZenDropdownMenuItem
+                      onClick={() => setShowArchiveModal(true)}
+                      disabled={isArchiving}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      {isArchiving ? 'Archivando...' : 'Archivar'}
+                    </ZenDropdownMenuItem>
+                  )}
+                  <ZenDropdownMenuSeparator />
+                  <ZenDropdownMenuItem
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={isDeleting}
+                    className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                  </ZenDropdownMenuItem>
+                </ZenDropdownMenuContent>
+              </ZenDropdownMenu>
+            </div>
           </div>
         </ZenCardHeader>
         <ZenCardContent className="p-6">
@@ -175,6 +294,31 @@ export default function EditarPromesaPage() {
           />
         </ZenCardContent>
       </ZenCard>
+
+      {/* Modales de confirmación */}
+      <ZenConfirmModal
+        isOpen={showArchiveModal}
+        onClose={() => setShowArchiveModal(false)}
+        onConfirm={handleArchive}
+        title="¿Archivar esta promesa?"
+        description="La promesa será archivada y no aparecerá en la lista principal. Podrás restaurarla más tarde si es necesario."
+        confirmText="Sí, archivar"
+        cancelText="Cancelar"
+        variant="default"
+        loading={isArchiving}
+      />
+
+      <ZenConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="¿Eliminar esta promesa?"
+        description="Esta acción no se puede deshacer. La promesa y todos sus datos asociados serán eliminados permanentemente."
+        confirmText="Sí, eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={isDeleting}
+      />
     </div>
   );
 }

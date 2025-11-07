@@ -565,3 +565,284 @@ export async function movePromise(
   }
 }
 
+/**
+ * Archivar promesa (mover a pipeline stage "archived")
+ */
+export async function archivePromise(
+  studioSlug: string,
+  promiseId: string
+): Promise<PromiseResponse> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      select: { studio_id: true },
+    });
+
+    if (!promise || promise.studio_id !== studio.id) {
+      return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    // Buscar o crear stage "archived"
+    let archivedStage = await prisma.studio_promise_pipeline_stages.findFirst({
+      where: {
+        studio_id: studio.id,
+        slug: 'archived',
+      },
+    });
+
+    if (!archivedStage) {
+      // Crear stage "archived" si no existe
+      const maxOrder = await prisma.studio_promise_pipeline_stages.findFirst({
+        where: { studio_id: studio.id },
+        orderBy: { order: 'desc' },
+        select: { order: true },
+      });
+
+      archivedStage = await prisma.studio_promise_pipeline_stages.create({
+        data: {
+          studio_id: studio.id,
+          name: 'Archivado',
+          slug: 'archived',
+          color: '#6B7280', // Gris
+          order: (maxOrder?.order || 0) + 1,
+          is_system: true,
+          is_active: true,
+        },
+      });
+    }
+
+    // Mover promesa al stage "archived"
+    const updatedPromise = await prisma.studio_promises.update({
+      where: { id: promiseId },
+      data: { pipeline_stage_id: archivedStage.id },
+      include: {
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        pipeline_stage: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            color: true,
+            order: true,
+          },
+        },
+      },
+    });
+
+    // Obtener contacto asociado
+    const contact = await prisma.studio_contacts.findUnique({
+      where: { id: updatedPromise.contact_id },
+    });
+
+    if (!contact) {
+      return { success: false, error: 'Contacto no encontrado' };
+    }
+
+    const promiseWithContact: PromiseWithContact = {
+      id: contact.id,
+      promise_id: updatedPromise.id,
+      studio_id: contact.studio_id,
+      name: contact.name,
+      phone: contact.phone,
+      email: contact.email,
+      status: contact.status,
+      event_type_id: updatedPromise.event_type_id,
+      interested_dates: updatedPromise.tentative_dates
+        ? (updatedPromise.tentative_dates as string[])
+        : null,
+      defined_date: updatedPromise.defined_date,
+      promise_pipeline_stage_id: updatedPromise.pipeline_stage_id,
+      created_at: contact.created_at,
+      updated_at: updatedPromise.updated_at,
+      event_type: updatedPromise.event_type,
+      promise_pipeline_stage: updatedPromise.pipeline_stage,
+      last_log: null,
+    };
+
+    revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+    return {
+      success: true,
+      data: promiseWithContact,
+    };
+  } catch (error) {
+    console.error('[PROMISES] Error archivando promise:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al archivar promesa',
+    };
+  }
+}
+
+/**
+ * Desarchivar promesa (mover a primera etapa activa)
+ */
+export async function unarchivePromise(
+  studioSlug: string,
+  promiseId: string
+): Promise<PromiseResponse> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      select: { studio_id: true, pipeline_stage_id: true },
+    });
+
+    if (!promise || promise.studio_id !== studio.id) {
+      return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    // Verificar que esté archivada
+    const currentStage = await prisma.studio_promise_pipeline_stages.findUnique({
+      where: { id: promise.pipeline_stage_id || '' },
+      select: { slug: true },
+    });
+
+    if (currentStage?.slug !== 'archived') {
+      return { success: false, error: 'La promesa no está archivada' };
+    }
+
+    // Buscar primera etapa activa (no archivada)
+    const firstActiveStage = await prisma.studio_promise_pipeline_stages.findFirst({
+      where: {
+        studio_id: studio.id,
+        is_active: true,
+        slug: { not: 'archived' },
+      },
+      orderBy: { order: 'asc' },
+    });
+
+    if (!firstActiveStage) {
+      return { success: false, error: 'No hay etapas activas disponibles' };
+    }
+
+    // Mover promesa a la primera etapa activa
+    const updatedPromise = await prisma.studio_promises.update({
+      where: { id: promiseId },
+      data: { pipeline_stage_id: firstActiveStage.id },
+      include: {
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        pipeline_stage: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            color: true,
+            order: true,
+          },
+        },
+      },
+    });
+
+    // Obtener contacto asociado
+    const contact = await prisma.studio_contacts.findUnique({
+      where: { id: updatedPromise.contact_id },
+    });
+
+    if (!contact) {
+      return { success: false, error: 'Contacto no encontrado' };
+    }
+
+    const promiseWithContact: PromiseWithContact = {
+      id: contact.id,
+      promise_id: updatedPromise.id,
+      studio_id: contact.studio_id,
+      name: contact.name,
+      phone: contact.phone,
+      email: contact.email,
+      status: contact.status,
+      event_type_id: updatedPromise.event_type_id,
+      interested_dates: updatedPromise.tentative_dates
+        ? (updatedPromise.tentative_dates as string[])
+        : null,
+      defined_date: updatedPromise.defined_date,
+      promise_pipeline_stage_id: updatedPromise.pipeline_stage_id,
+      created_at: contact.created_at,
+      updated_at: updatedPromise.updated_at,
+      event_type: updatedPromise.event_type,
+      promise_pipeline_stage: updatedPromise.pipeline_stage,
+      last_log: null,
+    };
+
+    revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+    return {
+      success: true,
+      data: promiseWithContact,
+    };
+  } catch (error) {
+    console.error('[PROMISES] Error desarchivando promise:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al desarchivar promesa',
+    };
+  }
+}
+
+/**
+ * Eliminar promesa (hard delete con cascade)
+ */
+export async function deletePromise(
+  studioSlug: string,
+  promiseId: string
+): Promise<PromiseResponse> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      select: { studio_id: true },
+    });
+
+    if (!promise || promise.studio_id !== studio.id) {
+      return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    // Hard delete (cascade eliminará relaciones automáticamente)
+    await prisma.studio_promises.delete({
+      where: { id: promiseId },
+    });
+
+    revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+    return { success: true };
+  } catch (error) {
+    console.error('[PROMISES] Error eliminando promise:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al eliminar promesa',
+    };
+  }
+}
+

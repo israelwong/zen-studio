@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { FileText, MessageSquare, Sparkles, User } from 'lucide-react';
-import { ZenInput, ZenButton, ZenSelect, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal } from '@/components/ui/zen';
+import { ZenInput, ZenButton, ZenCard, ZenCardContent, ZenConfirmModal } from '@/components/ui/zen';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { toast } from 'sonner';
@@ -484,6 +483,8 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
     setPendingNavigation(null);
   };
 
+
+
   useImperativeHandle(ref, () => ({
     submit: () => {
       handleSubmit();
@@ -934,7 +935,7 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
           />
         </div>
 
-        {/* Columna 3: Etiquetas, Quick Actions y Bitácora */}
+        {/* Columna 3: Etiquetas y Bitácora */}
         <div className="lg:col-span-1 space-y-6">
           {/* Etiquetas (solo si está guardado) */}
           {isSaved && promiseId && (
@@ -970,6 +971,7 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
         cancelText="Cancelar"
         variant="destructive"
       />
+
     </div>
   );
 });

@@ -86,6 +86,7 @@ export async function getPromiseById(
   social_network_id: string | null;
   referrer_contact_id: string | null;
   referrer_name: string | null;
+  pipeline_stage_slug: string | null;
 }>> {
   try {
     const promise = await prisma.studio_promises.findUnique({
@@ -101,6 +102,11 @@ export async function getPromiseById(
             social_network_id: true,
             referrer_contact_id: true,
             referrer_name: true,
+          },
+        },
+        pipeline_stage: {
+          select: {
+            slug: true,
           },
         },
       },
@@ -126,6 +132,7 @@ export async function getPromiseById(
         social_network_id: promise.contact.social_network_id,
         referrer_contact_id: promise.contact.referrer_contact_id,
         referrer_name: promise.contact.referrer_name,
+        pipeline_stage_slug: promise.pipeline_stage?.slug || null,
       },
     };
   } catch (error) {
