@@ -708,8 +708,29 @@ export function CotizacionForm({
                   <label className="text-xs text-zinc-500 mb-1 block">Precio personalizado</label>
                   <ZenInput
                     type="number"
+                    min="0"
+                    step="0.01"
                     value={precioPersonalizado}
-                    onChange={(e) => setPrecioPersonalizado(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Permitir vacío para borrar
+                      if (value === '') {
+                        setPrecioPersonalizado('');
+                        return;
+                      }
+                      // Convertir a número y validar que sea no negativo
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setPrecioPersonalizado(value);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Asegurar que el valor final sea válido
+                      const value = e.target.value;
+                      if (value !== '' && (isNaN(parseFloat(value)) || parseFloat(value) < 0)) {
+                        setPrecioPersonalizado('');
+                      }
+                    }}
                     placeholder="0"
                     className="mt-0"
                   />

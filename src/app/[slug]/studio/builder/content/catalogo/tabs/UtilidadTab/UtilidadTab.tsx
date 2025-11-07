@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { DollarSign, Info } from 'lucide-react';
+import { DollarSign, Info, RotateCcw } from 'lucide-react';
 import {
     ZenButton,
     ZenInput,
@@ -29,10 +29,18 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
 
     // Estado del formulario (valores decimales 0.0-1.0)
     const [config, setConfig] = useState<ConfiguracionPreciosForm>({
-        utilidad_servicio: '0.30',
-        utilidad_producto: '0.40',
-        comision_venta: '0.10',
-        sobreprecio: '0.05'
+        utilidad_servicio: undefined,
+        utilidad_producto: undefined,
+        comision_venta: undefined,
+        sobreprecio: undefined
+    });
+
+    // Valores iniciales para restaurar
+    const [initialConfig, setInitialConfig] = useState<ConfiguracionPreciosForm>({
+        utilidad_servicio: undefined,
+        utilidad_producto: undefined,
+        comision_venta: undefined,
+        sobreprecio: undefined
     });
 
     // Cargar configuración inicial
@@ -48,12 +56,14 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
             const configResult = await obtenerConfiguracionPrecios(studioSlug);
 
             if (configResult) {
-                setConfig({
+                const loadedConfig = {
                     utilidad_servicio: configResult.utilidad_servicio,
                     utilidad_producto: configResult.utilidad_producto,
                     comision_venta: configResult.comision_venta,
                     sobreprecio: configResult.sobreprecio
-                });
+                };
+                setConfig(loadedConfig);
+                setInitialConfig(loadedConfig);
             }
         } catch (error) {
             console.error('Error cargando configuración:', error);
@@ -73,6 +83,8 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
 
             if (result.success) {
                 toast.success('Configuración actualizada exitosamente');
+                // Actualizar valores iniciales después de guardar
+                setInitialConfig(config);
             } else {
                 toast.error(result.error || 'Error al actualizar la configuración');
             }
@@ -85,7 +97,19 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
     };
 
     const handleInputChange = (field: keyof ConfiguracionPreciosForm, value: string) => {
-        setConfig(prev => ({ ...prev, [field]: value }));
+        // Permitir decimales (números con punto decimal)
+        const onlyNumbers = value.replace(/[^0-9.]/g, '');
+        // Evitar múltiples puntos decimales
+        const parts = onlyNumbers.split('.');
+        const cleaned = parts.length > 2
+            ? parts[0] + '.' + parts.slice(1).join('')
+            : onlyNumbers;
+        setConfig(prev => ({ ...prev, [field]: cleaned || undefined }));
+    };
+
+    const handleRestore = () => {
+        setConfig(initialConfig);
+        toast.success('Valores restaurados');
     };
 
     if (loading) {
@@ -131,26 +155,22 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
                             {/* Utilidad de Servicios */}
                             <ZenInput
                                 label="Utilidad Servicios"
-                                type="number"
-                                value={config.utilidad_servicio}
+                                type="text"
+                                inputMode="decimal"
+                                value={config.utilidad_servicio || ''}
                                 onChange={(e) => handleInputChange('utilidad_servicio', e.target.value)}
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                required
+                                placeholder="0"
                                 hint="Margen de utilidad para servicios"
                             />
 
                             {/* Utilidad de Productos */}
                             <ZenInput
                                 label="Utilidad Productos"
-                                type="number"
-                                value={config.utilidad_producto}
+                                type="text"
+                                inputMode="decimal"
+                                value={config.utilidad_producto || ''}
                                 onChange={(e) => handleInputChange('utilidad_producto', e.target.value)}
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                required
+                                placeholder="0"
                                 hint="Margen de utilidad para productos"
                             />
                         </div>
@@ -160,43 +180,51 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
                             {/* Comisión de Venta */}
                             <ZenInput
                                 label="Comisión de Venta"
-                                type="number"
-                                value={config.comision_venta}
+                                type="text"
+                                inputMode="decimal"
+                                value={config.comision_venta || ''}
                                 onChange={(e) => handleInputChange('comision_venta', e.target.value)}
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                required
+                                placeholder="0"
                                 hint="Comisión deducida del precio"
                             />
 
                             {/* Sobreprecio */}
                             <ZenInput
                                 label="Sobreprecio / Descuento"
-                                type="number"
-                                value={config.sobreprecio}
+                                type="text"
+                                inputMode="decimal"
+                                value={config.sobreprecio || ''}
                                 onChange={(e) => handleInputChange('sobreprecio', e.target.value)}
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                required
+                                placeholder="0"
                                 hint="Margen para descuentos"
                             />
                         </div>
                     </ZenCardContent>
                 </ZenCard>
 
-                {/* Botón de guardar */}
-                <ZenButton
-                    type="submit"
-                    variant="primary"
-                    loading={submitting}
-                    loadingText="Actualizando configuración..."
-                    className="w-full"
-                    disabled={submitting}
-                >
-                    Guardar Configuración
-                </ZenButton>
+                {/* Botones de acción */}
+                <div className="flex gap-3">
+                    <ZenButton
+                        type="button"
+                        variant="outline"
+                        onClick={handleRestore}
+                        disabled={submitting}
+                        className="flex-1"
+                    >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Restaurar Valores
+                    </ZenButton>
+                    <ZenButton
+                        type="submit"
+                        variant="primary"
+                        loading={submitting}
+                        loadingText="Actualizando configuración..."
+                        className="flex-1"
+                        disabled={submitting}
+                    >
+                        Guardar Configuración
+                    </ZenButton>
+                </div>
             </form>
 
             {/* Nota adicional */}

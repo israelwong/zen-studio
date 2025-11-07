@@ -86,14 +86,16 @@ export function calcularPrecio(
         ? utilidad_servicio_normalizada
         : utilidad_producto_normalizada;
 
+    // 3. Calcular subtotal de costos (costo base + gastos)
+    const subtotal_costos = costo + gasto;
 
-    // 3. Calcular utilidad base (en pesos)
-    const utilidad_base = costo * utilidad_porcentaje;
+    // 4. Calcular utilidad base sobre el subtotal de costos (en pesos)
+    const utilidad_base = subtotal_costos * utilidad_porcentaje;
 
-    // 4. Calcular subtotal (costo + gastos + utilidad)
-    const subtotal = costo + gasto + utilidad_base;
+    // 5. Calcular subtotal (subtotal de costos + utilidad)
+    const subtotal = subtotal_costos + utilidad_base;
 
-    // 5. Calcular precio base que cubre utilidad + comisión
+    // 6. Calcular precio base que cubre utilidad + comisión
     const denominador = 1 - comision_venta_normalizada;
 
     // Validar que la comisión no sea 100% o mayor
@@ -127,16 +129,16 @@ export function calcularPrecio(
 
     const precio_base = subtotal / denominador;
 
-    // 6. Aplicar sobreprecio como margen de descuento
+    // 7. Aplicar sobreprecio como margen de descuento
     const precio_final = precio_base * (1 + sobreprecio_normalizado);
 
-    // 7. Calcular montos para el desglose
+    // 8. Calcular montos para el desglose
     const monto_comision = precio_base * comision_venta_normalizada;
     const monto_sobreprecio = precio_base * sobreprecio_normalizado;
 
-    // 8. Calcular utilidad real después de comisión
-    const utilidad_real = precio_base - monto_comision - costo - gasto;
-    const porcentaje_utilidad_real = costo > 0 ? (utilidad_real / costo) * 100 : 0;
+    // 9. Calcular utilidad real después de comisión
+    const utilidad_real = precio_base - monto_comision - subtotal_costos;
+    const porcentaje_utilidad_real = subtotal_costos > 0 ? (utilidad_real / subtotal_costos) * 100 : 0;
 
     return {
         // Precios finales

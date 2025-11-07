@@ -33,10 +33,10 @@ export async function obtenerConfiguracionPrecios(
         }
 
         return {
-            utilidad_servicio: String(config.service_margin ?? 0.30),
-            utilidad_producto: String(config.product_margin ?? 0.30),
-            comision_venta: String(config.sales_commission ?? 0.10), // 10% por defecto
-            sobreprecio: String(config.markup ?? 0.05), // 5% por defecto
+            utilidad_servicio: config.service_margin != null ? String(config.service_margin) : undefined,
+            utilidad_producto: config.product_margin != null ? String(config.product_margin) : undefined,
+            comision_venta: config.sales_commission != null ? String(config.sales_commission) : undefined,
+            sobreprecio: config.markup != null ? String(config.markup) : undefined,
         };
     } catch (error) {
         console.error("[obtenerConfiguracionPrecios] Error:", error);
@@ -135,36 +135,40 @@ export async function actualizarConfiguracionPrecios(
         }
 
         // Los valores ya vienen como decimales (0.0-1.0) desde el formulario
-        const servicioMargin = parseFloat(validatedData.utilidad_servicio);
-        const productoMargin = parseFloat(validatedData.utilidad_producto);
-        const ventaComision = parseFloat(validatedData.comision_venta);
-        const markup = parseFloat(validatedData.sobreprecio);
+        const servicioMargin = validatedData.utilidad_servicio ? parseFloat(validatedData.utilidad_servicio) : null;
+        const productoMargin = validatedData.utilidad_producto ? parseFloat(validatedData.utilidad_producto) : null;
+        const ventaComision = validatedData.comision_venta ? parseFloat(validatedData.comision_venta) : null;
+        const markup = validatedData.sobreprecio ? parseFloat(validatedData.sobreprecio) : null;
 
         // Obtener o crear configuración
         let config = await prisma.studio_configuraciones.findFirst({
             where: { studio_id: studio.id },
         });
 
+        const updateData: {
+            service_margin?: number | null;
+            product_margin?: number | null;
+            sales_commission?: number | null;
+            markup?: number | null;
+        } = {};
+
+        if (servicioMargin !== null) updateData.service_margin = servicioMargin;
+        if (productoMargin !== null) updateData.product_margin = productoMargin;
+        if (ventaComision !== null) updateData.sales_commission = ventaComision;
+        if (markup !== null) updateData.markup = markup;
+
         if (!config) {
             config = await prisma.studio_configuraciones.create({
                 data: {
                     studio_id: studio.id,
                     name: "Configuración de Precios",
-                    service_margin: servicioMargin,
-                    product_margin: productoMargin,
-                    sales_commission: ventaComision,
-                    markup: markup,
+                    ...updateData,
                 },
             });
         } else {
             await prisma.studio_configuraciones.update({
                 where: { id: config.id },
-                data: {
-                    service_margin: servicioMargin,
-                    product_margin: productoMargin,
-                    sales_commission: ventaComision,
-                    markup: markup,
-                },
+                data: updateData,
             });
         }
 

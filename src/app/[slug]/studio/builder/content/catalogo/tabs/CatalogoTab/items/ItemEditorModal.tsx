@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { ZenButton, ZenInput, ZenCard, ZenTextarea, ZenSelect, ZenSwitch } from "@/components/ui/zen";
+import { ZenButton, ZenInput, ZenCard, ZenTextarea, ZenSwitch } from "@/components/ui/zen";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetClose } from "@/components/ui/shadcn/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { toast } from "sonner";
-import { Loader2, Save, Plus, Minus, Calculator } from "lucide-react";
+import { Loader2, Save, X, Calculator } from "lucide-react";
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios, type ResultadoPrecio } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/utilidad.actions";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
@@ -25,6 +25,7 @@ import {
 } from "@/lib/actions/studio/builder/catalogo/media-items.actions";
 import { deleteFileStorage } from "@/lib/actions/shared/media.actions";
 import { ImageGrid } from "@/components/shared/media/ImageGrid";
+import { PrecioDesglose } from "@/components/shared/precio";
 import { MediaItem } from "@/types/content-blocks";
 
 interface Gasto {
@@ -82,16 +83,15 @@ export function ItemEditorModal({
 
     // Estados para gastos
     const [gastos, setGastos] = useState<Gasto[]>([]);
-    const [nuevoGastoNombre, setNuevoGastoNombre] = useState("");
-    const [nuevoGastoCosto, setNuevoGastoCosto] = useState("");
+    const [nuevoGasto, setNuevoGasto] = useState("");
     const [showDesglosePrecios, setShowDesglosePrecios] = useState(false);
     const [configuracion, setConfiguracion] = useState<ConfiguracionPrecios | null>(preciosConfig || null);
 
-    // Tipos de utilidad disponibles
-    const tiposUtilidad = [
-        { value: "servicio", label: "Servicio" },
-        { value: "producto", label: "Producto" }
-    ];
+    // Estados iniciales para detectar cambios
+    const [initialFormData, setInitialFormData] = useState<ItemFormData | null>(null);
+    const [initialGastos, setInitialGastos] = useState<Gasto[]>([]);
+    const [showConfirmClose, setShowConfirmClose] = useState(false);
+    const [localIsOpen, setLocalIsOpen] = useState(isOpen);
 
     // Estados de multimedia unificado
     const [media, setMedia] = useState<MediaItem[]>([]);
@@ -120,11 +120,17 @@ export function ItemEditorModal({
                 try {
                     const config = await obtenerConfiguracionPrecios(studioSlug);
                     if (config) {
+                        const parseValue = (val: string | undefined, def: number): number => {
+                            if (val === undefined || val === '') return def;
+                            const parsed = parseFloat(val);
+                            return isNaN(parsed) ? def : parsed;
+                        };
+
                         setConfiguracion({
-                            utilidad_servicio: parseFloat(config.utilidad_servicio),
-                            utilidad_producto: parseFloat(config.utilidad_producto),
-                            comision_venta: parseFloat(config.comision_venta),
-                            sobreprecio: parseFloat(config.sobreprecio),
+                            utilidad_servicio: parseValue(config.utilidad_servicio, 0.30),
+                            utilidad_producto: parseValue(config.utilidad_producto, 0.40),
+                            comision_venta: parseValue(config.comision_venta, 0.10),
+                            sobreprecio: parseValue(config.sobreprecio, 0.05),
                         });
                     } else {
                         // Configuración por defecto si no existe
@@ -211,11 +217,19 @@ export function ItemEditorModal({
         }
     };
 
+    // Sincronizar estado local con prop isOpen
+    useEffect(() => {
+        setLocalIsOpen(isOpen);
+    }, [isOpen]);
+
     // Reset form when modal opens/closes or item changes
     useEffect(() => {
         if (isOpen) {
+            // Resetear desglose de precios al abrir
+            setShowDesglosePrecios(false);
+
             if (item) {
-                setFormData({
+                const initialData = {
                     id: item.id,
                     name: item.name,
                     cost: item.cost,
@@ -224,15 +238,21 @@ export function ItemEditorModal({
                     tipoUtilidad: item.tipoUtilidad || "servicio",
                     gastos: item.gastos || [],
                     status: item.status || "active",
-                });
-                setGastos(item.gastos?.map((g) => ({ nombre: g.nombre, costo: g.costo })) || []);
+                };
+                const initialGastosData = item.gastos?.map((g) => ({ nombre: g.nombre, costo: g.costo })) || [];
+
+                setFormData(initialData);
+                setGastos(initialGastosData);
+                setInitialFormData(initialData);
+                setInitialGastos(initialGastosData);
+
                 // Cargar media existente solo si el item.id cambió o es diferente al cargado
                 if (item.id && item.id !== loadedItemIdRef.current) {
                     loadedItemIdRef.current = item.id;
                     cargarMediaExistente(item.id);
                 }
             } else {
-                setFormData({
+                const initialData = {
                     name: "",
                     cost: 0,
                     description: "",
@@ -240,8 +260,12 @@ export function ItemEditorModal({
                     tipoUtilidad: "servicio",
                     gastos: [],
                     status: "active",
-                });
+                };
+
+                setFormData(initialData);
                 setGastos([]);
+                setInitialFormData(initialData);
+                setInitialGastos([]);
                 setMedia([]);
                 setIsLoadingMedia(false);
                 loadedItemIdRef.current = null;
@@ -257,23 +281,57 @@ export function ItemEditorModal({
     };
 
     // Funciones para manejar gastos
+    const parsearGastos = (input: string): Gasto[] => {
+        const gastosParseados: Gasto[] = [];
+
+        // Si tiene comas, separar por comas
+        if (input.includes(',')) {
+            const partes = input.split(',').map(p => p.trim()).filter(p => p);
+            for (const parte of partes) {
+                // Buscar el último número en la parte
+                const match = parte.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
+                if (match) {
+                    gastosParseados.push({
+                        nombre: match[1].trim(),
+                        costo: parseFloat(match[2]) || 0,
+                    });
+                }
+            }
+        } else {
+            // Sin comas: formato "nombre precio"
+            const match = input.trim().match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
+            if (match) {
+                gastosParseados.push({
+                    nombre: match[1].trim(),
+                    costo: parseFloat(match[2]) || 0,
+                });
+            }
+        }
+
+        return gastosParseados;
+    };
+
     const agregarGasto = () => {
-        if (!nuevoGastoNombre.trim() || !nuevoGastoCosto) return;
+        if (!nuevoGasto.trim()) return;
 
-        const nuevoGasto: Gasto = {
-            nombre: nuevoGastoNombre.trim(),
-            costo: parseFloat(nuevoGastoCosto) || 0,
-        };
+        const gastosParseados = parsearGastos(nuevoGasto);
+        if (gastosParseados.length === 0) return;
 
-        const nuevosGastos = [...gastos, nuevoGasto];
+        const nuevosGastos = [...gastos, ...gastosParseados];
         setGastos(nuevosGastos);
         setFormData(prev => ({
             ...prev,
             gastos: nuevosGastos
         }));
 
-        setNuevoGastoNombre("");
-        setNuevoGastoCosto("");
+        setNuevoGasto("");
+    };
+
+    const handleGastoKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            agregarGasto();
+        }
     };
 
     const eliminarGasto = (index: number) => {
@@ -339,6 +397,11 @@ export function ItemEditorModal({
                 }
             }
 
+            // Actualizar estado inicial después de guardar
+            setInitialFormData({ ...formData });
+            setInitialGastos([...gastos]);
+
+            setLocalIsOpen(false);
             onClose();
         } catch (error) {
             console.error("Error saving item:", error);
@@ -348,9 +411,48 @@ export function ItemEditorModal({
         }
     };
 
+    // Detectar si hay cambios sin guardar
+    const hasUnsavedChanges = (): boolean => {
+        if (!initialFormData) return false;
+
+        // Comparar formData
+        const formChanged =
+            formData.name !== initialFormData.name ||
+            formData.cost !== initialFormData.cost ||
+            formData.description !== (initialFormData.description || "") ||
+            formData.tipoUtilidad !== initialFormData.tipoUtilidad;
+
+        // Comparar gastos
+        const gastosChanged =
+            gastos.length !== initialGastos.length ||
+            gastos.some((g, i) => {
+                const initial = initialGastos[i];
+                return !initial || g.nombre !== initial.nombre || g.costo !== initial.costo;
+            });
+
+        return formChanged || gastosChanged;
+    };
+
     const handleClose = () => {
         if (isSaving) return;
+
+        if (hasUnsavedChanges()) {
+            setShowConfirmClose(true);
+        } else {
+            setLocalIsOpen(false);
+            onClose();
+        }
+    };
+
+    const handleConfirmClose = () => {
+        setShowConfirmClose(false);
+        setLocalIsOpen(false);
         onClose();
+    };
+
+    const handleCancelClose = () => {
+        setShowConfirmClose(false);
+        setLocalIsOpen(true);
     };
 
     const handleTogglePublish = async () => {
@@ -565,10 +667,19 @@ export function ItemEditorModal({
     return (
         <>
             <Sheet
-                open={isOpen}
+                open={localIsOpen}
                 onOpenChange={(open) => {
                     if (!open) {
-                        onClose();
+                        if (hasUnsavedChanges()) {
+                            setShowConfirmClose(true);
+                            // Mantener el Sheet abierto hasta que se confirme
+                            setLocalIsOpen(true);
+                        } else {
+                            setLocalIsOpen(false);
+                            onClose();
+                        }
+                    } else {
+                        setLocalIsOpen(true);
                     }
                 }}
                 modal={false}
@@ -637,71 +748,100 @@ export function ItemEditorModal({
                                     <label className="block text-sm font-medium text-zinc-200 mb-2">
                                         Tipo de Utilidad
                                     </label>
-                                    <ZenSelect
-                                        value={formData.tipoUtilidad || "servicio"}
-                                        onValueChange={(value) => handleInputChange("tipoUtilidad", value)}
-                                        disabled={isSaving}
-                                        options={tiposUtilidad}
-                                    />
-                                </div>
-
-                                {/* Gastos Asociados */}
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-200 mb-2">
-                                        Gastos Asociados
-                                    </label>
-
-                                    {/* Lista de gastos existentes */}
-                                    {gastos.length > 0 && (
-                                        <div className="space-y-2 mb-4">
-                                            {gastos.map((gasto, index) => (
-                                                <div key={index} className="flex items-center gap-2 p-2 bg-zinc-800 rounded-lg">
-                                                    <span className="flex-1 text-sm text-zinc-300">
-                                                        {gasto.nombre}: {formatearMoneda(gasto.costo)}
-                                                    </span>
-                                                    <ZenButton
-                                                        type="button"
-                                                        variant="destructive"
-                                                        size="sm"
-                                                        onClick={() => eliminarGasto(index)}
-                                                        disabled={isSaving}
-                                                    >
-                                                        <Minus className="w-3 h-3" />
-                                                    </ZenButton>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Formulario para agregar gasto */}
                                     <div className="flex gap-2">
-                                        <ZenInput
-                                            placeholder="Nombre del gasto"
-                                            value={nuevoGastoNombre}
-                                            onChange={(e) => setNuevoGastoNombre(e.target.value)}
-                                            disabled={isSaving}
-                                            className="flex-1"
-                                        />
-                                        <ZenInput
-                                            type="number"
-                                            placeholder="Costo"
-                                            value={nuevoGastoCosto}
-                                            onChange={(e) => setNuevoGastoCosto(e.target.value)}
-                                            disabled={isSaving}
-                                            min="0"
-                                            step="0.01"
-                                            className="w-24"
-                                        />
                                         <ZenButton
                                             type="button"
-                                            onClick={agregarGasto}
-                                            disabled={isSaving || !nuevoGastoNombre.trim() || !nuevoGastoCosto}
-                                            size="sm"
+                                            variant={formData.tipoUtilidad === 'servicio' ? 'primary' : 'outline'}
+                                            size="md"
+                                            onClick={() => handleInputChange("tipoUtilidad", "servicio")}
+                                            disabled={isSaving}
+                                            className="flex-1"
                                         >
-                                            <Plus className="w-4 h-4" />
+                                            Servicio
+                                            {configuracion && (
+                                                <span className="text-xs opacity-80 ml-1">
+                                                    ({configuracion.utilidad_servicio > 1
+                                                        ? configuracion.utilidad_servicio.toFixed(0)
+                                                        : (configuracion.utilidad_servicio * 100).toFixed(0)}%)
+                                                </span>
+                                            )}
+                                        </ZenButton>
+                                        <ZenButton
+                                            type="button"
+                                            variant={formData.tipoUtilidad === 'producto' ? 'primary' : 'outline'}
+                                            size="md"
+                                            onClick={() => handleInputChange("tipoUtilidad", "producto")}
+                                            disabled={isSaving}
+                                            className="flex-1"
+                                        >
+                                            Producto
+                                            {configuracion && (
+                                                <span className="text-xs opacity-80 ml-1">
+                                                    ({configuracion.utilidad_producto > 1
+                                                        ? configuracion.utilidad_producto.toFixed(0)
+                                                        : (configuracion.utilidad_producto * 100).toFixed(0)}%)
+                                                </span>
+                                            )}
                                         </ZenButton>
                                     </div>
                                 </div>
+
+                                {/* Gastos Asociados */}
+                                <ZenCard className="p-4 bg-zinc-800/30 border-zinc-700">
+                                    <label className="block text-sm font-medium text-zinc-200 mb-3">
+                                        Gastos Asociados
+                                    </label>
+
+                                    {/* Lista de gastos como badges */}
+                                    {gastos.length > 0 && (
+                                        <div className="mb-4">
+                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                {gastos.map((gasto, index) => (
+                                                    <div
+                                                        key={index}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-800/50 border border-zinc-700 rounded-full"
+                                                    >
+                                                        <span className="text-sm text-zinc-300">
+                                                            {gasto.nombre}
+                                                        </span>
+                                                        <span className="text-sm font-medium text-zinc-400">
+                                                            {formatearMoneda(gasto.costo)}
+                                                        </span>
+                                                        <ZenButton
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            onClick={() => eliminarGasto(index)}
+                                                            disabled={isSaving}
+                                                            className="h-5 w-5 p-0 -mr-1 text-red-400 hover:text-red-300"
+                                                        >
+                                                            <X className="w-3 h-3" />
+                                                        </ZenButton>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            {gastos.length > 0 && (
+                                                <div className="flex justify-between items-center pt-2 border-t border-zinc-800">
+                                                    <span className="text-sm text-zinc-400">Total</span>
+                                                    <span className="text-sm font-medium text-zinc-200">
+                                                        {formatearMoneda(gastos.reduce((acc, g) => acc + g.costo, 0))}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Input único para agregar gastos */}
+                                    <ZenInput
+                                        placeholder="Ej: comida 300 (Enter) o comida 500, agua 200 (Enter)"
+                                        value={nuevoGasto}
+                                        onChange={(e) => setNuevoGasto(e.target.value)}
+                                        onKeyDown={handleGastoKeyDown}
+                                        disabled={isSaving}
+                                        size="md"
+                                        hint="Formato: nombre precio o nombre1 precio1, nombre2 precio2"
+                                    />
+                                </ZenCard>
 
                                 {/* Precio del Sistema */}
                                 {configuracion && (
@@ -735,65 +875,10 @@ export function ItemEditorModal({
                                         </div>
 
                                         {showDesglosePrecios && (
-                                            <ZenCard className="p-4 bg-zinc-800/50 border-zinc-700">
-                                                <div className="space-y-4">
-                                                    {/* Resumen de costos */}
-                                                    <div className="space-y-2 py-3 border-b border-zinc-700">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-zinc-400">Costo Base</span>
-                                                            <span className="text-sm font-medium text-zinc-200">
-                                                                {formatearMoneda(resultadoPrecio.costo)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-zinc-400">+ Gastos</span>
-                                                            <span className="text-sm font-medium text-zinc-200">
-                                                                {formatearMoneda(resultadoPrecio.gasto)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex justify-between items-center pt-1 border-t border-zinc-600">
-                                                            <span className="text-sm font-medium text-zinc-300">Subtotal Costos</span>
-                                                            <span className="text-sm font-semibold text-zinc-100">
-                                                                {formatearMoneda(resultadoPrecio.costo + resultadoPrecio.gasto)}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Desglose detallado */}
-                                                    <div className="space-y-3">
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-zinc-400">Utilidad Base ({resultadoPrecio.porcentaje_utilidad}%)</span>
-                                                            <span className="text-sm font-medium text-emerald-400">{formatearMoneda(resultadoPrecio.utilidad_base)}</span>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-center py-2 border-t border-zinc-700">
-                                                            <span className="text-sm text-zinc-400">Subtotal</span>
-                                                            <span className="text-sm font-medium text-zinc-200">{formatearMoneda(resultadoPrecio.subtotal)}</span>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-zinc-400">Comisión ({resultadoPrecio.porcentaje_comision}%)</span>
-                                                            <span className="text-sm font-medium text-blue-400">{formatearMoneda(resultadoPrecio.monto_comision)}</span>
-                                                        </div>
-
-                                                        <div className="flex justify-between items-center">
-                                                            <span className="text-sm text-zinc-400">Sobreprecio ({resultadoPrecio.porcentaje_sobreprecio}%)</span>
-                                                            <span className="text-sm font-medium text-purple-400">{formatearMoneda(resultadoPrecio.monto_sobreprecio)}</span>
-                                                        </div>
-
-                                                        <div className="border-t border-zinc-600 pt-3">
-                                                            <div className="flex justify-between items-center">
-                                                                <span className="text-base font-semibold text-zinc-200">Precio Final</span>
-                                                                <span className="text-xl font-bold text-emerald-400">{formatearMoneda(resultadoPrecio.precio_final)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center mt-1">
-                                                                <span className="text-xs text-zinc-500">Utilidad Real</span>
-                                                                <span className="text-xs font-medium text-emerald-300">{resultadoPrecio.porcentaje_utilidad_real}%</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </ZenCard>
+                                            <PrecioDesglose
+                                                resultado={resultadoPrecio}
+                                                tipoUtilidad={formData.tipoUtilidad}
+                                            />
                                         )}
                                     </div>
                                 )}
@@ -925,6 +1010,18 @@ export function ItemEditorModal({
                 variant="destructive"
                 loading={isDeletingMedia}
                 disabled={isDeletingMedia}
+            />
+
+            {/* Modal de confirmación para cambios sin guardar */}
+            <ZenConfirmModal
+                isOpen={showConfirmClose}
+                onClose={handleCancelClose}
+                onConfirm={handleConfirmClose}
+                title="¿Descartar cambios?"
+                description="Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar y descartar los cambios?"
+                confirmText="Descartar"
+                cancelText="Cancelar"
+                variant="destructive"
             />
 
             {/* Input oculto para file upload */}
