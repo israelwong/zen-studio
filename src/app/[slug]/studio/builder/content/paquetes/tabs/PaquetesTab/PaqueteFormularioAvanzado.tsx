@@ -95,6 +95,11 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 if (catalogoResult.success && catalogoResult.data) {
                     setCatalogo(catalogoResult.data);
 
+                    // Expandir todas las secciones al iniciar
+                    const todasLasSecciones = new Set(catalogoResult.data.map(seccion => seccion.id));
+                    setSeccionesExpandidas(todasLasSecciones);
+                    // Las categorías permanecen colapsadas (Set vacío)
+
                     // Inicializar items vacíos
                     const initialItems: { [id: string]: number } = {};
                     catalogoResult.data.forEach(seccion => {
@@ -162,8 +167,6 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         setDescripcion('');
                         setPrecioPersonalizado('');
                     }
-
-                    // No expandir automáticamente para evitar parpadeo
                 }
 
                 if (configResult) {

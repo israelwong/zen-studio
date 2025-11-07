@@ -58,6 +58,11 @@ export function CotizacionForm({
         if (catalogoResult.success && catalogoResult.data) {
           setCatalogo(catalogoResult.data);
 
+          // Expandir todas las secciones al iniciar
+          const todasLasSecciones = new Set(catalogoResult.data.map(seccion => seccion.id));
+          setSeccionesExpandidas(todasLasSecciones);
+          // Las categorías permanecen colapsadas (Set vacío)
+
           // Inicializar items vacíos
           const initialItems: { [id: string]: number } = {};
           catalogoResult.data.forEach(seccion => {
