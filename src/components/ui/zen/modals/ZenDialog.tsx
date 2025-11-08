@@ -57,7 +57,7 @@ export function ZenDialog({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
       <div className={cn(
         'bg-zinc-900 rounded-lg shadow-xl w-full overflow-visible',
         maxWidthClasses[maxWidth]

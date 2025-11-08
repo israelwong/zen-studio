@@ -4,7 +4,11 @@ import React, { useMemo } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/shadcn/tooltip';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { ZenButton } from '@/components/ui/zen';
+import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback } from '@/components/ui/zen/media/ZenAvatar';
+import { ExternalLink, Mail, Phone, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { formatInitials } from '@/lib/actions/utils/formatting';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -18,8 +22,12 @@ interface AgendaCalendarProps {
   events: AgendaItem[];
   onSelectEvent?: (event: AgendaItem) => void;
   onSelectSlot?: (slotInfo: { start: Date; end: Date }) => void;
+  onViewPromise?: (promiseId: string) => void;
+  onViewEvento?: (eventoId: string) => void;
   defaultDate?: Date;
   defaultView?: View;
+  view?: View;
+  onViewChange?: (view: View) => void;
   className?: string;
 }
 
@@ -60,10 +68,10 @@ const zenEventStyleGetter = (event: { resource?: AgendaItem }) => {
 
   if (contexto === 'promise') {
     backgroundColor = '#3B82F6'; // Azul para promises
-    borderColor = '#2563EB';
+    borderColor = '#1E40AF';
   } else if (contexto === 'evento') {
     backgroundColor = '#10B981'; // Verde para eventos
-    borderColor = '#059669';
+    borderColor = '#047857';
   }
 
   return {
@@ -80,55 +88,131 @@ const zenEventStyleGetter = (event: { resource?: AgendaItem }) => {
   };
 };
 
-// Componente personalizado de evento con tooltip
-const AgendaEventComponent = ({ event }: { event: { resource?: AgendaItem; title?: string } }) => {
+// Componente personalizado de evento con HoverCard
+const AgendaEventComponent = ({
+  event,
+  onViewPromise,
+  onViewEvento
+}: {
+  event: { resource?: AgendaItem; title?: string };
+  onViewPromise?: (promiseId: string) => void;
+  onViewEvento?: (eventoId: string) => void;
+}) => {
   const item = event.resource as AgendaItem | undefined;
 
   if (!item) {
-    return <div className="rbc-event-content">{event.title}</div>;
+    return <div className="rbc-event-content cursor-pointer w-full h-full">{event.title}</div>;
   }
 
-  const tooltipContent = (
-    <div className="space-y-1.5 text-xs">
-      <div className="font-semibold text-white">{item.concept || item.contact_name || item.event_name || 'Agendamiento'}</div>
-      {item.contact_name && (
-        <div className="text-zinc-300">
-          <span className="text-zinc-400">Contacto:</span> {item.contact_name}
-        </div>
-      )}
-      {item.time && (
-        <div className="text-zinc-300">
-          <span className="text-zinc-400">Hora:</span> {item.time}
-        </div>
-      )}
-      {item.address && (
-        <div className="text-zinc-300 max-w-xs truncate">
-          <span className="text-zinc-400">Dirección:</span> {item.address}
-        </div>
-      )}
-      {item.description && (
-        <div className="text-zinc-300 max-w-xs line-clamp-2">
-          {item.description}
-        </div>
-      )}
-    </div>
-  );
+  const handleViewClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.contexto === 'promise' && item.promise_id && onViewPromise) {
+      onViewPromise(item.promise_id);
+    } else if (item.contexto === 'evento' && item.evento_id && onViewEvento) {
+      onViewEvento(item.evento_id);
+    }
+  };
 
   return (
-    <Tooltip delayDuration={300}>
-      <TooltipTrigger asChild>
-        <div className="rbc-event-content cursor-pointer w-full h-full">
-          {event.title}
+    <HoverCard openDelay={200} closeDelay={100}>
+      <HoverCardTrigger asChild>
+        <div className="rbc-event-content cursor-pointer w-full h-full relative z-10">
+          {event.title ? event.title.charAt(0).toUpperCase() + event.title.slice(1).toLowerCase() : ''}
         </div>
-      </TooltipTrigger>
-      <TooltipContent
+      </HoverCardTrigger>
+      <HoverCardContent
         side="top"
-        className="bg-zinc-900 border border-zinc-700 text-zinc-100 max-w-sm"
-        sideOffset={5}
+        sideOffset={8}
+        className="w-80 bg-zinc-900 border-zinc-700 !z-[100]"
       >
-        {tooltipContent}
-      </TooltipContent>
-    </Tooltip>
+        <div className="space-y-3">
+          {/* Avatar y Nombre del contacto */}
+          <div className="flex items-center gap-3">
+            {item.contact_avatar_url || item.contact_name ? (
+              <ZenAvatar className="h-10 w-10 flex-shrink-0">
+                {item.contact_avatar_url ? (
+                  <ZenAvatarImage
+                    src={item.contact_avatar_url}
+                    alt={item.contact_name || 'Contacto'}
+                  />
+                ) : null}
+                <ZenAvatarFallback>
+                  {item.contact_name ? formatInitials(item.contact_name) : '?'}
+                </ZenAvatarFallback>
+              </ZenAvatar>
+            ) : null}
+            {item.contact_name && (
+              <div className="font-semibold text-white text-sm">
+                {item.contact_name}
+              </div>
+            )}
+          </div>
+
+          {/* Teléfono */}
+          {item.contact_phone && (
+            <div className="flex items-center gap-2 text-xs text-zinc-300">
+              <Phone className="h-3.5 w-3.5 text-zinc-400" />
+              <span>{item.contact_phone}</span>
+            </div>
+          )}
+
+          {/* Correo */}
+          {item.contact_email && (
+            <div className="flex items-center gap-2 text-xs text-zinc-300">
+              <Mail className="h-3.5 w-3.5 text-zinc-400" />
+              <span>{item.contact_email}</span>
+            </div>
+          )}
+
+          {/* Fecha registro */}
+          {item.created_at && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <CalendarIcon className="h-3.5 w-3.5" />
+              <span>
+                Registro:{' '}
+                {new Intl.DateTimeFormat('es-MX', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(new Date(item.created_at))}
+              </span>
+            </div>
+          )}
+
+          {/* Fecha actualización */}
+          {item.updated_at && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400">
+              <Clock className="h-3.5 w-3.5" />
+              <span>
+                Actualizado:{' '}
+                {new Intl.DateTimeFormat('es-MX', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }).format(new Date(item.updated_at))}
+              </span>
+            </div>
+          )}
+
+          {/* Botón ver promesa/evento */}
+          {(item.contexto === 'promise' && item.promise_id) || (item.contexto === 'evento' && item.evento_id) ? (
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={handleViewClick}
+              className="w-full text-xs h-7 mt-2"
+            >
+              <ExternalLink className="h-3 w-3 mr-1.5" />
+              {item.contexto === 'promise' ? 'Ver Promesa' : 'Ver Evento'}
+            </ZenButton>
+          ) : null}
+        </div>
+      </HoverCardContent>
+    </HoverCard>
   );
 };
 
@@ -136,8 +220,12 @@ export function AgendaCalendar({
   events,
   onSelectEvent,
   onSelectSlot,
+  onViewPromise,
+  onViewEvento,
   defaultDate = new Date(),
   defaultView = 'month',
+  view,
+  onViewChange,
   className,
 }: AgendaCalendarProps) {
   const calendarEvents = useMemo(() => {
@@ -158,20 +246,56 @@ export function AgendaCalendar({
   };
 
   return (
-    <div className={`h-[600px] bg-zinc-900 rounded-lg ${className}`}>
+    <div className={`h-[600px] bg-zinc-900 overflow-hidden ${className}`}>
       <style jsx global>{`
         .rbc-calendar {
           background: rgb(24 24 27);
           color: rgb(228 228 231);
           font-family: inherit;
+          border-radius: 0;
+          overflow: hidden;
+          position: relative;
+          z-index: 1;
+        }
+        
+        /* Bordes generales - zinc-800 (rgb(39 39 42)) */
+        .rbc-calendar * {
+          border-color: rgb(39 39 42) !important;
+        }
+        
+        .rbc-event {
+          position: relative;
+          z-index: 2;
+        }
+        
+        /* Contenedor de headers - borde superior completo */
+        .rbc-month-view .rbc-row-bg,
+        .rbc-month-view .rbc-header {
+          border-top: 1px solid rgb(39 39 42);
         }
         
         .rbc-header {
-          border-bottom: 1px solid rgb(63 63 70);
-          padding: 12px 8px;
+          border-bottom: 1px solid rgb(39 39 42);
+          border-top: 1px solid rgb(39 39 42);
+          padding: 12px 0px;
           font-weight: 500;
           color: rgb(161 161 170);
           font-size: 0.875rem;
+        }
+        
+        /* Primer header - borde izquierdo */
+        .rbc-header:first-child {
+          border-left: 1px solid rgb(39 39 42);
+        }
+        
+        /* Último header - borde derecho */
+        .rbc-header:last-child {
+          border-right: 1px solid rgb(39 39 42);
+        }
+        
+        /* Headers intermedios - sin borde izquierdo para evitar duplicados */
+        .rbc-header:not(:first-child) {
+          border-left: none;
         }
         
         .rbc-today {
@@ -201,19 +325,77 @@ export function AgendaCalendar({
         }
         
         .rbc-day-bg {
-          border: 1px solid rgb(63 63 70);
+          border: 1px solid rgb(39 39 42);
+        }
+        
+        /* Vista de mes - cuadrícula */
+        .rbc-month-view {
+          border: none;
+        }
+        
+        .rbc-month-row {
+          border: none;
+          border-top: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-month-row:first-child {
+          border-top: none;
+        }
+        
+        .rbc-row {
+          border: none;
+        }
+        
+        .rbc-row-segment {
+          border: none;
+        }
+        
+        .rbc-selected-cell {
+          border-color: rgb(39 39 42);
+        }
+        
+        .rbc-day-slot {
+          border: none;
+        }
+        
+        .rbc-time-slot {
+          border-top: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-time-header-gutter {
+          border-right: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-time-content {
+          border-top: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-time-header-content {
+          border-left: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-time-view {
+          border: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-day-view {
+          border: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-week-view {
+          border: 1px solid rgb(39 39 42);
         }
         
         .rbc-toolbar {
-          padding: 16px;
-          border-bottom: 1px solid rgb(63 63 70);
-          background: rgb(39 39 42);
+          padding: 16px 0;
+          border-bottom: none;
+          background: rgb(24 24 27);
         }
         
         .rbc-toolbar button {
           color: rgb(228 228 231);
           background: rgb(39 39 42);
-          border: 1px solid rgb(63 63 70);
+          border: 1px solid rgb(39 39 42);
           padding: 6px 12px;
           border-radius: 6px;
           font-size: 0.875rem;
@@ -223,6 +405,7 @@ export function AgendaCalendar({
         .rbc-toolbar button:hover {
           background: rgb(63 63 70);
           color: rgb(255 255 255);
+          border-color: rgb(63 63 70);
         }
         
         .rbc-toolbar button:active,
@@ -246,47 +429,39 @@ export function AgendaCalendar({
         }
         
         .rbc-event:hover {
-          opacity: 0.9;
+          opacity: 0.85;
           transform: translateY(-1px);
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+          border-color: rgb(39 39 42);
         }
         
         .rbc-event-content {
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           font-weight: 500;
+          text-transform: capitalize;
         }
         
-        .rbc-time-view {
-          border-color: rgb(63 63 70);
-        }
-        
-        .rbc-time-header-content {
-          border-left-color: rgb(63 63 70);
-        }
-        
-        .rbc-time-content {
-          border-top-color: rgb(63 63 70);
-        }
-        
-        .rbc-time-slot {
-          border-top-color: rgb(63 63 70);
-        }
-        
-        .rbc-day-slot .rbc-time-slot {
-          border-top-color: rgb(63 63 70);
-        }
-        
+        /* Vista de agenda */
         .rbc-agenda-view table {
           background: rgb(24 24 27);
+          border: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-agenda-view table thead > tr > th {
+          border-bottom: 1px solid rgb(39 39 42);
+          border-right: 1px solid rgb(39 39 42);
         }
         
         .rbc-agenda-view table tbody > tr > td {
-          border-color: rgb(63 63 70);
+          border-color: rgb(39 39 42);
           padding: 12px;
         }
         
         .rbc-agenda-view table tbody > tr > td + td {
-          border-left-color: rgb(63 63 70);
+          border-left: 1px solid rgb(39 39 42);
+        }
+        
+        .rbc-agenda-view table tbody > tr {
+          border-bottom: 1px solid rgb(39 39 42);
         }
         
         .rbc-agenda-date-cell,
@@ -307,6 +482,8 @@ export function AgendaCalendar({
         style={{ height: '100%' }}
         defaultDate={defaultDate}
         defaultView={defaultView}
+        view={view}
+        onView={onViewChange}
         onSelectEvent={onSelectEvent ? (event) => onSelectEvent(event.resource) : undefined}
         onSelectSlot={onSelectSlot}
         selectable={!!onSelectSlot}
@@ -314,7 +491,13 @@ export function AgendaCalendar({
         formats={formats}
         culture={culture}
         components={{
-          event: AgendaEventComponent,
+          event: (props: { event: { resource?: AgendaItem; title?: string } }) => (
+            <AgendaEventComponent
+              event={props.event}
+              onViewPromise={onViewPromise}
+              onViewEvento={onViewEvento}
+            />
+          ),
         }}
         messages={{
           next: 'Siguiente',

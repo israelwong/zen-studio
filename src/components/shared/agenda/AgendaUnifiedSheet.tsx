@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Plus, Filter } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -10,9 +10,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/shadcn/sheet';
-import { ZenButton, ZenSelect } from '@/components/ui/zen';
 import { AgendaCalendar } from './AgendaCalendar';
-import { AgendaFormModal } from './AgendaFormModal';
 import { obtenerAgendaUnificada } from '@/lib/actions/shared/agenda-unified.actions';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { toast } from 'sonner';
@@ -23,8 +21,6 @@ interface AgendaUnifiedSheetProps {
   studioSlug: string;
 }
 
-type FiltroTipo = 'all' | 'promises' | 'eventos';
-
 export function AgendaUnifiedSheet({
   open,
   onOpenChange,
@@ -33,15 +29,13 @@ export function AgendaUnifiedSheet({
   const router = useRouter();
   const [agendamientos, setAgendamientos] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<FiltroTipo>('all');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingAgendamiento, setEditingAgendamiento] = useState<AgendaItem | null>(null);
+  const [calendarView, setCalendarView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
 
   const loadAgendamientos = useCallback(async () => {
     setLoading(true);
     try {
       const result = await obtenerAgendaUnificada(studioSlug, {
-        filtro,
+        filtro: 'all',
       });
 
       if (result.success && result.data) {
@@ -55,7 +49,7 @@ export function AgendaUnifiedSheet({
     } finally {
       setLoading(false);
     }
-  }, [studioSlug, filtro]);
+  }, [studioSlug]);
 
   useEffect(() => {
     if (open) {
@@ -63,38 +57,28 @@ export function AgendaUnifiedSheet({
     }
   }, [open, loadAgendamientos]);
 
-  const handleSelectEvent = (event: AgendaItem) => {
-    // Navegar según contexto
-    if (event.contexto === 'promise' && event.promise_id) {
-      // Navegar a la página de promise
-      router.push(`/${studioSlug}/studio/builder/commercial/promises/${event.promise_id}`);
-      onOpenChange(false); // Cerrar sheet al navegar
-    } else if (event.contexto === 'evento' && event.evento_id) {
-      // TODO: Definir ruta de eventos cuando esté disponible
-      // Por ahora, abrir modal de edición
-      setEditingAgendamiento(event);
-      setIsModalOpen(true);
-    } else {
-      // Si no hay contexto claro, abrir modal de edición
-      setEditingAgendamiento(event);
-      setIsModalOpen(true);
-    }
+  const handleSelectEvent = () => {
+    // Cambiar a vista agenda al hacer click
+    setCalendarView('agenda');
+  };
+
+  const handleViewChange = (view: 'month' | 'week' | 'day' | 'agenda') => {
+    setCalendarView(view);
+  };
+
+  const handleViewPromise = (promiseId: string) => {
+    router.push(`/${studioSlug}/studio/builder/commercial/promises/${promiseId}`);
+    onOpenChange(false);
+  };
+
+  const handleViewEvento = (_eventoId: string) => {
+    // TODO: Definir ruta de eventos cuando esté disponible
+    toast.info('Ruta de eventos pendiente de implementar');
   };
 
   const handleSelectSlot = (_slotInfo: { start: Date; end: Date }) => {
-    setEditingAgendamiento(null);
-    setIsModalOpen(true);
-  };
-
-  const handleModalSuccess = () => {
-    loadAgendamientos();
-    setIsModalOpen(false);
-    setEditingAgendamiento(null);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setEditingAgendamiento(null);
+    // Deshabilitado: crear agendamiento requiere asociar a promesa o evento
+    // toast.info('Para crear un agendamiento, hazlo desde la promesa o evento correspondiente');
   };
 
   return (
@@ -102,10 +86,10 @@ export function AgendaUnifiedSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
-          className="w-full sm:max-w-4xl bg-zinc-900 border-l border-zinc-800 overflow-y-auto"
+          className="w-full sm:max-w-4xl bg-zinc-900 border-l border-zinc-800 overflow-y-auto p-0"
         >
-          <SheetHeader className="border-b border-zinc-800 pb-4">
-            <div className="flex items-center justify-between">
+          <div className="p-0">
+            <SheetHeader className="border-b border-zinc-800 pb-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-600/20 rounded-lg">
                   <Calendar className="h-5 w-5 text-blue-400" />
@@ -119,70 +103,36 @@ export function AgendaUnifiedSheet({
                   </SheetDescription>
                 </div>
               </div>
-              <ZenButton
-                variant="primary"
-                size="sm"
-                onClick={() => {
-                  setEditingAgendamiento(null);
-                  setIsModalOpen(true);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Nuevo
-              </ZenButton>
-            </div>
-          </SheetHeader>
+            </SheetHeader>
 
-          <div className="mt-6 space-y-4">
-            {/* Filtros */}
-            <div className="flex items-center gap-3">
-              <Filter className="h-4 w-4 text-zinc-400" />
-              <ZenSelect
-                value={filtro}
-                onValueChange={(value) => setFiltro(value as FiltroTipo)}
-                options={[
-                  { value: 'all', label: 'Todos' },
-                  { value: 'promises', label: 'Promises' },
-                  { value: 'eventos', label: 'Eventos' },
-                ]}
-                disableSearch
-                className="w-48"
-              />
-            </div>
-
-            {/* Calendario */}
-            {loading ? (
-              <div className="flex items-center justify-center min-h-[600px]">
-                <div className="text-center">
-                  <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-sm text-zinc-400">Cargando agendamientos...</p>
+            <div className="p-5 mt-0 space-y-4">
+              {/* Calendario */}
+              {loading ? (
+                <div className="flex items-center justify-center min-h-[600px]">
+                  <div className="text-center">
+                    <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-sm text-zinc-400">Cargando agendamientos...</p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <AgendaCalendar
-                events={agendamientos}
-                onSelectEvent={handleSelectEvent}
-                onSelectSlot={handleSelectSlot}
-                defaultDate={new Date()}
-                defaultView="month"
-              />
-            )}
+              ) : (
+                <div className="">
+                  <AgendaCalendar
+                    events={agendamientos}
+                    onSelectEvent={handleSelectEvent}
+                    onSelectSlot={handleSelectSlot}
+                    onViewPromise={handleViewPromise}
+                    onViewEvento={handleViewEvento}
+                    defaultDate={new Date()}
+                    defaultView="month"
+                    view={calendarView}
+                    onViewChange={handleViewChange}
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </SheetContent>
       </Sheet>
-
-      {/* Modal para crear/editar agendamiento */}
-      <AgendaFormModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        studioSlug={studioSlug}
-        initialData={editingAgendamiento || undefined}
-        contexto={editingAgendamiento?.contexto || undefined}
-        promiseId={editingAgendamiento?.promise_id || undefined}
-        eventoId={editingAgendamiento?.evento_id || undefined}
-        onSuccess={handleModalSuccess}
-      />
     </>
   );
 }

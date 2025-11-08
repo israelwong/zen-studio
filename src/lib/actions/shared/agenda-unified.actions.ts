@@ -55,9 +55,13 @@ export interface AgendaItem {
     promise_id?: string | null;
     evento_id?: string | null;
     metadata?: Record<string, unknown> | null;
+    created_at?: Date | null;
+    updated_at?: Date | null;
     // Datos relacionados
     contact_name?: string | null;
     contact_phone?: string | null;
+    contact_email?: string | null;
+    contact_avatar_url?: string | null;
     event_name?: string | null;
     promise_status?: string | null;
     evento_status?: string | null;
@@ -138,6 +142,8 @@ export async function obtenerAgendaUnificada(
                             select: {
                                 name: true,
                                 phone: true,
+                                email: true,
+                                avatar_url: true,
                             },
                         },
                     },
@@ -168,8 +174,14 @@ export async function obtenerAgendaUnificada(
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
             metadata: agenda.metadata as Record<string, unknown> | null,
+            created_at: agenda.created_at || null,
+            updated_at: agenda.updated_at || null,
             contact_name: agenda.promise?.contact?.name || null,
             contact_phone: agenda.promise?.contact?.phone || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_email: agenda.promise?.contact?.email || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_avatar_url: agenda.promise?.contact?.avatar_url || null,
             event_name: agenda.eventos?.name || null,
             promise_status: agenda.promise_id ? 'pending' : null,
             evento_status: agenda.eventos?.status || null,
@@ -217,6 +229,8 @@ export async function obtenerAgendamientoPorId(
                             select: {
                                 name: true,
                                 phone: true,
+                                email: true,
+                                avatar_url: true,
                             },
                         },
                     },
@@ -247,8 +261,14 @@ export async function obtenerAgendamientoPorId(
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
             metadata: agenda.metadata as Record<string, unknown> | null,
+            created_at: agenda.created_at || null,
+            updated_at: agenda.updated_at || null,
             contact_name: agenda.promise?.contact?.name || null,
             contact_phone: agenda.promise?.contact?.phone || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_email: agenda.promise?.contact?.email || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_avatar_url: agenda.promise?.contact?.avatar_url || null,
             event_name: agenda.eventos?.name || null,
             promise_status: agenda.promise_id ? 'pending' : null,
             evento_status: agenda.eventos?.status || null,
@@ -297,6 +317,8 @@ export async function obtenerAgendamientoPorPromise(
                             select: {
                                 name: true,
                                 phone: true,
+                                email: true,
+                                avatar_url: true,
                             },
                         },
                     },
@@ -324,8 +346,14 @@ export async function obtenerAgendamientoPorPromise(
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
             metadata: agenda.metadata as Record<string, unknown> | null,
+            created_at: agenda.created_at || null,
+            updated_at: agenda.updated_at || null,
             contact_name: agenda.promise?.contact?.name || null,
             contact_phone: agenda.promise?.contact?.phone || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_email: agenda.promise?.contact?.email || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_avatar_url: agenda.promise?.contact?.avatar_url || null,
             promise_status: 'pending',
         };
 
@@ -414,6 +442,8 @@ export async function crearAgendamiento(
                             select: {
                                 name: true,
                                 phone: true,
+                                email: true,
+                                avatar_url: true,
                             },
                         },
                     },
@@ -440,10 +470,14 @@ export async function crearAgendamiento(
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
             metadata: agenda.metadata as Record<string, unknown> | null,
+            created_at: agenda.created_at || null,
+            updated_at: agenda.updated_at || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             contact_name: agenda.promise?.contact?.name || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             contact_phone: agenda.promise?.contact?.phone || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_email: agenda.promise?.contact?.email || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             event_name: agenda.eventos?.name || null,
             promise_status: agenda.promise_id ? 'pending' : null,
@@ -550,6 +584,8 @@ export async function actualizarAgendamiento(
                             select: {
                                 name: true,
                                 phone: true,
+                                email: true,
+                                avatar_url: true,
                             },
                         },
                     },
@@ -576,10 +612,14 @@ export async function actualizarAgendamiento(
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
             metadata: agenda.metadata as Record<string, unknown> | null,
+            created_at: agenda.created_at || null,
+            updated_at: agenda.updated_at || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             contact_name: agenda.promise?.contact?.name || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             contact_phone: agenda.promise?.contact?.phone || null,
+            // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
+            contact_email: agenda.promise?.contact?.email || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             event_name: agenda.eventos?.name || null,
             promise_status: agenda.promise_id ? 'pending' : null,
