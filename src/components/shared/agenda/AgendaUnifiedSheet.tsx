@@ -14,6 +14,7 @@ import { AgendaCalendar } from './AgendaCalendar';
 import { obtenerAgendaUnificada } from '@/lib/actions/shared/agenda-unified.actions';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { toast } from 'sonner';
+import { Skeleton } from '@/components/ui/shadcn/Skeleton';
 
 interface AgendaUnifiedSheetProps {
   open: boolean;
@@ -53,6 +54,8 @@ export function AgendaUnifiedSheet({
 
   useEffect(() => {
     if (open) {
+      // Resetear loading al abrir el sheet para mostrar skeleton inmediatamente
+      setLoading(true);
       loadAgendamientos();
     }
   }, [open, loadAgendamientos]);
@@ -108,10 +111,47 @@ export function AgendaUnifiedSheet({
             <div className="p-5 mt-0 space-y-4">
               {/* Calendario */}
               {loading ? (
-                <div className="flex items-center justify-center min-h-[600px]">
-                  <div className="text-center">
-                    <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                    <p className="text-sm text-zinc-400">Cargando agendamientos...</p>
+                <div className="h-[600px] bg-zinc-900 rounded-lg overflow-hidden">
+                  {/* Skeleton del toolbar */}
+                  <div className="flex items-center justify-between pb-4">
+                    <Skeleton className="h-6 w-32 bg-zinc-800" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-8 w-16 bg-zinc-800" />
+                      <Skeleton className="h-8 w-20 bg-zinc-800" />
+                      <Skeleton className="h-8 w-16 bg-zinc-800" />
+                      <Skeleton className="h-8 w-20 bg-zinc-800" />
+                    </div>
+                  </div>
+
+                  {/* Skeleton del header de días */}
+                  <div className="grid grid-cols-7 border-b border-zinc-800">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="p-3 border-r border-zinc-800 last:border-r-0">
+                        <Skeleton className="h-4 w-16 bg-zinc-800 mx-auto" />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Skeleton de las semanas del calendario */}
+                  <div className="divide-y divide-zinc-800">
+                    {[...Array(6)].map((_, weekIndex) => (
+                      <div key={weekIndex} className="grid grid-cols-7">
+                        {[...Array(7)].map((_, dayIndex) => (
+                          <div
+                            key={dayIndex}
+                            className="h-24 p-2 border-r border-zinc-800 last:border-r-0"
+                          >
+                            <div className="flex flex-col gap-2">
+                              <Skeleton className="h-4 w-6 bg-zinc-800 ml-auto" />
+                              <div className="space-y-1">
+                                <Skeleton className="h-4 w-full bg-zinc-800" />
+                                <Skeleton className="h-4 w-3/4 bg-zinc-800" />
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
