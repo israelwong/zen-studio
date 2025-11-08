@@ -1385,6 +1385,7 @@ model studio_promises {
   event             studio_eventos?
   logs              studio_promise_logs[]
   tags              studio_promises_tags[]
+  agenda            studio_agenda[]
 
   @@index([studio_id, contact_id])
   @@index([studio_id, status])
@@ -1502,27 +1503,33 @@ model studio_evento_bitacoras {
 //! COMMERCIAL (AGENDA)
 
 model studio_agenda {
-  id              String         @id @default(cuid())
+  id              String          @id @default(cuid())
   studio_id       String
-  status          String         @default("pendiente")
+  status          String          @default("pendiente")
   agenda_tipo     String?
-  created_at      DateTime       @default(now())
-  evento_id       String
+  created_at      DateTime        @default(now())
+  evento_id       String?
+  promise_id      String?
+  contexto        String?
+  metadata        Json?
   google_maps_url String?
-  updated_at      DateTime       @updatedAt
+  updated_at      DateTime        @updatedAt
   user_id         String?
   address         String?
   concept         String?
   date            DateTime?
   description     String?
   time            String?
-  eventos         studio_eventos @relation(fields: [evento_id], references: [id])
-  studio          studios        @relation(fields: [studio_id], references: [id])
-  studio_users    studio_users?  @relation(fields: [user_id], references: [id])
+  eventos         studio_eventos? @relation(fields: [evento_id], references: [id])
+  promise         studio_promises? @relation(fields: [promise_id], references: [id])
+  studio          studios         @relation(fields: [studio_id], references: [id])
+  studio_users    studio_users?   @relation(fields: [user_id], references: [id])
 
   @@index([studio_id])
   @@index([evento_id])
+  @@index([promise_id])
   @@index([date])
+  @@index([contexto, date])
 }
 
 model studio_agenda_tipos {
