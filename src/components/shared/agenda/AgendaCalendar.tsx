@@ -245,17 +245,15 @@ export function AgendaCalendar({
     weekdayFormat: (date: Date) => moment(date).format('dddd'),
   };
 
-  // Toolbar personalizado: con navegación y botones de vista
+  // Toolbar personalizado: solo botones de vista, sin navegación
   const CustomToolbar = ({
     view,
     onView,
     label,
-    onNavigate,
   }: {
     view: string;
     onView: (view: string) => void;
     label: string;
-    onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void;
   }) => {
     const views: Array<'month' | 'week' | 'day' | 'agenda'> = ['month', 'week', 'day', 'agenda'];
     const viewLabels: Record<string, string> = {
@@ -267,31 +265,8 @@ export function AgendaCalendar({
 
     return (
       <div className="rbc-toolbar flex items-center justify-between pb-4">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => onNavigate('PREV')}
-            className="rbc-toolbar-button"
-          >
-            Anterior
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigate('TODAY')}
-            className="rbc-toolbar-button"
-          >
-            Hoy
-          </button>
-          <button
-            type="button"
-            onClick={() => onNavigate('NEXT')}
-            className="rbc-toolbar-button"
-          >
-            Siguiente
-          </button>
-        </div>
-        <div className="rbc-toolbar-label text-center flex-1">{label}</div>
-        <div className="flex items-center gap-2">
+        <div className="rbc-toolbar-label text-left flex-shrink-0">{label}</div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           {views.map((v) => (
             <button
               key={v}
@@ -481,6 +456,7 @@ export function AgendaCalendar({
           font-weight: 600;
           color: rgb(255 255 255);
           font-size: 1rem;
+          text-align: left !important;
         }
         
         .rbc-event {
@@ -564,13 +540,11 @@ export function AgendaCalendar({
             view: string;
             onView: (view: string) => void;
             label: string;
-            onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void;
           }) => (
             <CustomToolbar
               view={props.view}
               onView={props.onView}
               label={props.label}
-              onNavigate={props.onNavigate}
             />
           ),
         }}
