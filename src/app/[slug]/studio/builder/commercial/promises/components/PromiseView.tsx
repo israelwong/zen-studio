@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit, ExternalLink, Loader2, ContactRound } from 'lucide-react';
+import { Edit, ExternalLink, Loader2, ContactRound, Calendar } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton, SeparadorZen } from '@/components/ui/zen';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/shadcn/hover-card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
@@ -38,18 +38,24 @@ interface PromiseViewProps {
   isSaved: boolean;
 }
 
-function ReferrerHoverCard({
+function ContactHoverCard({
   studioSlug,
-  referrerContactId,
-  referrerName,
-  referrerEmail,
-  contactName,
+  contactId,
+  displayName,
+  fallbackName,
+  fallbackEmail,
+  whatsappMessage,
+  currentContactName,
+  isReferrer = false,
 }: {
   studioSlug: string;
-  referrerContactId: string | null | undefined;
-  referrerName: string | null | undefined;
-  referrerEmail?: string | null | undefined;
-  contactName: string;
+  contactId: string | null | undefined;
+  displayName: string;
+  fallbackName?: string | null;
+  fallbackEmail?: string | null;
+  whatsappMessage?: (referrerName: string, currentContactName: string) => string;
+  currentContactName?: string;
+  isReferrer?: boolean;
 }) {
   const router = useRouter();
   const [contactData, setContactData] = useState<{
@@ -57,14 +63,15 @@ function ReferrerHoverCard({
     phone: string;
     email: string | null;
     avatar_url: string | null;
+    created_at: Date;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (open && referrerContactId && !contactData && !loading) {
+    if (open && contactId && !contactData && !loading) {
       setLoading(true);
-      getContactById(studioSlug, referrerContactId)
+      getContactById(studioSlug, contactId)
         .then((result) => {
           if (result.success && result.data) {
             setContactData({
@@ -72,49 +79,42 @@ function ReferrerHoverCard({
               phone: result.data.phone,
               email: result.data.email,
               avatar_url: result.data.avatar_url,
+              created_at: result.data.created_at,
             });
           }
         })
         .catch((error) => {
-          console.error('Error loading referrer contact:', error);
+          console.error('Error loading contact:', error);
         })
         .finally(() => {
           setLoading(false);
         });
     }
-  }, [open, referrerContactId, contactData, loading, studioSlug]);
+  }, [open, contactId, contactData, loading, studioSlug]);
 
   const handleViewContact = () => {
-    if (referrerContactId) {
-      router.push(`/${studioSlug}/studio/builder/commercial/contacts?contactId=${referrerContactId}`);
+    if (contactId) {
+      router.push(`/${studioSlug}/studio/builder/commercial/contacts?contactId=${contactId}`);
       setOpen(false);
     }
   };
 
   const handleWhatsApp = (phone: string) => {
-    // Extraer primer nombre del referido y capitalizar primera letra
-    const referrerFirstNameRaw = (contactData?.name || referrerName || '').split(' ')[0];
-    const referrerFirstName = referrerFirstNameRaw
-      ? referrerFirstNameRaw.charAt(0).toUpperCase() + referrerFirstNameRaw.slice(1).toLowerCase()
-      : '';
-
-    // Capitalizar primera letra del nombre del contacto
-    const contactNameCapitalized = contactName
-      ? contactName.charAt(0).toUpperCase() + contactName.slice(1).toLowerCase()
-      : contactName;
-
-    // Mensaje personalizado
-    const message = `¡Hola ${referrerFirstName}! ${contactNameCapitalized} nos contacto, muchas gracias por tu recomendación, realmente lo apreciamos,`;
-    const encodedMessage = encodeURIComponent(message);
     const cleanPhone = phone.replace(/\D/g, '');
-    const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+    let whatsappUrl = `https://wa.me/${cleanPhone}`;
+
+    if (whatsappMessage && contactData && currentContactName) {
+      const message = whatsappMessage(contactData.name, currentContactName);
+      const encodedMessage = encodeURIComponent(message);
+      whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+    }
 
     window.open(whatsappUrl, '_blank');
   };
 
-  const displayName = referrerName || contactData?.name || 'Contacto referido';
-  const referrerDisplayName = contactData?.name || referrerName || 'Contacto referido';
-  const initials = referrerDisplayName
+  const finalName = contactData?.name || fallbackName || displayName;
+  const finalEmail = contactData?.email || fallbackEmail || null;
+  const initials = finalName
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -140,9 +140,9 @@ function ReferrerHoverCard({
           <div className="flex items-center justify-center py-4">
             <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
           </div>
-        ) : contactData || referrerName ? (
+        ) : contactData || fallbackName ? (
           <div className="space-y-3">
-            {referrerContactId && (
+            {contactId && (
               <button
                 type="button"
                 onClick={handleViewContact}
@@ -156,7 +156,7 @@ function ReferrerHoverCard({
               <Avatar className="h-16 w-16 flex-shrink-0">
                 <AvatarImage
                   src={contactData?.avatar_url || undefined}
-                  alt={referrerDisplayName}
+                  alt={finalName}
                 />
                 <AvatarFallback className="bg-emerald-600/20 text-emerald-400 border border-emerald-600/30">
                   {initials || <ContactRound className="h-8 w-8" />}
@@ -164,9 +164,9 @@ function ReferrerHoverCard({
               </Avatar>
               <div className="space-y-1 flex-1 min-w-0 pr-8">
                 <h4 className="text-sm font-semibold text-zinc-200 truncate">
-                  {referrerDisplayName}
+                  {finalName}
                 </h4>
-                {contactData?.phone && (
+                {isReferrer && contactData?.phone && (
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -182,17 +182,30 @@ function ReferrerHoverCard({
                     </button>
                   </div>
                 )}
-                {(contactData?.email || referrerEmail) && (
+                {isReferrer && finalEmail && (
                   <p className="text-xs text-zinc-400 truncate">
-                    {contactData?.email || referrerEmail}
+                    {finalEmail}
                   </p>
+                )}
+                {contactData?.created_at && (
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-400 pt-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>
+                      {isReferrer ? 'Cliente desde' : 'Registrado el'}{' '}
+                      {new Intl.DateTimeFormat('es-MX', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }).format(new Date(contactData.created_at))}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         ) : (
           <div className="text-sm text-zinc-400">
-            No se pudo cargar la información del referido
+            No se pudo cargar la información del contacto
           </div>
         )}
       </HoverCardContent>
@@ -240,7 +253,16 @@ export function PromiseView({
                   <label className="text-xs font-medium text-zinc-400 block mb-1">
                     Nombre
                   </label>
-                  <p className="text-sm text-zinc-200">{data.name}</p>
+                  {contactId ? (
+                    <ContactHoverCard
+                      studioSlug={studioSlug}
+                      contactId={contactId}
+                      displayName={data.name}
+                      isReferrer={false}
+                    />
+                  ) : (
+                    <p className="text-sm text-zinc-200">{data.name}</p>
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-zinc-400 block mb-1">
@@ -342,12 +364,24 @@ export function PromiseView({
                       Referido por
                     </label>
                     <div>
-                      <ReferrerHoverCard
+                      <ContactHoverCard
                         studioSlug={studioSlug}
-                        referrerContactId={data.referrer_contact_id}
-                        referrerName={data.referrer_name || data.referrer_contact_name || undefined}
-                        referrerEmail={data.referrer_contact_email}
-                        contactName={data.name}
+                        contactId={data.referrer_contact_id}
+                        displayName={data.referrer_name || data.referrer_contact_name || 'Contacto referido'}
+                        fallbackName={data.referrer_name || data.referrer_contact_name}
+                        fallbackEmail={data.referrer_contact_email}
+                        currentContactName={data.name}
+                        isReferrer={true}
+                        whatsappMessage={(referrerName, currentContactName) => {
+                          const referrerFirstName = referrerName.split(' ')[0];
+                          const referrerFirstNameCapitalized = referrerFirstName
+                            ? referrerFirstName.charAt(0).toUpperCase() + referrerFirstName.slice(1).toLowerCase()
+                            : '';
+                          const contactNameCapitalized = currentContactName
+                            ? currentContactName.charAt(0).toUpperCase() + currentContactName.slice(1).toLowerCase()
+                            : currentContactName;
+                          return `¡Hola ${referrerFirstNameCapitalized}! ${contactNameCapitalized} nos contacto, muchas gracias por tu recomendación, realmente lo apreciamos,`;
+                        }}
                       />
                     </div>
                   </div>
