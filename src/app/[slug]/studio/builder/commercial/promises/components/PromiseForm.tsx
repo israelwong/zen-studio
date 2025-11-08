@@ -11,9 +11,10 @@ import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
 import { createPromise, updatePromise, getEventTypes, getPromiseIdByContactId } from '@/lib/actions/studio/builder/commercial/promises';
 import { getContacts, getAcquisitionChannels, getSocialNetworks } from '@/lib/actions/studio/builder/commercial/contacts';
-import { PromiseLogsPanel } from './PromiseLogsPanel';
+import { PromiseLogsPanelCompact } from './PromiseLogsPanelCompact';
 import { PromiseQuotesPanel } from './PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
+import { PromiseAgendamiento } from './PromiseAgendamiento';
 import type { CreatePromiseData, UpdatePromiseData } from '@/lib/actions/schemas/promises-schemas';
 
 interface PromiseFormProps {
@@ -925,8 +926,8 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
           </form>
         </div>
 
-        {/* Columna 2: Cotizaciones */}
-        <div className="lg:col-span-1">
+        {/* Columna 2: Cotizaciones y Etiquetas */}
+        <div className="lg:col-span-1 space-y-6">
           <PromiseQuotesPanel
             studioSlug={studioSlug}
             promiseId={promiseId}
@@ -934,10 +935,7 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
             isSaved={isSaved}
             contactId={currentContactId}
           />
-        </div>
 
-        {/* Columna 3: Etiquetas y Bitácora */}
-        <div className="lg:col-span-1 space-y-6">
           {/* Etiquetas (solo si está guardado) */}
           {isSaved && promiseId && (
             <div>
@@ -948,16 +946,32 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
               />
             </div>
           )}
+        </div>
+
+        {/* Columna 3: Agendamiento y Notas */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Agendamiento (solo si está guardado) */}
+          {isSaved && promiseId && (
+            <div>
+              <PromiseAgendamiento
+                studioSlug={studioSlug}
+                promiseId={promiseId}
+                isSaved={isSaved}
+              />
+            </div>
+          )}
 
           {/* Bitácora */}
-          <div>
-            <PromiseLogsPanel
-              studioSlug={studioSlug}
-              promiseId={promiseId}
-              contactId={currentContactId}
-              isSaved={isSaved}
-            />
-          </div>
+          {isSaved && promiseId && (
+            <div>
+              <PromiseLogsPanelCompact
+                studioSlug={studioSlug}
+                promiseId={promiseId}
+                contactId={currentContactId}
+                isSaved={isSaved}
+              />
+            </div>
+          )}
         </div>
       </div>
 
