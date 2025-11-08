@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Calendar, Plus, Filter } from 'lucide-react';
 import {
   Sheet,
@@ -29,20 +30,14 @@ export function AgendaUnifiedSheet({
   onOpenChange,
   studioSlug,
 }: AgendaUnifiedSheetProps) {
+  const router = useRouter();
   const [agendamientos, setAgendamientos] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<FiltroTipo>('all');
-  const [selectedEvent, setSelectedEvent] = useState<AgendaItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgendamiento, setEditingAgendamiento] = useState<AgendaItem | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadAgendamientos();
-    }
-  }, [open, filtro, studioSlug]);
-
-  const loadAgendamientos = async () => {
+  const loadAgendamientos = useCallback(async () => {
     setLoading(true);
     try {
       const result = await obtenerAgendaUnificada(studioSlug, {
@@ -60,15 +55,33 @@ export function AgendaUnifiedSheet({
     } finally {
       setLoading(false);
     }
-  };
+  }, [studioSlug, filtro]);
+
+  useEffect(() => {
+    if (open) {
+      loadAgendamientos();
+    }
+  }, [open, loadAgendamientos]);
 
   const handleSelectEvent = (event: AgendaItem) => {
-    setSelectedEvent(event);
-    setEditingAgendamiento(event);
-    setIsModalOpen(true);
+    // Navegar según contexto
+    if (event.contexto === 'promise' && event.promise_id) {
+      // Navegar a la página de promise
+      router.push(`/${studioSlug}/studio/builder/commercial/promises/${event.promise_id}`);
+      onOpenChange(false); // Cerrar sheet al navegar
+    } else if (event.contexto === 'evento' && event.evento_id) {
+      // TODO: Definir ruta de eventos cuando esté disponible
+      // Por ahora, abrir modal de edición
+      setEditingAgendamiento(event);
+      setIsModalOpen(true);
+    } else {
+      // Si no hay contexto claro, abrir modal de edición
+      setEditingAgendamiento(event);
+      setIsModalOpen(true);
+    }
   };
 
-  const handleSelectSlot = ({ start }: { start: Date; end: Date }) => {
+  const handleSelectSlot = (_slotInfo: { start: Date; end: Date }) => {
     setEditingAgendamiento(null);
     setIsModalOpen(true);
   };
@@ -82,7 +95,6 @@ export function AgendaUnifiedSheet({
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingAgendamiento(null);
-    setSelectedEvent(null);
   };
 
   return (

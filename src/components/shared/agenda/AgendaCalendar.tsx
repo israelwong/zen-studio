@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/shadcn/tooltip';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -77,6 +78,58 @@ const zenEventStyleGetter = (event: { resource?: AgendaItem }) => {
       padding: '4px 8px',
     },
   };
+};
+
+// Componente personalizado de evento con tooltip
+const AgendaEventComponent = ({ event }: { event: { resource?: AgendaItem; title?: string } }) => {
+  const item = event.resource as AgendaItem | undefined;
+
+  if (!item) {
+    return <div className="rbc-event-content">{event.title}</div>;
+  }
+
+  const tooltipContent = (
+    <div className="space-y-1.5 text-xs">
+      <div className="font-semibold text-white">{item.concept || item.contact_name || item.event_name || 'Agendamiento'}</div>
+      {item.contact_name && (
+        <div className="text-zinc-300">
+          <span className="text-zinc-400">Contacto:</span> {item.contact_name}
+        </div>
+      )}
+      {item.time && (
+        <div className="text-zinc-300">
+          <span className="text-zinc-400">Hora:</span> {item.time}
+        </div>
+      )}
+      {item.address && (
+        <div className="text-zinc-300 max-w-xs truncate">
+          <span className="text-zinc-400">Dirección:</span> {item.address}
+        </div>
+      )}
+      {item.description && (
+        <div className="text-zinc-300 max-w-xs line-clamp-2">
+          {item.description}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Tooltip delayDuration={300}>
+      <TooltipTrigger asChild>
+        <div className="rbc-event-content cursor-pointer w-full h-full">
+          {event.title}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent
+        side="top"
+        className="bg-zinc-900 border border-zinc-700 text-zinc-100 max-w-sm"
+        sideOffset={5}
+      >
+        {tooltipContent}
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 export function AgendaCalendar({
@@ -260,6 +313,9 @@ export function AgendaCalendar({
         eventPropGetter={zenEventStyleGetter}
         formats={formats}
         culture={culture}
+        components={{
+          event: AgendaEventComponent,
+        }}
         messages={{
           next: 'Siguiente',
           previous: 'Anterior',
