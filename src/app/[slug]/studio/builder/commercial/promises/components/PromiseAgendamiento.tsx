@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Clock, Edit, Plus, Video, Link as LinkIcon, X, Copy, Check } from 'lucide-react';
-import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenDialog } from '@/components/ui/zen';
+import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
 import { AgendaFormModal } from '@/components/shared/agenda';
 import { obtenerAgendamientoPorPromise, eliminarAgendamiento } from '@/lib/actions/shared/agenda-unified.actions';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
@@ -305,20 +305,17 @@ export function PromiseAgendamiento({
         onSuccess={handleSuccess}
       />
 
-      <ZenDialog
+      <ZenConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleDelete}
         title="Cancelar agendamiento"
         description="¿Estás seguro de que deseas cancelar este agendamiento? Esta acción no se puede deshacer."
-        onSave={handleDelete}
-        onCancel={() => setIsDeleteModalOpen(false)}
-        saveLabel="Cancelar"
-        cancelLabel="Cerrar"
-        isLoading={isDeleting}
-        saveVariant="destructive"
-      >
-        <div />
-      </ZenDialog>
+        confirmText="Cancelar agendamiento"
+        cancelText="Cerrar"
+        variant="destructive"
+        loading={isDeleting}
+      />
     </>
   );
 }

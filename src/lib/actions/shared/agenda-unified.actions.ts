@@ -69,6 +69,12 @@ export interface AgendaItem {
     event_name?: string | null;
     promise_status?: string | null;
     evento_status?: string | null;
+    // Indica si es una fecha pendiente de confirmar (fecha de interés sin agendamiento)
+    is_pending_date?: boolean;
+    // Indica si es una fecha de evento confirmada (defined_date sin agendamiento)
+    is_confirmed_event_date?: boolean;
+    // Indica si la fecha está caducada (fecha pasada)
+    is_expired?: boolean;
 }
 
 export interface ActionResponse<T> {
@@ -190,11 +196,184 @@ export async function obtenerAgendaUnificada(
             event_name: agenda.eventos?.name || null,
             promise_status: agenda.promise_id ? 'pending' : null,
             evento_status: agenda.eventos?.status || null,
+            is_pending_date: false,
         }));
+
+        // Obtener todas las promesas con fechas de interés
+        const allPromisesWithDates = await prisma.studio_promises.findMany({
+            where: {
+                studio_id: studio.id,
+                tentative_dates: { not: null },
+            },
+            select: {
+                id: true,
+                tentative_dates: true,
+                created_at: true,
+                updated_at: true,
+                contact: {
+                    select: {
+                        name: true,
+                        phone: true,
+                        email: true,
+                        avatar_url: true,
+                    },
+                },
+            },
+        });
+
+        // Obtener fechas de agendamientos confirmados por promesa
+        const agendasByPromise = await prisma.studio_agenda.findMany({
+            where: {
+                studio_id: studio.id,
+                promise_id: { not: null },
+                date: { not: null },
+            },
+            select: {
+                promise_id: true,
+                date: true,
+            },
+        });
+
+        // Crear un mapa de fechas de agendamiento por promesa (normalizar a fecha sin hora)
+        const agendaDatesByPromise = new Map<string, Set<string>>();
+        for (const agenda of agendasByPromise) {
+            if (agenda.promise_id && agenda.date) {
+                const dateKey = new Date(agenda.date).toISOString().split('T')[0]; // Solo fecha, sin hora
+                if (!agendaDatesByPromise.has(agenda.promise_id)) {
+                    agendaDatesByPromise.set(agenda.promise_id, new Set());
+                }
+                agendaDatesByPromise.get(agenda.promise_id)!.add(dateKey);
+            }
+        }
+
+        // Crear items para fechas de interés pendientes
+        // Mostrar todas las fechas de interés, excepto las que coinciden con fechas de agendamiento
+        const pendingDateItems: AgendaItem[] = [];
+        for (const promise of allPromisesWithDates) {
+            if (promise.tentative_dates && Array.isArray(promise.tentative_dates)) {
+                const dates = promise.tentative_dates as string[];
+                const agendaDates = agendaDatesByPromise.get(promise.id) || new Set();
+                
+                for (const dateStr of dates) {
+                    try {
+                        const date = new Date(dateStr);
+                        if (!isNaN(date.getTime())) {
+                            // Normalizar fecha de interés a solo fecha (sin hora)
+                            const dateKey = date.toISOString().split('T')[0];
+                            
+                            // Solo mostrar si NO coincide con una fecha de agendamiento
+                            if (!agendaDates.has(dateKey)) {
+                                // Verificar si la fecha está caducada (pasada)
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const eventDate = new Date(date);
+                                eventDate.setHours(0, 0, 0, 0);
+                                const isExpired = eventDate < today;
+
+                                pendingDateItems.push({
+                                    id: `pending-${promise.id}-${dateStr}`,
+                                    date,
+                                    time: null,
+                                    address: null,
+                                    concept: promise.contact?.name || 'Fecha de interés',
+                                    description: null,
+                                    link_meeting_url: null,
+                                    type_scheduling: null,
+                                    status: 'pending',
+                                    contexto: 'promise',
+                                    promise_id: promise.id,
+                                    evento_id: null,
+                                    metadata: null,
+                                    created_at: promise.created_at || null,
+                                    updated_at: promise.updated_at || null,
+                                    contact_name: promise.contact?.name || null,
+                                    contact_phone: promise.contact?.phone || null,
+                                    contact_email: promise.contact?.email || null,
+                                    contact_avatar_url: promise.contact?.avatar_url || null,
+                                    event_name: null,
+                                    promise_status: 'pending',
+                                    evento_status: null,
+                                    is_pending_date: true,
+                                    is_expired: isExpired,
+                                });
+                            }
+                        }
+                    } catch (error) {
+                        console.error('[AGENDA_UNIFIED] Error parsing date:', dateStr, error);
+                    }
+                }
+            }
+        }
+
+        // Obtener promesas con fecha de evento confirmada (defined_date) que no tengan agendamiento
+        const promisesWithDefinedDate = await prisma.studio_promises.findMany({
+            where: {
+                studio_id: studio.id,
+                defined_date: { not: null },
+            },
+            select: {
+                id: true,
+                defined_date: true,
+                created_at: true,
+                updated_at: true,
+                contact: {
+                    select: {
+                        name: true,
+                        phone: true,
+                        email: true,
+                        avatar_url: true,
+                    },
+                },
+            },
+        });
+
+        // Filtrar promesas con defined_date que no tienen agendamiento confirmado
+        const confirmedEventDateItems: AgendaItem[] = [];
+        for (const promise of promisesWithDefinedDate) {
+            if (promise.defined_date && !promisesWithAgendaIds.has(promise.id)) {
+                // Verificar si la fecha está caducada (pasada)
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const eventDate = new Date(promise.defined_date);
+                eventDate.setHours(0, 0, 0, 0);
+                const isExpired = eventDate < today;
+
+                confirmedEventDateItems.push({
+                    id: `confirmed-${promise.id}-${promise.defined_date.toISOString()}`,
+                    date: promise.defined_date,
+                    time: null,
+                    address: null,
+                    concept: promise.contact?.name || 'Fecha de evento',
+                    description: null,
+                    link_meeting_url: null,
+                    type_scheduling: null,
+                    status: 'confirmed',
+                    contexto: 'promise',
+                    promise_id: promise.id,
+                    evento_id: null,
+                    metadata: null,
+                    created_at: promise.created_at || null,
+                    updated_at: promise.updated_at || null,
+                    contact_name: promise.contact?.name || null,
+                    contact_phone: promise.contact?.phone || null,
+                    contact_email: promise.contact?.email || null,
+                    contact_avatar_url: promise.contact?.avatar_url || null,
+                    event_name: null,
+                    promise_status: 'pending',
+                    evento_status: null,
+                    is_pending_date: false,
+                    is_confirmed_event_date: true,
+                    is_expired: isExpired,
+                });
+            }
+        }
+
+        // Combinar agendamientos confirmados con fechas pendientes y fechas de evento confirmadas
+        const allItems = [...items, ...pendingDateItems, ...confirmedEventDateItems];
 
         return {
             success: true,
-            data: items,
+            data: allItems,
         };
     } catch (error) {
         console.error('[AGENDA_UNIFIED] Error obteniendo agenda:', error);

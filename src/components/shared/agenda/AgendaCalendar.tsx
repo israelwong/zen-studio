@@ -62,22 +62,116 @@ function agendaItemToEvent(item: AgendaItem) {
 const zenEventStyleGetter = (event: { resource?: AgendaItem }) => {
   const item = event.resource as AgendaItem | undefined;
   const contexto = item?.contexto;
+  const isPending = item?.is_pending_date;
+  const isConfirmedEvent = item?.is_confirmed_event_date;
+  const isExpired = item?.is_expired;
+  const hasAgendamiento = !isPending && !isConfirmedEvent && item?.type_scheduling; // Cita (virtual o presencial)
 
-  let backgroundColor = '#3B82F6'; // Azul por defecto
-  let borderColor = '#2563EB';
-
-  if (contexto === 'promise') {
-    backgroundColor = '#3B82F6'; // Azul para promises
-    borderColor = '#1E40AF';
-  } else if (contexto === 'evento') {
-    backgroundColor = '#10B981'; // Verde para eventos
-    borderColor = '#047857';
+  // 1. Fecha de interés pendiente - Gris (normal) o Rojo (caducada)
+  if (isPending) {
+    if (isExpired) {
+      // Fecha caducada - Rojo
+      return {
+        style: {
+          backgroundColor: '#DC2626', // red-600
+          borderColor: '#B91C1C', // red-700
+          borderWidth: '2px',
+          borderRadius: '6px',
+          color: '#FFFFFF',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          padding: '4px 8px',
+          opacity: 0.8,
+        },
+      };
+    }
+    // Fecha de interés normal - Gris
+    return {
+      style: {
+        backgroundColor: '#52525B', // zinc-600
+        borderColor: '#71717A', // zinc-500
+        borderWidth: '2px',
+        borderRadius: '6px',
+        color: '#D4D4D8', // zinc-300
+        fontSize: '0.875rem',
+        fontWeight: 500,
+        padding: '4px 8px',
+        opacity: 0.7,
+      },
+    };
   }
 
+  // 2. Fecha de evento confirmada - Amarillo/Dorado (normal) o Rojo (caducada)
+  if (isConfirmedEvent) {
+    if (isExpired) {
+      // Fecha de evento caducada - Rojo
+      return {
+        style: {
+          backgroundColor: '#DC2626', // red-600
+          borderColor: '#B91C1C', // red-700
+          borderWidth: '2px',
+          borderRadius: '6px',
+          color: '#FFFFFF',
+          fontSize: '0.875rem',
+          fontWeight: 600,
+          padding: '4px 8px',
+          opacity: 0.8,
+        },
+      };
+    }
+    // Fecha de evento normal - Amarillo/Dorado
+    return {
+      style: {
+        backgroundColor: '#EAB308', // yellow-500
+        borderColor: '#CA8A04', // yellow-600
+        borderWidth: '2px',
+        borderRadius: '6px',
+        color: '#1C1917', // stone-900 (texto oscuro para contraste)
+        fontSize: '0.875rem',
+        fontWeight: 600,
+        padding: '4px 8px',
+      },
+    };
+  }
+
+  // 3. Cita (virtual o presencial) - Azul con variación según tipo
+  if (hasAgendamiento && contexto === 'promise') {
+    const isVirtual = item.type_scheduling === 'virtual';
+    return {
+      style: {
+        backgroundColor: isVirtual ? '#8B5CF6' : '#3B82F6', // purple-500 para virtual, blue-500 para presencial
+        borderColor: isVirtual ? '#7C3AED' : '#2563EB', // purple-600 para virtual, blue-600 para presencial
+        borderWidth: '2px',
+        borderRadius: '6px',
+        color: '#FFFFFF',
+        fontSize: '0.875rem',
+        fontWeight: 500,
+        padding: '4px 8px',
+      },
+    };
+  }
+
+  // 4. Evento (no promesa)
+  if (contexto === 'evento') {
+    return {
+      style: {
+        backgroundColor: '#10B981', // emerald-500
+        borderColor: '#047857', // emerald-700
+        borderWidth: '2px',
+        borderRadius: '6px',
+        color: '#FFFFFF',
+        fontSize: '0.875rem',
+        fontWeight: 500,
+        padding: '4px 8px',
+      },
+    };
+  }
+
+  // Default: Azul
   return {
     style: {
-      backgroundColor,
-      borderColor,
+      backgroundColor: '#3B82F6',
+      borderColor: '#2563EB',
       borderWidth: '2px',
       borderRadius: '6px',
       color: '#FFFFFF',
@@ -126,6 +220,49 @@ const AgendaEventComponent = ({
         className="w-80 bg-zinc-900 border-zinc-700 !z-[100]"
       >
         <div className="space-y-3">
+          {/* Mensaje para fechas pendientes */}
+          {item.is_pending_date && (
+            <div className={`rounded-lg p-3 mb-2 ${
+              item.is_expired
+                ? 'bg-red-500/10 border border-red-500/30'
+                : 'bg-zinc-800/50 border border-zinc-700'
+            }`}>
+              <p className={`text-xs font-medium ${
+                item.is_expired ? 'text-red-400' : 'text-zinc-400'
+              }`}>
+                {item.is_expired
+                  ? 'Fecha caducada - Pendiente de confirmar'
+                  : 'Fecha pendiente de confirmar'}
+              </p>
+            </div>
+          )}
+
+          {/* Mensaje para fechas de evento confirmadas */}
+          {item.is_confirmed_event_date && (
+            <div className={`rounded-lg p-3 mb-2 ${
+              item.is_expired
+                ? 'bg-red-500/10 border border-red-500/30'
+                : 'bg-yellow-500/10 border border-yellow-500/30'
+            }`}>
+              <p className={`text-xs font-medium ${
+                item.is_expired ? 'text-red-400' : 'text-yellow-400'
+              }`}>
+                {item.is_expired
+                  ? 'Fecha de evento caducada'
+                  : 'Fecha de evento confirmada'}
+              </p>
+            </div>
+          )}
+
+          {/* Mensaje para citas */}
+          {!item.is_pending_date && !item.is_confirmed_event_date && item.type_scheduling && (
+            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-2">
+              <p className="text-xs font-medium text-blue-400">
+                Cita {item.type_scheduling === 'virtual' ? 'virtual' : 'presencial'}
+              </p>
+            </div>
+          )}
+
           {/* Avatar y Nombre del contacto */}
           <div className="flex items-center gap-3">
             {item.contact_avatar_url || item.contact_name ? (
@@ -234,9 +371,12 @@ export function AgendaCalendar({
 
   // Calcular estadísticas
   const stats = useMemo(() => {
-    const promises = events.filter((item) => item.contexto === 'promise').length;
-    const eventos = events.filter((item) => item.contexto === 'evento').length;
-    return { promises, eventos };
+    const citas = events.filter(
+      (item) => item.contexto === 'promise' && !item.is_pending_date && !item.is_confirmed_event_date && item.type_scheduling
+    ).length;
+    const fechasInteres = events.filter((item) => item.is_pending_date === true).length;
+    const fechasEvento = events.filter((item) => item.is_confirmed_event_date === true).length;
+    return { citas, fechasInteres, fechasEvento };
   }, [events]);
 
   // Configurar inicio de semana (lunes) y formatos en español
@@ -573,18 +713,26 @@ export function AgendaCalendar({
       </div>
 
       {/* Footer con estadísticas */}
-      <div className="border-t border-zinc-800 px-4 py-3 flex items-center justify-center gap-6 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-blue-500"></div>
-          <span className="text-zinc-300">
-            <span className="font-semibold text-white">{stats.promises}</span> promesa{stats.promises !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
-          <span className="text-zinc-300">
-            <span className="font-semibold text-white">{stats.eventos}</span> evento{stats.eventos !== 1 ? 's' : ''}
-          </span>
+      <div className="border-t border-zinc-800 px-4 py-3">
+        <div className="flex items-center justify-center gap-4 text-sm flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+            <span className="text-zinc-300">
+              <span className="font-semibold text-white">{stats.citas}</span> cita{stats.citas !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-zinc-500"></div>
+            <span className="text-zinc-300">
+              <span className="font-semibold text-white">{stats.fechasInteres}</span> fecha{stats.fechasInteres !== 1 ? 's' : ''} de interés
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+            <span className="text-zinc-300">
+              <span className="font-semibold text-white">{stats.fechasEvento}</span> fecha{stats.fechasEvento !== 1 ? 's' : ''} de evento
+            </span>
+          </div>
         </div>
       </div>
     </div>
