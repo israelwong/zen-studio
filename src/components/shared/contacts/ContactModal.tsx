@@ -1,0 +1,854 @@
+'use client';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ZenInput, ZenDialog, ZenTextarea, ZenSelect, ZenConfirmModal } from '@/components/ui/zen';
+import { Skeleton } from '@/components/ui/shadcn/Skeleton';
+import type { ZenSelectOption } from '@/components/ui/zen';
+import { toast } from 'sonner';
+import {
+    createContact,
+    updateContact,
+    getContactById,
+    getAcquisitionChannels,
+    getSocialNetworks,
+    getContacts,
+    getContactEvents,
+    deleteContact,
+    checkContactAssociations,
+    getContactPromises
+} from '@/lib/actions/studio/builder/commercial/contacts';
+import type { CreateContactData, Contact } from '@/lib/actions/schemas/contacts-schemas';
+import { AvatarManager } from '@/components/shared/avatar';
+import { useStorageRefresh } from '@/hooks/useStorageRefresh';
+import { formatDate } from '@/lib/actions/utils/formatting';
+import { Calendar, ArrowRight, Package } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface ContactModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    contactId?: string | null;
+    studioSlug: string;
+    onSuccess: (contact?: Contact, wasEditing?: boolean) => void;
+}
+
+function ContactModalComponent({
+    isOpen,
+    onClose,
+    contactId,
+    studioSlug,
+    onSuccess
+}: ContactModalProps) {
+    const { triggerRefresh } = useStorageRefresh(studioSlug);
+    const [loading, setLoading] = useState(false);
+    const [loadingContact, setLoadingContact] = useState(false);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [formData, setFormData] = useState<CreateContactData>({
+        name: '',
+        phone: '',
+        email: '',
+        address: '',
+        avatar_url: '',
+        status: 'prospecto',
+        acquisition_channel_id: undefined,
+        social_network_id: undefined,
+        referrer_contact_id: undefined,
+        referrer_name: '',
+        notes: ''
+    });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [acquisitionChannels, setAcquisitionChannels] = useState<Array<{ id: string; name: string }>>([]);
+    const [socialNetworks, setSocialNetworks] = useState<Array<{ id: string; name: string }>>([]);
+    const [referrerContacts, setReferrerContacts] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+    const [referrerInputValue, setReferrerInputValue] = useState('');
+    const [showReferrerSuggestions, setShowReferrerSuggestions] = useState(false);
+    const [filteredReferrerContacts, setFilteredReferrerContacts] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+    const [events, setEvents] = useState<Array<{
+        id: string;
+        name: string;
+        event_date: Date;
+        status: string;
+        event_type: string | null;
+        cotizacion: { id: string; status: string; name: string } | null;
+    }>>([]);
+    const [loadingEvents, setLoadingEvents] = useState(false);
+    const [promises, setPromises] = useState<Array<{
+        id: string;
+        event_type_name: string | null;
+        pipeline_stage_name: string | null;
+        created_at: Date;
+    }>>([]);
+    const [loadingPromises, setLoadingPromises] = useState(false);
+    const router = useRouter();
+    const hasLoadedRef = useRef<boolean>(false);
+    const loadedContactIdRef = useRef<string | null | undefined>(null);
+    const isInitializingRef = useRef<boolean>(false);
+
+    // Función helper para normalizar teléfono (debe estar antes de las funciones que la usan)
+    const normalizePhone = useCallback((value: string): string => {
+        // Quitar todos los caracteres no numéricos
+        const digitsOnly = value.replace(/\D/g, '');
+        // Tomar solo los últimos 10 dígitos
+        return digitsOnly.slice(-10);
+    }, []);
+
+    // Usar refs para funciones para evitar que useEffect se ejecute cuando cambian
+    const loadAcquisitionChannelsRef = useRef(async () => {
+        try {
+            const result = await getAcquisitionChannels();
+            if (result.success && result.data) {
+                setAcquisitionChannels(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading acquisition channels:', error);
+        }
+    });
+
+    const loadSocialNetworksRef = useRef(async () => {
+        try {
+            const result = await getSocialNetworks();
+            if (result.success && result.data) {
+                setSocialNetworks(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading social networks:', error);
+        }
+    });
+
+    const loadReferrerContactsRef = useRef(async (excludeContactId?: string | null) => {
+        try {
+            const result = await getContacts(studioSlug, { page: 1, limit: 100 });
+            if (result.success && result.data) {
+                const contacts = result.data.contacts
+                    .filter((c: Contact) => c.id !== excludeContactId)
+                    .map((c: Contact) => ({
+                        id: c.id,
+                        name: c.name,
+                        phone: c.phone
+                    }));
+                setReferrerContacts(contacts);
+                setFilteredReferrerContacts(contacts);
+            }
+        } catch (error) {
+            console.error('Error loading referrer contacts:', error);
+        }
+    });
+
+    const loadContactRef = useRef(async (id: string) => {
+        if (!id) return;
+        try {
+            setLoadingContact(true);
+            setLoading(true);
+            const result = await getContactById(studioSlug, id);
+            if (result.success && result.data) {
+                setFormData({
+                    name: result.data.name,
+                    phone: normalizePhone(result.data.phone || ''),
+                    email: result.data.email ? result.data.email : '',
+                    address: result.data.address ? result.data.address : '',
+                    avatar_url: result.data.avatar_url ? result.data.avatar_url : '',
+                    status: result.data.status as 'prospecto' | 'cliente',
+                    acquisition_channel_id: result.data.acquisition_channel_id ?? undefined,
+                    social_network_id: result.data.social_network_id ?? undefined,
+                    referrer_contact_id: result.data.referrer_contact_id ?? undefined,
+                    referrer_name: result.data.referrer_name ? result.data.referrer_name : '',
+                    notes: result.data.notes ? result.data.notes : ''
+                });
+                if (result.data.referrer_contact_id && result.data.referrer_contact) {
+                    setReferrerInputValue(`@${result.data.referrer_contact.name}`);
+                } else if (result.data.referrer_name) {
+                    setReferrerInputValue(result.data.referrer_name);
+                } else {
+                    setReferrerInputValue('');
+                }
+            } else {
+                toast.error(result.error || 'Error al cargar contacto');
+            }
+        } catch (error) {
+            console.error('Error loading contact:', error);
+            toast.error('Error al cargar contacto');
+        } finally {
+            setLoadingContact(false);
+            setLoading(false);
+        }
+    });
+
+    const loadEventsRef = useRef(async (id: string) => {
+        if (!id) return;
+        try {
+            setLoadingEvents(true);
+            const result = await getContactEvents(studioSlug, id);
+            if (result.success && result.data) {
+                setEvents(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading events:', error);
+        } finally {
+            setLoadingEvents(false);
+        }
+    });
+    const loadPromisesRef = useRef(async (id: string) => {
+        if (!id) return;
+        try {
+            setLoadingPromises(true);
+            const result = await getContactPromises(studioSlug, id);
+            if (result.success && result.data) {
+                setPromises(result.data);
+            }
+        } catch (error) {
+            console.error('Error loading promises:', error);
+        } finally {
+            setLoadingPromises(false);
+        }
+    });
+
+    // Actualizar refs cuando cambian las dependencias
+    useEffect(() => {
+        loadReferrerContactsRef.current = async (excludeContactId?: string | null) => {
+            try {
+                const result = await getContacts(studioSlug, { page: 1, limit: 100 });
+                if (result.success && result.data) {
+                    const contacts = result.data.contacts
+                        .filter((c: Contact) => c.id !== excludeContactId)
+                        .map((c: Contact) => ({
+                            id: c.id,
+                            name: c.name,
+                            phone: c.phone
+                        }));
+                    setReferrerContacts(contacts);
+                    setFilteredReferrerContacts(contacts);
+                }
+            } catch (error) {
+                console.error('Error loading referrer contacts:', error);
+            }
+        };
+        loadContactRef.current = async (id: string) => {
+            if (!id) return;
+            try {
+                setLoadingContact(true);
+                setLoading(true);
+                const result = await getContactById(studioSlug, id);
+                if (result.success && result.data) {
+                    setFormData({
+                        name: result.data.name,
+                        phone: normalizePhone(result.data.phone || ''),
+                        email: result.data.email ? result.data.email : '',
+                        address: result.data.address ? result.data.address : '',
+                        avatar_url: result.data.avatar_url ? result.data.avatar_url : '',
+                        status: result.data.status as 'prospecto' | 'cliente',
+                        acquisition_channel_id: result.data.acquisition_channel_id ?? undefined,
+                        social_network_id: result.data.social_network_id ?? undefined,
+                        referrer_contact_id: result.data.referrer_contact_id ?? undefined,
+                        referrer_name: result.data.referrer_name ? result.data.referrer_name : '',
+                        notes: result.data.notes ? result.data.notes : ''
+                    });
+                    if (result.data.referrer_contact_id && result.data.referrer_contact) {
+                        setReferrerInputValue(`@${result.data.referrer_contact.name}`);
+                    } else if (result.data.referrer_name) {
+                        setReferrerInputValue(result.data.referrer_name);
+                    } else {
+                        setReferrerInputValue('');
+                    }
+                } else {
+                    toast.error(result.error || 'Error al cargar contacto');
+                }
+            } catch (error) {
+                console.error('Error loading contact:', error);
+                toast.error('Error al cargar contacto');
+            } finally {
+                setLoadingContact(false);
+                setLoading(false);
+            }
+        };
+        loadEventsRef.current = async (id: string) => {
+            if (!id) return;
+            try {
+                setLoadingEvents(true);
+                const result = await getContactEvents(studioSlug, id);
+                if (result.success && result.data) {
+                    setEvents(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+            } finally {
+                setLoadingEvents(false);
+            }
+        };
+        loadPromisesRef.current = async (id: string) => {
+            if (!id) return;
+            try {
+                setLoadingPromises(true);
+                const result = await getContactPromises(studioSlug, id);
+                if (result.success && result.data) {
+                    setPromises(result.data);
+                }
+            } catch (error) {
+                console.error('Error loading promises:', error);
+            } finally {
+                setLoadingPromises(false);
+            }
+        };
+    }, [studioSlug, normalizePhone]);
+
+    // Cargar datos y contacto cuando se abre el modal - SOLO UNA VEZ
+    useEffect(() => {
+        if (!isOpen) {
+            // Reset cuando se cierra
+            if (hasLoadedRef.current) {
+                hasLoadedRef.current = false;
+                loadedContactIdRef.current = null;
+                isInitializingRef.current = false;
+                setFormData({
+                    name: '',
+                    phone: '',
+                    email: '',
+                    address: '',
+                    avatar_url: '',
+                    status: 'prospecto',
+                    acquisition_channel_id: undefined,
+                    social_network_id: undefined,
+                    referrer_contact_id: undefined,
+                    referrer_name: '',
+                    notes: ''
+                });
+                setErrors({});
+                setReferrerInputValue('');
+                setShowReferrerSuggestions(false);
+                setEvents([]);
+                setPromises([]);
+            }
+            return;
+        }
+
+        // Prevenir ejecuciones concurrentes
+        if (isInitializingRef.current) {
+            return;
+        }
+
+        const contactIdChanged = contactId !== loadedContactIdRef.current;
+        const needsLoad = !hasLoadedRef.current || (contactId && contactIdChanged);
+
+        if (!needsLoad) {
+            return;
+        }
+
+        isInitializingRef.current = true;
+
+        // Cargar datos base solo una vez
+        if (!hasLoadedRef.current) {
+            hasLoadedRef.current = true;
+            loadAcquisitionChannelsRef.current();
+            loadSocialNetworksRef.current();
+            loadReferrerContactsRef.current(contactId);
+        }
+
+        // Cargar contacto si hay contactId
+        if (contactId && contactIdChanged) {
+            loadedContactIdRef.current = contactId;
+            loadContactRef.current(contactId);
+            loadEventsRef.current(contactId);
+            loadPromisesRef.current(contactId);
+        } else if (!contactId && !hasLoadedRef.current) {
+            setFormData({
+                name: '',
+                phone: '',
+                email: '',
+                address: '',
+                avatar_url: '',
+                status: 'prospecto',
+                acquisition_channel_id: undefined,
+                social_network_id: undefined,
+                referrer_contact_id: undefined,
+                referrer_name: '',
+                notes: ''
+            });
+            setErrors({});
+            setReferrerInputValue('');
+            setShowReferrerSuggestions(false);
+            loadContactRef.current(contactId);
+            loadEventsRef.current(contactId);
+            loadPromisesRef.current(contactId);
+        }
+
+        isInitializingRef.current = false;
+    }, [isOpen, contactId]);
+
+    const handleInputChange = (field: keyof CreateContactData, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (errors[field]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[field];
+                return newErrors;
+            });
+        }
+    };
+
+    const handlePhoneChange = (value: string) => {
+        const normalized = normalizePhone(value);
+        handleInputChange('phone', normalized);
+    };
+
+    const handleReferrerInputChange = (value: string) => {
+        setReferrerInputValue(value);
+        if (value.startsWith('@')) {
+            const searchTerm = value.slice(1).toLowerCase();
+            const filtered = referrerContacts.filter(c =>
+                c.name.toLowerCase().includes(searchTerm) ||
+                c.phone.includes(searchTerm)
+            );
+            setFilteredReferrerContacts(filtered);
+            setShowReferrerSuggestions(filtered.length > 0 && searchTerm.length > 0);
+        } else {
+            handleInputChange('referrer_name', value);
+            handleInputChange('referrer_contact_id', undefined);
+            setShowReferrerSuggestions(false);
+        }
+    };
+
+    const handleSelectReferrer = (contact: { id: string; name: string; phone: string }) => {
+        setReferrerInputValue(`@${contact.name}`);
+        handleInputChange('referrer_contact_id', contact.id);
+        handleInputChange('referrer_name', '');
+        setShowReferrerSuggestions(false);
+    };
+
+    const resetForm = () => {
+        setFormData({
+            name: '',
+            phone: '',
+            email: '',
+            address: '',
+            avatar_url: '',
+            status: 'prospecto',
+            acquisition_channel_id: undefined,
+            social_network_id: undefined,
+            referrer_contact_id: undefined,
+            referrer_name: '',
+            notes: ''
+        });
+        setErrors({});
+        setReferrerInputValue('');
+        setShowReferrerSuggestions(false);
+        setEvents([]);
+        setPromises([]);
+    };
+
+    const handleSubmit = async () => {
+        setErrors({});
+        setLoading(true);
+
+        try {
+            let result;
+            if (contactId) {
+                result = await updateContact(studioSlug, contactId, formData);
+            } else {
+                result = await createContact(studioSlug, formData);
+            }
+
+            if (result.success && result.data) {
+                toast.success(contactId ? 'Contacto actualizado exitosamente' : 'Contacto creado exitosamente');
+                triggerRefresh();
+                onSuccess(result.data, !!contactId);
+                onClose();
+                resetForm();
+            } else {
+                if (result.error) {
+                    if (typeof result.error === 'object' && result.error !== null) {
+                        setErrors(result.error as Record<string, string>);
+                    } else {
+                        toast.error(result.error);
+                    }
+                } else {
+                    toast.error('Error al guardar contacto');
+                }
+            }
+        } catch (error) {
+            console.error('Error saving contact:', error);
+            toast.error('Error al guardar contacto');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteClick = async () => {
+        if (!contactId) return;
+
+        try {
+            // Verificar asociaciones antes de mostrar el modal
+            const checkResult = await checkContactAssociations(studioSlug, contactId);
+            
+            if (!checkResult.success) {
+                toast.error(checkResult.error || 'Error al verificar asociaciones');
+                return;
+            }
+
+            if (checkResult.hasAssociations) {
+                // Construir mensaje de error detallado
+                const associations = [];
+                if (checkResult.hasPromises) {
+                    associations.push('promesas');
+                }
+                if (checkResult.hasEvents) {
+                    associations.push('eventos');
+                }
+                
+                const message = `No se puede eliminar el contacto porque está asociado a ${associations.join(' y ')}. Por favor, elimina primero las ${associations.join(' y ')} asociadas.`;
+                toast.error(message);
+                return;
+            }
+
+            // Si no tiene asociaciones, abrir modal de confirmación
+            setIsDeleteModalOpen(true);
+        } catch (error) {
+            console.error('Error checking contact associations:', error);
+            toast.error('Error al verificar asociaciones del contacto');
+        }
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!contactId) return;
+
+        try {
+            setIsDeleting(true);
+            const result = await deleteContact(studioSlug, contactId);
+
+            if (result.success) {
+                toast.success('Contacto eliminado exitosamente');
+                triggerRefresh();
+                onSuccess(undefined, true);
+                onClose();
+                resetForm();
+            } else {
+                toast.error(result.error || 'Error al eliminar contacto');
+            }
+        } catch (error) {
+            console.error('Error deleting contact:', error);
+            toast.error('Error al eliminar contacto');
+        } finally {
+            setIsDeleting(false);
+            setIsDeleteModalOpen(false);
+        }
+    };
+
+    const acquisitionChannelOptions: ZenSelectOption[] = [
+        { value: 'none', label: 'Ninguno' },
+        ...acquisitionChannels.map(c => ({ value: c.id, label: c.name }))
+    ];
+
+    const socialNetworkOptions: ZenSelectOption[] = [
+        { value: 'none', label: 'Ninguno' },
+        ...socialNetworks.map(n => ({ value: n.id, label: n.name }))
+    ];
+
+    return (
+        <>
+            <ZenDialog
+                isOpen={isOpen}
+                onClose={onClose}
+                title={contactId ? 'Editar Contacto' : 'Nuevo Contacto'}
+                onSave={handleSubmit}
+                onCancel={onClose}
+                onDelete={contactId ? () => setIsDeleteModalOpen(true) : undefined}
+                showDeleteButton={!!contactId}
+                saveLabel={contactId ? 'Actualizar' : 'Crear'}
+                cancelLabel="Cancelar"
+                deleteLabel="Eliminar"
+                isLoading={loading}
+                maxWidth="2xl"
+                closeOnClickOutside={false}
+            >
+                {loadingContact ? (
+                    <div className="space-y-4 p-6">
+                        <Skeleton className="h-10 w-full bg-zinc-700" />
+                        <Skeleton className="h-10 w-full bg-zinc-700" />
+                        <Skeleton className="h-10 w-full bg-zinc-700" />
+                    </div>
+                ) : (
+                    <div className="p-6">
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSubmit();
+                            }}
+                            noValidate
+                        >
+                            {/* Sección 1: Información Básica */}
+                            <div className="space-y-4 mb-6">
+                                <h3 className="text-sm font-medium text-zinc-300 mb-3">Información Básica</h3>
+                                
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0">
+                                        <AvatarManager
+                                            currentAvatarUrl={formData.avatar_url || ''}
+                                            onAvatarChange={(url) => handleInputChange('avatar_url', url)}
+                                            studioSlug={studioSlug}
+                                        />
+                                    </div>
+                                    <div className="flex-1 space-y-4">
+                                        <ZenInput
+                                            label="Nombre"
+                                            value={formData.name}
+                                            onChange={(e) => handleInputChange('name', e.target.value)}
+                                            placeholder="Nombre completo"
+                                            required
+                                            disabled={loading}
+                                            error={errors.name}
+                                        />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <ZenInput
+                                                label="Teléfono"
+                                                value={formData.phone}
+                                                onChange={(e) => handlePhoneChange(e.target.value)}
+                                                placeholder="10 dígitos"
+                                                required
+                                                disabled={loading}
+                                                error={errors.phone}
+                                                maxLength={10}
+                                            />
+                                            <ZenInput
+                                                label="Email"
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                                placeholder="email@ejemplo.com"
+                                                disabled={loading}
+                                                error={errors.email}
+                                            />
+                                        </div>
+                                        <ZenInput
+                                            label="Dirección"
+                                            value={formData.address}
+                                            onChange={(e) => handleInputChange('address', e.target.value)}
+                                            placeholder="Dirección completa"
+                                            disabled={loading}
+                                            error={errors.address}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Sección 2: Clasificación y Referencias */}
+                            <div className="space-y-4 mb-6 pt-4 border-t border-zinc-700">
+                                <h3 className="text-sm font-medium text-zinc-300 mb-3">Clasificación y Referencias</h3>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <ZenSelect
+                                        label="Estado"
+                                        value={formData.status}
+                                        onChange={(value) => handleInputChange('status', value)}
+                                        options={[
+                                            { value: 'prospecto', label: 'Prospecto' },
+                                            { value: 'cliente', label: 'Cliente' }
+                                        ]}
+                                        disabled={loading}
+                                        error={errors.status}
+                                    />
+                                    <ZenSelect
+                                        label="Canal de Adquisición"
+                                        value={formData.acquisition_channel_id || 'none'}
+                                        onChange={(value) => handleInputChange('acquisition_channel_id', value === 'none' ? undefined : value)}
+                                        options={acquisitionChannelOptions}
+                                        disabled={loading}
+                                        error={errors.acquisition_channel_id}
+                                    />
+                                    <ZenSelect
+                                        label="Red Social"
+                                        value={formData.social_network_id || 'none'}
+                                        onChange={(value) => handleInputChange('social_network_id', value === 'none' ? undefined : value)}
+                                        options={socialNetworkOptions}
+                                        disabled={loading}
+                                        error={errors.social_network_id}
+                                    />
+                                </div>
+
+                                <div className="relative">
+                                    <ZenInput
+                                        label="Referido Por"
+                                        value={referrerInputValue}
+                                        onChange={(e) => handleReferrerInputChange(e.target.value)}
+                                        placeholder="@nombre o nombre manual"
+                                        disabled={loading}
+                                        error={errors.referrer_contact_id || errors.referrer_name}
+                                    />
+                                    {showReferrerSuggestions && filteredReferrerContacts.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredReferrerContacts.map((contact) => (
+                                                <button
+                                                    key={contact.id}
+                                                    type="button"
+                                                    onClick={() => handleSelectReferrer(contact)}
+                                                    className="w-full text-left px-4 py-2 hover:bg-zinc-700 transition-colors"
+                                                >
+                                                    <div className="font-medium text-white">{contact.name}</div>
+                                                    <div className="text-xs text-zinc-400">{contact.phone}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Sección 3: Notas */}
+                            <ZenTextarea
+                                label="Notas"
+                                value={formData.notes || ''}
+                                onChange={(e) => handleInputChange('notes', e.target.value)}
+                                placeholder="Notas adicionales..."
+                                disabled={loading}
+                                minRows={3}
+                            />
+
+                            {/* Sección 4: Promesas Asociadas */}
+                            {contactId && (
+                                <div className="space-y-3 pt-2 border-t border-zinc-700">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-zinc-300">
+                                            Promesas Asociadas
+                                        </h3>
+                                        {!loadingPromises && (
+                                            <span className="text-xs text-zinc-400">
+                                                {promises.length} {promises.length === 1 ? 'promesa' : 'promesas'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {loadingPromises ? (
+                                        <div className="space-y-2">
+                                            {[...Array(2)].map((_, i) => (
+                                                <Skeleton key={i} className="h-12 w-full bg-zinc-700" />
+                                            ))}
+                                        </div>
+                                    ) : promises.length === 0 ? (
+                                        <div className="text-center py-4 text-zinc-500 text-sm">
+                                            No hay promesas asociadas
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {promises.map((promise) => (
+                                                <button
+                                                    key={promise.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        router.push(`/${studioSlug}/studio/builder/commercial/promises/${promise.id}`);
+                                                        onClose();
+                                                    }}
+                                                    className="w-full text-left p-3 rounded-lg border border-zinc-700 hover:border-purple-500/50 hover:bg-zinc-800/50 transition-colors group"
+                                                >
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="flex-1 min-w-0 flex items-center gap-2">
+                                                            <Package className="h-4 w-4 text-purple-400 flex-shrink-0" />
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-medium text-white group-hover:text-purple-400 transition-colors truncate">
+                                                                    {promise.event_type_name || 'Sin tipo de evento'}
+                                                                </div>
+                                                                {promise.pipeline_stage_name && (
+                                                                    <div className="text-xs text-zinc-400 mt-0.5">
+                                                                        {promise.pipeline_stage_name}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <ArrowRight className="h-4 w-4 text-zinc-500 group-hover:text-purple-400 transition-colors flex-shrink-0" />
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Sección 5: Eventos Asociados */}
+                            {contactId && (
+                                <div className="space-y-3 pt-2 border-t border-zinc-700">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-sm font-medium text-zinc-300">
+                                            Eventos Asociados
+                                        </h3>
+                                        {!loadingEvents && (
+                                            <span className="text-xs text-zinc-400">
+                                                {events.length} {events.length === 1 ? 'evento' : 'eventos'}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    {loadingEvents ? (
+                                        <div className="space-y-2">
+                                            {[...Array(2)].map((_, i) => (
+                                                <Skeleton key={i} className="h-16 w-full bg-zinc-700" />
+                                            ))}
+                                        </div>
+                                    ) : events.length === 0 ? (
+                                        <div className="text-center py-4 text-zinc-500 text-sm">
+                                            No hay eventos asociados
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {events.map((event) => (
+                                                <div
+                                                    key={event.id}
+                                                    className="w-full text-left p-3 rounded-lg border border-zinc-700 bg-zinc-800/30"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Calendar className="h-4 w-4 text-zinc-400 flex-shrink-0" />
+                                                                <span className="font-medium text-white truncate">
+                                                                    {event.name}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-xs text-zinc-400">
+                                                                <span>{formatDate(event.event_date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                                                {event.event_type && (
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <span>{event.event_type}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                            {event.cotizacion && (
+                                                                <div className="mt-2">
+                                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${event.cotizacion.status === 'pendiente' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                                        event.cotizacion.status === 'aceptada' ? 'bg-green-500/20 text-green-400' :
+                                                                            event.cotizacion.status === 'rechazada' ? 'bg-red-500/20 text-red-400' :
+                                                                                'bg-zinc-700 text-zinc-300'
+                                                                        }`}>
+                                                                        {event.cotizacion.name}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs text-zinc-500 px-2 py-1 bg-zinc-700/50 rounded">
+                                                            En desarrollo
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </form>
+                    </div>
+                )}
+            </ZenDialog>
+
+            {/* Modal de confirmación de eliminación */}
+            <ZenConfirmModal
+                isOpen={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={handleConfirmDelete}
+                title="Eliminar contacto"
+                description="¿Estás seguro de que deseas eliminar este contacto? Esta acción no se puede deshacer."
+                confirmText="Eliminar"
+                cancelText="Cancelar"
+                variant="destructive"
+                loading={isDeleting}
+            />
+        </>
+    );
+}
+
+export const ContactModal = React.memo(ContactModalComponent);
+

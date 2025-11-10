@@ -674,7 +674,6 @@ export async function crearAgendamiento(
         };
 
         revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/agendamiento`);
 
         // Log si está asociado a una promesa
         if (agenda.promise_id) {
@@ -838,7 +837,6 @@ export async function actualizarAgendamiento(
         };
 
         revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/agendamiento`);
 
         // Log si está asociado a una promesa
         if (agenda.promise_id) {
@@ -1053,7 +1051,6 @@ export async function eliminarAgendamiento(
         }
 
         revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/agendamiento`);
 
         return {
             success: true,

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { cn } from '@/lib/utils';
@@ -19,6 +20,10 @@ export interface ZenDialogProps {
   saveVariant?: 'primary' | 'destructive' | 'outline' | 'ghost';
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '4xl' | '5xl' | '6xl' | '7xl';
   showCloseButton?: boolean;
+  closeOnClickOutside?: boolean;
+  onDelete?: () => void;
+  deleteLabel?: string;
+  showDeleteButton?: boolean;
 }
 
 const maxWidthClasses = {
@@ -46,9 +51,19 @@ export function ZenDialog({
   isLoading = false,
   saveVariant = 'primary',
   maxWidth = '2xl',
-  showCloseButton = true
+  showCloseButton = true,
+  closeOnClickOutside = false,
+  onDelete,
+  deleteLabel = 'Eliminar',
+  showDeleteButton = false
 }: ZenDialogProps) {
-  if (!isOpen) return null;
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleCancel = () => {
     if (onCancel) {
@@ -58,12 +73,25 @@ export function ZenDialog({
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-      <div className={cn(
-        'bg-zinc-900 rounded-lg shadow-xl w-full overflow-visible',
-        maxWidthClasses[maxWidth]
-      )}>
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" 
+      style={{ zIndex: 9999 }}
+      onClick={(e) => {
+        // Solo cerrar al hacer click en el overlay si está permitido
+        if (closeOnClickOutside && e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div 
+        className={cn(
+          'bg-zinc-900 rounded-lg shadow-xl w-full max-h-[90vh] overflow-y-auto relative',
+          maxWidthClasses[maxWidth]
+        )} 
+        style={{ zIndex: 10000 }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <ZenCardHeader className="flex items-center justify-between border-b border-zinc-700">
           <div>
@@ -94,30 +122,46 @@ export function ZenDialog({
         </ZenCardContent>
 
         {/* Footer */}
-        {(onSave || onCancel) && (
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-zinc-700">
-            {onCancel && (
+        {(onSave || onCancel || showDeleteButton) && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-700">
+            {/* Botón eliminar a la izquierda */}
+            {showDeleteButton && onDelete && (
               <ZenButton
                 variant="ghost"
-                onClick={handleCancel}
+                onClick={onDelete}
                 disabled={isLoading}
+                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
               >
-                {cancelLabel}
+                {deleteLabel}
               </ZenButton>
             )}
-            {onSave && (
-              <ZenButton
-                onClick={onSave}
-                loading={isLoading}
-                variant={saveVariant}
-              >
-                {saveLabel}
-              </ZenButton>
-            )}
+            {/* Botones de acción a la derecha */}
+            <div className="flex items-center gap-3 ml-auto">
+              {onCancel && (
+                <ZenButton
+                  variant="ghost"
+                  onClick={handleCancel}
+                  disabled={isLoading}
+                >
+                  {cancelLabel}
+                </ZenButton>
+              )}
+              {onSave && (
+                <ZenButton
+                  onClick={onSave}
+                  loading={isLoading}
+                  variant={saveVariant}
+                >
+                  {saveLabel}
+                </ZenButton>
+              )}
+            </div>
           </div>
         )}
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
 

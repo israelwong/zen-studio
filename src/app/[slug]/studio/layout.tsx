@@ -1,5 +1,6 @@
 import React from 'react';
 import { ZenMagicChatProvider, ZenMagicChatWrapper } from './components/ZenMagic';
+import { ContactsSheetProvider } from '@/components/shared/contacts/ContactsSheetContext';
 
 export default async function AppLayout({
     children,
@@ -12,14 +13,16 @@ export default async function AppLayout({
 
     return (
         <ZenMagicChatProvider>
-            <div className="flex h-screen w-full overflow-hidden">
-                <div className="flex flex-1 w-full overflow-hidden">
-                    <main className="flex-1 w-full overflow-y-auto bg-zinc-900/40">
-                        {children}
-                    </main>
+            <ContactsSheetProvider>
+                <div className="flex h-screen w-full overflow-hidden">
+                    <div className="flex flex-1 w-full overflow-hidden">
+                        <main className="flex-1 w-full overflow-y-auto bg-zinc-900/40">
+                            {children}
+                        </main>
+                    </div>
+                    <ZenMagicChatWrapper studioSlug={slug} />
                 </div>
-                <ZenMagicChatWrapper studioSlug={slug} />
-            </div>
+            </ContactsSheetProvider>
         </ZenMagicChatProvider>
     );
 }

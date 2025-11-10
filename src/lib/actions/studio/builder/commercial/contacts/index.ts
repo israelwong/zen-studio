@@ -6,5 +6,7 @@ export {
   deleteContact,
   getAcquisitionChannels,
   getSocialNetworks,
-  getContactEvents
+  getContactEvents,
+  checkContactAssociations,
+  getContactPromises
 } from './contacts.actions';

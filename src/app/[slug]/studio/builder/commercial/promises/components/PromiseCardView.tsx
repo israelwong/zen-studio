@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Edit, ExternalLink, Loader2, ContactRound, Calendar } from 'lucide-react';
+import { useContactsSheet } from '@/components/shared/contacts/ContactsSheetContext';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton, SeparadorZen } from '@/components/ui/zen';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/shadcn/hover-card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
@@ -58,6 +59,7 @@ function ContactHoverCard({
   isReferrer?: boolean;
 }) {
   const router = useRouter();
+  const { openContactsSheet } = useContactsSheet();
   const [contactData, setContactData] = useState<{
     name: string;
     phone: string;
@@ -94,7 +96,7 @@ function ContactHoverCard({
 
   const handleViewContact = () => {
     if (contactId) {
-      router.push(`/${studioSlug}/studio/builder/commercial/contacts?contactId=${contactId}`);
+      openContactsSheet(contactId);
       setOpen(false);
     }
   };

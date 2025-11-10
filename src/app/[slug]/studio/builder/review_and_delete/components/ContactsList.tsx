@@ -5,7 +5,7 @@ import { Plus, Search, Trash2, ChevronLeft, ChevronRight, ContactRound, MoreVert
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { ZenButton, ZenInput, ZenBadge, ZenConfirmModal, ZenSelect, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/shadcn/table';
-import { ContactModal } from './ContactModal';
+import { ContactModal } from '@/components/shared/contacts';
 import { deleteContact } from '@/lib/actions/studio/builder/commercial/contacts';
 import { toast } from 'sonner';
 import type { Contact } from '@/lib/actions/schemas/contacts-schemas';

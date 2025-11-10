@@ -364,7 +364,7 @@ export async function createContact(
       } : null
     };
 
-    revalidatePath(`/${studioSlug}/studio/builder/commercial/contacts`);
+    revalidatePath(`/${studioSlug}/studio/builder/review_and_delete`);
     return { success: true, data: mappedContact };
   } catch (error) {
     console.error('Error al crear contacto:', error);
@@ -536,7 +536,7 @@ export async function updateContact(
       } : null
     };
 
-    revalidatePath(`/${studioSlug}/studio/builder/commercial/contacts`);
+    revalidatePath(`/${studioSlug}/studio/builder/review_and_delete`);
     return { success: true, data: mappedContact };
   } catch (error) {
     console.error('Error al actualizar contacto:', error);
@@ -576,7 +576,7 @@ export async function deleteContact(
       where: { id: contactId }
     });
 
-    revalidatePath(`/${studioSlug}/studio/builder/commercial/contacts`);
+    revalidatePath(`/${studioSlug}/studio/builder/review_and_delete`);
     return { success: true };
   } catch (error) {
     console.error('Error al eliminar contacto:', error);
@@ -713,6 +713,139 @@ export async function getContactEvents(studioSlug: string, contactId: string) {
     return { success: true, data: mappedEvents };
   } catch (error) {
     console.error('Error al obtener eventos del contacto:', error);
+    return { success: false, error: 'Error interno del servidor', data: [] };
+  }
+}
+
+/**
+ * Verificar si un contacto tiene promesas o eventos asociados
+ */
+export async function checkContactAssociations(
+  studioSlug: string,
+  contactId: string
+): Promise<{ 
+  success: boolean; 
+  hasAssociations: boolean; 
+  hasPromises: boolean; 
+  hasEvents: boolean;
+  error?: string 
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true }
+    });
+
+    if (!studio) {
+      return { 
+        success: false, 
+        hasAssociations: false, 
+        hasPromises: false, 
+        hasEvents: false,
+        error: 'Studio no encontrado' 
+      };
+    }
+
+    // Verificar promesas
+    const promisesCount = await prisma.studio_promises.count({
+      where: {
+        studio_id: studio.id,
+        contact_id: contactId
+      }
+    });
+
+    // Verificar eventos (a través de cotizaciones)
+    const cotizaciones = await prisma.studio_cotizaciones.findMany({
+      where: {
+        studio_id: studio.id,
+        contact_id: contactId
+      },
+      select: {
+        evento_id: true
+      },
+      distinct: ['evento_id']
+    });
+
+    const hasPromises = promisesCount > 0;
+    const hasEvents = cotizaciones.length > 0;
+    const hasAssociations = hasPromises || hasEvents;
+
+    return {
+      success: true,
+      hasAssociations,
+      hasPromises,
+      hasEvents
+    };
+  } catch (error) {
+    console.error('Error al verificar asociaciones del contacto:', error);
+    return {
+      success: false,
+      hasAssociations: false,
+      hasPromises: false,
+      hasEvents: false,
+      error: 'Error interno del servidor'
+    };
+  }
+}
+
+/**
+ * Obtener promesas asociadas a un contacto
+ */
+export async function getContactPromises(
+  studioSlug: string,
+  contactId: string
+): Promise<{
+  success: boolean;
+  data?: Array<{
+    id: string;
+    event_type_name: string | null;
+    pipeline_stage_name: string | null;
+    created_at: Date;
+  }>;
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true }
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado', data: [] };
+    }
+
+    const promises = await prisma.studio_promises.findMany({
+      where: {
+        studio_id: studio.id,
+        contact_id: contactId
+      },
+      select: {
+        id: true,
+        event_type: {
+          select: {
+            name: true
+          }
+        },
+        pipeline_stage: {
+          select: {
+            name: true
+          }
+        },
+        created_at: true
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    const mappedPromises = promises.map(promise => ({
+      id: promise.id,
+      event_type_name: promise.event_type?.name || null,
+      pipeline_stage_name: promise.pipeline_stage?.name || null,
+      created_at: promise.created_at
+    }));
+
+    return { success: true, data: mappedPromises };
+  } catch (error) {
+    console.error('Error al obtener promesas del contacto:', error);
     return { success: false, error: 'Error interno del servidor', data: [] };
   }
 }

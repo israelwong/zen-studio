@@ -52,8 +52,11 @@ export function ZenConfirmModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogOverlay className="bg-black/40 z-[110]" />
-            <DialogContent className="sm:max-w-md bg-zinc-900 border-zinc-700 z-[110]">
+            <DialogContent 
+                className="sm:max-w-md bg-zinc-900 border-zinc-700 !z-[10011]"
+                style={{ zIndex: 10011 }}
+                overlayZIndex={10010}
+            >
                 <DialogHeader>
                     <div className="flex items-center space-x-3">
                         <div className={`p-2 rounded-full ${variant === 'destructive'
