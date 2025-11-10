@@ -67,6 +67,7 @@ export function PromiseQuotesPanelCard({
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState(cotizacion.name);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isProcessingRef = useRef(false);
 
   // Sincronizar editingName cuando cambie cotizacion.name (solo si no está editando)
   useEffect(() => {
@@ -165,59 +166,71 @@ export function PromiseQuotesPanelCard({
   };
 
   const handleArchive = async () => {
+    isProcessingRef.current = true;
     setLoading(true);
     try {
       const result = await archiveCotizacion(cotizacion.id, studioSlug);
       if (result.success) {
         toast.success('Cotización archivada exitosamente');
         setShowArchiveModal(false);
-        // Actualización local: actualizar estado archived
+        // Actualización local: actualizar estado archived (después de cerrar modal)
         onArchive?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al archivar cotización');
+        setShowArchiveModal(false);
       }
     } catch {
       toast.error('Error al archivar cotización');
+      setShowArchiveModal(false);
     } finally {
       setLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
   const handleUnarchive = async () => {
+    isProcessingRef.current = true;
     setLoading(true);
     try {
       const result = await unarchiveCotizacion(cotizacion.id, studioSlug);
       if (result.success) {
         toast.success('Cotización desarchivada exitosamente');
         setShowUnarchiveModal(false);
-        // Actualización local: actualizar estado archived
+        // Actualización local: actualizar estado archived (después de cerrar modal)
         onUnarchive?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al desarchivar cotización');
+        setShowUnarchiveModal(false);
       }
     } catch {
       toast.error('Error al desarchivar cotización');
+      setShowUnarchiveModal(false);
     } finally {
       setLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
   const handleDelete = async () => {
+    isProcessingRef.current = true;
     setLoading(true);
     try {
       const result = await deleteCotizacion(cotizacion.id, studioSlug);
       if (result.success) {
         toast.success('Cotización eliminada exitosamente');
         setShowDeleteModal(false);
-        // Actualización local: remover de la lista
+        // Actualización local: remover de la lista (después de cerrar modal)
         onDelete?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al eliminar cotización');
+        setShowDeleteModal(false);
       }
     } catch {
       toast.error('Error al eliminar cotización');
+      setShowDeleteModal(false);
     } finally {
       setLoading(false);
+      isProcessingRef.current = false;
     }
   };
 
@@ -283,7 +296,7 @@ export function PromiseQuotesPanelCard({
       const result = await getPromiseById(promiseId);
 
       if (result.success && result.data) {
-        const hasDate = result.data.defined_date || 
+        const hasDate = result.data.defined_date ||
           (result.data.interested_dates && result.data.interested_dates.length > 0);
 
         if (!hasDate) {
@@ -521,7 +534,11 @@ export function PromiseQuotesPanelCard({
 
       <ZenConfirmModal
         isOpen={showDeleteModal}
-        onClose={() => setShowDeleteModal(false)}
+        onClose={() => {
+          if (!isProcessingRef.current) {
+            setShowDeleteModal(false);
+          }
+        }}
         onConfirm={handleDelete}
         title="Eliminar Cotización"
         description="¿Estás seguro de eliminar esta cotización? Esta acción no se puede deshacer."
@@ -533,7 +550,11 @@ export function PromiseQuotesPanelCard({
 
       <ZenConfirmModal
         isOpen={showArchiveModal}
-        onClose={() => setShowArchiveModal(false)}
+        onClose={() => {
+          if (!isProcessingRef.current) {
+            setShowArchiveModal(false);
+          }
+        }}
         onConfirm={handleArchive}
         title="Archivar Cotización"
         description="¿Estás seguro de archivar esta cotización? Podrás desarchivarla más tarde."
@@ -545,7 +566,11 @@ export function PromiseQuotesPanelCard({
 
       <ZenConfirmModal
         isOpen={showUnarchiveModal}
-        onClose={() => setShowUnarchiveModal(false)}
+        onClose={() => {
+          if (!isProcessingRef.current) {
+            setShowUnarchiveModal(false);
+          }
+        }}
         onConfirm={handleUnarchive}
         title="Desarchivar Cotización"
         description="¿Estás seguro de desarchivar esta cotización?"

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
-import { User, Calendar, Tag } from 'lucide-react';
+import { User } from 'lucide-react';
 
 interface DatosContratanteProps {
   promise: {
@@ -67,20 +67,14 @@ export function DatosContratante({ promise }: DatosContratanteProps) {
 
         {promise.event_type_name && (
           <div>
-            <label className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-              <Tag className="h-4 w-4" />
-              Tipo de evento
-            </label>
+            <label className="text-sm font-medium text-zinc-400">Tipo de evento</label>
             <p className="text-white mt-1">{promise.event_type_name}</p>
           </div>
         )}
 
         {fechaCelebracion && (
           <div>
-            <label className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              Fecha de celebración
-            </label>
+            <label className="text-sm font-medium text-zinc-400">Fecha de celebración</label>
             <p className="text-white mt-1 capitalize">{formatDate(fechaCelebracion)}</p>
           </div>
         )}
