@@ -770,6 +770,7 @@ model studios {
   storage_log                studio_storage_log[]
   storage_usage              studio_storage_usage?
   studio_revenue_products    studio_studio_revenue_products[]
+  terminos_condiciones       studio_terminos_condiciones[]
   user_profiles              studio_user_profiles[]
   studio_users               studio_users[]
   zonas_trabajo              studio_zonas_trabajo[]
@@ -1159,6 +1160,7 @@ model studio_paquetes {
   cover_storage_bytes BigInt?
   is_featured   Boolean                @default(false)
   paquete_items studio_paquete_items[]
+  cotizaciones  studio_cotizaciones[]
   event_types   studio_event_types     @relation(fields: [event_type_id], references: [id])
   studio        studios                @relation(fields: [studio_id], references: [id])
 
@@ -1561,6 +1563,22 @@ model studio_condiciones_comerciales {
   @@index([studio_id])
 }
 
+model studio_terminos_condiciones {
+  id          String   @id @default(cuid())
+  studio_id   String
+  title       String
+  content     String
+  version     Int      @default(1)
+  is_active   Boolean  @default(true)
+  is_required Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  studio      studios  @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+
+  @@index([studio_id, is_active])
+  @@index([studio_id, version])
+}
+
 model studio_metodos_pago {
   id                                  String                                       @id @default(cuid())
   studio_id                           String
@@ -1620,6 +1638,11 @@ model studio_cotizaciones {
   price                                  Float
   visible_to_client                      Boolean?                                     @default(true)
   order                                  Int?                                         @default(0)
+  paquete_id                             String?
+  selected_by_prospect                   Boolean                                      @default(false)
+  selected_at                            DateTime?
+  tyc_accepted                           Boolean                                      @default(false)
+  tyc_accepted_at                        DateTime?
   cotizacion_costos                      studio_cotizacion_costos[]
   cotizacion_items                       studio_cotizacion_items[]
   cotizacion_visitas                     studio_cotizacion_visitas[]
@@ -1629,6 +1652,7 @@ model studio_cotizaciones {
   studio                                 studios                                      @relation(fields: [studio_id], references: [id])
   contact                                studio_contacts?                             @relation(fields: [contact_id], references: [id])
   promise                                studio_promises?                             @relation(fields: [promise_id], references: [id])
+  paquete                                studio_paquetes?                             @relation(fields: [paquete_id], references: [id])
   pagos                                  studio_pagos[]
   condiciones_comerciales_metodo_pago    studio_condiciones_comerciales_metodo_pago[] @relation("CondicionesComercialesMetodoPagoToCotizacion")
 
@@ -1637,6 +1661,9 @@ model studio_cotizaciones {
   @@index([expires_at])
   @@index([contact_id])
   @@index([promise_id])
+  @@index([promise_id, selected_by_prospect])
+  @@index([selected_at])
+  @@index([paquete_id])
 }
 
 model studio_cotizacion_items {
