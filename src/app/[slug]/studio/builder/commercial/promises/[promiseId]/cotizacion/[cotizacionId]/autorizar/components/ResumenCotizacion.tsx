@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
-import { Pencil } from 'lucide-react';
+import { Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/utilidad.actions';
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
@@ -29,6 +29,8 @@ export function ResumenCotizacion({ cotizacion }: ResumenCotizacionProps) {
   const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
   const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
   const [loading, setLoading] = useState(true);
+  const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
 
   // Crear mapa de items de la cotización
   const itemsMap = useMemo(() => {
@@ -85,6 +87,48 @@ export function ResumenCotizacion({ cotizacion }: ResumenCotizacionProps) {
 
   const handleEditarCotizacion = () => {
     router.push(`/${studioSlug}/studio/builder/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}`);
+  };
+
+  // Expandir todas las secciones y categorías por defecto cuando se carga el catálogo
+  useEffect(() => {
+    if (catalogoFiltrado.length > 0) {
+      const nuevasSecciones = new Set<string>();
+      const nuevasCategorias = new Set<string>();
+
+      catalogoFiltrado.forEach(seccion => {
+        nuevasSecciones.add(seccion.id);
+        seccion.categorias.forEach(categoria => {
+          nuevasCategorias.add(categoria.id);
+        });
+      });
+
+      setSeccionesExpandidas(nuevasSecciones);
+      setCategoriasExpandidas(nuevasCategorias);
+    }
+  }, [catalogoFiltrado]);
+
+  const toggleSeccion = (seccionId: string) => {
+    setSeccionesExpandidas(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(seccionId)) {
+        nuevo.delete(seccionId);
+      } else {
+        nuevo.add(seccionId);
+      }
+      return nuevo;
+    });
+  };
+
+  const toggleCategoria = (categoriaId: string) => {
+    setCategoriasExpandidas(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(categoriaId)) {
+        nuevo.delete(categoriaId);
+      } else {
+        nuevo.add(categoriaId);
+      }
+      return nuevo;
+    });
   };
 
   return (
@@ -152,53 +196,87 @@ export function ResumenCotizacion({ cotizacion }: ResumenCotizacionProps) {
             )}
 
             {/* Items Incluidos */}
-            <div className="space-y-1">
+            <div className="space-y-2">
               {catalogoFiltrado
                 .sort((a, b) => (a.orden || 0) - (b.orden || 0))
                 .map((seccion) => {
+                  const isSeccionExpanded = seccionesExpandidas.has(seccion.id);
+                  const categoriasSorted = seccion.categorias.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+
                   return (
-                    <div key={seccion.id} className="py-2">
-                      {/* Nivel 1: Sección */}
-                      <div className="text-base font-medium text-zinc-300 mb-1">
-                        {seccion.nombre}
-                      </div>
+                    <div key={seccion.id} className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900/30">
+                      {/* Nivel 1: Sección - Acordeón */}
+                      <button
+                        onClick={() => toggleSeccion(seccion.id)}
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-zinc-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          {isSeccionExpanded ? (
+                            <ChevronDown className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+                          )}
+                          <span className="text-base font-medium text-zinc-300">{seccion.nombre}</span>
+                        </div>
+                      </button>
 
-                      {seccion.categorias
-                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                        .map((categoria) => {
-                          return (
-                            <div key={categoria.id} className="pl-4 py-1">
-                              {/* Nivel 2: Categoría */}
-                              <div className="text-sm font-medium text-zinc-400 mb-0.5">
-                                {categoria.nombre}
-                              </div>
+                      {/* Contenido de la sección */}
+                      {isSeccionExpanded && (
+                        <div className="border-t border-zinc-800 bg-zinc-900/20">
+                          <div className="px-4 py-2 space-y-2">
+                            {categoriasSorted.map((categoria) => {
+                              const isCategoriaExpanded = categoriasExpandidas.has(categoria.id);
+                              const serviciosSorted = categoria.servicios.sort((a, b) => (a.orden || 0) - (b.orden || 0));
 
-                              <div className="pl-4 space-y-0.5">
-                                {categoria.servicios
-                                  .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                                  .map((servicio) => {
-                                    const cantidad = itemsMap.get(servicio.id) || 0;
-                                    const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
-                                    const precios = configuracionPrecios
-                                      ? calcularPrecio(servicio.costo, servicio.gasto, tipoUtilidad, configuracionPrecios)
-                                      : { precio_final: 0 };
-                                    const subtotal = precios.precio_final * cantidad;
+                              return (
+                                <div key={categoria.id} className="border border-zinc-800 rounded-md overflow-hidden bg-zinc-900/30">
+                                  {/* Nivel 2: Categoría - Acordeón */}
+                                  <button
+                                    onClick={() => toggleCategoria(categoria.id)}
+                                    className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-zinc-800/50 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      {isCategoriaExpanded ? (
+                                        <ChevronDown className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                                      ) : (
+                                        <ChevronRight className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
+                                      )}
+                                      <span className="text-sm font-medium text-zinc-400">{categoria.nombre}</span>
+                                    </div>
+                                  </button>
 
-                                    return (
-                                      <div
-                                        key={servicio.id}
-                                        className="grid grid-cols-[1fr_60px_100px] gap-2 items-baseline py-1 text-sm text-zinc-300"
-                                      >
-                                        <span className="break-words text-zinc-300">{servicio.nombre}</span>
-                                        <span className="text-emerald-400 font-medium whitespace-nowrap text-right">x{cantidad}</span>
-                                        <span className="text-zinc-400 whitespace-nowrap text-right">{formatearMoneda(subtotal)}</span>
+                                  {/* Contenido de la categoría */}
+                                  {isCategoriaExpanded && (
+                                    <div className="border-t border-zinc-800 bg-zinc-900/20">
+                                      <div className="px-3 py-2 space-y-0.5">
+                                        {serviciosSorted.map((servicio) => {
+                                          const cantidad = itemsMap.get(servicio.id) || 0;
+                                          const tipoUtilidad = servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto';
+                                          const precios = configuracionPrecios
+                                            ? calcularPrecio(servicio.costo, servicio.gasto, tipoUtilidad, configuracionPrecios)
+                                            : { precio_final: 0 };
+                                          const subtotal = precios.precio_final * cantidad;
+
+                                          return (
+                                            <div
+                                              key={servicio.id}
+                                              className="grid grid-cols-[1fr_60px_100px] gap-2 items-baseline py-1.5 px-2 text-sm text-zinc-300 rounded hover:bg-zinc-800/30 transition-colors"
+                                            >
+                                              <span className="break-words text-zinc-300">{servicio.nombre}</span>
+                                              <span className="text-emerald-400 font-medium whitespace-nowrap text-right">x{cantidad}</span>
+                                              <span className="text-zinc-400 whitespace-nowrap text-right">{formatearMoneda(subtotal)}</span>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
-                                    );
-                                  })}
-                              </div>
-                            </div>
-                          );
-                        })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
