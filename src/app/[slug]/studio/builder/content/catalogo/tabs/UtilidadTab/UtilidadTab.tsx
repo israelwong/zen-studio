@@ -18,6 +18,7 @@ import {
 import type {
     ConfiguracionPreciosForm,
 } from '@/lib/actions/schemas/configuracion-precios-schemas';
+import { useConfiguracionPreciosRefresh } from '@/hooks/useConfiguracionPreciosRefresh';
 
 interface UtilidadTabProps {
     studioSlug: string;
@@ -26,17 +27,28 @@ interface UtilidadTabProps {
 export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const { triggerUpdate } = useConfiguracionPreciosRefresh();
 
-    // Estado del formulario (valores decimales 0.0-1.0)
-    const [config, setConfig] = useState<ConfiguracionPreciosForm>({
+    // Estado del formulario (valores en porcentaje para mostrar en UI: 10, 30, etc.)
+    const [config, setConfig] = useState<{
+        utilidad_servicio?: string;
+        utilidad_producto?: string;
+        comision_venta?: string;
+        sobreprecio?: string;
+    }>({
         utilidad_servicio: undefined,
         utilidad_producto: undefined,
         comision_venta: undefined,
         sobreprecio: undefined
     });
 
-    // Valores iniciales para restaurar
-    const [initialConfig, setInitialConfig] = useState<ConfiguracionPreciosForm>({
+    // Valores iniciales para restaurar (en porcentaje)
+    const [initialConfig, setInitialConfig] = useState<{
+        utilidad_servicio?: string;
+        utilidad_producto?: string;
+        comision_venta?: string;
+        sobreprecio?: string;
+    }>({
         utilidad_servicio: undefined,
         utilidad_producto: undefined,
         comision_venta: undefined,
@@ -56,11 +68,20 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
             const configResult = await obtenerConfiguracionPrecios(studioSlug);
 
             if (configResult) {
+                // Convertir valores de decimal (0.10) a porcentaje (10) para mostrar en UI
                 const loadedConfig = {
-                    utilidad_servicio: configResult.utilidad_servicio,
-                    utilidad_producto: configResult.utilidad_producto,
-                    comision_venta: configResult.comision_venta,
+                    utilidad_servicio: configResult.utilidad_servicio
+                        ? String(parseFloat(configResult.utilidad_servicio) * 100)
+                        : undefined,
+                    utilidad_producto: configResult.utilidad_producto
+                        ? String(parseFloat(configResult.utilidad_producto) * 100)
+                        : undefined,
+                    comision_venta: configResult.comision_venta
+                        ? String(parseFloat(configResult.comision_venta) * 100)
+                        : undefined,
                     sobreprecio: configResult.sobreprecio
+                        ? String(parseFloat(configResult.sobreprecio) * 100)
+                        : undefined,
                 };
                 setConfig(loadedConfig);
                 setInitialConfig(loadedConfig);
@@ -79,12 +100,33 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
         try {
             setSubmitting(true);
 
-            const result = await actualizarConfiguracionPrecios(studioSlug, config);
+            // Convertir valores de porcentaje (10) a decimal (0.10) para enviar al schema
+            // Los valores en el formulario están en porcentaje, pero el schema espera decimales
+            const configToSend: ConfiguracionPreciosForm = {
+                utilidad_servicio: config.utilidad_servicio
+                    ? String(parseFloat(config.utilidad_servicio) / 100)
+                    : undefined,
+                utilidad_producto: config.utilidad_producto
+                    ? String(parseFloat(config.utilidad_producto) / 100)
+                    : undefined,
+                comision_venta: config.comision_venta
+                    ? String(parseFloat(config.comision_venta) / 100)
+                    : undefined,
+                sobreprecio: config.sobreprecio
+                    ? String(parseFloat(config.sobreprecio) / 100)
+                    : undefined,
+            };
+
+            const result = await actualizarConfiguracionPrecios(studioSlug, configToSend);
 
             if (result.success) {
                 toast.success('Configuración actualizada exitosamente');
                 // Actualizar valores iniciales después de guardar
                 setInitialConfig(config);
+                // Disparar evento para notificar a otros componentes
+                // config.sobreprecio está en porcentaje (10), convertir a decimal para el hook
+                const sobreprecioDecimal = config.sobreprecio ? parseFloat(config.sobreprecio) / 100 : undefined;
+                triggerUpdate(studioSlug, sobreprecioDecimal);
             } else {
                 toast.error(result.error || 'Error al actualizar la configuración');
             }
@@ -96,8 +138,8 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
         }
     };
 
-    const handleInputChange = (field: keyof ConfiguracionPreciosForm, value: string) => {
-        // Permitir decimales (números con punto decimal)
+    const handleInputChange = (field: 'utilidad_servicio' | 'utilidad_producto' | 'comision_venta' | 'sobreprecio', value: string) => {
+        // Permitir números y punto decimal (valores en porcentaje: 10, 30.5, etc.)
         const onlyNumbers = value.replace(/[^0-9.]/g, '');
         // Evitar múltiples puntos decimales
         const parts = onlyNumbers.split('.');
@@ -132,7 +174,7 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
                         Configuración de Márgenes de Utilidad
                     </h3>
                     <p className="text-sm text-zinc-400">
-                        Estos valores decimales (0.0 a 1.0) se aplican automáticamente a todos los servicios y productos
+                        Estos valores en porcentaje se aplican automáticamente a todos los servicios y productos
                         del catálogo. Los cambios recalculan los precios en tiempo real y afectan
                         nuevas cotizaciones (las existentes mantienen sus precios originales).
                     </p>

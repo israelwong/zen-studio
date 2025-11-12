@@ -93,12 +93,29 @@ export async function crearCondicionComercial(studioSlug: string, data: Condicio
             throw new Error("Studio no encontrado");
         }
 
+        // Verificar que el nombre sea único para este studio
+        const condicionExistente = await prisma.studio_condiciones_comerciales.findFirst({
+            where: {
+                studio_id: studio.id,
+                name: validationResult.data.nombre,
+            },
+        });
+
+        if (condicionExistente) {
+            return {
+                success: false,
+                error: {
+                    nombre: ["Ya existe una condición comercial con este nombre"],
+                },
+            };
+        }
+
         const dataToSave = {
             studio_id: studio.id,
-            nombre: validationResult.data.nombre,
-            descripcion: validationResult.data.descripcion,
-            porcentaje_descuento: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
-            porcentaje_anticipo: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
+            name: validationResult.data.nombre,
+            description: validationResult.data.descripcion,
+            discount_percentage: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
+            advance_percentage: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
             status: validationResult.data.status,
             order: validationResult.data.orden || 0,
             updated_at: new Date(),
@@ -144,11 +161,44 @@ export async function actualizarCondicionComercial(studioSlug: string, condicion
             throw new Error("Studio no encontrado");
         }
 
+        // Verificar que la condición pertenezca al studio antes de actualizar
+        const condicionExistente = await prisma.studio_condiciones_comerciales.findFirst({
+            where: {
+                id: condicionId,
+                studio_id: studio.id,
+            },
+        });
+
+        if (!condicionExistente) {
+            return {
+                success: false,
+                error: "Condición comercial no encontrada o no pertenece al studio",
+            };
+        }
+
+        // Verificar que el nombre sea único (excepto para la condición que se está editando)
+        const condicionConMismoNombre = await prisma.studio_condiciones_comerciales.findFirst({
+            where: {
+                studio_id: studio.id,
+                name: validationResult.data.nombre,
+                id: { not: condicionId },
+            },
+        });
+
+        if (condicionConMismoNombre) {
+            return {
+                success: false,
+                error: {
+                    nombre: ["Ya existe una condición comercial con este nombre"],
+                },
+            };
+        }
+
         const dataToSave = {
-            nombre: validationResult.data.nombre,
-            descripcion: validationResult.data.descripcion,
-            porcentaje_descuento: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
-            porcentaje_anticipo: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
+            name: validationResult.data.nombre,
+            description: validationResult.data.descripcion,
+            discount_percentage: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
+            advance_percentage: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
             status: validationResult.data.status,
             order: validationResult.data.orden || 0,
             updated_at: new Date(),
@@ -184,6 +234,21 @@ export async function eliminarCondicionComercial(studioSlug: string, condicionId
 
         if (!studio) {
             throw new Error("Studio no encontrado");
+        }
+
+        // Verificar que la condición pertenezca al studio antes de eliminar
+        const condicion = await prisma.studio_condiciones_comerciales.findFirst({
+            where: {
+                id: condicionId,
+                studio_id: studio.id,
+            },
+        });
+
+        if (!condicion) {
+            return {
+                success: false,
+                error: "Condición comercial no encontrada o no pertenece al studio",
+            };
         }
 
         await prisma.studio_condiciones_comerciales.delete({
@@ -260,14 +325,18 @@ export async function obtenerConfiguracionPrecios(studioSlug: string) {
                 status: 'active',
             },
             select: {
-                sobreprecio: true,
+                markup: true,
             },
         });
+
+        // markup está almacenado como decimal (0.10 = 10%), convertir a porcentaje
+        const markupDecimal = configuracion?.markup || 0;
+        const markupPorcentaje = markupDecimal * 100;
 
         return {
             success: true,
             data: {
-                sobreprecio: configuracion?.sobreprecio || 0,
+                sobreprecio: markupPorcentaje,
             },
         };
     } catch (error) {

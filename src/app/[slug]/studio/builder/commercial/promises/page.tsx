@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { UserSearch, Plus } from 'lucide-react';
+import { UserSearch, Plus, Settings2 } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { PromisesWrapper } from './components';
+import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
+import { TerminosCondicionesManager } from '@/components/shared/terminos-condiciones';
 
 export default function PromisesPage() {
   const params = useParams();
   const studioSlug = params.slug as string;
   const openPromiseFormRef = useRef<(() => void) | null>(null);
+  const [showCondicionesManager, setShowCondicionesManager] = useState(false);
 
   const handleOpenPromiseForm = () => {
     if (openPromiseFormRef.current) {
@@ -33,16 +36,33 @@ export default function PromisesPage() {
                 </ZenCardDescription>
               </div>
             </div>
-            <ZenButton onClick={handleOpenPromiseForm}>
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Promesa
-            </ZenButton>
+            <div className="flex items-center gap-2">
+              <TerminosCondicionesManager studioSlug={studioSlug} />
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCondicionesManager(true)}
+              >
+                <Settings2 className="h-4 w-4 mr-2" />
+                Condiciones Comerciales
+              </ZenButton>
+              <ZenButton onClick={handleOpenPromiseForm}>
+                <Plus className="h-4 w-4 mr-2" />
+                Registrar Promesa
+              </ZenButton>
+            </div>
           </div>
         </ZenCardHeader>
         <ZenCardContent className="p-6 flex-1 min-h-0 overflow-hidden">
           <PromisesWrapper studioSlug={studioSlug} onOpenPromiseFormRef={openPromiseFormRef} />
         </ZenCardContent>
       </ZenCard>
+
+      <CondicionesComercialesManager
+        studioSlug={studioSlug}
+        isOpen={showCondicionesManager}
+        onClose={() => setShowCondicionesManager(false)}
+      />
     </div>
   );
 }

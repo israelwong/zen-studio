@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { Settings2, Plus } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton, ZenInput } from '@/components/ui/zen';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
 import { obtenerCondicionesComerciales } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
 import { toast } from 'sonner';
-import { CondicionesComercialesManager } from './CondicionesComercialesManager';
+import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
 
 interface CondicionComercial {
   id: string;
@@ -129,11 +129,10 @@ export function CondicionesComercialesSelector({
               {condiciones.map((condicion) => (
                 <label
                   key={condicion.id}
-                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedId === condicion.id
-                      ? 'border-purple-500 bg-purple-500/10'
-                      : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
-                  }`}
+                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${selectedId === condicion.id
+                    ? 'border-purple-500 bg-purple-500/10'
+                    : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
+                    }`}
                 >
                   <input
                     type="radio"
