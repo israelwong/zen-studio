@@ -91,6 +91,7 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
                 // { id: 'email', name: 'Email Marketing', href: `/commercial/email`, icon: Mail },
                 { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },
                 { id: 'catalogo', name: 'Catalog', href: `/commercial/catalogo`, icon: Store },
+                { id: 'paquetes', name: 'Packages', href: `/commercial/paquetes`, icon: Package },
             ],
         },
 
