@@ -93,7 +93,7 @@ export async function crearMediaCategoria(data: CreateMediaItemForm) {
       },
     });
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
     revalidatePath("/studio/[slug]/builder/storage", "layout");
 
     return {
@@ -145,7 +145,7 @@ export async function reordenarMediaCategoria(
       )
     );
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
 
     return { success: true };
   } catch (error) {
@@ -183,7 +183,7 @@ export async function eliminarMediaCategoria(data: DeleteMediaItemForm) {
       where: { id: validatedData.id },
     });
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
     revalidatePath("/studio/[slug]/builder/storage", "layout");
 
     return { success: true };

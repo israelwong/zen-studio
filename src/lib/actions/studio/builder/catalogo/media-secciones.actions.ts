@@ -89,7 +89,7 @@ export async function crearPortadaSeccion(data: CreateSeccionPortadaForm) {
       },
     });
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
 
     return {
       success: true,
@@ -120,7 +120,7 @@ export async function eliminarPortadaSeccion(data: DeleteSeccionPortadaForm) {
       },
     });
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
 
     return { success: true };
   } catch (error) {

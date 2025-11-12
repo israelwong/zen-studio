@@ -270,7 +270,7 @@ export async function uploadMediaToEntity(
     );
 
     // Revalidate paths
-    revalidatePath(`/studio/[slug]/builder/catalogo`, "layout");
+    revalidatePath(`/studio/[slug]/builder/commercial/catalogo`, "layout");
 
     return { success: true, mediaId };
   } catch (error) {

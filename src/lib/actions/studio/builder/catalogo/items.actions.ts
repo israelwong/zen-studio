@@ -365,7 +365,7 @@ export async function actualizarItem(
         console.log(`[ITEMS] Item actualizado exitosamente: ${item.id} - ${item.name} - Costo: ${item.cost} - Gastos: ${JSON.stringify(item.item_expenses)}`);
 
         // Revalidar la ruta para actualizar la UI
-        revalidatePath(`/[slug]/studio/builder/catalogo`);
+        revalidatePath(`/[slug]/studio/builder/commercial/catalogo`);
 
         return {
             success: true,
@@ -675,7 +675,7 @@ export async function toggleItemPublish(
             })),
         };
 
-        revalidatePath(`/${item.studio.slug}/studio/builder/catalogo`);
+        revalidatePath(`/${item.studio.slug}/studio/builder/commercial/catalogo`);
 
         return {
             success: true,

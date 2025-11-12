@@ -91,7 +91,7 @@ export async function actualizarConfiguracionCatalogo(
             vistaEnPantalla: configuracion.vistaEnPantalla === 'reticula' ? 'reticula' : 'lista'
         };
 
-        revalidatePath(`/[slug]/studio/builder/catalogo`);
+        revalidatePath(`/[slug]/studio/builder/commercial/catalogo`);
 
         return {
             success: true,
@@ -182,7 +182,7 @@ export async function actualizarConfiguracionPaquetes(
             vistaEnPantalla: configuracion.vistaEnPantalla === 'reticula' ? 'reticula' : 'lista'
         };
 
-        revalidatePath(`/[slug]/studio/builder/content/paquetes`);
+        revalidatePath(`/[slug]/studio/builder/commercial/paquetes`);
 
         return {
             success: true,

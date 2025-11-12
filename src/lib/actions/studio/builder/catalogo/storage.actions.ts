@@ -111,7 +111,7 @@ export async function actualizarStorageUsage(
       },
     });
 
-    revalidatePath("/studio/[slug]/builder/catalogo", "layout");
+    revalidatePath("/studio/[slug]/builder/commercial/catalogo", "layout");
 
     return {
       success: true,

@@ -27,15 +27,15 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }:
     }, [paquete?.status, paquete]);
 
     const handleBack = () => {
-        router.push(`/${studioSlug}/studio/builder/content/paquetes`);
+        router.push(`/${studioSlug}/studio/builder/commercial/paquetes`);
     };
 
     const handleSave = (savedPaquete: PaqueteFromDB) => {
-        router.push(`/${studioSlug}/studio/builder/content/paquetes`);
+        router.push(`/${studioSlug}/studio/builder/commercial/paquetes`);
     };
 
     const handleCancel = () => {
-        router.push(`/${studioSlug}/studio/builder/content/paquetes`);
+        router.push(`/${studioSlug}/studio/builder/commercial/paquetes`);
     };
 
     const handleFeaturedClick = () => {

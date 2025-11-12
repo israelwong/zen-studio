@@ -248,8 +248,8 @@ export async function actualizarConfiguracionPrecios(
 
         // 6. Revalidar las rutas
         revalidatePath(`/studio/${studioSlug}/configuracion/negocio/configuracion-precios`);
-        revalidatePath(`/[slug]/studio/builder/catalogo`);
-        revalidatePath(`/studio/${studioSlug}/builder/catalogo`);
+        revalidatePath(`/[slug]/studio/builder/commercial/catalogo`);
+        revalidatePath(`/studio/${studioSlug}/builder/commercial/catalogo`);
 
         return {
             success: true,

@@ -77,8 +77,6 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
                 { id: 'profile-design', name: 'Layout', href: `/content/profile-design`, icon: Layout },
                 { id: 'posts', name: 'Posts', href: `/content/posts`, icon: Newspaper },
                 { id: 'portfolios', name: 'Portafolios', href: `/content/portfolios`, icon: Grid3X3 },
-                { id: 'catalogo', name: 'Catalog', href: `/content/catalogo`, icon: Store },
-                { id: 'paquetes', name: 'Packages', href: `/content/paquetes`, icon: Package },
                 { id: 'faq', name: 'FAQ', href: `/content/faq`, icon: HelpCircle },
             ],
         },
@@ -92,6 +90,7 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
                 // { id: 'marketing', name: 'Marketing', href: `/marketing`, icon: Users },
                 // { id: 'email', name: 'Email Marketing', href: `/commercial/email`, icon: Mail },
                 { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },
+                { id: 'catalogo', name: 'Catalog', href: `/commercial/catalogo`, icon: Store },
             ],
         },
 

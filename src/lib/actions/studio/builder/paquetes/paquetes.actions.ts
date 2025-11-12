@@ -204,7 +204,7 @@ export async function crearPaquete(
             },
         });
 
-        revalidatePath(`/[slug]/studio/builder/content/paquetes`);
+        revalidatePath(`/[slug]/studio/builder/commercial/paquetes`);
 
         return {
             success: true,
@@ -467,7 +467,7 @@ export async function actualizarPaquete(
             },
         });
 
-        revalidatePath(`/[slug]/studio/builder/content/paquetes`);
+        revalidatePath(`/[slug]/studio/builder/commercial/paquetes`);
 
         return {
             success: true,
@@ -524,7 +524,7 @@ export async function eliminarPaquete(
             where: { id: paqueteId },
         });
 
-        revalidatePath(`/[slug]/studio/builder/content/paquetes`);
+        revalidatePath(`/[slug]/studio/builder/commercial/paquetes`);
 
         return { success: true };
     } catch (error) {
@@ -694,7 +694,7 @@ export async function duplicarPaquete(
             },
         });
 
-        revalidatePath(`/[slug]/studio/builder/content/paquetes`);
+        revalidatePath(`/[slug]/studio/builder/commercial/paquetes`);
 
         return {
             success: true,
