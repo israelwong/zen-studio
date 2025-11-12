@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Trash2, Edit2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { ZenDialog } from '@/components/ui/zen/modals/ZenDialog';
 import { ZenButton, ZenInput, ZenTextarea, ZenSwitch } from '@/components/ui/zen';
 import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
@@ -54,12 +54,25 @@ interface CondicionesComercialesManagerProps {
 
 interface SortableCondicionItemProps {
   condicion: CondicionComercial;
+  index: number;
+  totalItems: number;
   onEdit: (condicion: CondicionComercial) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, newStatus: boolean) => void;
+  onMoveUp: (id: string) => void;
+  onMoveDown: (id: string) => void;
 }
 
-function SortableCondicionItem({ condicion, onEdit, onDelete, onToggleStatus }: SortableCondicionItemProps) {
+function SortableCondicionItem({
+  condicion,
+  index,
+  totalItems,
+  onEdit,
+  onDelete,
+  onToggleStatus,
+  onMoveUp,
+  onMoveDown
+}: SortableCondicionItemProps) {
   const {
     attributes,
     listeners,
@@ -75,11 +88,17 @@ function SortableCondicionItem({ condicion, onEdit, onDelete, onToggleStatus }: 
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const isActive = condicion.status === 'active';
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="p-4 border border-zinc-700 rounded-lg bg-zinc-800/50 w-full"
+      className={`p-4 border rounded-lg w-full cursor-pointer transition-all ${isActive
+        ? 'border-emerald-500/50 bg-emerald-500/5 hover:bg-emerald-500/10'
+        : 'border-zinc-700 bg-zinc-800/30 opacity-75'
+        }`}
+      onClick={() => onEdit(condicion)}
     >
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3 flex-1">
@@ -87,15 +106,20 @@ function SortableCondicionItem({ condicion, onEdit, onDelete, onToggleStatus }: 
             {...attributes}
             {...listeners}
             className="cursor-grab active:cursor-grabbing mt-1 text-zinc-500 hover:text-zinc-400"
+            onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="h-5 w-5" />
           </div>
           <div className="flex-1">
-            <h4 className="font-semibold text-white">{condicion.name}</h4>
+            <h4 className={`font-semibold ${isActive ? 'text-white' : 'text-zinc-400'}`}>
+              {condicion.name}
+            </h4>
             {condicion.description && (
-              <p className="text-sm text-zinc-400 mt-1">{condicion.description}</p>
+              <p className={`text-sm mt-1 ${isActive ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                {condicion.description}
+              </p>
             )}
-            <div className="flex items-center gap-4 mt-2 text-sm text-zinc-300">
+            <div className={`flex items-center gap-4 mt-2 text-sm ${isActive ? 'text-zinc-300' : 'text-zinc-500'}`}>
               {condicion.discount_percentage && (
                 <span>Descuento: {condicion.discount_percentage}%</span>
               )}
@@ -105,20 +129,30 @@ function SortableCondicionItem({ condicion, onEdit, onDelete, onToggleStatus }: 
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
           <ZenSwitch
-            checked={condicion.status === 'active'}
+            checked={isActive}
             onCheckedChange={(checked) => onToggleStatus(condicion.id, checked)}
-            label={condicion.status === 'active' ? 'Activa' : 'Inactiva'}
+            label={isActive ? 'Activa' : 'Inactiva'}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <ZenButton
               variant="ghost"
               size="sm"
-              onClick={() => onEdit(condicion)}
-              className="h-8 w-8 p-0"
+              onClick={() => onMoveUp(condicion.id)}
+              disabled={index === 0}
+              className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-300 disabled:opacity-30"
             >
-              <Edit2 className="h-4 w-4" />
+              <ChevronUp className="h-4 w-4" />
+            </ZenButton>
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={() => onMoveDown(condicion.id)}
+              disabled={index === totalItems - 1}
+              className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-300 disabled:opacity-30"
+            >
+              <ChevronDown className="h-4 w-4" />
             </ZenButton>
             <ZenButton
               variant="ghost"
@@ -470,6 +504,74 @@ export function CondicionesComercialesManager({
     }
   };
 
+  const handleMoveUp = async (id: string) => {
+    const currentIndex = condiciones.findIndex((c) => c.id === id);
+    if (currentIndex === 0 || isReordering) return;
+
+    const newIndex = currentIndex - 1;
+    const newCondiciones = arrayMove(condiciones, currentIndex, newIndex);
+
+    try {
+      setIsReordering(true);
+      setCondiciones(newCondiciones);
+
+      const condicionesConOrden = newCondiciones.map((condicion, index) => ({
+        id: condicion.id,
+        orden: index,
+      }));
+
+      const result = await actualizarOrdenCondicionesComerciales(studioSlug, condicionesConOrden);
+
+      if (!result.success) {
+        setCondiciones(condiciones);
+        toast.error(result.error || 'Error al actualizar el orden');
+      } else {
+        toast.success('Orden actualizado exitosamente');
+        onRefresh?.();
+      }
+    } catch (error) {
+      console.error('Error moving condicion:', error);
+      setCondiciones(condiciones);
+      toast.error('Error al actualizar el orden');
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
+  const handleMoveDown = async (id: string) => {
+    const currentIndex = condiciones.findIndex((c) => c.id === id);
+    if (currentIndex === condiciones.length - 1 || isReordering) return;
+
+    const newIndex = currentIndex + 1;
+    const newCondiciones = arrayMove(condiciones, currentIndex, newIndex);
+
+    try {
+      setIsReordering(true);
+      setCondiciones(newCondiciones);
+
+      const condicionesConOrden = newCondiciones.map((condicion, index) => ({
+        id: condicion.id,
+        orden: index,
+      }));
+
+      const result = await actualizarOrdenCondicionesComerciales(studioSlug, condicionesConOrden);
+
+      if (!result.success) {
+        setCondiciones(condiciones);
+        toast.error(result.error || 'Error al actualizar el orden');
+      } else {
+        toast.success('Orden actualizado exitosamente');
+        onRefresh?.();
+      }
+    } catch (error) {
+      console.error('Error moving condicion:', error);
+      setCondiciones(condiciones);
+      toast.error('Error al actualizar el orden');
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
@@ -807,13 +909,17 @@ export function CondicionesComercialesManager({
                   strategy={verticalListSortingStrategy}
                 >
                   <div className={`space-y-2 max-h-[600px] overflow-y-auto overflow-x-hidden ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
-                    {condiciones.map((condicion) => (
+                    {condiciones.map((condicion, index) => (
                       <SortableCondicionItem
                         key={condicion.id}
                         condicion={condicion}
+                        index={index}
+                        totalItems={condiciones.length}
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onToggleStatus={handleToggleStatus}
+                        onMoveUp={handleMoveUp}
+                        onMoveDown={handleMoveDown}
                       />
                     ))}
                   </div>
