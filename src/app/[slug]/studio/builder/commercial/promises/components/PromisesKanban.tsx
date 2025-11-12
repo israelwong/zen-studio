@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings, Archive, X } from 'lucide-react';
+import { Search, Settings, Archive, X, Tag } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,7 @@ import { ZenInput } from '@/components/ui/zen';
 import { PromiseKanbanCard } from './PromiseKanbanCard';
 import { PipelineConfigModal } from './PipelineConfigModal';
 import { PromiseFormModal } from './PromiseFormModal';
+import { PromiseTagsManageModal } from './PromiseTagsManageModal';
 import { movePromise } from '@/lib/actions/studio/builder/commercial/promises';
 import { toast } from 'sonner';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
@@ -58,6 +59,7 @@ export function PromisesKanban({
 }: PromisesKanbanProps) {
   const router = useRouter();
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [isTagsModalOpen, setIsTagsModalOpen] = useState(false);
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isPromiseFormModalOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
   const setIsPromiseFormModalOpen = externalSetIsOpen || setInternalIsOpen;
@@ -559,7 +561,14 @@ export function PromisesKanban({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
           >
             <Settings className="h-3.5 w-3.5" />
-            Configurar
+            Pipeline
+          </button>
+          <button
+            onClick={() => setIsTagsModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+          >
+            <Tag className="h-3.5 w-3.5" />
+            Etiquetas
           </button>
         </div>
       </div>
@@ -623,6 +632,11 @@ export function PromisesKanban({
         studioSlug={studioSlug}
         pipelineStages={pipelineStages}
         onSuccess={onPipelineStagesUpdated}
+      />
+      <PromiseTagsManageModal
+        isOpen={isTagsModalOpen}
+        onClose={() => setIsTagsModalOpen(false)}
+        studioSlug={studioSlug}
       />
       <PromiseFormModal
         isOpen={isPromiseFormModalOpen}
