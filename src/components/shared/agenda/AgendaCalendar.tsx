@@ -4,12 +4,8 @@ import React, { useMemo } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
-import { ZenButton } from '@/components/ui/zen';
-import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback } from '@/components/ui/zen/media/ZenAvatar';
-import { ExternalLink, Mail, Phone, Calendar as CalendarIcon, Clock } from 'lucide-react';
-import { formatInitials } from '@/lib/actions/utils/formatting';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
+import { AgendaItemHoverCard } from './AgendaItemHoverCard';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 // Configurar moment en español
@@ -31,6 +27,12 @@ interface AgendaCalendarProps {
   className?: string;
 }
 
+// Helper para obtener primer nombre
+function getFirstName(fullName: string | null | undefined): string {
+  if (!fullName) return '';
+  return fullName.split(' ')[0];
+}
+
 // Convertir AgendaItem a formato de react-big-calendar
 function agendaItemToEvent(item: AgendaItem) {
   const start = new Date(item.date);
@@ -49,9 +51,19 @@ function agendaItemToEvent(item: AgendaItem) {
     end.setHours(23, 59, 59);
   }
 
+  // Generar título: "primer nombre (tipo evento)"
+  let title = '';
+  if (item.contact_name && item.event_type_name) {
+    title = `${getFirstName(item.contact_name)} (${item.event_type_name})`;
+  } else if (item.contact_name) {
+    title = getFirstName(item.contact_name);
+  } else {
+    title = item.concept || item.event_name || 'Agendamiento';
+  }
+
   return {
     id: item.id,
-    title: item.concept || item.contact_name || item.event_name || 'Agendamiento',
+    title,
     start,
     end,
     resource: item,
@@ -198,158 +210,19 @@ const AgendaEventComponent = ({
     return <div className="rbc-event-content cursor-pointer w-full h-full">{event.title}</div>;
   }
 
-  const handleViewClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (item.contexto === 'promise' && item.promise_id && onViewPromise) {
-      onViewPromise(item.promise_id);
-    } else if (item.contexto === 'evento' && item.evento_id && onViewEvento) {
-      onViewEvento(item.evento_id);
-    }
-  };
+  const trigger = (
+    <div className="rbc-event-content cursor-pointer w-full h-full relative z-10">
+      {event.title ? event.title.charAt(0).toUpperCase() + event.title.slice(1).toLowerCase() : ''}
+    </div>
+  );
 
   return (
-    <HoverCard openDelay={200} closeDelay={100}>
-      <HoverCardTrigger asChild>
-        <div className="rbc-event-content cursor-pointer w-full h-full relative z-10">
-          {event.title ? event.title.charAt(0).toUpperCase() + event.title.slice(1).toLowerCase() : ''}
-        </div>
-      </HoverCardTrigger>
-      <HoverCardContent
-        side="top"
-        sideOffset={8}
-        className="w-80 bg-zinc-900 border-zinc-700 !z-[100]"
-      >
-        <div className="space-y-3">
-          {/* Mensaje para fechas pendientes */}
-          {item.is_pending_date && (
-            <div className={`rounded-lg p-3 mb-2 ${
-              item.is_expired
-                ? 'bg-red-500/10 border border-red-500/30'
-                : 'bg-zinc-800/50 border border-zinc-700'
-            }`}>
-              <p className={`text-xs font-medium ${
-                item.is_expired ? 'text-red-400' : 'text-zinc-400'
-              }`}>
-                {item.is_expired
-                  ? 'Fecha caducada - Pendiente de confirmar'
-                  : 'Fecha pendiente de confirmar'}
-              </p>
-            </div>
-          )}
-
-          {/* Mensaje para fechas de evento confirmadas */}
-          {item.is_confirmed_event_date && (
-            <div className={`rounded-lg p-3 mb-2 ${
-              item.is_expired
-                ? 'bg-red-500/10 border border-red-500/30'
-                : 'bg-yellow-500/10 border border-yellow-500/30'
-            }`}>
-              <p className={`text-xs font-medium ${
-                item.is_expired ? 'text-red-400' : 'text-yellow-400'
-              }`}>
-                {item.is_expired
-                  ? 'Fecha de evento caducada'
-                  : 'Fecha de evento confirmada'}
-              </p>
-            </div>
-          )}
-
-          {/* Mensaje para citas */}
-          {!item.is_pending_date && !item.is_confirmed_event_date && item.type_scheduling && (
-            <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-2">
-              <p className="text-xs font-medium text-blue-400">
-                Cita {item.type_scheduling === 'virtual' ? 'virtual' : 'presencial'}
-              </p>
-            </div>
-          )}
-
-          {/* Avatar y Nombre del contacto */}
-          <div className="flex items-center gap-3">
-            {item.contact_avatar_url || item.contact_name ? (
-              <ZenAvatar className="h-10 w-10 flex-shrink-0">
-                {item.contact_avatar_url ? (
-                  <ZenAvatarImage
-                    src={item.contact_avatar_url}
-                    alt={item.contact_name || 'Contacto'}
-                  />
-                ) : null}
-                <ZenAvatarFallback>
-                  {item.contact_name ? formatInitials(item.contact_name) : '?'}
-                </ZenAvatarFallback>
-              </ZenAvatar>
-            ) : null}
-            {item.contact_name && (
-              <div className="font-semibold text-white text-sm">
-                {item.contact_name}
-              </div>
-            )}
-          </div>
-
-          {/* Teléfono */}
-          {item.contact_phone && (
-            <div className="flex items-center gap-2 text-xs text-zinc-300">
-              <Phone className="h-3.5 w-3.5 text-zinc-400" />
-              <span>{item.contact_phone}</span>
-            </div>
-          )}
-
-          {/* Correo */}
-          {item.contact_email && (
-            <div className="flex items-center gap-2 text-xs text-zinc-300">
-              <Mail className="h-3.5 w-3.5 text-zinc-400" />
-              <span>{item.contact_email}</span>
-            </div>
-          )}
-
-          {/* Fecha registro */}
-          {item.created_at && (
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <CalendarIcon className="h-3.5 w-3.5" />
-              <span>
-                Registro:{' '}
-                {new Intl.DateTimeFormat('es-MX', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(new Date(item.created_at))}
-              </span>
-            </div>
-          )}
-
-          {/* Fecha actualización */}
-          {item.updated_at && (
-            <div className="flex items-center gap-2 text-xs text-zinc-400">
-              <Clock className="h-3.5 w-3.5" />
-              <span>
-                Actualizado:{' '}
-                {new Intl.DateTimeFormat('es-MX', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(new Date(item.updated_at))}
-              </span>
-            </div>
-          )}
-
-          {/* Botón ver promesa/evento */}
-          {(item.contexto === 'promise' && item.promise_id) || (item.contexto === 'evento' && item.evento_id) ? (
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={handleViewClick}
-              className="w-full text-xs h-7 mt-2"
-            >
-              <ExternalLink className="h-3 w-3 mr-1.5" />
-              {item.contexto === 'promise' ? 'Ver Promesa' : 'Ver Evento'}
-            </ZenButton>
-          ) : null}
-        </div>
-      </HoverCardContent>
-    </HoverCard>
+    <AgendaItemHoverCard
+      item={item}
+      trigger={trigger}
+      onViewPromise={onViewPromise}
+      onViewEvento={onViewEvento}
+    />
   );
 };
 
