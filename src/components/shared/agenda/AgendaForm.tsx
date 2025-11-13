@@ -66,6 +66,51 @@ export function AgendaForm({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [conflictos, setConflictos] = useState<AgendaItem[]>([]);
+    const [initialDataId, setInitialDataId] = useState<string | undefined>(initialData?.id);
+    const [hasUserModified, setHasUserModified] = useState(false);
+
+    // Resetear hasUserModified cuando cambia el id del initialData (nuevo agendamiento o modal reabierto)
+    useEffect(() => {
+        if (initialData?.id !== initialDataId) {
+            setHasUserModified(false);
+        }
+    }, [initialData?.id, initialDataId]);
+
+    // Sincronizar estado cuando cambia initialData (solo cuando cambia el id o cuando no hay modificaciones del usuario)
+    useEffect(() => {
+        const currentId = initialData?.id;
+
+        // Si cambió el id, es un agendamiento diferente - siempre sincronizar
+        if (currentId !== initialDataId) {
+            setInitialDataId(currentId);
+            setDate(initialData?.date ? new Date(initialData.date) : undefined);
+            setTime(initialData?.time || '');
+            setAddress(initialData?.address || '');
+            setDescription(initialData?.description || '');
+            setLinkMeetingUrl(
+                initialData?.type_scheduling === 'presencial' ? initialData?.link_meeting_url || '' : ''
+            );
+            setVirtualLink(
+                initialData?.type_scheduling === 'virtual' ? initialData?.link_meeting_url || '' : ''
+            );
+            setEventType(initialData?.type_scheduling || null);
+            setErrors({});
+            setHasUserModified(false);
+        } else if (!initialData && initialDataId) {
+            // Se eliminó el initialData, resetear solo si el usuario no ha modificado
+            if (!hasUserModified) {
+                setInitialDataId(undefined);
+                setDate(undefined);
+                setTime('');
+                setAddress('');
+                setDescription('');
+                setLinkMeetingUrl('');
+                setVirtualLink('');
+                setEventType(null);
+                setErrors({});
+            }
+        }
+    }, [initialData?.id, initialData?.date, initialData?.time, initialData?.address, initialData?.description, initialData?.type_scheduling, initialData?.link_meeting_url, initialDataId, hasUserModified]);
 
     // Verificar disponibilidad cuando cambia la fecha
     useEffect(() => {
@@ -152,9 +197,10 @@ export function AgendaForm({
                             <ZenButton
                                 type="button"
                                 variant="outline"
-                                className="w-full justify-start text-left font-normal"
+                                icon={CalendarIcon}
+                                iconPosition="left"
+                                className="w-full justify-start"
                             >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
                                 {date ? new Intl.DateTimeFormat('es-MX', {
                                     weekday: 'long',
                                     day: 'numeric',
@@ -164,9 +210,11 @@ export function AgendaForm({
                             </ZenButton>
                         </PopoverTrigger>
                         <PopoverContent
-                            className="w-auto p-0 bg-zinc-900 border-zinc-700 z-[100]"
+                            className="w-auto p-0 bg-zinc-900 border-zinc-700"
                             align="start"
+                            side="bottom"
                             sideOffset={4}
+                            style={{ zIndex: 100000 } as React.CSSProperties}
                         >
                             <ZenCalendar
                                 {...({
@@ -176,6 +224,7 @@ export function AgendaForm({
                                         if (selectedDate) {
                                             setDate(selectedDate);
                                             setCalendarOpen(false);
+                                            setHasUserModified(true);
                                         }
                                     },
                                     locale: es,
@@ -193,7 +242,10 @@ export function AgendaForm({
                         <ZenInput
                             type="time"
                             value={time}
-                            onChange={(e) => setTime(e.target.value)}
+                            onChange={(e) => {
+                                setTime(e.target.value);
+                                setHasUserModified(true);
+                            }}
                             placeholder="HH:MM"
                             className="w-full pl-3 pr-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-sm text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-center"
                         />
@@ -276,7 +328,10 @@ export function AgendaForm({
                     <ZenButton
                         type="button"
                         variant={eventType === 'presencial' ? 'primary' : 'outline'}
-                        onClick={() => setEventType('presencial')}
+                        onClick={() => {
+                            setEventType('presencial');
+                            setHasUserModified(true);
+                        }}
                         className={`flex-1 transition-all ${eventType === 'presencial'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
                             : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
@@ -287,7 +342,10 @@ export function AgendaForm({
                     <ZenButton
                         type="button"
                         variant={eventType === 'virtual' ? 'primary' : 'outline'}
-                        onClick={() => setEventType('virtual')}
+                        onClick={() => {
+                            setEventType('virtual');
+                            setHasUserModified(true);
+                        }}
                         className={`flex-1 transition-all ${eventType === 'virtual'
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
                             : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
@@ -311,7 +369,10 @@ export function AgendaForm({
                         </label>
                         <textarea
                             value={address}
-                            onChange={(e) => setAddress(e.target.value)}
+                            onChange={(e) => {
+                                setAddress(e.target.value);
+                                setHasUserModified(true);
+                            }}
                             placeholder="Dirección del evento"
                             className="w-full min-h-[80px] px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
                         />
@@ -324,7 +385,10 @@ export function AgendaForm({
                         <ZenInput
                             type="url"
                             value={linkMeetingUrl}
-                            onChange={(e) => setLinkMeetingUrl(e.target.value)}
+                            onChange={(e) => {
+                                setLinkMeetingUrl(e.target.value);
+                                setHasUserModified(true);
+                            }}
                             placeholder="https://maps.google.com/..."
                         />
                     </div>
@@ -340,7 +404,10 @@ export function AgendaForm({
                     <ZenInput
                         type="url"
                         value={virtualLink}
-                        onChange={(e) => setVirtualLink(e.target.value)}
+                        onChange={(e) => {
+                            setVirtualLink(e.target.value);
+                            setHasUserModified(true);
+                        }}
                         placeholder="https://meet.google.com/... o https://zoom.us/..."
                     />
                 </div>
@@ -354,7 +421,10 @@ export function AgendaForm({
                 </label>
                 <textarea
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
+                    onChange={(e) => {
+                        setDescription(e.target.value);
+                        setHasUserModified(true);
+                    }}
                     placeholder="Notas adicionales sobre el agendamiento"
                     className="w-full min-h-[80px] px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500"
                 />
