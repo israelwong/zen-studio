@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ContactRound, Phone, Mail, Edit, MoreVertical, ChevronRight } from 'lucide-react';
+import { ContactRound, Phone, Mail, Edit, MoreVertical } from 'lucide-react';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { ZenButton, ZenBadge, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
@@ -37,7 +37,7 @@ export function ContactsCardView({
       cliente: 'Cliente'
     };
     return (
-      <ZenBadge variant={variants[status] || 'default'}>
+      <ZenBadge variant={variants[status] || 'default'} size="sm" className="rounded-full">
         {labels[status] || status}
       </ZenBadge>
     );
@@ -128,89 +128,90 @@ export function ContactsCardView({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-white truncate group-hover:text-blue-400 transition-colors">
-                    {contact.name}
-                  </h3>
-                  <div className="mt-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="font-medium text-white truncate group-hover:text-blue-400 transition-colors">
+                      {contact.name}
+                    </h3>
                     {getStatusBadge(contact.status)}
+                  </div>
+                  <div className="mt-1 text-sm text-zinc-400 truncate">
+                    {contact.phone}
                   </div>
                 </div>
               </div>
-              <ZenDropdownMenu
-                open={phoneMenuOpen === contact.id}
-                onOpenChange={(open) => setPhoneMenuOpen(open ? contact.id : null)}
-              >
-                <ZenDropdownMenuTrigger asChild>
-                  <ZenButton
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </ZenButton>
-                </ZenDropdownMenuTrigger>
-                <ZenDropdownMenuContent align="end">
-                  <ZenDropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEdit(contact.id);
-                      setPhoneMenuOpen(null);
-                    }}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Editar
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuSeparator />
-                  <ZenDropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleCall(contact.phone);
-                    }}
-                  >
-                    <Phone className="mr-2 h-4 w-4" />
-                    Llamar
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSendWhatsApp(contact.phone);
-                    }}
-                  >
-                    <WhatsAppIcon className="mr-2 h-4 w-4" />
-                    WhatsApp
-                  </ZenDropdownMenuItem>
-                  {contact.email && (
+              <div className="flex-shrink-0">
+                <ZenDropdownMenu
+                  open={phoneMenuOpen === contact.id}
+                  onOpenChange={(open) => setPhoneMenuOpen(open ? contact.id : null)}
+                >
+                  <ZenDropdownMenuTrigger asChild>
+                    <ZenButton
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </ZenButton>
+                  </ZenDropdownMenuTrigger>
+                  <ZenDropdownMenuContent align="end">
                     <ZenDropdownMenuItem
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSendEmail(contact.email!);
+                        onEdit(contact.id);
+                        setPhoneMenuOpen(null);
                       }}
                     >
-                      <Mail className="mr-2 h-4 w-4" />
-                      Email
+                      <Edit className="mr-2 h-4 w-4" />
+                      Editar
                     </ZenDropdownMenuItem>
-                  )}
-                  <ZenDropdownMenuSeparator />
-                  <ZenDropdownMenuItem
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDelete(contact.id);
-                      setPhoneMenuOpen(null);
-                    }}
-                    className="text-red-400 focus:text-red-400"
-                  >
-                    Eliminar
-                  </ZenDropdownMenuItem>
-                </ZenDropdownMenuContent>
-              </ZenDropdownMenu>
+                    <ZenDropdownMenuSeparator />
+                    <ZenDropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleCall(contact.phone);
+                      }}
+                    >
+                      <Phone className="mr-2 h-4 w-4" />
+                      Llamar
+                    </ZenDropdownMenuItem>
+                    <ZenDropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSendWhatsApp(contact.phone);
+                      }}
+                    >
+                      <WhatsAppIcon className="mr-2 h-4 w-4" />
+                      WhatsApp
+                    </ZenDropdownMenuItem>
+                    {contact.email && (
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSendEmail(contact.email!);
+                        }}
+                      >
+                        <Mail className="mr-2 h-4 w-4" />
+                        Email
+                      </ZenDropdownMenuItem>
+                    )}
+                    <ZenDropdownMenuSeparator />
+                    <ZenDropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDelete(contact.id);
+                        setPhoneMenuOpen(null);
+                      }}
+                      className="text-red-400 focus:text-red-400"
+                    >
+                      Eliminar
+                    </ZenDropdownMenuItem>
+                  </ZenDropdownMenuContent>
+                </ZenDropdownMenu>
+              </div>
             </div>
 
             <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-zinc-400">
-                <Phone className="h-3 w-3 flex-shrink-0" />
-                <span className="truncate">{contact.phone}</span>
-              </div>
               {contact.email && (
                 <div className="flex items-center gap-2 text-zinc-400">
                   <Mail className="h-3 w-3 flex-shrink-0" />
@@ -225,11 +226,6 @@ export function ContactsCardView({
                   </div>
                 )}
               </div>
-            </div>
-
-            <div className="mt-3 pt-3 border-t border-zinc-700/50 flex items-center justify-between">
-              <span className="text-xs text-zinc-500">Ver detalles</span>
-              <ChevronRight className="h-4 w-4 text-zinc-500 group-hover:text-zinc-400 transition-colors" />
             </div>
           </div>
         );
