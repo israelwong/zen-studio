@@ -105,6 +105,7 @@ export function useStudioNotifications({
   }, [userId, studioSlug, enabled, loadNotifications]);
 
   // Configurar Realtime - Escucha eventos automáticos desde el trigger de base de datos
+  // IMPORTANTE: Esperar a que userId esté disponible (getCurrentUserId crea el perfil si no existe)
   useEffect(() => {
     if (!studioSlug || !userId || !enabled) {
       console.log('[useStudioNotifications] Realtime deshabilitado:', {
@@ -148,12 +149,57 @@ export function useStudioNotifications({
         console.log('[useStudioNotifications] ✅ Sesión activa encontrada:', {
           userId: session.user.id,
           email: session.user.email,
+          accessToken: session.access_token ? 'presente' : 'ausente',
+          userIdLength: session.user.id.length,
         });
 
-        // Configurar autenticación Realtime
+        // Verificar que el usuario tiene studio_user_profiles con supabase_id
+        // Esto ayuda a diagnosticar problemas de RLS
+        console.log('[useStudioNotifications] 🔍 Verificando perfil de usuario...');
+        try {
+          // Primero obtener el studio_id
+          const { data: studio } = await supabase
+            .from('studios')
+            .select('id')
+            .eq('slug', studioSlug)
+            .single();
+          
+          if (studio) {
+            const { data: profileCheck, error: profileError } = await supabase
+              .from('studio_user_profiles')
+              .select('id, email, supabase_id, studio_id, is_active')
+              .eq('supabase_id', session.user.id)
+              .eq('studio_id', studio.id)
+              .single();
+            
+            if (profileError && profileError.code !== 'PGRST116') {
+              console.warn('[useStudioNotifications] ⚠️ Error verificando perfil:', profileError);
+            } else if (profileCheck) {
+              console.log('[useStudioNotifications] 📋 Perfil encontrado:', {
+                id: profileCheck.id,
+                email: profileCheck.email,
+                hasSupabaseId: !!profileCheck.supabase_id,
+                supabaseIdMatch: profileCheck.supabase_id === session.user.id,
+                studioId: profileCheck.studio_id,
+                isActive: profileCheck.is_active,
+              });
+            } else {
+              console.warn('[useStudioNotifications] ⚠️ No se encontró perfil con supabase_id.');
+              console.warn('[useStudioNotifications] ⚠️ Esto puede causar problemas de RLS.');
+              console.warn('[useStudioNotifications] ⚠️ El hook getCurrentUserId debería crear el perfil automáticamente.');
+            }
+          }
+        } catch (profileError) {
+          console.warn('[useStudioNotifications] ⚠️ Error verificando perfil:', profileError);
+        }
+
+        // Configurar autenticación Realtime ANTES de crear el canal
         console.log('[useStudioNotifications] 🔐 Configurando autenticación Realtime...');
-        await supabase.realtime.setAuth();
-        console.log('[useStudioNotifications] ✅ Autenticación Realtime configurada');
+        const authResult = await supabase.realtime.setAuth();
+        console.log('[useStudioNotifications] ✅ Autenticación Realtime configurada:', {
+          success: !authResult.error,
+          error: authResult.error?.message,
+        });
 
         const channel = supabase
           .channel(channelName, {
@@ -303,6 +349,7 @@ export function useStudioNotifications({
               error: err,
               channel: channelName,
               userId,
+              sessionUserId: (await supabase.auth.getSession()).data.session?.user.id,
             });
             
             if (status === 'SUBSCRIBED') {
@@ -317,7 +364,17 @@ export function useStudioNotifications({
                 console.error('[useStudioNotifications] Detalles del error:', {
                   message: err.message,
                   code: err.code,
+                  details: err,
                 });
+                
+                // Si es error de autorización, dar instrucciones específicas
+                if (err.message?.includes('Unauthorized') || err.message?.includes('permissions')) {
+                  console.error('[useStudioNotifications] 🔴 ERROR DE AUTORIZACIÓN RLS');
+                  console.error('[useStudioNotifications] Verifica:');
+                  console.error('  1. Que el usuario tenga supabase_id en studio_user_profiles');
+                  console.error('  2. Que las políticas RLS estén aplicadas correctamente');
+                  console.error('  3. Ejecuta el script DIAGNOSTICO_REALTIME.sql en Supabase');
+                }
               }
             } else if (status === 'TIMED_OUT') {
               console.warn('[useStudioNotifications] ⏱️ Timeout al suscribirse');
