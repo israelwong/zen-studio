@@ -202,16 +202,14 @@ export function useStudioNotifications({
           tokenLength: session.access_token?.length,
         });
         
-        // Configurar autenticación con el token explícitamente
-        const authResult = await supabase.realtime.setAuth(session.access_token);
-        console.log('[useStudioNotifications] ✅ Autenticación Realtime configurada:', {
-          success: !authResult.error,
-          error: authResult.error?.message,
-        });
-        
-        if (authResult.error) {
-          console.error('[useStudioNotifications] ❌ Error configurando auth Realtime:', authResult.error);
-          setError('Error al configurar autenticación Realtime: ' + authResult.error.message);
+        try {
+          // Configurar autenticación con el token explícitamente
+          // setAuth() puede no devolver un objeto, solo configurar internamente
+          await supabase.realtime.setAuth(session.access_token);
+          console.log('[useStudioNotifications] ✅ Autenticación Realtime configurada');
+        } catch (authError) {
+          console.error('[useStudioNotifications] ❌ Error configurando auth Realtime:', authError);
+          setError('Error al configurar autenticación Realtime: ' + (authError instanceof Error ? authError.message : 'Unknown error'));
           return;
         }
 
