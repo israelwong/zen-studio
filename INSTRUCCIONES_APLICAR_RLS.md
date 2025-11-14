@@ -37,6 +37,7 @@ DROP POLICY IF EXISTS "studio_notifications_can_read_broadcasts" ON realtime.mes
 DROP POLICY IF EXISTS "studio_notifications_can_write_broadcasts" ON realtime.messages;
 
 -- Crear políticas actualizadas usando supabase_id
+-- Nota: auth.uid() devuelve UUID, pero supabase_id es TEXT, por lo que necesitamos cast
 CREATE POLICY "studio_notifications_can_read_broadcasts" ON realtime.messages
 FOR SELECT TO authenticated
 USING (
@@ -44,7 +45,7 @@ USING (
   EXISTS (
     SELECT 1 FROM studio_user_profiles sup
     JOIN studios s ON s.id = sup.studio_id
-    WHERE sup.supabase_id = auth.uid()
+    WHERE sup.supabase_id = auth.uid()::text
     AND sup.is_active = true
     AND s.slug = SPLIT_PART(topic, ':', 2)
   )
@@ -57,7 +58,7 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM studio_user_profiles sup
     JOIN studios s ON s.id = sup.studio_id
-    WHERE sup.supabase_id = auth.uid()
+    WHERE sup.supabase_id = auth.uid()::text
     AND sup.is_active = true
     AND s.slug = SPLIT_PART(topic, ':', 2)
   )
