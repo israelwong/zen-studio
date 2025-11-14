@@ -65,8 +65,8 @@ WITH CHECK (
 );
 
 -- Crear índice para rendimiento
-CREATE INDEX IF NOT EXISTS idx_studio_user_profiles_supabase_id_active 
-ON studio_user_profiles(supabase_id, is_active) 
+CREATE INDEX IF NOT EXISTS idx_studio_user_profiles_supabase_id_active
+ON studio_user_profiles(supabase_id, is_active)
 WHERE is_active = true AND supabase_id IS NOT NULL;
 ```
 
@@ -82,8 +82,8 @@ Después de aplicar las políticas, verifica:
 
 2. **Usuarios tienen supabase_id:**
    ```sql
-   SELECT email, supabase_id, studio_id 
-   FROM studio_user_profiles 
+   SELECT email, supabase_id, studio_id
+   FROM studio_user_profiles
    WHERE supabase_id IS NOT NULL;
    ```
 
@@ -92,4 +92,3 @@ Después de aplicar las políticas, verifica:
 - Los usuarios nuevos creados con el seed ahora incluyen `supabase_id` automáticamente
 - El script `migrate-existing-users.ts` puede ejecutarse nuevamente si hay usuarios sin `supabase_id`
 - Las políticas RLS ahora usan `auth.uid()` directamente, lo cual es más seguro y eficiente
-
