@@ -188,6 +188,26 @@ async function createDatabaseUsers() {
                         accepted_at: new Date(),
                     },
                 });
+
+                // Crear o actualizar studio_user_profiles con supabase_id
+                await prisma.studio_user_profiles.upsert({
+                    where: { email: user.email },
+                    update: {
+                        supabase_id: authUser.user.id,
+                        full_name: user.full_name,
+                        studio_id: DEMO_STUDIO_ID,
+                        role: user.platform_role,
+                        is_active: true,
+                    },
+                    create: {
+                        email: user.email,
+                        supabase_id: authUser.user.id,
+                        full_name: user.full_name,
+                        studio_id: DEMO_STUDIO_ID,
+                        role: user.platform_role,
+                        is_active: true,
+                    },
+                });
             }
 
             console.log(`  ✅ ${user.email} - ${user.full_name} (${user.platform_role}${user.studio_role ? ` + ${user.studio_role}` : ''})`);

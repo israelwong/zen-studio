@@ -113,7 +113,7 @@ export async function getCurrentUserId(studioSlug: string) {
     // Verificar autenticación básica (solo para saber que está logueado)
     const supabase = await createClient();
     const { data: { user: authUser } } = await supabase.auth.getUser();
-    
+
     if (!authUser) {
       return { success: false, error: 'Usuario no autenticado' };
     }
@@ -128,67 +128,52 @@ export async function getCurrentUserId(studioSlug: string) {
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Buscar usuario autenticado en users
-    const user = await prisma.users.findFirst({
+    // Buscar studio_user_profiles directamente por supabase_id (más eficiente)
+    let userProfile = await prisma.studio_user_profiles.findFirst({
       where: {
-        OR: [
-          { email: authUser.email },
-          { supabase_id: authUser.id },
-        ],
-      },
-      select: { id: true, email: true },
-    });
-
-    if (!user) {
-      return { success: false, error: 'Usuario no encontrado en la base de datos' };
-    }
-
-    // Obtener la relación usuario-estudio desde user_studio_roles
-    const userStudioRole = await prisma.user_studio_roles.findFirst({
-      where: {
-        user_id: user.id,
+        supabase_id: authUser.id,
         studio_id: studio.id,
         is_active: true,
       },
-      select: { 
-        id: true,
-        user: {
-          select: { email: true },
-        },
-      },
+      select: { id: true, studio_id: true, email: true },
     });
 
-    if (!userStudioRole) {
-      return { success: false, error: 'Usuario no tiene acceso a este estudio' };
-    }
-
-    // Buscar o crear studio_user_profiles usando el email del usuario
-    let userProfile = await prisma.studio_user_profiles.findUnique({
-      where: {
-        email: user.email,
-      },
-      select: { id: true, studio_id: true },
-    });
-
-    // Si no existe, crearlo
+    // Si no existe, buscar usuario en users para obtener email y crear perfil
     if (!userProfile) {
+      const user = await prisma.users.findFirst({
+        where: {
+          supabase_id: authUser.id,
+        },
+        select: { id: true, email: true },
+      });
+
+      if (!user) {
+        return { success: false, error: 'Usuario no encontrado en la base de datos' };
+      }
+
+      // Verificar que el usuario tenga acceso al studio
+      const userStudioRole = await prisma.user_studio_roles.findFirst({
+        where: {
+          user_id: user.id,
+          studio_id: studio.id,
+          is_active: true,
+        },
+      });
+
+      if (!userStudioRole) {
+        return { success: false, error: 'Usuario no tiene acceso a este estudio' };
+      }
+
+      // Crear studio_user_profiles con supabase_id
       userProfile = await prisma.studio_user_profiles.create({
         data: {
           email: user.email,
+          supabase_id: authUser.id,
           studio_id: studio.id,
           role: 'SUSCRIPTOR',
           is_active: true,
         },
-        select: { id: true, studio_id: true },
-      });
-    } else if (!userProfile.studio_id) {
-      // Si existe pero sin studio_id, actualizarlo
-      userProfile = await prisma.studio_user_profiles.update({
-        where: { id: userProfile.id },
-        data: {
-          studio_id: studio.id,
-        },
-        select: { id: true, studio_id: true },
+        select: { id: true, studio_id: true, email: true },
       });
     }
 

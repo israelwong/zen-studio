@@ -46,6 +46,7 @@ COMMENT ON FUNCTION studio_notifications_broadcast_trigger() IS
 
 -- Políticas RLS para realtime.messages (requeridas para canales privados)
 -- Permitir lectura de mensajes de broadcast para usuarios autenticados del studio
+-- Usa supabase_id directamente de auth.uid() para mejor rendimiento y seguridad
 CREATE POLICY "studio_notifications_can_read_broadcasts" ON realtime.messages
 FOR SELECT TO authenticated
 USING (
@@ -53,7 +54,7 @@ USING (
   EXISTS (
     SELECT 1 FROM studio_user_profiles sup
     JOIN studios s ON s.id = sup.studio_id
-    WHERE sup.email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    WHERE sup.supabase_id = auth.uid()
     AND sup.is_active = true
     AND s.slug = SPLIT_PART(topic, ':', 2)
   )
@@ -67,13 +68,17 @@ WITH CHECK (
   EXISTS (
     SELECT 1 FROM studio_user_profiles sup
     JOIN studios s ON s.id = sup.studio_id
-    WHERE sup.email = (SELECT email FROM auth.users WHERE id = auth.uid())
+    WHERE sup.supabase_id = auth.uid()
     AND sup.is_active = true
     AND s.slug = SPLIT_PART(topic, ':', 2)
   )
 );
 
--- Índice para mejorar rendimiento de las políticas RLS
+-- Índices para mejorar rendimiento de las políticas RLS
+CREATE INDEX IF NOT EXISTS idx_studio_user_profiles_supabase_id_active 
+ON studio_user_profiles(supabase_id, is_active) 
+WHERE is_active = true AND supabase_id IS NOT NULL;
+
 CREATE INDEX IF NOT EXISTS idx_studio_user_profiles_email_active 
 ON studio_user_profiles(email, is_active) 
 WHERE is_active = true;
