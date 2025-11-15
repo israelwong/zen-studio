@@ -39,6 +39,9 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       if (loginError) throw loginError
       if (!data.user) throw new Error('No se pudo obtener información del usuario')
 
+      console.log('✅ Login exitoso:', data.user.email)
+      console.log('✅ Sesión creada:', !!data.session)
+
       // Obtener rol y redirect
       const userRole = data.user.user_metadata?.role
       if (!userRole) throw new Error('Usuario sin rol asignado')
@@ -51,6 +54,11 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
       } else {
         redirectPath = getDefaultRoute(userRole)
       }
+
+      console.log('✅ Redirigiendo a:', redirectPath)
+
+      // Pequeño delay para asegurar que la sesión se guarde en localStorage
+      await new Promise(resolve => setTimeout(resolve, 100))
 
       // Hard redirect
       window.location.href = redirectPath
