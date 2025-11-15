@@ -11,7 +11,7 @@ interface HashNavigationInfoProps {
 export function HashNavigationInfo({ studioSlug }: HashNavigationInfoProps) {
     const [copiedHash, setCopiedHash] = useState<string | null>(null);
 
-    const baseUrl = `${window.location.origin}/studio/${studioSlug}/builder/identidad`;
+    const baseUrl = `${window.location.origin}/studio/${studioSlug}/identidad`;
 
     const hashExamples = [
         { hash: 'header', label: 'Header', description: 'Configuración de logo, nombre y slogan' },

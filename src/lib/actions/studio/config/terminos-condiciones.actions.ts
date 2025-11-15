@@ -149,7 +149,7 @@ export async function crearTerminosCondiciones(studioSlug: string, data: Termino
             },
         });
 
-        revalidatePath(`/studio/${studioSlug}/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         return {
             success: true,
@@ -230,7 +230,7 @@ export async function actualizarTerminosCondiciones(
             },
         });
 
-        revalidatePath(`/studio/${studioSlug}/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         return {
             success: true,
@@ -276,7 +276,7 @@ export async function eliminarTerminosCondiciones(studioSlug: string, terminoId:
             where: { id: terminoId },
         });
 
-        revalidatePath(`/studio/${studioSlug}/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         return {
             success: true,
@@ -312,7 +312,7 @@ export async function actualizarOrdenTerminosCondiciones(studioSlug: string, ter
             )
         );
 
-        revalidatePath(`/studio/${studioSlug}/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         return {
             success: true,

@@ -63,7 +63,7 @@ export async function crearPaquete(
             }
         })
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/modules/manager/catalogo-servicios/paquetes`)
+        revalidatePath(`/${studioSlug}/studio/configuracion/modules/manager/catalogo-servicios/paquetes`)
 
         return {
             success: true,
@@ -120,7 +120,7 @@ export async function actualizarPaquete(
             }))
         })
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/modules/manager/catalogo-servicios/paquetes`)
+        revalidatePath(`/${studioSlug}/studio/configuracion/modules/manager/catalogo-servicios/paquetes`)
 
         return {
             success: true,
@@ -145,7 +145,7 @@ export async function eliminarPaquete(
             where: { id: paqueteId }
         })
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/modules/manager/catalogo-servicios/paquetes`)
+        revalidatePath(`/${studioSlug}/studio/configuracion/modules/manager/catalogo-servicios/paquetes`)
 
         return {
             success: true,
@@ -243,7 +243,7 @@ export async function duplicarPaquete(
             }
         })
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/modules/manager/catalogo-servicios/paquetes`)
+        revalidatePath(`/${studioSlug}/studio/configuracion/modules/manager/catalogo-servicios/paquetes`)
 
         return {
             success: true,
@@ -392,7 +392,7 @@ export async function actualizarPosicionPaquete(
             });
         }
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/modules/manager/catalogo-servicios/paquetes`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/modules/manager/catalogo-servicios/paquetes`);
 
         return {
             success: true,

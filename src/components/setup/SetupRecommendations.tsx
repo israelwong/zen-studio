@@ -210,9 +210,9 @@ function getSectionHref(sectionId: string, studioSlug: string): string {
         'negocio_condiciones': '/configuracion/negocio/condiciones-comerciales',
         'negocio_metodos_pago': '/configuracion/negocio/metodos-de-pago',
         'negocio_cuentas_bancarias': '/configuracion/negocio/cuentas-bancarias',
-        'catalogo_servicios': '/builder/commercial/catalogo',
-        'catalogo_paquetes': '/builder/commercial/catalogo',
-        'catalogo_especialidades': '/builder/commercial/catalogo',
+        'catalogo_servicios': '/commercial/catalogo',
+        'catalogo_paquetes': '/commercial/catalogo',
+        'catalogo_especialidades': '/commercial/catalogo',
         'equipo_personal': '/configuracion/negocio/personal'
     };
 

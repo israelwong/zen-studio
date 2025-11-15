@@ -87,9 +87,9 @@ export async function notifyAgendaCreated(
   let route = '/{slug}/studio/dashboard/agenda';
   
   if (promiseId) {
-    route = '/{slug}/studio/builder/commercial/promises/{promise_id}';
+    route = '/{slug}/studio/commercial/promises/{promise_id}';
   } else if (eventId) {
-    route = '/{slug}/studio/builder/business/events/{event_id}';
+    route = '/{slug}/studio/business/events/{event_id}';
   }
   
   return createStudioNotification({

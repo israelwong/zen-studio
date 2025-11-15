@@ -2,9 +2,9 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { supabaseRealtime } from '@/lib/supabase/realtime-client';
-import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/profile/identidad';
+import { obtenerIdentidadStudio } from '@/lib/actions/studio/profile/identidad';
 import { REALTIME_CONFIG, logRealtime, canUseRealtime } from '@/lib/realtime/realtime-control';
-import type { IdentidadData } from '@/app/[slug]/studio/builder/profile/identidad/types';
+import type { IdentidadData } from '@/app/[slug]/studio/profile/identidad/types';
 import type { RealtimeChannel } from '@supabase/realtime-js';
 import { REALTIME_CHANNEL_STATES } from '@supabase/realtime-js';
 import type { SupabaseClient } from '@supabase/supabase-js';

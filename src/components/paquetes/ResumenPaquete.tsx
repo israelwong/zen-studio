@@ -4,7 +4,7 @@
 
 import { ZenCard, ZenButton, ZenInput, ZenTextarea } from "@/components/ui/zen"; // Revisa tus rutas
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs"; // Revisa tus rutas
-import { formatearMoneda } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
+import { formatearMoneda } from "@/lib/actions/studio/catalogo/calcular-precio";
 
 // Tipos para los datos que este componente espera recibir.
 // Deberían coincidir con los que ya tienes en tu lógica.

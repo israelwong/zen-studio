@@ -13,7 +13,7 @@ import { ZenButton, ZenInput, ZenSelect } from '@/components/ui/zen';
 import { ContactsCardView } from './ContactsCardView';
 import { ContactModal } from './ContactModal';
 import { ZenConfirmModal } from '@/components/ui/zen';
-import { getContacts, deleteContact } from '@/lib/actions/studio/builder/commercial/contacts';
+import { getContacts, deleteContact } from '@/lib/actions/studio/commercial/contacts';
 import type { Contact } from '@/lib/actions/schemas/contacts-schemas';
 import { toast } from 'sonner';
 import { useContactRefresh, useContactUpdateListener } from '@/hooks/useContactRefresh';

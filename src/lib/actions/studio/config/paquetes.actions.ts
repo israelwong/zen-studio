@@ -6,8 +6,8 @@ import { z } from "zod"
 
 // Helper para revalidar rutas de paquetes
 const revalidatePaquetesRoutes = (studioSlug: string) => {
-    revalidatePath(`/[slug]/studio/builder/commercial/catalogo`)
-    revalidatePath(`/studio/${studioSlug}/builder/commercial/catalogo`)
+    revalidatePath(`/${slug}/studio/commercial/catalogo`)
+    revalidatePath(`/${studioSlug}/studio/commercial/catalogo`)
 }
 
 // Schema para crear/actualizar paquete

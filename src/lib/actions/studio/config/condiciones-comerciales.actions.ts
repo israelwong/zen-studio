@@ -160,7 +160,7 @@ export async function crearCondicionComercial(studioSlug: string, data: Condicio
             data: dataToSave,
         });
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/comercial/condiciones-comerciales`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/comercial/condiciones-comerciales`);
 
         return {
             success: true,
@@ -244,7 +244,7 @@ export async function actualizarCondicionComercial(studioSlug: string, condicion
             data: dataToSave,
         });
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/comercial/condiciones-comerciales`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/comercial/condiciones-comerciales`);
 
         return {
             success: true,
@@ -290,7 +290,7 @@ export async function eliminarCondicionComercial(studioSlug: string, condicionId
             where: { id: condicionId },
         });
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/comercial/condiciones-comerciales`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/comercial/condiciones-comerciales`);
 
         return {
             success: true,
@@ -326,7 +326,7 @@ export async function actualizarOrdenCondicionesComerciales(studioSlug: string, 
             )
         );
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/comercial/condiciones-comerciales`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/comercial/condiciones-comerciales`);
 
         return {
             success: true,

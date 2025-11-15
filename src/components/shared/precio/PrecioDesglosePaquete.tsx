@@ -1,7 +1,7 @@
 "use client";
 
 import { ZenCard } from "@/components/ui/zen";
-import { formatearMoneda, calcularPrecio, type ResultadoPrecio, type ConfiguracionPrecios } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
+import { formatearMoneda, calcularPrecio, type ResultadoPrecio, type ConfiguracionPrecios } from "@/lib/actions/studio/catalogo/calcular-precio";
 
 interface ItemPaquete {
     id: string;

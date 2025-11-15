@@ -3,7 +3,7 @@ import {
   obtenerStorageUsage,
   actualizarStorageUsage,
   type StorageUsage
-} from '@/lib/actions/studio/builder/catalogo/storage.actions';
+} from '@/lib/actions/studio/catalogo/storage.actions';
 
 export function useStorageTracking(studioSlug: string) {
   const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);

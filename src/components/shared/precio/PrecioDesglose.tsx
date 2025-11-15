@@ -1,7 +1,7 @@
 "use client";
 
 import { ZenCard } from "@/components/ui/zen";
-import { formatearMoneda, type ResultadoPrecio } from "@/lib/actions/studio/builder/catalogo/calcular-precio";
+import { formatearMoneda, type ResultadoPrecio } from "@/lib/actions/studio/catalogo/calcular-precio";
 
 interface PrecioDesgloseProps {
     resultado: ResultadoPrecio;

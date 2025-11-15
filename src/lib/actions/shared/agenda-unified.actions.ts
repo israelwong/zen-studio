@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { logPromiseAction } from '@/lib/actions/studio/builder/commercial/promises/promise-logs.actions';
+import { logPromiseAction } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 
 // =============================================================================
 // SCHEMAS
@@ -758,7 +758,7 @@ export async function crearAgendamiento(
             evento_status: agenda.eventos?.status || null,
         };
 
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         // Log si está asociado a una promesa
         if (agenda.promise_id) {
@@ -965,7 +965,7 @@ export async function actualizarAgendamiento(
             evento_status: agenda.eventos?.status || null,
         };
 
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         // Log si está asociado a una promesa
         if (agenda.promise_id) {
@@ -1193,7 +1193,7 @@ export async function eliminarAgendamiento(
             });
         }
 
-        revalidatePath(`/${studioSlug}/studio/builder/commercial/promises`);
+        revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
         return {
             success: true,

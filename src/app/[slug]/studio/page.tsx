@@ -1,8 +1,13 @@
 import React from 'react';
-import { redirect } from 'next/navigation';
 
-export default async function StudioPage({ params }: { params: Promise<{ slug: string }> }) {
-    const { slug } = await params;
-    // Redirigir al dashboard cuando el suscriptor ingrese a su estudio
-    redirect(`/${slug}/studio/dashboard`);
+export default function StudioPage() {
+    return (
+        <div>
+            <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+            <p className="mt-2 text-zinc-400">
+                Bienvenido a tu dashboard. Aquí podrás ver un resumen de tu estudio.
+            </p>
+            {/* Aquí irá el contenido del dashboard con stats */}
+        </div>
+    );
 }

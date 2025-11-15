@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Image from 'next/image';
-import { CaptionWithLinks } from '@/app/[slug]/studio/builder/content/posts/components/CaptionWithLinks';
+import { CaptionWithLinks } from '@/app/[slug]/studio/content/posts/components/CaptionWithLinks';
 import { ImageCarousel } from '@/components/shared/media';
 import { MediaItem } from '@/types/content-blocks';
 import Lightbox from "yet-another-react-lightbox";
 import Video from "yet-another-react-lightbox/plugins/video";
 import "yet-another-react-lightbox/styles.css";
-import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/profile/identidad';
+import { obtenerIdentidadStudio } from '@/lib/actions/studio/profile/identidad';
 import { Skeleton } from '@/components/ui/shadcn/Skeleton';
 
 // Función para formatear tiempo relativo corto (1h, 2d)

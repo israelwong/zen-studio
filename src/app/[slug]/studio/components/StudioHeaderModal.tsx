@@ -237,7 +237,7 @@ export function StudioHeaderModal({ className, studioData }: StudioHeaderModalPr
 
                 <DropdownMenuItem asChild>
                     <Link
-                        href="./builder/identidad"
+                        href="./identidad"
                         className="flex items-center gap-3 px-2 py-1.5 text-sm text-zinc-300 hover:text-white hover:bg-zinc-700"
                     >
                         <Zap className="h-4 w-4" />

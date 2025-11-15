@@ -35,8 +35,8 @@ async function getStudioIdFromSlug(studioSlug: string): Promise<string | null> {
  * Revalidar rutas relacionadas con paquetes
  */
 function revalidatePaquetes(studioSlug: string) {
-    revalidatePath(`/[slug]/studio/builder/commercial/catalogo`);
-    revalidatePath(`/${studioSlug}/builder/commercial/catalogo`);
+    revalidatePath(`/${slug}/studio/commercial/catalogo`);
+    revalidatePath(`/${studioSlug}/commercial/catalogo`);
 }
 
 /**

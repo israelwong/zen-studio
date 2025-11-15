@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getPromiseLogs } from '@/lib/actions/studio/builder/commercial/promises';
-import type { PromiseLog } from '@/lib/actions/studio/builder/commercial/promises/promise-logs.actions';
+import { getPromiseLogs } from '@/lib/actions/studio/commercial/promises';
+import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 
 interface UsePromiseLogsOptions {
   promiseId: string | null;

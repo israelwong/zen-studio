@@ -2,7 +2,7 @@
  * Profile Components - Reutilizables para perfil público y builder
  * 
  * Componentes migrados desde:
- * - Builder preview (/app/[slug]/studio/builder/components/previews/)
+ * - Builder preview (/app/[slug]/studio/components/previews/)
  * - Perfil público (/app/[slug]/perfil/)
  * 
  * Con mejor naming y reutilización

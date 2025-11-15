@@ -55,7 +55,7 @@ export function ChatMessageRenderer({ content, type }: ChatMessageRendererProps)
                 return (
                     <Link
                         key={index}
-                        href={`/demo-studio/builder/catalogo`}
+                        href={`/demo-studio/catalogo`}
                         className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300 underline transition-colors"
                     >
                         {part}

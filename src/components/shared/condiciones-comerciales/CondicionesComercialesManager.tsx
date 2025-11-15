@@ -807,7 +807,7 @@ export function CondicionesComercialesManager({
                 <p className="text-xs text-zinc-400">
                   Porcentaje de descuento máximo del {maxDescuento}% definido en la{' '}
                   <Link
-                    href={`/${studioSlug}/studio/builder/commercial/catalogo#utilidad`}
+                    href={`/${studioSlug}/studio/commercial/catalogo#utilidad`}
                     className="text-blue-400 hover:text-blue-300 underline-offset-4 hover:underline"
                     target="_blank"
                   >

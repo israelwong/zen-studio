@@ -138,7 +138,7 @@ export async function crearCuentaBancaria(
             updatedAt: nuevaCuenta.updatedAt
         };
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/negocio/cuentas-bancarias`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/negocio/cuentas-bancarias`);
 
         return {
             success: true,
@@ -248,7 +248,7 @@ export async function actualizarCuentaBancaria(
             updatedAt: cuentaActualizada.updatedAt
         };
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/negocio/cuentas-bancarias`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/negocio/cuentas-bancarias`);
 
         return {
             success: true,
@@ -319,7 +319,7 @@ export async function eliminarCuentaBancaria(
             }
         });
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/negocio/cuentas-bancarias`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/negocio/cuentas-bancarias`);
 
         return {
             success: true
@@ -366,7 +366,7 @@ export async function actualizarOrdenCuentasBancarias(
             });
         }
 
-        revalidatePath(`/studio/${studioSlug}/configuracion/negocio/cuentas-bancarias`);
+        revalidatePath(`/${studioSlug}/studio/configuracion/negocio/cuentas-bancarias`);
 
         return {
             success: true

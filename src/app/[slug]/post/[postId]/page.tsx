@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getStudioPostById, incrementPostViewCount } from "@/lib/actions/studio/builder/posts";
+import { getStudioPostById, incrementPostViewCount } from "@/lib/actions/studio/posts";
 import { PostRenderer } from "@/components/posts/PostRenderer";
 
 interface PublicPostPageProps {

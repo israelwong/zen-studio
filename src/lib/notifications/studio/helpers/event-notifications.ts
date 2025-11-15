@@ -22,7 +22,7 @@ export async function notifyEventApproved(
     message: `El evento "${eventName}" ha sido aprobado`,
     category: 'events',
     priority: NotificationPriority.HIGH,
-    route: '/{slug}/studio/builder/business/events/{event_id}',
+    route: '/{slug}/studio/business/events/{event_id}',
     route_params: {
       slug: studio?.slug,
       event_id: eventId,
@@ -52,7 +52,7 @@ export async function notifyEventCreated(
     message: `Se creó un nuevo evento: "${eventName}"`,
     category: 'events',
     priority: NotificationPriority.MEDIUM,
-    route: '/{slug}/studio/builder/business/events/{event_id}',
+    route: '/{slug}/studio/business/events/{event_id}',
     route_params: {
       slug: studio?.slug,
       event_id: eventId,
@@ -82,7 +82,7 @@ export async function notifyEventCancelled(
     message: `El evento "${eventName}" ha sido cancelado`,
     category: 'events',
     priority: NotificationPriority.HIGH,
-    route: '/{slug}/studio/builder/business/events/{event_id}',
+    route: '/{slug}/studio/business/events/{event_id}',
     route_params: {
       slug: studio?.slug,
       event_id: eventId,

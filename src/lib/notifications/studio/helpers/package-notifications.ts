@@ -22,7 +22,7 @@ export async function notifyPackageCreated(
     message: `Se creó un nuevo paquete: "${packageName}"`,
     category: 'packages',
     priority: NotificationPriority.MEDIUM,
-    route: '/{slug}/studio/builder/commercial/paquetes',
+    route: '/{slug}/studio/commercial/paquetes',
     route_params: {
       slug: studio?.slug,
       paquete_id: paqueteId,
@@ -52,7 +52,7 @@ export async function notifyPackageUpdated(
     message: `El paquete "${packageName}" ha sido actualizado`,
     category: 'packages',
     priority: NotificationPriority.LOW,
-    route: '/{slug}/studio/builder/commercial/paquetes',
+    route: '/{slug}/studio/commercial/paquetes',
     route_params: {
       slug: studio?.slug,
       paquete_id: paqueteId,

@@ -23,7 +23,7 @@ export async function notifyQuoteApproved(
     message: `La cotización de ${contactName} por $${amount.toLocaleString()} ha sido autorizada`,
     category: 'quotes',
     priority: NotificationPriority.HIGH,
-    route: '/{slug}/studio/builder/commercial/promises',
+    route: '/{slug}/studio/commercial/promises',
     route_params: {
       slug: studio?.slug,
       quote_id: quoteId,

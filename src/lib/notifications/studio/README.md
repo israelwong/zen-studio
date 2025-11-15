@@ -45,7 +45,7 @@ await StudioNotificationService.create({
   message: 'El evento ha sido aprobado',
   category: 'events',
   priority: NotificationPriority.HIGH,
-  route: '/studio/{slug}/builder/business/events/{event_id}',
+  route: '/{slug}/studio/business/events/{event_id}',
   route_params: {
     slug: studioSlug,
     event_id: eventId,

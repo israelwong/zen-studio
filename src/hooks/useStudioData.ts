@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { obtenerIdentidadStudio } from '@/lib/actions/studio/builder/profile/identidad';
-import type { IdentidadData } from '@/app/[slug]/studio/builder/profile/identidad/types';
+import { obtenerIdentidadStudio } from '@/lib/actions/studio/profile/identidad';
+import type { IdentidadData } from '@/app/[slug]/studio/profile/identidad/types';
 
 interface UseStudioDataOptions {
   studioSlug: string;

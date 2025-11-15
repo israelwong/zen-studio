@@ -15,7 +15,7 @@ import {
     deleteContact,
     checkContactAssociations,
     getContactPromises
-} from '@/lib/actions/studio/builder/commercial/contacts';
+} from '@/lib/actions/studio/commercial/contacts';
 import type { CreateContactData, Contact } from '@/lib/actions/schemas/contacts-schemas';
 import { AvatarManager } from '@/components/shared/avatar';
 import { useStorageRefresh } from '@/hooks/useStorageRefresh';
@@ -844,7 +844,7 @@ function ContactModalComponent({
                                                     key={promise.id}
                                                     type="button"
                                                     onClick={() => {
-                                                        router.push(`/${studioSlug}/studio/builder/commercial/promises/${promise.id}`);
+                                                        router.push(`/${studioSlug}/studio/commercial/promises/${promise.id}`);
                                                         onClose();
                                                     }}
                                                     className="w-full text-left p-3 rounded-lg border border-zinc-700 hover:border-purple-500/50 hover:bg-zinc-800/50 transition-colors group"
@@ -903,7 +903,7 @@ function ContactModalComponent({
                                                     key={event.id}
                                                     type="button"
                                                     onClick={() => {
-                                                        router.push(`/${studioSlug}/studio/builder/business/events/${event.id}`);
+                                                        router.push(`/${studioSlug}/studio/business/events/${event.id}`);
                                                         onClose();
                                                     }}
                                                     className="w-full text-left p-3 rounded-lg border border-zinc-700 bg-zinc-800/30 hover:border-blue-500/50 hover:bg-zinc-800/50 transition-colors group"

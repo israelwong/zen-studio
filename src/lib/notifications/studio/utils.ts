@@ -56,6 +56,11 @@ export function buildRoute(
         route = `/${paramsObj.slug}/studio${restPath}`;
     }
 
+    // Migración: Remover /builder/ de las rutas (estructura antigua)
+    // Convertir /{slug}/studio/builder/... a /{slug}/studio/...
+    route = route.replace(/\/builder\//g, '/');
+    route = route.replace(/\/builder$/g, '');
+
     // Si la ruta tiene placeholders, reemplazarlos
     if (route.includes('{')) {
         Object.entries(paramsObj).forEach(([key, value]) => {

@@ -24,7 +24,7 @@ export async function notifyPromiseCreated(
     message: `Se creó una nueva promesa para ${contactName}`,
     category: 'promises',
     priority: NotificationPriority.MEDIUM,
-    route: '/{slug}/studio/builder/commercial/promises/{promise_id}',
+    route: '/{slug}/studio/commercial/promises/{promise_id}',
     route_params: {
       slug: studio?.slug,
       promise_id: promiseId,

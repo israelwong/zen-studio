@@ -70,12 +70,12 @@ export function AgendaUnifiedSheet({
   };
 
   const handleViewPromise = (promiseId: string) => {
-    router.push(`/${studioSlug}/studio/builder/commercial/promises/${promiseId}`);
+    router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
     onOpenChange(false);
   };
 
   const handleViewEvento = (eventoId: string) => {
-    router.push(`/${studioSlug}/studio/builder/business/events/${eventoId}`);
+    router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
     onOpenChange(false);
   };
 

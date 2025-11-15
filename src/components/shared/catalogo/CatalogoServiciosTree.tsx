@@ -3,7 +3,7 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ZenBadge } from '@/components/ui/zen';
-import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/builder/catalogo/calcular-precio';
+import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import { cn } from '@/lib/utils';
 
