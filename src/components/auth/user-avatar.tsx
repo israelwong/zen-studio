@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard } from "lucide-react";
+import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard, Shield } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -132,8 +132,9 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
 
     // Rutas del menú
     const menuRoutes = {
-        perfil: `${basePath}/configuracion/cuenta/perfil`,
-        suscripcion: `${basePath}/configuracion/cuenta/suscripcion`,
+        perfil: `${basePath}/account/perfil`,
+        seguridad: `${basePath}/account/seguridad`,
+        suscripcion: `${basePath}/account/suscripcion`,
         builder: `${basePath}/builder`,
         configuracion: isInConfiguracion ? `${basePath}/dashboard` : `${basePath}/configuracion`
     };
@@ -180,10 +181,22 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
 
                 <ZenDropdownMenuSeparator />
 
+                {/* Gestionar */}
+                <div className="px-2 py-1.5">
+                    <div className="text-xs font-medium text-zinc-400">Gestionar</div>
+                </div>
+
                 <ZenDropdownMenuItem className="cursor-pointer" asChild>
                     <Link href={menuRoutes.perfil}>
                         <UserCircle className="mr-2 h-4 w-4" />
                         <span>Perfil</span>
+                    </Link>
+                </ZenDropdownMenuItem>
+
+                <ZenDropdownMenuItem className="cursor-pointer" asChild>
+                    <Link href={menuRoutes.seguridad}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        <span>Seguridad</span>
                     </Link>
                 </ZenDropdownMenuItem>
 
