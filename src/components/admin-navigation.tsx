@@ -1,6 +1,6 @@
 'use client'
 
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/browser'
 import { Button } from '@/components/ui/shadcn/button'
 import { Avatar, AvatarFallback } from '@/components/ui/shadcn/avatar'
 import {

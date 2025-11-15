@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/browser'
 import { Button } from '@/components/ui/shadcn/button'
 import { Avatar, AvatarFallback } from '@/components/ui/shadcn/avatar'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/shadcn/dropdown-menu'

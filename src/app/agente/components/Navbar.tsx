@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ZenButton } from '@/components/ui/zen';
 import { User, Bell, LogOut, Settings, ChevronDown } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/browser';
 import { PlatformIsotipo } from '@/components/platform';
 import { usePlatformName } from '@/hooks/usePlatformConfig';
 

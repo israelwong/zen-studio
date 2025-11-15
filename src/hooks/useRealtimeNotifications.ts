@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { supabaseRealtime } from '@/lib/supabase/realtime-client';
+import { createClient } from '@/lib/supabase/browser';
 import { REALTIME_CONFIG, logRealtime, canUseRealtime } from '@/lib/realtime/realtime-control';
 
 interface Notification {

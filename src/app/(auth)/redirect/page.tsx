@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/browser'
 import { getDefaultRoute } from '@/types/auth'
 import { RedirectLoading } from '@/components/auth/redirect-loading'
 
