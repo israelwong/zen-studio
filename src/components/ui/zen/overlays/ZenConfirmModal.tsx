@@ -23,6 +23,7 @@ interface ZenConfirmModalProps {
     cancelText?: string;
     variant?: 'default' | 'destructive';
     loading?: boolean;
+    loadingText?: string;
     disabled?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function ZenConfirmModal({
     cancelText = 'Cancelar',
     variant = 'destructive',
     loading = false,
+    loadingText = 'Procesando...',
     disabled = false
 }: ZenConfirmModalProps) {
     const handleConfirm = () => {
@@ -90,7 +92,7 @@ export function ZenConfirmModal({
                         variant={variant === 'destructive' ? 'destructive' : 'primary'}
                         onClick={handleConfirm}
                         loading={loading}
-                        loadingText="Procesando..."
+                        loadingText={loadingText}
                         fullWidth
                         className={`sm:w-auto ${variant === 'destructive'
                             ? 'bg-red-600 hover:bg-red-700 text-white'

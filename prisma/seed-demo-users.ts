@@ -12,12 +12,26 @@
 
 import { PrismaClient } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Cargar variables de entorno desde .env.local
+config({ path: resolve(process.cwd(), '.env.local') });
 
 const prisma = new PrismaClient();
 
 // Configuración de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    console.error('❌ Error: Faltan variables de entorno requeridas:');
+    console.error('   - NEXT_PUBLIC_SUPABASE_URL');
+    console.error('   - SUPABASE_SERVICE_ROLE_KEY');
+    console.error('\n💡 Asegúrate de tener un archivo .env.local con estas variables.');
+    process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 // ============================================
@@ -93,19 +107,54 @@ async function createSupabaseUsers() {
 
     for (const user of DEMO_USERS) {
         try {
+            // Preparar user_metadata con rol y studio_slug si aplica
+            // El middleware espera: super_admin, suscriptor, agente
+            const roleMap: Record<string, string> = {
+                'SUPER_ADMIN': 'super_admin',
+                'SUSCRIPTOR': 'suscriptor',
+                'AGENTE': 'agente',
+            };
+            
+            const userMetadata: Record<string, unknown> = {
+                full_name: user.full_name,
+                phone: user.phone,
+                role: roleMap[user.platform_role] || user.platform_role.toLowerCase(),
+            };
+
+            // Si tiene studio_role, agregar studio_slug y role específico
+            if (user.studio_role) {
+                userMetadata.studio_slug = DEMO_STUDIO_SLUG;
+                userMetadata.studio_role = user.studio_role.toLowerCase();
+            }
+
             // Crear usuario en Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.admin.createUser({
                 email: user.email,
                 password: user.password,
                 email_confirm: true, // Confirmar email automáticamente
-                user_metadata: {
-                    full_name: user.full_name,
-                    phone: user.phone,
-                },
+                user_metadata: userMetadata,
             });
 
             if (authError) {
-                console.log(`  ⚠️  Usuario ${user.email} ya existe en Supabase`);
+                console.log(`  ⚠️  Usuario ${user.email} ya existe en Supabase, actualizando metadatos...`);
+                
+                // Buscar usuario existente por email usando listUsers
+                const { data: usersList, error: listError } = await supabase.auth.admin.listUsers();
+                if (!listError && usersList?.users) {
+                    const existingUser = usersList.users.find(u => u.email === user.email);
+                    if (existingUser?.id) {
+                        const { error: updateError } = await supabase.auth.admin.updateUserById(
+                            existingUser.id,
+                            { user_metadata: userMetadata }
+                        );
+                        
+                        if (updateError) {
+                            console.log(`  ⚠️  Error actualizando metadatos de ${user.email}:`, updateError);
+                        } else {
+                            console.log(`  ✅ Metadatos actualizados para ${user.email}`);
+                        }
+                    }
+                }
                 continue;
             }
 
@@ -125,25 +174,30 @@ async function createDatabaseUsers() {
 
     for (const user of DEMO_USERS) {
         try {
-            // Obtener supabase_id del usuario creado
-            const { data: authUser } = await supabase.auth.admin.getUserByEmail(user.email);
-
-            if (!authUser?.user?.id) {
+            // Obtener supabase_id del usuario creado usando listUsers
+            const { data: usersList, error: listError } = await supabase.auth.admin.listUsers();
+            if (listError) {
+                console.log(`  ⚠️  Error listando usuarios:`, listError);
+                continue;
+            }
+            
+            const authUser = usersList?.users?.find(u => u.email === user.email);
+            if (!authUser?.id) {
                 console.log(`  ⚠️  No se encontró usuario ${user.email} en Supabase`);
                 continue;
             }
 
-            // Crear usuario en base de datos
+            // Crear usuario en base de datos (tabla users)
             const dbUser = await prisma.users.upsert({
                 where: { email: user.email },
                 update: {
-                    supabase_id: authUser.user.id,
+                    supabase_id: authUser.id,
                     full_name: user.full_name,
                     phone: user.phone,
                     is_active: true,
                 },
                 create: {
-                    supabase_id: authUser.user.id,
+                    supabase_id: authUser.id,
                     email: user.email,
                     full_name: user.full_name,
                     phone: user.phone,
@@ -168,6 +222,26 @@ async function createDatabaseUsers() {
                 },
             });
 
+            // Crear o actualizar studio_user_profiles con supabase_id (SIEMPRE)
+            await prisma.studio_user_profiles.upsert({
+                where: { email: user.email },
+                update: {
+                    supabase_id: authUser.id,
+                    full_name: user.full_name,
+                    studio_id: user.studio_role ? DEMO_STUDIO_ID : null,
+                    role: user.platform_role,
+                    is_active: true,
+                },
+                create: {
+                    email: user.email,
+                    supabase_id: authUser.id,
+                    full_name: user.full_name,
+                    studio_id: user.studio_role ? DEMO_STUDIO_ID : null,
+                    role: user.platform_role,
+                    is_active: true,
+                },
+            });
+
             // Asignar rol en studio (si aplica)
             if (user.studio_role) {
                 await prisma.user_studio_roles.upsert({
@@ -186,26 +260,6 @@ async function createDatabaseUsers() {
                         is_active: true,
                         invited_at: new Date(),
                         accepted_at: new Date(),
-                    },
-                });
-
-                // Crear o actualizar studio_user_profiles con supabase_id
-                await prisma.studio_user_profiles.upsert({
-                    where: { email: user.email },
-                    update: {
-                        supabase_id: authUser.user.id,
-                        full_name: user.full_name,
-                        studio_id: DEMO_STUDIO_ID,
-                        role: user.platform_role,
-                        is_active: true,
-                    },
-                    create: {
-                        email: user.email,
-                        supabase_id: authUser.user.id,
-                        full_name: user.full_name,
-                        studio_id: DEMO_STUDIO_ID,
-                        role: user.platform_role,
-                        is_active: true,
                     },
                 });
             }

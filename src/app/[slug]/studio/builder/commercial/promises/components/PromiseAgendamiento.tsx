@@ -26,9 +26,10 @@ export function PromiseAgendamiento({
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [agendamiento, setAgendamiento] = useState<AgendaItem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [justDeleted, setJustDeleted] = useState(false);
 
   useEffect(() => {
-    if (!isSaved || !promiseId) return;
+    if (!isSaved || !promiseId || justDeleted) return;
 
     const loadAgendamiento = async () => {
       setLoading(true);
@@ -45,7 +46,7 @@ export function PromiseAgendamiento({
     };
 
     loadAgendamiento();
-  }, [isSaved, promiseId, studioSlug]);
+  }, [isSaved, promiseId, studioSlug, justDeleted]);
 
   const handleSuccess = async () => {
     if (!promiseId) return;
@@ -71,15 +72,27 @@ export function PromiseAgendamiento({
       const result = await eliminarAgendamiento(studioSlug, agendamiento.id);
       if (result.success) {
         toast.success('Agendamiento eliminado correctamente');
+
+        // Marcar que acabamos de eliminar para prevenir re-fetch
+        setJustDeleted(true);
+
+        // Actualizar estados inmediatamente
         setAgendamiento(null);
+        setIsDeleting(false);
+
+        // Cerrar modales (esto desmontará los componentes)
         setIsDeleteModalOpen(false);
+        setIsModalOpen(false);
+
+        // Resetear flag después de un momento
+        setTimeout(() => setJustDeleted(false), 500);
       } else {
         toast.error(result.error || 'Error al eliminar agendamiento');
+        setIsDeleting(false);
       }
     } catch (error) {
       console.error('Error deleting agendamiento:', error);
       toast.error('Error al eliminar agendamiento');
-    } finally {
       setIsDeleting(false);
     }
   };
@@ -295,28 +308,39 @@ export function PromiseAgendamiento({
         </ZenCardContent>
       </ZenCard>
 
-      <AgendaFormModal
-        key={agendamiento?.id || 'new'}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        studioSlug={studioSlug}
-        initialData={agendamiento}
-        contexto="promise"
-        promiseId={promiseId}
-        onSuccess={handleSuccess}
-      />
+      {/* Solo renderizar AgendaFormModal cuando está abierto */}
+      {isModalOpen && (
+        <AgendaFormModal
+          key={agendamiento?.id || 'new'}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          studioSlug={studioSlug}
+          initialData={agendamiento}
+          contexto="promise"
+          promiseId={promiseId}
+          onSuccess={handleSuccess}
+        />
+      )}
 
-      <ZenConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Cancelar agendamiento"
-        description="¿Estás seguro de que deseas cancelar este agendamiento? Esta acción no se puede deshacer."
-        confirmText="Cancelar agendamiento"
-        cancelText="Cerrar"
-        variant="destructive"
-        loading={isDeleting}
-      />
+      {/* Solo renderizar ZenConfirmModal cuando está abierto */}
+      {isDeleteModalOpen && (
+        <ZenConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => {
+            if (!isDeleting) {
+              setIsDeleteModalOpen(false);
+            }
+          }}
+          onConfirm={handleDelete}
+          title="Cancelar agendamiento"
+          description="¿Estás seguro de que deseas cancelar este agendamiento? Esta acción no se puede deshacer."
+          confirmText="Cancelar agendamiento"
+          cancelText="Cerrar"
+          variant="destructive"
+          loading={isDeleting}
+          loadingText="Eliminando..."
+        />
+      )}
     </>
   );
 }

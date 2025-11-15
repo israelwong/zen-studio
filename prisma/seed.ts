@@ -353,7 +353,7 @@ async function seedDemoStudio() {
             account_holder: 'Demo Studio S.A. de C.V.',
             clabe_number: '012345678901234567',
             slogan: 'Capturamos tus momentos inolvidables',
-            description: 'Estudio fotográfico profesional especializado en bodas, XV años y eventos sociales',
+            presentation: 'Estudio fotográfico profesional especializado en bodas, XV años y eventos sociales',
             keywords: 'fotografía, bodas, eventos, Guadalajara',
             subscription_status: 'TRIAL',
             is_active: true,
@@ -499,7 +499,9 @@ async function seedPipelines() {
     }
     console.log(`  ✅ Manager Pipeline (${managerStages.length} stages)`);
 
-    // PROSPECT PIPELINE
+    // PROSPECT PIPELINE - Comentado temporalmente (tabla no existe)
+    // TODO: Descomentar cuando se agregue studio_prospect_pipeline_stages al schema
+    /*
     const prospectStages = [
         { slug: 'nuevo', name: 'Nuevo', color: '#3B82F6', order: 0, is_system: true },
         { slug: 'seguimiento', name: 'Seguimiento', color: '#8B5CF6', order: 1, is_system: false },
@@ -525,7 +527,8 @@ async function seedPipelines() {
             },
         });
     }
-    console.log(`  ✅ Prospect Pipeline (${prospectStages.length} stages)`);
+    */
+    console.log(`  ⚠️  Prospect Pipeline (omitido - tabla no existe)`);
 }
 
 // ============================================
@@ -624,29 +627,37 @@ async function seedTiposEvento() {
 async function seedDemoLead() {
     console.log('👤 Seeding demo lead...');
 
-    const demoLead = await prisma.platform_leads.upsert({
-        where: { email: 'owner@demo-studio.com' },
-        update: { updated_at: new Date() },
-        create: {
-            studio_id: DEMO_STUDIO_ID,
-            name: 'Carlos Méndez',
-            email: 'owner@demo-studio.com',
-            phone: '+52 33 1234 5678',
-            studio_name: 'Demo Studio',
-            studio_slug: DEMO_STUDIO_SLUG,
-            interested_plan: 'pro',
-            score: 8,
-            priority: 'high',
-            stage_id: null, // No hay stages configurados aún
-            acquisition_channel_id: null, // Se puede asignar después
-            agent_id: null, // Se puede asignar después
-            probable_start_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días
-            created_at: new Date(),
-            updated_at: new Date(),
-        },
-    });
+    try {
+        const demoLead = await prisma.platform_leads.upsert({
+            where: { email: 'owner@demo-studio.com' },
+            update: { updated_at: new Date() },
+            create: {
+                studio_id: DEMO_STUDIO_ID,
+                name: 'Carlos Méndez',
+                email: 'owner@demo-studio.com',
+                phone: '+52 33 1234 5678',
+                studio_name: 'Demo Studio',
+                studio_slug: DEMO_STUDIO_SLUG,
+                interested_plan: 'pro',
+                score: 8,
+                priority: 'high',
+                stage_id: null,
+                acquisition_channel_id: null,
+                agent_id: null,
+                probable_start_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+                created_at: new Date(),
+                updated_at: new Date(),
+            },
+        });
 
-    console.log(`  ✅ Demo Lead: ${demoLead.name} (${demoLead.email})`);
+        console.log(`  ✅ Demo Lead: ${demoLead.name} (${demoLead.email})`);
+    } catch (error: any) {
+        if (error.code === 'P2002') {
+            console.log(`  ⚠️  Demo Lead ya existe (studio_id unique constraint)`);
+        } else {
+            throw error;
+        }
+    }
 }
 
 // ============================================
