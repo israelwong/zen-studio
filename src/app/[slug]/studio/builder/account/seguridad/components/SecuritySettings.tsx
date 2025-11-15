@@ -31,7 +31,7 @@ export function SecuritySettingsComponent({ studioSlug }: SecuritySettingsProps)
         defaultValues: {
             email_notifications: true,
             device_alerts: true,
-            session_timeout: 30
+            session_timeout: 30 // 30 minutos por defecto
         }
     });
 
@@ -153,18 +153,26 @@ export function SecuritySettingsComponent({ studioSlug }: SecuritySettingsProps)
 
                     {/* Timeout de sesión */}
                     <div className="p-4 bg-zinc-800/50 rounded-lg">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-2">
                             <Clock className="h-5 w-5 text-orange-400" />
                             <div>
-                                <h4 className="text-white font-medium">Timeout de Sesión</h4>
-                                <p className="text-zinc-400 text-sm">Días antes de que expire la sesión</p>
+                                <h4 className="text-white font-medium">Timeout por Inactividad</h4>
+                                <p className="text-zinc-400 text-sm">Minutos de inactividad antes de cerrar sesión</p>
                             </div>
+                        </div>
+                        <div className="mb-4 pl-8">
+                            <p className="text-zinc-500 text-xs">
+                                • Tu sesión se cerrará automáticamente después de {sessionTimeout} minutos sin actividad<br/>
+                                • Recibirás una advertencia 5 minutos antes<br/>
+                                • Cualquier interacción reinicia el contador
+                            </p>
                         </div>
                         <div className="flex items-center gap-4">
                             <input
                                 type="range"
-                                min="1"
-                                max="365"
+                                min="15"
+                                max="120"
+                                step="15"
                                 value={sessionTimeout}
                                 onChange={(e) => {
                                     const value = parseInt(e.target.value);
@@ -173,11 +181,11 @@ export function SecuritySettingsComponent({ studioSlug }: SecuritySettingsProps)
                                 }}
                                 className="flex-1 h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer slider"
                                 style={{
-                                    background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((sessionTimeout - 1) / (365 - 1)) * 100}%, #374151 ${((sessionTimeout - 1) / (365 - 1)) * 100}%, #374151 100%)`
+                                    background: `linear-gradient(to right, #f97316 0%, #f97316 ${((sessionTimeout - 15) / (120 - 15)) * 100}%, #374151 ${((sessionTimeout - 15) / (120 - 15)) * 100}%, #374151 100%)`
                                 }}
                             />
-                            <div className="text-white font-medium min-w-[3rem] text-center">
-                                {sessionTimeout} días
+                            <div className="text-white font-medium min-w-[4rem] text-center">
+                                {sessionTimeout} min
                             </div>
                         </div>
                         {errors.session_timeout && (

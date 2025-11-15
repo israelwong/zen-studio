@@ -133,8 +133,9 @@ export function getDefaultRoute(userRole: UserRole | string, studioSlug?: string
             return "/agente"
         case UserRole.SUSCRIPTOR:
         case 'suscriptor':
-            console.log('🔍 getDefaultRoute - Redirigiendo a /studio')
-            return studioSlug ? `/${studioSlug}/studio` : "/unauthorized"
+            const route = studioSlug ? `/${studioSlug}/studio` : "/unauthorized"
+            console.log('🔍 getDefaultRoute - Redirigiendo a:', route)
+            return route
         default:
             console.log('🔍 getDefaultRoute - Redirigiendo a /unauthorized (default)')
             return "/unauthorized"

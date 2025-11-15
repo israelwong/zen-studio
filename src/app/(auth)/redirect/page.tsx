@@ -9,9 +9,16 @@ import { RedirectLoading } from '@/components/auth/redirect-loading'
 export default function RedirectPage() {
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [hasRedirected, setHasRedirected] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
+        // Prevenir múltiples ejecuciones
+        if (hasRedirected) {
+            console.log('🔍 Redirect - Ya se redirigió, ignorando re-ejecución')
+            return
+        }
+
         const handleRedirect = async () => {
             try {
                 const supabase = createClient()
@@ -51,27 +58,36 @@ export default function RedirectPage() {
                 console.log('🔍 Redirect - Rol encontrado:', userRole)
 
                 // Redirigir según el rol del usuario
-                let redirectPath = getDefaultRoute(userRole)
+                let redirectPath: string
 
                 // Para suscriptores, necesitamos obtener el slug del studio
                 if (userRole === 'suscriptor') {
                     // Obtener el slug del studio desde user_metadata
                     const studioSlug = user.user_metadata?.studio_slug
                     if (studioSlug) {
+                        console.log('🔍 Redirect - Studio slug encontrado:', studioSlug)
                         redirectPath = getDefaultRoute(userRole, studioSlug)
                     } else {
                         console.log('🔍 Redirect - No se encontró studio_slug para suscriptor')
                         router.push('/unauthorized')
                         return
                     }
+                } else {
+                    // Para otros roles (super_admin, agente), no necesitan slug
+                    redirectPath = getDefaultRoute(userRole)
                 }
 
                 console.log('🔍 Redirect - Redirigiendo a:', redirectPath)
 
-                // Pequeño delay para mostrar el loading
+                // Marcar como redirigido para prevenir re-ejecuciones
+                setHasRedirected(true)
+
+                // Esperar a que la sesión se sincronice completamente
+                // Luego usar router.push para evitar hard refresh que causa race condition
                 setTimeout(() => {
                     router.push(redirectPath)
-                }, 1000)
+                    router.refresh()
+                }, 1500)
 
             } catch (err) {
                 console.error('🔍 Redirect - Error:', err)
@@ -81,7 +97,7 @@ export default function RedirectPage() {
         }
 
         handleRedirect()
-    }, [router])
+    }, [router, hasRedirected])
 
     if (error) {
         return (

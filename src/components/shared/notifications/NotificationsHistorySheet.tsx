@@ -91,16 +91,29 @@ export function NotificationsHistorySheet({
   };
 
   const groupedEntries = Object.entries(groupedByDate).sort((a, b) => {
-    // Ordenar por fecha: Hoy > Ayer > Esta semana > Este mes > meses anteriores
+    // Ordenar por fecha: Hoy > Ayer > Esta semana > Este mes > meses anteriores (más recientes primero)
     const order: Record<string, number> = {
       'Hoy': 0,
       'Ayer': 1,
       'Esta semana': 2,
       'Este mes': 3,
     };
-    const aOrder = order[a[0]] ?? 999;
-    const bOrder = order[b[0]] ?? 999;
-    return aOrder - bOrder;
+    const aOrder = order[a[0]];
+    const bOrder = order[b[0]];
+    
+    if (aOrder !== undefined && bOrder !== undefined) {
+      return aOrder - bOrder;
+    }
+    
+    // Para meses anteriores, ordenar por fecha (más reciente primero)
+    if (aOrder === undefined && bOrder === undefined) {
+      const aDate = a[1][0]?.created_at ? new Date(a[1][0].created_at) : new Date(0);
+      const bDate = b[1][0]?.created_at ? new Date(b[1][0].created_at) : new Date(0);
+      return bDate.getTime() - aDate.getTime();
+    }
+    
+    // Si uno es período relativo y otro es mes, el período relativo va primero
+    return aOrder !== undefined ? -1 : 1;
   });
 
   return (

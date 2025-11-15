@@ -21,7 +21,7 @@ export const PasswordChangeSchema = z.object({
 export const SecuritySettingsSchema = z.object({
     email_notifications: z.boolean(),
     device_alerts: z.boolean(),
-    session_timeout: z.number().min(1).max(365) // Entre 1 y 365 días
+    session_timeout: z.number().min(15).max(120) // Entre 15 y 120 minutos
 });
 
 // Schema para filtros de logs de acceso

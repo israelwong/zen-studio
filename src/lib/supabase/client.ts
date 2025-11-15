@@ -8,5 +8,18 @@ export function createClient() {
     throw new Error('Missing Supabase environment variables')
   }
 
-  return createBrowserClient(supabaseUrl, supabaseKey)
+  return createBrowserClient(supabaseUrl, supabaseKey, {
+    auth: {
+      // Persistir sesión en localStorage
+      persistSession: true,
+      // Auto-refresh de tokens antes de expirar
+      autoRefreshToken: true,
+      // Detectar sesión en URL (para magic links, etc)
+      detectSessionInUrl: true,
+      // Storage key personalizado (opcional)
+      storageKey: 'zen-auth-token',
+      // Flow type para auth
+      flowType: 'pkce', // PKCE es más seguro que implicit
+    },
+  })
 }
