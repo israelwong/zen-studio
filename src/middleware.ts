@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/middleware";
+import { createServerClient } from '@supabase/ssr';
+import { getRedirectPathForUser } from "@/lib/auth/redirect-utils";
 
 // Función para verificar rutas reservadas
 function isReservedPath(path: string): boolean {
@@ -30,6 +31,39 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
+  // Redirigir de /login si hay sesión activa
+  if (pathname === '/login') {
+    const response = NextResponse.next();
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => request.cookies.getAll().map(c => ({ name: c.name, value: c.value })),
+          setAll: (cookies) => {
+            cookies.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+    
+    // Verificar sesión (getSession es suficiente aquí ya que solo verificamos si existe)
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session?.user) {
+      const redirectResult = getRedirectPathForUser(session.user);
+      
+      if (redirectResult.shouldRedirect && redirectResult.redirectPath) {
+        return NextResponse.redirect(new URL(redirectResult.redirectPath, request.url));
+      }
+    }
+    
+    return response;
+  }
+
   // Rutas que requieren autenticación
   const protectedRoutes = ["/admin", "/agente"];
   const isProtectedRoute = protectedRoutes.some((route) =>
@@ -45,82 +79,77 @@ export async function middleware(request: NextRequest) {
   const isClienteProtected = isClienteRoute && !isReservedPath(pathname);
 
   if (isProtectedRoute || isStudioProtected || isClienteProtected) {
-    const { supabase } = createClient(request, NextResponse.next());
-
-    // Verificar autenticación
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    console.log('🔍 Middleware - Pathname:', pathname);
-    console.log('🔍 Middleware - User:', user ? 'authenticated' : 'not authenticated');
-    console.log('🔍 Middleware - Auth Error:', authError);
-
-    if (authError || !user) {
-      console.log('🔍 Middleware - Redirecting to login (no auth)');
+    const response = NextResponse.next();
+    
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => request.cookies.getAll().map(c => ({ name: c.name, value: c.value })),
+          setAll: (cookies) => {
+            cookies.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+    
+    // Verificar sesión
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session?.user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Obtener el rol del usuario desde user_metadata
+    const user = session.user;
     const userRole = user.user_metadata?.role;
     let studioSlug = user.user_metadata?.studio_slug;
 
-    // Si no hay studio_slug en metadata, intentar obtenerlo de la URL
+    // Obtener slug de la URL si no está en metadata
     if (!studioSlug && isStudioProtected) {
       const studioSlugFromPath = pathname.match(/^\/([a-zA-Z0-9-]+)\/studio/)?.[1];
       if (studioSlugFromPath) {
         studioSlug = studioSlugFromPath;
-        console.log('🔍 Middleware - Using studio_slug from URL:', studioSlug);
       }
     }
 
-    console.log('🔍 Middleware - User Role:', userRole);
-    console.log('🔍 Middleware - Studio Slug:', studioSlug);
-
     if (!userRole) {
-      console.log('🔍 Middleware - Redirecting to login (no role)');
       return NextResponse.redirect(new URL("/login", request.url));
     }
 
-    // Verificar permisos según el rol
+    // Verificar permisos
     const hasAccess = checkRouteAccess(userRole, pathname);
-    console.log('🔍 Middleware - Has Access:', hasAccess);
 
-    // Verificación adicional para rutas de studio
+    // Verificar acceso a studio específico
     if (isStudioProtected && (userRole === 'suscriptor' || userRole === 'studio_owner')) {
       const studioSlugFromPath = pathname.match(/^\/([a-zA-Z0-9-]+)\/studio/)?.[1];
-      console.log('🔍 Middleware - Studio Slug from Path:', studioSlugFromPath);
-      console.log('🔍 Middleware - User Studio Slug:', studioSlug);
 
-      // Si el usuario no tiene studio_slug, redirigir a login
       if (!studioSlug) {
-        console.log('🔍 Middleware - No studio_slug, redirecting to login');
         return NextResponse.redirect(new URL("/login", request.url));
       }
 
-      // Verificar que el usuario tenga acceso a este studio específico
       if (studioSlugFromPath && studioSlug && studioSlugFromPath !== studioSlug) {
-        console.log('🔍 Middleware - Studio mismatch, redirecting to unauthorized');
         return NextResponse.redirect(new URL("/unauthorized", request.url));
       }
     }
 
     if (!hasAccess) {
-      console.log('🔍 Middleware - Redirecting to unauthorized (no access)');
       return NextResponse.redirect(new URL("/unauthorized", request.url));
     }
 
-    // Para rutas de cliente, verificar autenticación específica
+    // Verificar cliente
     if (isClienteProtected) {
       const hasClienteAccess = await checkClienteAccess(user, pathname, request);
       if (!hasClienteAccess) {
-        // Redirigir a página de login de cliente específica del studio
         const studioSlug = pathname.match(/^\/([a-zA-Z0-9-]+)\/cliente/)?.[1];
         const loginUrl = new URL(`/${studioSlug}/cliente/login?redirect=${encodeURIComponent(pathname)}`, request.url);
         return NextResponse.redirect(loginUrl);
       }
     }
+
+    return response;
   }
 
   // Rutas reservadas para marketing (no redirigir)

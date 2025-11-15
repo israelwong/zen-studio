@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/browser';
 import { getCurrentUserProfile } from '@/lib/actions/auth/user-profile.action';
 
 /**

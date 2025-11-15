@@ -79,9 +79,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
 // =====================================================================
 
 export const ROLE_ROUTES: Record<UserRole, string> = {
-    [UserRole.SUPER_ADMIN]: "/admin",
-    [UserRole.AGENTE]: "/agente",
-    [UserRole.SUSCRIPTOR]: "/studio", // Se completará con el slug del studio
+    [UserRole.SUPER_ADMIN]: "/admin/dashboard",
+    [UserRole.AGENTE]: "/agente/leads",
+    [UserRole.SUSCRIPTOR]: "/studio/dashboard", // Se completará con el slug del studio
 }
 
 // =====================================================================

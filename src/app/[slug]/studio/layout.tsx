@@ -5,6 +5,8 @@ import { AppHeader } from './components/AppHeader';
 import { ZenMagicChatProvider, ZenMagicChatWrapper } from './components/ZenMagic';
 import { ContactsSheetProvider } from '@/components/shared/contacts/ContactsSheetContext';
 import { SessionTimeoutProvider } from '@/components/providers/SessionTimeoutProvider';
+import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
+import { StudioInitializer } from '@/components/studio/StudioInitializer';
 import { obtenerConfiguracionesSeguridad } from '@/lib/actions/studio/account/seguridad/seguridad.actions';
 import { Toaster } from 'sonner';
 
@@ -30,27 +32,30 @@ export default async function StudioLayout({
 
     return (
         <SessionTimeoutProvider inactivityTimeout={sessionTimeout}>
-            <ZenMagicChatProvider>
-                <ContactsSheetProvider>
-                    <ZenSidebarProvider>
-                        <div className="flex h-screen overflow-hidden">
-                            <StudioSidebar studioSlug={slug} />
-                            <div className="flex flex-1 overflow-hidden">
-                                <div className="flex flex-col flex-1 overflow-hidden">
-                                    <AppHeader studioSlug={slug} />
-                                    <main className="flex-1 overflow-y-auto bg-zinc-900/40">
-                                        <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
-                                            {children}
-                                        </div>
-                                    </main>
+            <RealtimeProvider studioSlug={slug} enabled={true}>
+                <StudioInitializer studioSlug={slug} />
+                <ZenMagicChatProvider>
+                    <ContactsSheetProvider>
+                        <ZenSidebarProvider>
+                            <div className="flex h-screen overflow-hidden">
+                                <StudioSidebar studioSlug={slug} />
+                                <div className="flex flex-1 overflow-hidden">
+                                    <div className="flex flex-col flex-1 overflow-hidden">
+                                        <AppHeader studioSlug={slug} />
+                                        <main className="flex-1 overflow-y-auto bg-zinc-900/40">
+                                            <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
+                                                {children}
+                                            </div>
+                                        </main>
+                                    </div>
                                 </div>
+                                <ZenMagicChatWrapper studioSlug={slug} />
                             </div>
-                            <ZenMagicChatWrapper studioSlug={slug} />
-                        </div>
-                        <Toaster position="top-right" richColors />
-                    </ZenSidebarProvider>
-                </ContactsSheetProvider>
-            </ZenMagicChatProvider>
+                            <Toaster position="top-right" richColors />
+                        </ZenSidebarProvider>
+                    </ContactsSheetProvider>
+                </ZenMagicChatProvider>
+            </RealtimeProvider>
         </SessionTimeoutProvider>
     );
 }

@@ -1,8 +1,11 @@
 /**
- * SINGLETON SUPABASE CLIENT
+ * SINGLETON SUPABASE CLIENT (BROWSER)
  * 
- * UN SOLO cliente para toda la aplicación
- * Evita múltiples instancias y problemas de sesión
+ * Cliente para uso en el navegador (Client Components)
+ * 
+ * IMPORTANTE: Este cliente guarda en localStorage inicialmente,
+ * pero Supabase SSR sincroniza automáticamente con cookies.
+ * El middleware y servidor leen las cookies, no localStorage.
  */
 
 import { createBrowserClient } from '@supabase/ssr'
@@ -22,13 +25,17 @@ export function getSupabaseClient(): SupabaseClient {
     throw new Error('Missing Supabase environment variables')
   }
 
+  // createBrowserClient de @supabase/ssr:
+  // - Guarda en localStorage inicialmente
+  // - Sincroniza automáticamente con cookies HTTP
+  // - El middleware puede leer las cookies
   supabaseInstance = createBrowserClient(supabaseUrl, supabaseKey, {
     auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey: 'zen-auth-token',
-      flowType: 'pkce',
+      persistSession: true,        // ✅ Guarda sesión (localStorage + cookies)
+      autoRefreshToken: true,      // ✅ Refresca tokens automáticamente
+      detectSessionInUrl: true,    // ✅ Detecta sesión en URL (OAuth)
+      storageKey: 'zen-auth-token', // Clave para localStorage
+      flowType: 'pkce',            // ✅ PKCE flow para seguridad
     },
   })
 

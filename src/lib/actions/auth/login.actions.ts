@@ -1,9 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getDefaultRoute } from '@/types/auth'
+import { getRedirectPathForUser } from '@/lib/auth/redirect-utils'
 
 interface LoginResult {
   success: boolean
@@ -43,33 +42,18 @@ export async function loginAction(
       }
     }
 
-    // Obtener rol del usuario
-    const userRole = data.user.user_metadata?.role
+    // Usar función única de verdad para determinar ruta de redirección
+    const redirectResult = getRedirectPathForUser(data.user)
 
-    if (!userRole) {
-      console.error('❌ No se encontró rol del usuario')
+    if (!redirectResult.shouldRedirect || !redirectResult.redirectPath) {
+      console.error('❌ No se pudo determinar ruta de redirección')
       return {
         success: false,
-        error: 'Usuario sin rol asignado',
+        error: 'No se pudo determinar la ruta de redirección',
       }
     }
 
-    // Determinar ruta de redirect
-    let redirectPath: string
-
-    if (userRole === 'suscriptor') {
-      const studioSlug = data.user.user_metadata?.studio_slug
-      if (!studioSlug) {
-        console.error('❌ Suscriptor sin studio_slug')
-        return {
-          success: false,
-          error: 'Usuario sin estudio asignado',
-        }
-      }
-      redirectPath = getDefaultRoute(userRole, studioSlug)
-    } else {
-      redirectPath = getDefaultRoute(userRole)
-    }
+    const redirectPath = redirectResult.redirectPath
 
     console.log('✅ Login exitoso:', data.user.email)
     console.log('✅ Redirect a:', redirectPath)

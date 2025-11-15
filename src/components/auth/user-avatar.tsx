@@ -5,10 +5,10 @@ import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard, Shie
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { createClient } from "@/lib/supabase/client";
 import { logout } from "@/lib/actions/auth/logout.action";
 import { getCurrentUserClient } from "@/lib/auth/user-utils-client";
 import { useAvatarRefreshListener } from "@/hooks/useAvatarRefresh";
+import { useAuth } from "@/contexts/AuthContext";
 import { ZenButton } from "@/components/ui/zen";
 import {
     ZenDropdownMenu,
@@ -25,10 +25,7 @@ interface UserAvatarProps {
 }
 
 export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
-    const [user, setUser] = useState<{
-        email?: string;
-        user_metadata?: { full_name?: string };
-    } | null>(null);
+    const { user, loading } = useAuth();
     const [userProfile, setUserProfile] = useState<{
         fullName?: string | null;
         avatarUrl?: string | null;
@@ -42,35 +39,21 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
     const avatarRefreshTrigger = useAvatarRefreshListener();
 
     useEffect(() => {
-        const getUser = async () => {
-            try {
-                const supabase = createClient();
-                const { data: { user }, error } = await supabase.auth.getUser();
-                
-                if (error) {
-                    console.error("[UserAvatar] Error obteniendo usuario:", error);
-                    setIsLoading(false);
-                    return;
-                }
-                
-                if (!user) {
-                    console.log("[UserAvatar] No hay usuario autenticado");
-                    setIsLoading(false);
-                    return;
-                }
-                
-                console.log("[UserAvatar] Usuario cargado:", user.email);
-                setUser(user);
+        const loadUserProfile = async () => {
+            if (loading) return;
+            if (!user) {
+                setIsLoading(false);
+                return;
+            }
 
-                // Obtener perfil completo del usuario desde la base de datos
-                // Pasar studioSlug si está disponible para buscar por studio_id
+            try {
+                setIsLoading(true);
+
                 const authUser = studioSlug
                     ? await getCurrentUserClient(studioSlug)
                     : await getCurrentUserClient();
                     
                 if (authUser) {
-                    console.log("[UserAvatar] Perfil cargado:", authUser.profile.fullName);
-                    // Validar que avatarUrl no sea null ni cadena vacía
                     const avatarUrl = authUser.profile.avatarUrl && authUser.profile.avatarUrl.trim() !== ''
                         ? authUser.profile.avatarUrl
                         : null;
@@ -79,18 +62,16 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                         fullName: authUser.profile.fullName,
                         avatarUrl: avatarUrl
                     });
-                } else {
-                    console.log("[UserAvatar] No se pudo cargar el perfil del usuario");
                 }
             } catch (error) {
-                console.error("[UserAvatar] Error getting user:", error);
+                console.error("[UserAvatar] Error:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        getUser();
-    }, [studioSlug, avatarRefreshTrigger]); // Recargar cuando cambie el studioSlug o se actualice el avatar
+        loadUserProfile();
+    }, [user, studioSlug, avatarRefreshTrigger, loading]);
 
     // Resetear error de imagen cuando cambie el avatarUrl
     useEffect(() => {
@@ -112,7 +93,7 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
         }
     };
 
-    if (isLoading) {
+    if (loading || isLoading) {
         return (
             <div className={`animate-pulse ${className}`}>
                 <div className="w-8 h-8 bg-zinc-700 rounded-full"></div>
@@ -125,8 +106,8 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
     }
 
     // Obtener información del usuario con fallbacks
-    const userName = userProfile?.fullName || user?.user_metadata?.full_name || user?.email || "Usuario";
-    const userEmail = user?.email;
+    const userName = userProfile?.fullName || user.user_metadata?.full_name || user.email || "Usuario";
+    const userEmail = user.email;
     // Validar que avatarUrl sea una URL válida (no null, no vacía)
     const avatarUrl = userProfile?.avatarUrl &&
         typeof userProfile.avatarUrl === 'string' &&
