@@ -15,12 +15,12 @@ import {
     FileSignature, UserCog, DollarSign, ShoppingCart, Navigation, Layout, MessageSquare
 } from 'lucide-react';
 
-interface StudioBuilderSidebarProps {
+interface StudioSidebarProps {
     className?: string;
     studioSlug: string;
 }
 
-export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSidebarProps) {
+export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
     const { isOpen, toggleSidebar } = useZenSidebar();
 
     // Estado para grupo expandido (solo uno a la vez) - Ninguno expandido por defecto
@@ -55,17 +55,17 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
             ],
         },
 
-        // 2. CUENTA
-        {
-            id: 'account',
-            title: 'Account',
-            icon: UserCog,
-            items: [
-                { id: 'perfil', name: 'Perfil', href: `/studio/account/perfil`, icon: UserCheck },
-                { id: 'seguridad', name: 'Seguridad', href: `/studio/account/seguridad`, icon: Shield },
-                { id: 'suscripcion', name: 'Suscripción', href: `/studio/account/suscripcion`, icon: CreditCard },
-            ],
-        },
+        // // 2. CUENTA
+        // {
+        //     id: 'account',
+        //     title: 'Account',
+        //     icon: UserCog,
+        //     items: [
+        //         { id: 'perfil', name: 'Perfil', href: `/studio/account/perfil`, icon: UserCheck },
+        //         { id: 'seguridad', name: 'Seguridad', href: `/studio/account/seguridad`, icon: Shield },
+        //         { id: 'suscripcion', name: 'Suscripción', href: `/studio/account/suscripcion`, icon: CreditCard },
+        //     ],
+        // },
 
         // 3. CONTENT (Freemium)
         {
@@ -100,7 +100,7 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
             icon: Briefcase,
             items: [
                 { id: 'events', name: 'Events', href: `/business/events`, icon: FileText },
-                { id: 'payments', name: 'Pagos', href: `/pagos`, icon: CreditCard },
+                { id: 'payments', name: 'Pagos', href: `/business/pagos`, icon: CreditCard },
                 { id: 'finanzas', name: 'Finanzas', href: `/business/finanzas`, icon: DollarSign },
                 { id: 'personal', name: 'Personal', href: `/business/personal`, icon: UserCog },
                 { id: 'contratos', name: 'Contratos', href: `/business/contratos`, icon: FileText },
@@ -199,7 +199,7 @@ export function StudioBuilderSidebar({ className, studioSlug }: StudioBuilderSid
                             {group.items.map(item => (
                                 <ZenSidebarMenuItem key={item.id}>
                                     <ActiveLink
-                                        href={item.href.startsWith('/studio/') 
+                                        href={item.href.startsWith('/studio/')
                                             ? `/${studioSlug}${item.href}`
                                             : `/${studioSlug}/studio${item.href}`}
                                         className="flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/30 transition-all duration-200 rounded-md group"

@@ -26,7 +26,7 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
         const breadcrumb: BreadcrumbItem[] = [];
 
         // Rutas contenedoras que no tienen page.tsx (solo agrupan subsecciones)
-        const CONTAINER_ROUTES = ['commercial', 'business', 'content', 'account', 'profile'];
+        const CONTAINER_ROUTES = ['commercial', 'business', 'content', 'account', 'profile', 'dashboard', 'configuracion'];
 
         // Función para detectar si un segmento es un ID (CUID típicamente ~25 caracteres alfanuméricos)
         const isId = (segment: string): boolean => {
@@ -70,103 +70,21 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
                 .join(' ');
         };
 
-        // Encontrar el índice de 'dashboard', 'configuracion' o 'builder' para empezar a construir el breadcrumb
-        const dashboardIndex = segments.findIndex(seg => seg === 'dashboard');
-        const configIndex = segments.findIndex(seg => seg === 'configuracion');
-        const builderIndex = segments.findIndex(seg => seg === 'builder');
+        // Encontrar el índice de 'studio' para empezar a construir el breadcrumb
+        const studioIndex = segments.findIndex(seg => seg === 'studio');
 
-        if (dashboardIndex !== -1) {
-            // Para Dashboard - solo agregar link si hay subsecciones
-            const hasSubsections = dashboardIndex < segments.length - 1;
-
-            if (hasSubsections) {
-                breadcrumb.push({
-                    label: 'Dashboard',
-                    href: `/${studioSlug}/studio/dashboard`,
-                    active: false
-                });
-            } else {
-                // Si estamos en la raíz del dashboard, no mostrar como link
-                breadcrumb.push({
-                    label: 'Dashboard',
-                    active: true
-                });
-            }
-
-            // Procesar segmentos después de "dashboard"
-            for (let i = dashboardIndex + 1; i < segments.length; i++) {
-                const segment = segments[i];
-                const label = formatSegment(segment);
-                const isLast = i === segments.length - 1;
-
-                // Construir el href acumulativo
-                const currentHrefSegments = segments.slice(0, i + 1);
-                const currentHref = `/${currentHrefSegments.join('/')}`;
-
-                breadcrumb.push({
-                    label,
-                    href: currentHref,
-                    active: isLast
-                });
-            }
-        } else if (configIndex !== -1) {
-            // Para Configuración - solo agregar link si hay subsecciones
-            const hasSubsections = configIndex < segments.length - 1;
-
-            if (hasSubsections) {
-                breadcrumb.push({
-                    label: 'Configuración',
-                    href: `/${studioSlug}/studio/configuracion`,
-                    active: false
-                });
-            } else {
-                // Si estamos en la raíz de configuración, no mostrar como link
-                breadcrumb.push({
-                    label: 'Configuración',
-                    active: true
-                });
-            }
-
-            // Procesar segmentos después de "configuracion"
-            for (let i = configIndex + 1; i < segments.length; i++) {
-                const segment = segments[i];
-                const label = formatSegment(segment);
-                const isLast = i === segments.length - 1;
-
-                // Construir el href acumulativo
-                const currentHrefSegments = segments.slice(0, i + 1);
-                const currentHref = `/${currentHrefSegments.join('/')}`;
-
-                breadcrumb.push({
-                    label,
-                    href: currentHref,
-                    active: isLast
-                });
-            }
-        } else if (builderIndex !== -1) {
-            // Para Studio Builder - solo agregar link si hay subsecciones
-            const hasSubsections = builderIndex < segments.length - 1;
-
-            if (hasSubsections) {
-                breadcrumb.push({
-                    label: 'Studio Builder',
-                    href: `/${studioSlug}/studio/builder`,
-                    active: false
-                });
-            } else {
-                // Si estamos en la raíz del builder, no mostrar como link
-                breadcrumb.push({
-                    label: 'Studio Builder',
-                    active: true
-                });
-            }
-
-            // Procesar segmentos después de "builder"
-            for (let i = builderIndex + 1; i < segments.length; i++) {
+        // Si encontramos 'studio', procesar desde ahí
+        if (studioIndex !== -1) {
+            // Procesar segmentos después de "studio"
+            for (let i = studioIndex + 1; i < segments.length; i++) {
                 const segment = segments[i];
                 const label = formatSegment(segment);
                 const isLast = i === segments.length - 1;
                 const isContainerRoute = CONTAINER_ROUTES.includes(segment);
+
+                // Construir el href acumulativo
+                const currentHrefSegments = segments.slice(0, i + 1);
+                const currentHref = `/${currentHrefSegments.join('/')}`;
 
                 // Si es una ruta contenedora y no es el último segmento, omitir href
                 if (isContainerRoute && !isLast) {
@@ -175,10 +93,6 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
                         active: false
                     });
                 } else {
-                    // Construir el href acumulativo
-                    const currentHrefSegments = segments.slice(0, i + 1);
-                    const currentHref = `/${currentHrefSegments.join('/')}`;
-
                     breadcrumb.push({
                         label,
                         href: currentHref,
@@ -187,7 +101,7 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
                 }
             }
         } else {
-            // Si no estamos en configuración ni builder, solo mostrar el segmento actual si existe
+            // Si no encontramos 'studio', solo mostrar el segmento actual si existe
             if (segments.length > 0) {
                 const lastSegment = segments[segments.length - 1];
                 const label = formatSegment(lastSegment);

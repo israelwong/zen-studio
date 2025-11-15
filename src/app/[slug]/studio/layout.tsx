@@ -1,6 +1,6 @@
 import React from 'react';
 import { ZenSidebarProvider } from '@/components/ui/zen/layout/ZenSidebar';
-import { StudioBuilderSidebar } from './components/StudioBuilderSidebar';
+import { StudioSidebar } from './components/StudioSidebar';
 import { AppHeader } from './components/AppHeader';
 import { ZenMagicChatProvider, ZenMagicChatWrapper } from './components/ZenMagic';
 import { ContactsSheetProvider } from '@/components/shared/contacts/ContactsSheetContext';
@@ -34,7 +34,7 @@ export default async function StudioLayout({
                 <ContactsSheetProvider>
                     <ZenSidebarProvider>
                         <div className="flex h-screen overflow-hidden">
-                            <StudioBuilderSidebar studioSlug={slug} />
+                            <StudioSidebar studioSlug={slug} />
                             <div className="flex flex-1 overflow-hidden">
                                 <div className="flex flex-col flex-1 overflow-hidden">
                                     <AppHeader studioSlug={slug} />

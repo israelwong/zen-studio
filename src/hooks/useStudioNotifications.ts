@@ -149,12 +149,22 @@ export function useStudioNotifications({
       try {
         // Obtener sesión del cliente Supabase
         const supabase = supabaseRef.current!;
-        const { data: { session: ssrSession }, error: ssrSessionError } = await supabase.auth.getSession();
+        let { data: { session: ssrSession }, error: ssrSessionError } = await supabase.auth.getSession();
 
+        // Si no hay sesión, intentar refrescarla (puede pasar después de login con Server Action)
         if (ssrSessionError || !ssrSession || !ssrSession.access_token) {
-          console.error('[useStudioNotifications] ❌ No hay sesión SSR:', ssrSessionError);
-          setError('No hay sesión de autenticación disponible');
-          return;
+          console.log('[useStudioNotifications] ⚠️ No hay sesión inicial, intentando refresh...');
+          
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (refreshError || !refreshData.session) {
+            console.error('[useStudioNotifications] ❌ No se pudo obtener sesión:', refreshError);
+            setError('No hay sesión de autenticación disponible');
+            return;
+          }
+          
+          ssrSession = refreshData.session;
+          console.log('[useStudioNotifications] ✅ Sesión refrescada exitosamente');
         }
 
         // Usar getUser() para obtener un token más fresco y verificar autenticación
