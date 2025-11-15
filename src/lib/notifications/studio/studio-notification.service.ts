@@ -297,4 +297,81 @@ export async function deleteNotification(notificationId: string, userId: string)
   });
 }
 
+/**
+ * Obtiene historial completo de notificaciones con paginación
+ */
+export async function getNotificationsHistory(
+  userId: string,
+  studioId: string,
+  options?: {
+    includeInactive?: boolean;
+    period?: 'week' | 'month' | 'quarter' | 'year' | 'all';
+    category?: string;
+    search?: string;
+    cursor?: string;
+    limit?: number;
+  }
+) {
+  const limit = options?.limit || 50;
+  const now = new Date();
+  let startDate: Date | undefined;
+
+  // Calcular fecha de inicio según período
+  if (options?.period && options.period !== 'all') {
+    startDate = new Date();
+    switch (options.period) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        startDate.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+    }
+  }
+
+  const where: Prisma.studio_notificationsWhereInput = {
+    user_id: userId,
+    studio_id: studioId,
+    ...(options?.includeInactive === false ? { is_active: true } : {}),
+    ...(startDate ? { created_at: { gte: startDate } } : {}),
+    ...(options?.category ? { category: options.category } : {}),
+    ...(options?.search
+      ? {
+          OR: [
+            { title: { contains: options.search, mode: 'insensitive' } },
+            { message: { contains: options.search, mode: 'insensitive' } },
+          ],
+        }
+      : {}),
+    ...(options?.cursor
+      ? {
+          created_at: {
+            lt: new Date(options.cursor),
+          },
+        }
+      : {}),
+  };
+
+  const notifications = await prisma.studio_notifications.findMany({
+    where,
+    orderBy: { created_at: 'desc' },
+    take: limit + 1, // +1 para saber si hay más
+  });
+
+  const hasMore = notifications.length > limit;
+  const data = hasMore ? notifications.slice(0, limit) : notifications;
+  const nextCursor = hasMore && data.length > 0 ? data[data.length - 1].created_at.toISOString() : null;
+
+  return {
+    notifications: data,
+    hasMore,
+    nextCursor,
+  };
+}
 

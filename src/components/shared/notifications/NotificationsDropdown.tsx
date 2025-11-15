@@ -16,6 +16,7 @@ import { useStudioNotifications } from '@/hooks/useStudioNotifications';
 import { buildRoute } from '@/lib/notifications/studio';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { NotificationsHistorySheet } from './NotificationsHistorySheet';
 
 interface NotificationsDropdownProps {
   studioSlug: string;
@@ -24,6 +25,7 @@ interface NotificationsDropdownProps {
 export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [historySheetOpen, setHistorySheetOpen] = useState(false);
   const [hasNewNotification, setHasNewNotification] = useState(false);
   const previousUnreadCountRef = useRef(0);
   const { notifications, unreadCount, loading, error, markAsClicked, deleteNotification } =
@@ -55,8 +57,6 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
   const handleNotificationClick = async (
     notification: typeof notifications[0]
   ) => {
-    // Construir ruta desde template y params, usando studioSlug como fallback
-    // También pasamos la notificación completa para usar IDs directos si faltan en route_params
     const route = buildRoute(
       notification.route,
       notification.route_params as Record<string, string | null | undefined> | null,
@@ -64,34 +64,14 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
       notification
     );
 
-    console.log('[NotificationsDropdown] Construyendo ruta:', {
-      route_template: notification.route,
-      route_params: notification.route_params,
-      studioSlug,
-      promise_id: notification.promise_id,
-      event_id: notification.event_id,
-      quote_id: notification.quote_id,
-      constructed_route: route,
-    });
-
     // Marcar como clickeada
     await markAsClicked(notification.id, route);
 
     // Navegar si hay ruta
     if (route) {
-      console.log('[NotificationsDropdown] Navegando a:', route);
-      // Asegurar que la ruta empiece con /
       const finalRoute = route.startsWith('/') ? route : `/${route}`;
       router.push(finalRoute);
       setOpen(false);
-    } else {
-      console.warn('[NotificationsDropdown] No se pudo construir la ruta para la notificación:', {
-        id: notification.id,
-        route_template: notification.route,
-        route_params: notification.route_params,
-        promise_id: notification.promise_id,
-        event_id: notification.event_id,
-      });
     }
   };
 
@@ -226,24 +206,24 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
           </div>
         )}
 
-
-        {notifications.length > 0 && (
-          <>
-            <ZenDropdownMenuSeparator />
-            <div className="px-3 py-2">
-              <button
-                onClick={() => {
-                  router.push(`/${studioSlug}/studio/notifications`);
-                  setOpen(false);
-                }}
-                className="text-xs text-zinc-400 hover:text-zinc-200 w-full text-left"
-              >
-                Ver todas las notificaciones
-              </button>
-            </div>
-          </>
-        )}
+        <ZenDropdownMenuSeparator />
+        <div className="px-3 py-2">
+          <button
+            onClick={() => {
+              setHistorySheetOpen(true);
+              setOpen(false);
+            }}
+            className="text-xs text-zinc-400 hover:text-zinc-200 w-full text-left transition-colors"
+          >
+            Ver todas las notificaciones
+          </button>
+        </div>
       </ZenDropdownMenuContent>
+      <NotificationsHistorySheet
+        open={historySheetOpen}
+        onOpenChange={setHistorySheetOpen}
+        studioSlug={studioSlug}
+      />
     </ZenDropdownMenu>
   );
 }

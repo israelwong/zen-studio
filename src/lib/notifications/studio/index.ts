@@ -6,6 +6,7 @@ export {
   getUserNotifications,
   getUnreadCount,
   deleteNotification,
+  getNotificationsHistory,
 } from './studio-notification.service';
 
 // Exportar utilidades

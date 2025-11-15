@@ -7,6 +7,7 @@ import {
   markAsRead,
   markAsClicked,
   deleteNotification,
+  getNotificationsHistory,
 } from '@/lib/notifications/studio';
 import { createClient } from '@/lib/supabase/server';
 
@@ -105,6 +106,47 @@ export async function deleteNotificationAction(notificationId: string, userId: s
   } catch (error) {
     console.error('[deleteNotificationAction] Error:', error);
     return { success: false, error: 'Error al eliminar notificación' };
+  }
+}
+
+export async function getStudioNotificationsHistory({
+  studioSlug,
+  userId,
+  options,
+}: {
+  studioSlug: string;
+  userId: string;
+  options?: {
+    includeInactive?: boolean;
+    period?: 'week' | 'month' | 'quarter' | 'year' | 'all';
+    category?: string;
+    search?: string;
+    cursor?: string;
+    limit?: number;
+  };
+}) {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const result = await getNotificationsHistory(userId, studio.id, options);
+
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    console.error('[getStudioNotificationsHistory] Error:', error);
+    return {
+      success: false,
+      error: 'Error al obtener historial de notificaciones',
+    };
   }
 }
 

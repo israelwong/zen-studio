@@ -126,11 +126,6 @@ export function useStudioNotifications({
   // También esperar un momento para asegurar que el perfil esté completamente creado en la BD
   useEffect(() => {
     if (!studioSlug || !userId || !enabled) {
-      console.log('[useStudioNotifications] Realtime deshabilitado:', {
-        studioSlug,
-        userId,
-        enabled,
-      });
       return;
     }
 
@@ -141,21 +136,13 @@ export function useStudioNotifications({
       return;
     }
 
-    console.log('[useStudioNotifications] Configurando Realtime:', {
-      studioSlug,
-      userId,
-      channel: `studio:${studioSlug}:notifications`,
-    });
-
     // Limpiar canal anterior si existe
     if (channelRef.current) {
-      console.log('[useStudioNotifications] Limpiando canal anterior');
       supabase.removeChannel(channelRef.current);
       channelRef.current = null;
     }
 
     const channelName = `studio:${studioSlug}:notifications`;
-    console.log('[useStudioNotifications] Creando canal:', channelName);
 
     // Configurar autenticación antes de crear el canal
     const setupRealtime = async () => {
@@ -210,77 +197,7 @@ export function useStudioNotifications({
           return;
         }
 
-        console.log('[useStudioNotifications] ✅ Sesión establecida en cliente Realtime:', {
-          userId: realtimeSession.user.id,
-          hasAccessToken: !!realtimeSession.access_token,
-        });
-
-        console.log('[useStudioNotifications] ✅ Usuario autenticado:', {
-          userId: authUser.id,
-          email: authUser.email,
-          accessToken: session.access_token ? 'presente' : 'ausente',
-          tokenLength: session.access_token?.length,
-          tokenPreview: session.access_token?.substring(0, 20) + '...',
-        });
-
-        // Verificar que el usuario tiene studio_user_profiles con supabase_id
-        // Esto ayuda a diagnosticar problemas de RLS
-        console.log('[useStudioNotifications] 🔍 Verificando perfil de usuario...');
-        try {
-          // Primero obtener el studio_id
-          const { data: studio } = await supabase
-            .from('studios')
-            .select('id')
-            .eq('slug', studioSlug)
-            .single();
-
-          if (studio) {
-            const { data: profileCheck, error: profileError } = await supabase
-              .from('studio_user_profiles')
-              .select('id, email, supabase_id, studio_id, is_active')
-              .eq('supabase_id', session.user.id)
-              .eq('studio_id', studio.id)
-              .single();
-
-            if (profileError && profileError.code !== 'PGRST116') {
-              console.warn('[useStudioNotifications] ⚠️ Error verificando perfil:', profileError);
-            } else if (profileCheck) {
-              console.log('[useStudioNotifications] 📋 Perfil encontrado:', {
-                id: profileCheck.id,
-                email: profileCheck.email,
-                hasSupabaseId: !!profileCheck.supabase_id,
-                supabaseIdMatch: profileCheck.supabase_id === session.user.id,
-                studioId: profileCheck.studio_id,
-                isActive: profileCheck.is_active,
-              });
-            } else {
-              console.warn('[useStudioNotifications] ⚠️ No se encontró perfil con supabase_id.');
-              console.warn('[useStudioNotifications] ⚠️ Esto puede causar problemas de RLS.');
-              console.warn('[useStudioNotifications] ⚠️ El hook getCurrentUserId debería crear el perfil automáticamente.');
-            }
-          }
-        } catch (profileError) {
-          console.warn('[useStudioNotifications] ⚠️ Error verificando perfil:', profileError);
-        }
-
-        // Configurar autenticación Realtime ANTES de crear el canal
-        // IMPORTANTE: createBrowserClient debería manejar la sesión automáticamente,
-        // pero para canales privados necesitamos asegurarnos de que el token esté disponible
-        console.log('[useStudioNotifications] 🔐 Configurando autenticación Realtime...');
-        console.log('[useStudioNotifications] Token disponible:', {
-          hasAccessToken: !!session.access_token,
-          tokenLength: session.access_token?.length,
-          tokenPreview: session.access_token?.substring(0, 30) + '...',
-        });
-
-        // La sesión ya está sincronizada arriba, no necesitamos refrescar
-
-        console.log('[useStudioNotifications] ✅ Sesión sincronizada con cliente Realtime:', {
-          userId: authUser.id,
-          email: authUser.email,
-          hasAccessToken: !!realtimeSession.access_token,
-          tokenLength: realtimeSession.access_token.length,
-        });
+        // Sesión y autenticación configuradas correctamente
 
         // Configurar autenticación Realtime con el token actualizado
         // IMPORTANTE: Para canales privados, Realtime necesita el token JWT explícitamente
@@ -298,55 +215,22 @@ export function useStudioNotifications({
           }
 
           // Decodificar el payload del JWT para verificar que tiene 'sub'
-          let tokenSub: string | null = null;
           try {
             const payload = JSON.parse(atob(tokenParts[1]));
-            tokenSub = payload.sub;
-            console.log('[useStudioNotifications] 🔍 Token JWT decodificado:', {
-              sub: payload.sub,
-              email: payload.email,
-              exp: payload.exp,
-              expDate: new Date(payload.exp * 1000).toISOString(),
-              role: payload.role,
-              isExpired: payload.exp * 1000 < Date.now(),
-            });
-
-            // Verificar que el 'sub' del token coincide con el userId esperado
-            if (payload.sub !== authUser.id) {
-              console.warn('[useStudioNotifications] ⚠️ Token sub no coincide con user.id:', {
-                tokenSub: payload.sub,
-                userId: authUser.id,
-              });
-            }
 
             // Verificar que el token no esté expirado
             if (payload.exp * 1000 < Date.now()) {
-              console.error('[useStudioNotifications] ❌ Token expirado');
+              console.error('[useStudioNotifications] Token expirado');
               setError('Token de autenticación expirado');
               return;
             }
           } catch (decodeError) {
-            console.warn('[useStudioNotifications] ⚠️ No se pudo decodificar payload del token:', decodeError);
+            console.error('[useStudioNotifications] Error decodificando token:', decodeError);
           }
 
-          // IMPORTANTE: Configurar autenticación Realtime ANTES de crear el canal
-          // Aunque la documentación dice que setAuth() sin argumentos debería funcionar,
-          // en algunos casos es necesario pasar el token explícitamente para canales privados
-          console.log('[useStudioNotifications] 🔐 Estableciendo autenticación Realtime...');
-
-          // Pasar el token explícitamente para asegurar que Realtime lo use correctamente
-          // Esto es necesario porque las políticas RLS evalúan auth.uid() en tiempo real
+          // Configurar autenticación Realtime con el token
           realtimeClient!.realtime.setAuth(realtimeSession.access_token);
-
-          // Verificar que la autenticación se estableció correctamente
-          // Esperar un momento para que se propague al servidor Realtime
           await new Promise(resolve => setTimeout(resolve, 1000));
-
-          console.log('[useStudioNotifications] ✅ Autenticación Realtime configurada', {
-            tokenSub,
-            userId: authUser.id,
-            tokenLength: realtimeSession.access_token.length,
-          });
         } catch (authError) {
           console.error('[useStudioNotifications] ❌ Error configurando auth Realtime:', authError);
           setError('Error al configurar autenticación Realtime: ' + (authError instanceof Error ? authError.message : 'Unknown error'));
@@ -362,39 +246,24 @@ export function useStudioNotifications({
           })
           // Escuchar INSERT - Nueva notificación creada
           .on('broadcast', { event: 'INSERT' }, (payload: unknown) => {
-            console.log('[useStudioNotifications] 🔔 Evento INSERT recibido:', payload);
-
             if (!isMountedRef.current) return;
 
-            // broadcast_changes envía: { payload: { record, old_record, operation } }
             const broadcastPayload = payload as RealtimeBroadcastPayload;
             const newNotification = broadcastPayload?.payload?.record || broadcastPayload?.new;
 
-            if (newNotification) {
-              console.log('[useStudioNotifications] ✅ Nueva notificación:', {
-                id: newNotification.id,
-                user_id: newNotification.user_id,
-                current_user_id: userId,
-                matches: newNotification.user_id === userId,
+            if (newNotification && newNotification.user_id === userId) {
+              setNotifications((prev) => {
+                if (prev.some((n) => n.id === newNotification.id)) return prev;
+                return [newNotification, ...prev];
               });
 
-              // Solo agregar si es para este usuario
-              if (newNotification.user_id === userId) {
-                setNotifications((prev) => {
-                  if (prev.some((n) => n.id === newNotification.id)) return prev;
-                  return [newNotification, ...prev];
-                });
-
-                if (!newNotification.is_read) {
-                  setUnreadCount((prev) => prev + 1);
-                }
+              if (!newNotification.is_read) {
+                setUnreadCount((prev) => prev + 1);
               }
             }
           })
           // Escuchar UPDATE - Notificación actualizada (marcada como leída, clickeada, etc.)
           .on('broadcast', { event: 'UPDATE' }, (payload: unknown) => {
-            console.log('[useStudioNotifications] 🔄 Evento UPDATE recibido:', payload);
-
             if (!isMountedRef.current) return;
 
             const broadcastPayload = payload as RealtimeBroadcastPayload;
@@ -418,8 +287,6 @@ export function useStudioNotifications({
           })
           // Escuchar DELETE - Notificación eliminada
           .on('broadcast', { event: 'DELETE' }, (payload: unknown) => {
-            console.log('[useStudioNotifications] 🗑️ Evento DELETE recibido:', payload);
-
             if (!isMountedRef.current) return;
 
             const broadcastPayload = payload as RealtimeBroadcastPayload;
@@ -432,94 +299,12 @@ export function useStudioNotifications({
               }
             }
           })
-          .subscribe(async (status, err) => {
-            // Obtener información de sesión para diagnóstico
-            if (!supabaseRef.current) return;
-            const { data: { session: currentSession } } = await supabaseRef.current.auth.getSession();
-
-            // Decodificar parcialmente el JWT para diagnóstico (solo header y payload, sin firma)
-            let tokenInfo = null;
-            if (currentSession?.access_token) {
-              try {
-                const parts = currentSession.access_token.split('.');
-                if (parts.length === 3) {
-                  const header = JSON.parse(atob(parts[0]));
-                  const payload = JSON.parse(atob(parts[1]));
-                  tokenInfo = {
-                    header: { alg: header.alg, typ: header.typ },
-                    payload: {
-                      sub: payload.sub,
-                      email: payload.email,
-                      exp: payload.exp,
-                      expDate: new Date(payload.exp * 1000).toISOString(),
-                      iat: payload.iat,
-                      role: payload.role,
-                    },
-                  };
-                }
-              } catch (e) {
-                console.warn('[useStudioNotifications] ⚠️ No se pudo decodificar token:', e);
-              }
-            }
-
-            console.log('[useStudioNotifications] 📡 Estado de suscripción:', {
-              status,
-              error: err ? {
-                message: err.message,
-                code: 'code' in err ? err.code : undefined,
-                name: err.name,
-                stack: err.stack?.substring(0, 200),
-              } : null,
-              channel: channelName,
-              userId,
-              sessionUserId: currentSession?.user.id,
-              tokenInfo,
-            });
-
+          .subscribe((status, err) => {
             if (status === 'SUBSCRIBED') {
               console.log('[useStudioNotifications] ✅ Suscrito exitosamente a notificaciones Realtime');
-              console.log('[useStudioNotifications] Canal activo:', {
-                name: channelName,
-                state: channel.state,
-              });
             } else if (status === 'CHANNEL_ERROR') {
-              console.error('[useStudioNotifications] ❌ Error en canal:', err);
-              if (err) {
-                console.error('[useStudioNotifications] Detalles completos del error:', {
-                  message: err.message,
-                  code: 'code' in err ? err.code : undefined,
-                  name: err.name,
-                  stack: err.stack,
-                  toString: err.toString(),
-                });
-
-                // Si es error de autorización, dar instrucciones específicas
-                if (err.message?.includes('Unauthorized') || err.message?.includes('permissions')) {
-                  console.error('[useStudioNotifications] 🔴 ERROR DE AUTORIZACIÓN RLS');
-                  console.error('[useStudioNotifications] Diagnóstico completo:');
-                  console.error('  1. Usuario autenticado (session.user.id):', currentSession?.user.id);
-                  console.error('  2. Token sub (JWT payload.sub):', tokenInfo?.payload.sub);
-                  console.error('  3. ¿Coinciden?:', currentSession?.user.id === tokenInfo?.payload.sub);
-                  console.error('  4. Token presente:', !!currentSession?.access_token);
-                  console.error('  5. Token expira:', tokenInfo?.payload.expDate);
-                  console.error('  6. Canal:', channelName);
-                  console.error('  7. Studio Slug:', studioSlug);
-                  console.error('[useStudioNotifications] ⚠️ IMPORTANTE:');
-                  console.error('  El token sub DEBE coincidir con supabase_id en studio_user_profiles');
-                  console.error('  Verifica en Supabase SQL Editor:');
-                  console.error(`  SELECT supabase_id FROM studio_user_profiles WHERE email = '${currentSession?.user.email}';`);
-                  console.error(`  Debe ser igual a: ${tokenInfo?.payload.sub}`);
-                  console.error('[useStudioNotifications] Acciones:');
-                  console.error('  1. Ejecuta VERIFICAR_TOKEN_Y_PERFIL.sql en Supabase SQL Editor');
-                  console.error('  2. Verifica que studio_user_profiles tenga supabase_id correcto');
-                  console.error('  3. Verifica que las políticas RLS estén aplicadas');
-                  console.error('  4. Verifica que el usuario tenga is_active = true');
-                }
-              }
-            } else if (status === 'TIMED_OUT') {
-              console.warn('[useStudioNotifications] ⏱️ Timeout al suscribirse');
-            } else if (status === 'CLOSED') {
-              console.log('[useStudioNotifications] 🔒 Canal cerrado');
+              console.error('[useStudioNotifications] Error en canal:', err?.message);
+              setError('Error al conectar con notificaciones');
             }
           });
 
@@ -533,7 +318,6 @@ export function useStudioNotifications({
     setupRealtime();
 
     return () => {
-      console.log('[useStudioNotifications] 🧹 Limpiando suscripción Realtime');
       if (channelRef.current && supabaseRef.current) {
         supabaseRef.current.removeChannel(channelRef.current);
         channelRef.current = null;
