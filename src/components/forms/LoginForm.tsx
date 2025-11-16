@@ -5,12 +5,14 @@
  * Sin complejidades, login directo y redirección
  */
 
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/browser'
+import { setRememberMePreference, getRememberMePreference } from '@/lib/supabase/storage-adapter'
 import { Button } from '@/components/ui/shadcn/button'
 import { Input } from '@/components/ui/shadcn/input'
 import { Label } from '@/components/ui/shadcn/label'
+import { Checkbox } from '@/components/ui/shadcn/checkbox'
 import {
   Card,
   CardContent,
@@ -23,8 +25,14 @@ export function LoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Cargar preferencia guardada al montar
+  useEffect(() => {
+    setRememberMe(getRememberMePreference())
+  }, [])
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -32,6 +40,9 @@ export function LoginForm() {
     setLoading(true)
 
     try {
+      // Guardar preferencia antes del login para que el storage adapter la respete
+      setRememberMePreference(rememberMe)
+
       const supabase = createClient()
       
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -102,6 +113,21 @@ export function LoginForm() {
               required
               disabled={loading}
             />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="rememberMe"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked === true)}
+              disabled={loading}
+            />
+            <Label
+              htmlFor="rememberMe"
+              className="text-sm font-normal cursor-pointer"
+            >
+              Mantener sesión iniciada
+            </Label>
           </div>
 
           {error && (

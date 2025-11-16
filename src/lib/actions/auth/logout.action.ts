@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 
 /**
  * Cierra la sesión del usuario y redirige al login
+ * 
+ * Nota: La limpieza de la preferencia "rememberMe" se hace en el cliente
+ * porque requiere acceso a localStorage. El componente LogoutButton
+ * maneja esto antes de llamar a esta función.
  */
 export async function logout() {
     try {

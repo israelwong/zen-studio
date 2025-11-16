@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LogOut } from "lucide-react";
 import { logout } from "@/lib/actions/auth/logout.action";
+import { clearRememberMePreference } from "@/lib/supabase/storage-adapter";
 import { ZenSidebarMenuButton } from "@/components/ui/zen";
 
 interface LogoutButtonProps {
@@ -19,6 +20,9 @@ export function LogoutButton({ className, children }: LogoutButtonProps) {
         setIsLoading(true);
 
         try {
+            // Limpiar preferencia rememberMe al cerrar sesión explícitamente
+            clearRememberMePreference();
+            
             await logout();
         } catch (error) {
             console.error("Error al cerrar sesión:", error);

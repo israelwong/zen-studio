@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { logout } from "@/lib/actions/auth/logout.action";
+import { clearRememberMePreference } from "@/lib/supabase/storage-adapter";
 import { getCurrentUserClient } from "@/lib/auth/user-utils-client";
 import { useAvatarRefreshListener } from "@/hooks/useAvatarRefresh";
 import { useAuth } from "@/contexts/AuthContext";
@@ -86,6 +87,9 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
         setIsLoggingOut(true);
 
         try {
+            // Limpiar preferencia rememberMe al cerrar sesión explícitamente
+            clearRememberMePreference();
+            
             await logout();
         } catch (error) {
             console.error("Error al cerrar sesión:", error);
