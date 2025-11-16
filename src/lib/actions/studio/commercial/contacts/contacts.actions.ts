@@ -406,7 +406,6 @@ export async function createContact(
       } : null
     };
 
-    revalidatePath(`/${studioSlug}/studio/review_and_delete`);
     return { success: true, data: mappedContact };
   } catch (error) {
     console.error('Error al crear contacto:', error);
@@ -578,7 +577,6 @@ export async function updateContact(
       } : null
     };
 
-    revalidatePath(`/${studioSlug}/studio/review_and_delete`);
     return { success: true, data: mappedContact };
   } catch (error) {
     console.error('Error al actualizar contacto:', error);
@@ -618,7 +616,6 @@ export async function deleteContact(
       where: { id: contactId }
     });
 
-    revalidatePath(`/${studioSlug}/studio/review_and_delete`);
     return { success: true };
   } catch (error) {
     console.error('Error al eliminar contacto:', error);

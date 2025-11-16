@@ -1049,8 +1049,8 @@ export async function autorizarCotizacion(
       ],
     });
 
-    // Obtener la primera etapa de eventos (Planeación) para asignar al evento
-    const primeraEtapa = await prisma.studio_events_stage.findFirst({
+    // Obtener la primera etapa de manager pipeline (Planeación)
+    const primeraEtapa = await prisma.studio_manager_pipeline_stages.findFirst({
       where: {
         studio_id: studio.id,
         is_active: true,
@@ -1062,7 +1062,7 @@ export async function autorizarCotizacion(
     });
 
     if (!primeraEtapa) {
-      return { success: false, error: 'No se encontró la etapa inicial de eventos' };
+      return { success: false, error: 'No se encontró la etapa inicial del pipeline' };
     }
 
     // Obtener fecha del evento: priorizar defined_date, luego primera fecha de tentative_dates
@@ -1090,7 +1090,7 @@ export async function autorizarCotizacion(
       // Preparar datos de actualización (solo campos que pueden cambiar)
       const updateData: {
         cotizacion_id: string;
-        event_stage_id: string;
+        stage_id: string;
         contract_value: number;
         pending_amount: number;
         event_date: Date;
@@ -1099,7 +1099,7 @@ export async function autorizarCotizacion(
         promise_id?: string | null;
       } = {
         cotizacion_id: validatedData.cotizacion_id,
-        event_stage_id: primeraEtapa.id,
+        stage_id: primeraEtapa.id,
         contract_value: validatedData.monto,
         pending_amount: validatedData.monto,
         event_date: eventDate, // Usar fecha de interés
@@ -1131,7 +1131,7 @@ export async function autorizarCotizacion(
           promise_id: validatedData.promise_id || null,
           cotizacion_id: validatedData.cotizacion_id,
           event_type_id: eventTypeId,
-          event_stage_id: primeraEtapa.id,
+          stage_id: primeraEtapa.id,
           name: cotizacion.name || 'Pendiente',
           event_date: eventDate,
           address: address,

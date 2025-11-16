@@ -467,15 +467,13 @@ async function seedPipelines() {
     }
     console.log(`  ✅ Marketing Pipeline (${marketingStages.length} stages)`);
 
-    // MANAGER PIPELINE
+    // MANAGER PIPELINE - ACTUALIZADO V2.1 (Refactorización Events)
     const managerStages = [
         { slug: 'planeacion', name: 'Planeación', stage_type: 'PLANNING' as const, color: '#3B82F6', order: 0 },
-        { slug: 'preparacion', name: 'Preparación', stage_type: 'PLANNING' as const, color: '#8B5CF6', order: 1 },
-        { slug: 'produccion', name: 'Producción', stage_type: 'PRODUCTION' as const, color: '#EF4444', order: 2 },
-        { slug: 'post-produccion', name: 'Post-Producción', stage_type: 'POST_PRODUCTION' as const, color: '#F59E0B', order: 3 },
-        { slug: 'entrega', name: 'Entrega', stage_type: 'DELIVERY' as const, color: '#06B6D4', order: 4 },
-        { slug: 'garantia', name: 'Garantía', stage_type: 'WARRANTY' as const, color: '#10B981', order: 5 },
-        { slug: 'completado', name: 'Completado', stage_type: 'COMPLETED' as const, color: '#059669', order: 6, is_system: true },
+        { slug: 'produccion', name: 'Producción', stage_type: 'PRODUCTION' as const, color: '#10B981', order: 1 },
+        { slug: 'revision', name: 'Revisión', stage_type: 'REVIEW' as const, color: '#F59E0B', order: 2 },
+        { slug: 'entrega', name: 'Entrega', stage_type: 'DELIVERY' as const, color: '#8B5CF6', order: 3 },
+        { slug: 'archivado', name: 'Archivado', stage_type: 'ARCHIVED' as const, color: '#6B7280', order: 4, is_system: true },
     ];
 
     for (const stage of managerStages) {

@@ -11,7 +11,7 @@ export interface EventoBasico {
   event_type_id: string | null;
   contact_id: string;
   promise_id: string | null;
-  event_stage_id: string | null;
+  stage_id: string | null;
   contract_value: number | null;
   paid_amount: number;
   pending_amount: number;
