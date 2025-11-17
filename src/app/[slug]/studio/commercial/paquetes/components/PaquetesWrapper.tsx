@@ -75,7 +75,6 @@ export function PaquetesWrapper({ studioSlug, onPreviewRefresh, onPreviewPaquete
         
         if (isPaquetesMainPage && wasOnEditPage && prevPathnameRef.current) {
             // Se volvió de una página de creación/edición, recargar datos
-            console.log('[PaquetesWrapper] Recargando datos después de crear/editar paquete');
             cargarDatos();
         }
         

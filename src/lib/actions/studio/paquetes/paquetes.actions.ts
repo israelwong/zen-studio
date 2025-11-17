@@ -46,14 +46,6 @@ export async function obtenerPaquetes(
             orderBy: { order: "asc" },
         });
 
-        console.log('[obtenerPaquetes] Paquetes encontrados:', paquetes.length);
-        console.log('[obtenerPaquetes] Paquetes con event_type_id:', paquetes.map(p => ({
-            id: p.id,
-            name: p.name,
-            event_type_id: p.event_type_id,
-            status: p.status
-        })));
-
         return {
             success: true,
             data: paquetes as unknown as PaqueteFromDB[],

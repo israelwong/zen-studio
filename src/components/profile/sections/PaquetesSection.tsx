@@ -17,14 +17,6 @@ export function PaquetesSection({ paquetes }: PaquetesSectionProps) {
     const paquetesPorTipo = useMemo(() => {
         const grouped: Record<string, { paquetes: PublicPaquete[]; order: number }> = {};
 
-        // Debug: verificar qué paquetes llegan y sus tipos de evento
-        console.log('🔍 [PaquetesSection] Paquetes recibidos:', paquetes.map(p => ({
-            nombre: p.nombre,
-            tipo_evento: p.tipo_evento,
-            tipo_evento_order: (p as { tipo_evento_order?: number }).tipo_evento_order,
-            order: p.order
-        })));
-
         paquetes.forEach((paquete) => {
             const tipoEvento = paquete.tipo_evento || 'Sin categoría';
             // tipo_evento_order viene del campo 'order' de studio_event_types (relación 1:N)
@@ -47,23 +39,6 @@ export function PaquetesSection({ paquetes }: PaquetesSectionProps) {
         Object.keys(grouped).forEach((tipo) => {
             grouped[tipo].paquetes.sort((a, b) => a.order - b.order);
         });
-
-        // Debug: verificar cómo se agruparon los tipos de evento
-        console.log('🔍 [PaquetesSection] Tipos de evento agrupados:', Object.keys(grouped).map(tipo => ({
-            tipo,
-            order: grouped[tipo].order,
-            cantidadPaquetes: grouped[tipo].paquetes.length
-        })));
-
-        // Debug: verificar order de tipos de evento específicamente
-        console.log('🔍 [PaquetesSection] Order de tipos de evento:', Object.keys(grouped).map(tipo => {
-            const samplePaquete = grouped[tipo].paquetes[0];
-            return {
-                tipo,
-                order: grouped[tipo].order,
-                tipo_evento_order_from_paquete: (samplePaquete as { tipo_evento_order?: number }).tipo_evento_order,
-            };
-        }));
 
         return grouped;
     }, [paquetes]);
@@ -88,12 +63,6 @@ export function PaquetesSection({ paquetes }: PaquetesSectionProps) {
     const tiposEvento = Object.keys(paquetesPorTipo).sort((a, b) => {
         return paquetesPorTipo[a].order - paquetesPorTipo[b].order;
     });
-
-    // Debug: verificar el orden final de los tipos de evento
-    console.log('🔍 [PaquetesSection] Tipos de evento ordenados:', tiposEvento.map(tipo => ({
-        tipo,
-        order: paquetesPorTipo[tipo].order
-    })));
 
     return (
         <div className="p-4 space-y-8">
