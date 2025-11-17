@@ -14,7 +14,7 @@ export interface ConfiguracionPreciosUpdateEventDetail {
 
 /**
  * Hook para disparar actualización de configuración de precios
- * Usar después de actualizar la configuración en UtilidadTab
+ * Usar después de actualizar la configuración en UtilidadForm
  */
 export function useConfiguracionPreciosRefresh() {
   const triggerUpdate = useCallback((studioSlug: string, config?: {

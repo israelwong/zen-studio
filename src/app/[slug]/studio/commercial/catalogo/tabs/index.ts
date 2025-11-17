@@ -1,3 +1,3 @@
 // Tabs architecture exports
-export { UtilidadTab } from './UtilidadTab';
+export { UtilidadForm } from './UtilidadTab';
 export { CatalogoTab, CatalogoTabSkeleton } from './CatalogoTab';

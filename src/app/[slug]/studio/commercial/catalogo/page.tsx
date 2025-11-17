@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { Store, DollarSign } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDialog } from '@/components/ui/zen';
-import { UtilidadTab, CatalogoTab, CatalogoTabSkeleton } from './tabs';
+import { UtilidadForm, CatalogoTab, CatalogoTabSkeleton } from './tabs';
 import { GuiaDeUso } from './guia';
 import { obtenerSeccionesConStats } from '@/lib/actions/studio/catalogo';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
@@ -136,7 +136,7 @@ export default function CatalogoPage() {
                 maxWidth="2xl"
                 closeOnClickOutside={false}
             >
-                <UtilidadTab
+                <UtilidadForm
                     studioSlug={studioSlug}
                     onClose={() => setIsUtilidadModalOpen(false)}
                 />

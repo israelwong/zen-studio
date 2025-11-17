@@ -84,7 +84,7 @@ export async function obtenerEventos(
     const eventos = await prisma.studio_events.findMany({
       where: {
         studio_id: studio.id,
-        status: 'active',
+        status: 'ACTIVE',
       },
       include: {
         event_type: {
@@ -233,7 +233,7 @@ export async function obtenerEventoDetalle(
 
 /**
  * Cancelar un evento
- * - Cambia status del evento a "cancelled"
+ * - Cambia status del evento a "CANCELLED"
  * - Actualiza cotización a "cancelada"
  * - Actualiza promesa a etapa "pending" y libera promise_id
  * - Registra log en promise_logs
@@ -279,7 +279,7 @@ export async function cancelarEvento(
       return { success: false, error: 'Evento no encontrado' };
     }
 
-    if (evento.status === 'cancelled') {
+    if (evento.status === 'CANCELLED') {
       return { success: false, error: 'El evento ya está cancelado' };
     }
 
@@ -310,11 +310,11 @@ export async function cancelarEvento(
 
     // Transacción para garantizar consistencia
     await prisma.$transaction(async (tx) => {
-      // 1. Actualizar evento a "cancelled" y liberar promise_id y cotizacion_id
+      // 1. Actualizar evento a "CANCELLED" y liberar promise_id y cotizacion_id
       await tx.studio_events.update({
         where: { id: eventoId },
         data: {
-          status: 'cancelled',
+          status: 'CANCELLED',
           promise_id: null, // Liberar promise_id para permitir nuevo evento
           cotizacion_id: null, // Liberar cotizacion_id para permitir nueva autorización
           updated_at: new Date(),

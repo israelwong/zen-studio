@@ -89,7 +89,7 @@ export async function createCotizacion(
             event_type_id: promise.event_type_id || null,
             event_date: promise.defined_date || new Date(),
             name: 'Pendiente',
-            status: 'active',
+            status: 'ACTIVE',
           },
         });
       }
@@ -793,7 +793,8 @@ export async function updateCotizacionName(
 
 /**
  * Actualizar cotización completa (nombre, descripción, precio, items)
- * Archiva automáticamente las otras cotizaciones de la promesa
+ * IMPORTANTE: NO archiva otras cotizaciones - solo actualiza la cotización actual
+ * El archivado de otras cotizaciones solo ocurre cuando se autoriza una cotización
  */
 export async function updateCotizacion(
   data: UpdateCotizacionData
@@ -831,22 +832,6 @@ export async function updateCotizacion(
       return { success: false, error: 'No se puede actualizar una cotización autorizada o aprobada' };
     }
 
-    // Obtener otras cotizaciones de la promesa para archivar
-    const otrasCotizaciones = cotizacion.promise_id
-      ? await prisma.studio_cotizaciones.findMany({
-          where: {
-            promise_id: cotizacion.promise_id,
-            id: {
-              not: validatedData.cotizacion_id,
-            },
-            archived: false,
-          },
-          select: {
-            id: true,
-          },
-        })
-      : [];
-
     // Transacción para garantizar consistencia
     await prisma.$transaction(async (tx) => {
       // 1. Actualizar cotización
@@ -883,20 +868,8 @@ export async function updateCotizacion(
         });
       }
 
-      // 4. Archivar las otras cotizaciones de la promesa
-      if (otrasCotizaciones.length > 0) {
-        await tx.studio_cotizaciones.updateMany({
-          where: {
-            id: {
-              in: otrasCotizaciones.map((c) => c.id),
-            },
-          },
-          data: {
-            archived: true,
-            updated_at: new Date(),
-          },
-        });
-      }
+      // NOTA: No archivamos otras cotizaciones aquí
+      // El archivado solo ocurre cuando se autoriza una cotización (en autorizarCotizacion)
     });
 
     // Obtener cotización actualizada
@@ -1103,7 +1076,7 @@ export async function autorizarCotizacion(
         contract_value: validatedData.monto,
         pending_amount: validatedData.monto,
         event_date: eventDate, // Usar fecha de interés
-        status: 'active', // Reactivar si estaba cancelado
+        status: 'ACTIVE', // Reactivar si estaba cancelado
         updated_at: new Date(),
       };
 
@@ -1136,7 +1109,7 @@ export async function autorizarCotizacion(
           event_date: eventDate,
           address: address,
           sede: eventLocation, // Usar sede para el lugar del evento
-          status: 'active',
+          status: 'ACTIVE',
           contract_value: validatedData.monto,
           pending_amount: validatedData.monto,
         },

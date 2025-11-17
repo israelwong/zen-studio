@@ -18,33 +18,33 @@ const prisma = new PrismaClient();
 async function seedPromisePipeline(studioId: string, studioName: string) {
     // Etapas iniciales del pipeline
     const promiseStages = [
-        { 
-            slug: 'pending', 
-            name: 'Pendiente', 
-            color: '#3B82F6', 
-            order: 0, 
-            is_system: true 
+        {
+            slug: 'pending',
+            name: 'Pendiente',
+            color: '#3B82F6',
+            order: 0,
+            is_system: true
         },
-        { 
-            slug: 'negotiation', 
-            name: 'En Negociación', 
-            color: '#8B5CF6', 
-            order: 1, 
-            is_system: false 
+        {
+            slug: 'negotiation',
+            name: 'En Negociación',
+            color: '#8B5CF6',
+            order: 1,
+            is_system: false
         },
-        { 
-            slug: 'approved', 
-            name: 'Aprobado', 
-            color: '#10B981', 
-            order: 2, 
-            is_system: true 
+        {
+            slug: 'approved',
+            name: 'Aprobado',
+            color: '#10B981',
+            order: 2,
+            is_system: true
         },
-        { 
-            slug: 'archived', 
-            name: 'Archivado', 
-            color: '#6B7280', 
-            order: 3, 
-            is_system: true 
+        {
+            slug: 'archived',
+            name: 'Archivado',
+            color: '#6B7280',
+            order: 3,
+            is_system: true
         },
     ];
 

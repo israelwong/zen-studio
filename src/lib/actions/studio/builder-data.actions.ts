@@ -11,8 +11,6 @@ import { BuilderProfileData } from "@/types/builder-profile";
  */
 export async function getBuilderData(studioSlug: string) {
     try {
-        console.log('🔍 [getBuilderData] Fetching builder data for slug:', studioSlug);
-
         return await retryDatabaseOperation(async () => {
             // Single query to get all builder data (same strategy as public profile)
             const studio = await prisma.studios.findUnique({
@@ -155,7 +153,6 @@ export async function getBuilderData(studioSlug: string) {
             });
 
             if (!studio) {
-                console.log('❌ [getBuilderData] Studio not found:', studioSlug);
                 return {
                     success: false,
                     error: 'Studio not found'
@@ -256,23 +253,6 @@ export async function getBuilderData(studioSlug: string) {
                     is_active: faq.is_active,
                 })),
             };
-
-            console.log('✅ [getBuilderData] Builder data fetched successfully');
-            console.log('📊 [getBuilderData] Data summary:', {
-                studio: builderData.studio.studio_name,
-                socialNetworks: builderData.socialNetworks.length,
-                phones: builderData.contactInfo.phones.length,
-                items: builderData.items.length,
-                portfolios: builderData.portfolios.length,
-                zonas_trabajo: builderData.studio.zonas_trabajo?.length || 0,
-                horarios: builderData.contactInfo.horarios?.length || 0,
-            });
-            console.log('🔍 Builder studio.zonas_trabajo:', builderData.studio.zonas_trabajo);
-            console.log('🔍 Builder studio.zonas_trabajo type:', typeof builderData.studio.zonas_trabajo);
-            console.log('🔍 Builder studio.zonas_trabajo is array:', Array.isArray(builderData.studio.zonas_trabajo));
-            console.log('🔍 Builder contactInfo.horarios:', builderData.contactInfo.horarios);
-            console.log('🔍 Builder contactInfo.horarios type:', typeof builderData.contactInfo.horarios);
-            console.log('🔍 Builder contactInfo.horarios is array:', Array.isArray(builderData.contactInfo.horarios));
 
             return {
                 success: true,

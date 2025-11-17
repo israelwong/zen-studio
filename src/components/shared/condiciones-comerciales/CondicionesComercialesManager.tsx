@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react';
 import { ZenDialog } from '@/components/ui/zen/modals/ZenDialog';
 import { ZenButton, ZenInput, ZenTextarea, ZenSwitch } from '@/components/ui/zen';
@@ -15,7 +14,8 @@ import {
 } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
 import type { CondicionComercialForm } from '@/lib/actions/schemas/condiciones-comerciales-schemas';
-import { useConfiguracionPreciosUpdateListener } from '@/hooks/useConfiguracionPreciosRefresh';
+import { useConfiguracionPreciosUpdateListener, type ConfiguracionPreciosUpdateEventDetail } from '@/hooks/useConfiguracionPreciosRefresh';
+import { UtilidadForm } from '@/app/[slug]/studio/commercial/catalogo/tabs/UtilidadTab/UtilidadForm';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -195,6 +195,7 @@ export function CondicionesComercialesManager({
   const [pendingClose, setPendingClose] = useState<(() => void) | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [showUtilidadModal, setShowUtilidadModal] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -279,12 +280,13 @@ export function CondicionesComercialesManager({
   }, [showForm, isOpen]);
 
   // Escuchar actualizaciones de configuración de precios
-  useConfiguracionPreciosUpdateListener(studioSlug, (sobreprecio) => {
+  useConfiguracionPreciosUpdateListener(studioSlug, (config?: ConfiguracionPreciosUpdateEventDetail) => {
     // Si se pasa el sobreprecio directamente, actualizar inmediatamente
-    // Si no, recargar la configuración completa
-    if (sobreprecio !== undefined) {
-      setMaxDescuento(sobreprecio);
+    // El sobreprecio viene en decimal (0.05 = 5%), convertir a porcentaje
+    if (config?.sobreprecio !== undefined) {
+      setMaxDescuento(config.sobreprecio * 100);
     } else {
+      // Si no viene el sobreprecio, recargar la configuración completa
       loadConfiguracion();
     }
   });
@@ -806,13 +808,13 @@ export function CondicionesComercialesManager({
               {maxDescuento !== null && (
                 <p className="text-xs text-zinc-400">
                   Porcentaje de descuento máximo del {maxDescuento}% definido en la{' '}
-                  <Link
-                    href={`/${studioSlug}/studio/commercial/catalogo#utilidad`}
+                  <button
+                    type="button"
+                    onClick={() => setShowUtilidadModal(true)}
                     className="text-blue-400 hover:text-blue-300 underline-offset-4 hover:underline"
-                    target="_blank"
                   >
                     configuración
-                  </Link>
+                  </button>
                 </p>
               )}
             </div>
@@ -949,6 +951,25 @@ export function CondicionesComercialesManager({
         cancelText="Cancelar"
         variant="destructive"
       />
+
+      {/* Modal de Configuración de Utilidad */}
+      <ZenDialog
+        isOpen={showUtilidadModal}
+        onClose={() => setShowUtilidadModal(false)}
+        title="Configuración de Márgenes de Utilidad"
+        description="Gestiona los márgenes de utilidad, comisiones y sobreprecios para tus servicios y productos"
+        maxWidth="2xl"
+        closeOnClickOutside={false}
+      >
+        <UtilidadForm
+          studioSlug={studioSlug}
+          onClose={() => {
+            setShowUtilidadModal(false);
+            // Recargar configuración después de cerrar el modal para actualizar maxDescuento
+            loadConfiguracion();
+          }}
+        />
+      </ZenDialog>
     </>
   );
 }

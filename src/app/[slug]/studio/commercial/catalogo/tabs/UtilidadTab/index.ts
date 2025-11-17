@@ -1,1 +1,1 @@
-export { UtilidadTab } from "./UtilidadTab";
+export { UtilidadForm } from "./UtilidadForm";

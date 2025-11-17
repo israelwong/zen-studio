@@ -20,6 +20,13 @@ interface ResumenCotizacionProps {
   };
 }
 
+/**
+ * Componente que muestra el resumen de una cotización
+ * 
+ * NOTA: Cuando esta cotización es autorizada (desde la página padre),
+ * la función `autorizarCotizacion` automáticamente archiva todas las otras
+ * cotizaciones asociadas a la misma promesa para mantener solo una cotización activa.
+ */
 export function ResumenCotizacion({ cotizacion }: ResumenCotizacionProps) {
   const params = useParams();
   const router = useRouter();

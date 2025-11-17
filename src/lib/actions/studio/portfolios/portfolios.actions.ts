@@ -374,8 +374,6 @@ export async function getStudioPortfolios(studioId: string, filters?: PortfolioF
             where.event_type_id = filters.event_type_id;
         }
 
-        console.log("[getStudioPortfolios] Query where:", JSON.stringify(where, null, 2));
-
         const portfolios = await prisma.studio_portfolios.findMany({
             where,
             include: {
@@ -398,8 +396,6 @@ export async function getStudioPortfolios(studioId: string, filters?: PortfolioF
             orderBy: [{ is_featured: "desc" }, { created_at: "desc" }],
         });
 
-        console.log("[getStudioPortfolios] Found portfolios:", portfolios.length);
-
         return { success: true, data: portfolios as unknown as StudioPortfolio[] };
     } catch (error) {
         console.error("Error fetching portfolios:", error);
@@ -412,23 +408,16 @@ export async function getStudioPortfolios(studioId: string, filters?: PortfolioF
 // READ by slug - Helper para builder
 export async function getStudioPortfoliosBySlug(studioSlug: string, filters?: PortfolioFilters): Promise<PortfoliosResult> {
     try {
-        console.log("[getStudioPortfoliosBySlug] Looking for studio with slug:", studioSlug);
-        
-        // Obtener studioId desde slug
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: { id: true }
         });
 
         if (!studio) {
-            console.error("[getStudioPortfoliosBySlug] Studio not found for slug:", studioSlug);
             return { success: false, error: "Studio no encontrado" };
         }
 
-        console.log("[getStudioPortfoliosBySlug] Found studio ID:", studio.id);
-
-        const result = await getStudioPortfolios(studio.id, filters);
-        return result;
+        return await getStudioPortfolios(studio.id, filters);
     } catch (error) {
         console.error("Error fetching portfolios by slug:", error);
         const errorMessage = error instanceof Error ? error.message : "Error al obtener portfolios";

@@ -41,6 +41,33 @@ export function NotificationsHistorySheet({
       period,
     });
 
+  // Estado para detectar si es la carga inicial
+  const isInitialLoad = React.useRef(true);
+  const prevPeriodRef = React.useRef(period);
+
+  React.useEffect(() => {
+    // Resetear cuando se abre el sheet o cambia el período
+    if (open) {
+      if (period !== prevPeriodRef.current) {
+        isInitialLoad.current = true;
+        prevPeriodRef.current = period;
+      } else if (!isInitialLoad.current && loading) {
+        // Si ya cargó antes pero ahora está cargando de nuevo (loadMore)
+        isInitialLoad.current = false;
+      }
+    } else {
+      // Resetear cuando se cierra el sheet
+      isInitialLoad.current = true;
+    }
+  }, [open, period, loading]);
+
+  // Marcar como carga completada cuando termina la carga inicial
+  React.useEffect(() => {
+    if (!loading && isInitialLoad.current && open) {
+      isInitialLoad.current = false;
+    }
+  }, [loading, open]);
+
   // Scroll infinito
   useEffect(() => {
     if (!open || !loadMoreTriggerRef.current) return;
@@ -143,16 +170,49 @@ export function NotificationsHistorySheet({
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto"
         >
-          {loading && notifications.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+          {loading && isInitialLoad.current ? (
+            <div className="space-y-6 px-4 py-4">
+              {[1, 2].map((groupIndex) => (
+                <div key={groupIndex} className="space-y-2">
+                  {/* Skeleton header de grupo */}
+                  <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3 sticky top-0 -mx-4 px-4 py-2 z-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800/50">
+                    <div className="h-3 w-3 bg-zinc-700 rounded animate-pulse" />
+                    <div className="h-3 w-24 bg-zinc-700 rounded animate-pulse" />
+                  </div>
+                  {/* Skeleton items de notificación */}
+                  {[1, 2, 3].map((itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      className="p-4 rounded-lg border border-zinc-800 bg-zinc-900/50 animate-pulse"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5">
+                          <div className="h-4 w-4 bg-zinc-700 rounded" />
+                        </div>
+                        <div className="flex-1 min-w-0 space-y-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="h-4 w-3/4 bg-zinc-700 rounded" />
+                            <div className="h-2 w-2 bg-zinc-700 rounded-full flex-shrink-0 mt-1.5" />
+                          </div>
+                          <div className="h-3 w-full bg-zinc-700 rounded" />
+                          <div className="h-3 w-2/3 bg-zinc-700 rounded" />
+                          <div className="flex items-center gap-2 mt-2">
+                            <div className="h-3 w-20 bg-zinc-700 rounded" />
+                            <div className="h-3 w-16 bg-zinc-700 rounded" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div className="flex items-center gap-2 px-4 py-8 text-sm text-red-400">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
             </div>
-          ) : groupedEntries.length === 0 ? (
+          ) : !loading && notifications.length === 0 && groupedEntries.length === 0 ? (
             <div className="px-4 py-12 text-center text-sm text-zinc-400">
               No hay notificaciones en este período
             </div>

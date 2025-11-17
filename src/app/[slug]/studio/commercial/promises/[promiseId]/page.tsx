@@ -48,6 +48,7 @@ export default function EditarPromesaPage() {
     referrer_contact_email?: string | null;
     promiseId?: string | null;
     has_event?: boolean;
+    evento_id?: string | null;
   } | null>(null);
   const [contactData, setContactData] = useState<{
     contactId: string;
@@ -84,6 +85,7 @@ export default function EditarPromesaPage() {
           referrer_contact_email: result.data.referrer_contact_email ?? null,
           promiseId: result.data.promise_id,
           has_event: result.data.has_event,
+          evento_id: result.data.evento_id ?? null,
           });
           setContactData({
             contactId: result.data.contact_id,
@@ -169,6 +171,7 @@ export default function EditarPromesaPage() {
               referrer_contact_email: result.data.referrer_contact_email ?? null,
               promiseId: result.data.promise_id,
               has_event: result.data.has_event,
+              evento_id: result.data.evento_id ?? null,
             });
             setContactData({
               contactId: result.data.contact_id,
@@ -375,6 +378,7 @@ export default function EditarPromesaPage() {
           referrer_contact_email: result.data.referrer_contact_email ?? null,
           promiseId: result.data.promise_id,
           has_event: result.data.has_event,
+          evento_id: result.data.evento_id ?? null,
         });
         setContactData({
           contactId: result.data.contact_id,
@@ -418,12 +422,40 @@ export default function EditarPromesaPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {pipelineStages.length > 0 && currentPipelineStageId && (() => {
+              {(() => {
+                // Verificar estado del evento primero
+                if (loading || !pipelineStages.length || !currentPipelineStageId || !promiseData) {
+                  return (
+                    <div className="flex items-center gap-2 text-sm text-zinc-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>Verificando estado...</span>
+                    </div>
+                  );
+                }
+                
                 const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
                 const isApprovedStage = currentStage?.slug === 'approved' || currentStage?.slug === 'aprobado' || 
                                        currentStage?.name.toLowerCase().includes('aprobado');
-                const hasEvent = promiseData?.has_event || false;
+                const hasEvent = promiseData.has_event || false;
                 const isRestricted = isApprovedStage && hasEvent;
+                const eventoId = promiseData.evento_id || null;
+                
+                // Si está restringido (tiene cotización aprobada con evento), mostrar mensaje y botón
+                if (isRestricted && eventoId) {
+                  return (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-zinc-400">Evento aprobado</span>
+                      <ZenButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => router.push(`/${studioSlug}/studio/business/events/${eventoId}`)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        Gestionar Evento
+                      </ZenButton>
+                    </div>
+                  );
+                }
                 
                 // Filtrar etapas: si está restringido, solo mostrar "archived" además de la actual
                 const availableStages = isRestricted
@@ -476,7 +508,14 @@ export default function EditarPromesaPage() {
                 );
               })()}
               <div className="flex items-center gap-2">
-              {contactData && (
+              {contactData && !loading && promiseData && (() => {
+                const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
+                const isApprovedStage = currentStage?.slug === 'approved' || currentStage?.slug === 'aprobado' || 
+                                       currentStage?.name.toLowerCase().includes('aprobado');
+                const hasEvent = promiseData.has_event || false;
+                const isRestricted = isApprovedStage && hasEvent;
+                return !isRestricted;
+              })() && (
                 <PromiseQuickActions
                   studioSlug={studioSlug}
                   contactId={contactData.contactId}

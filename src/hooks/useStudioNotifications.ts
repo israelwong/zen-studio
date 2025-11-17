@@ -255,8 +255,22 @@ export function useStudioNotifications({
           .on('broadcast', { event: 'INSERT' }, (payload: unknown) => {
             if (!isMountedRef.current) return;
 
+            console.log('[useStudioNotifications] 🔔 INSERT event recibido:', {
+              payload,
+              payloadType: typeof payload,
+              payloadKeys: payload ? Object.keys(payload as object) : [],
+              userId,
+              channelName,
+            });
+
             const broadcastPayload = payload as RealtimeBroadcastPayload;
             const newNotification = broadcastPayload?.payload?.record || broadcastPayload?.new;
+
+            console.log('[useStudioNotifications] 📦 Notificación extraída:', {
+              newNotification,
+              hasUserId: !!newNotification?.user_id,
+              matchesUserId: newNotification?.user_id === userId,
+            });
 
             if (newNotification && newNotification.user_id === userId) {
               setNotifications((prev) => {
@@ -267,6 +281,13 @@ export function useStudioNotifications({
               if (!newNotification.is_read) {
                 setUnreadCount((prev) => prev + 1);
               }
+              console.log('[useStudioNotifications] ✅ Notificación INSERT procesada correctamente');
+            } else {
+              console.warn('[useStudioNotifications] ⚠️ Notificación INSERT no procesada:', {
+                hasNotification: !!newNotification,
+                hasUserId: !!newNotification?.user_id,
+                userIdMatch: newNotification?.user_id === userId,
+              });
             }
           })
           // Escuchar UPDATE - Notificación actualizada (marcada como leída, clickeada, etc.)
@@ -307,11 +328,32 @@ export function useStudioNotifications({
             }
           })
           .subscribe((status, err) => {
+            console.log('[useStudioNotifications] 📡 Estado de suscripción:', {
+              status,
+              err: err?.message,
+              channelName,
+              userId,
+              channelState: channelRef.current?.state,
+            });
+
             if (status === 'SUBSCRIBED') {
-              console.log('[useStudioNotifications] ✅ Suscrito exitosamente a notificaciones Realtime');
+              console.log('[useStudioNotifications] ✅ Suscrito exitosamente a notificaciones Realtime', {
+                channelName,
+                userId,
+              });
             } else if (status === 'CHANNEL_ERROR') {
-              console.error('[useStudioNotifications] Error en canal:', err?.message);
+              console.error('[useStudioNotifications] ❌ Error en canal:', {
+                error: err?.message,
+                channelName,
+                userId,
+              });
               setError('Error al conectar con notificaciones');
+            } else {
+              console.warn('[useStudioNotifications] ⚠️ Estado desconocido:', {
+                status,
+                channelName,
+                userId,
+              });
             }
           });
 

@@ -13,7 +13,7 @@ if (!process.env.DATABASE_URL) {
 // Cliente de Prisma centralizado con singleton
 const prisma = globalThis.__prisma || new PrismaClient({
   // Configuración optimizada para producción
-  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  log: ['error'],
   errorFormat: 'pretty',
   // Configuración de conexión optimizada
   datasources: {

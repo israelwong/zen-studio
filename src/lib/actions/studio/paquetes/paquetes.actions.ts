@@ -657,6 +657,10 @@ export async function duplicarPaquete(
             };
         }
 
+        // IMPORTANTE: El paquete original NO se modifica ni se archiva
+        // Solo se crea una copia nueva con status "inactive"
+        // El paquete original mantiene su status y configuración original
+
         // Obtener la posición máxima
         const maxPosition = await prisma.studio_paquetes.findFirst({
             where: { studio_id: studio.id },
@@ -666,7 +670,7 @@ export async function duplicarPaquete(
 
         const newPosition = (maxPosition?.order ?? -1) + 1;
 
-        // Crear el nuevo paquete
+        // Crear el nuevo paquete (el original NO se modifica)
         const paqueteDuplicado = await prisma.studio_paquetes.create({
             data: {
                 studio_id: studio.id,

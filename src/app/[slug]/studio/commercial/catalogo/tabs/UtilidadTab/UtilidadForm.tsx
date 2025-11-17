@@ -20,12 +20,12 @@ import type {
 } from '@/lib/actions/schemas/configuracion-precios-schemas';
 import { useConfiguracionPreciosRefresh } from '@/hooks/useConfiguracionPreciosRefresh';
 
-interface UtilidadTabProps {
+interface UtilidadFormProps {
     studioSlug: string;
     onClose?: () => void;
 }
 
-export function UtilidadTab({ studioSlug, onClose }: UtilidadTabProps) {
+export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const { triggerUpdate } = useConfiguracionPreciosRefresh();

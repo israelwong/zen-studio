@@ -222,6 +222,7 @@ export async function getPromiseById(
   pipeline_stage_slug: string | null;
   pipeline_stage_id: string | null;
   has_event: boolean;
+  evento_id: string | null;
 }>> {
   try {
     const promise = await prisma.studio_promises.findUnique({
@@ -307,6 +308,7 @@ export async function getPromiseById(
         pipeline_stage_slug: promise.pipeline_stage?.slug || null,
         pipeline_stage_id: promise.pipeline_stage_id || null,
         has_event: !!promise.event,
+        evento_id: promise.event?.id || null,
       },
     };
   } catch (error) {

@@ -714,17 +714,18 @@ export async function seedStudioCatalog(studioId: string) {
 
 async function main() {
     try {
-        // Obtener el primer studio disponible o usar un ID específico
-        const studio = await prisma.studios.findFirst({
-            select: { id: true, studio_name: true }
+        // Buscar específicamente demo-studio por slug
+        const studio = await prisma.studios.findUnique({
+            where: { slug: 'demo-studio' },
+            select: { id: true, studio_name: true, slug: true }
         });
 
         if (!studio) {
-            console.error('❌ No se encontró ningún studio en la base de datos');
+            console.error('❌ No se encontró demo-studio en la base de datos');
             process.exit(1);
         }
 
-        console.log(`🎯 Sembrando catálogo COMPLETO con estructura anidada para studio: ${studio.studio_name} (${studio.id})`);
+        console.log(`🎯 Sembrando catálogo COMPLETO con estructura anidada para studio: ${studio.studio_name} (slug: ${studio.slug}, id: ${studio.id})`);
 
         await seedStudioCatalog(studio.id);
 
