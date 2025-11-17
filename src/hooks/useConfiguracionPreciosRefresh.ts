@@ -1,26 +1,34 @@
 import { useEffect, useCallback } from 'react';
 
 // Evento personalizado para notificar cambios en configuración de precios
-const CONFIGURACION_PRECIOS_UPDATE_EVENT = 'configuracion-precios-update';
+export const CONFIGURACION_PRECIOS_UPDATE_EVENT = 'configuracion-precios-update';
 
-interface ConfiguracionPreciosUpdateEventDetail {
+export interface ConfiguracionPreciosUpdateEventDetail {
   studioSlug: string;
-  sobreprecio?: number; // Valor en porcentaje (10 = 10%)
+  // Configuración completa en decimales (0.30 = 30%)
+  utilidad_servicio?: number;
+  utilidad_producto?: number;
+  comision_venta?: number;
+  sobreprecio?: number;
 }
 
 /**
  * Hook para disparar actualización de configuración de precios
  * Usar después de actualizar la configuración en UtilidadTab
- * @param sobreprecio - Valor decimal (0.10 = 10%), se convierte automáticamente a porcentaje
  */
 export function useConfiguracionPreciosRefresh() {
-  const triggerUpdate = useCallback((studioSlug: string, sobreprecio?: number) => {
-    // Convertir de decimal (0.10) a porcentaje (10) antes de disparar el evento
-    const sobreprecioPorcentaje = sobreprecio !== undefined ? sobreprecio * 100 : undefined;
-    
+  const triggerUpdate = useCallback((studioSlug: string, config?: {
+    utilidad_servicio?: number;
+    utilidad_producto?: number;
+    comision_venta?: number;
+    sobreprecio?: number;
+  }) => {
     window.dispatchEvent(
       new CustomEvent<ConfiguracionPreciosUpdateEventDetail>(CONFIGURACION_PRECIOS_UPDATE_EVENT, {
-        detail: { studioSlug, sobreprecio: sobreprecioPorcentaje },
+        detail: { 
+          studioSlug,
+          ...config
+        },
       })
     );
   }, []);
@@ -30,17 +38,17 @@ export function useConfiguracionPreciosRefresh() {
 
 /**
  * Hook para escuchar actualizaciones de configuración de precios
- * Usar en componentes que necesitan recargar cuando cambia el sobreprecio
+ * Usar en componentes que necesitan recargar cuando cambia la configuración
  */
 export function useConfiguracionPreciosUpdateListener(
   studioSlug: string,
-  onUpdate: (sobreprecio?: number) => void
+  onUpdate: (config?: ConfiguracionPreciosUpdateEventDetail) => void
 ) {
   useEffect(() => {
     const handleUpdate = (event: Event) => {
       const customEvent = event as CustomEvent<ConfiguracionPreciosUpdateEventDetail>;
       if (customEvent.detail?.studioSlug === studioSlug) {
-        onUpdate(customEvent.detail.sobreprecio);
+        onUpdate(customEvent.detail);
       }
     };
 

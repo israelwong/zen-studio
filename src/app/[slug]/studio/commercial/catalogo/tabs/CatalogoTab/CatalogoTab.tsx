@@ -29,6 +29,7 @@ import {
     eliminarItem,
 } from "@/lib/actions/studio/catalogo";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/catalogo/utilidad.actions";
+import { useConfiguracionPreciosUpdateListener } from "@/hooks/useConfiguracionPreciosRefresh";
 import { reordenarItems, moverItemACategoria, toggleItemPublish } from "@/lib/actions/studio/catalogo";
 import { obtenerCatalogo } from "@/lib/actions/studio/config/catalogo.actions";
 import { obtenerMediaItemsMap, obtenerMediaItem } from "@/lib/actions/studio/catalogo/media-items.actions";
@@ -151,24 +152,35 @@ export function CatalogoTab({
     const [isDeleteItemModalOpen, setIsDeleteItemModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
 
+    // Función para cargar configuración de precios
+    const loadConfiguracionPrecios = async () => {
+        try {
+            const response = await obtenerConfiguracionPrecios(studioSlug);
+            if (response) {
+                const parseValue = (val: string | undefined, defaultValue: number): number => {
+                    return val ? parseFloat(val) : defaultValue;
+                };
+
+                setPreciosConfig({
+                    utilidad_servicio: parseValue(response.utilidad_servicio, 0.30),
+                    utilidad_producto: parseValue(response.utilidad_producto, 0.40),
+                    comision_venta: parseValue(response.comision_venta, 0.10),
+                    sobreprecio: parseValue(response.sobreprecio, 0.05),
+                });
+            }
+        } catch (error) {
+            console.error("Error loading price config:", error);
+        }
+    };
+
+    // Escuchar actualizaciones de configuración de precios
+    useConfiguracionPreciosUpdateListener(studioSlug, async () => {
+        // Recargar configuración cuando se actualiza desde el modal
+        await loadConfiguracionPrecios();
+    });
+
     // Cargar datos iniciales
     useEffect(() => {
-        const loadConfiguracionPrecios = async () => {
-            try {
-                const response = await obtenerConfiguracionPrecios(studioSlug);
-                if (response && response.utilidad_servicio) {
-                    setPreciosConfig({
-                        utilidad_servicio: parseFloat(response.utilidad_servicio),
-                        utilidad_producto: parseFloat(response.utilidad_producto),
-                        comision_venta: parseFloat(response.comision_venta),
-                        sobreprecio: parseFloat(response.sobreprecio),
-                    });
-                }
-            } catch (error) {
-                console.error("Error loading price config:", error);
-            }
-        };
-
         const loadInitialData = async () => {
             try {
                 setIsLoading(true);
@@ -252,6 +264,7 @@ export function CatalogoTab({
 
         loadConfiguracionPrecios();
         loadInitialData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [studioSlug, secciones]);
 
     const toggleSeccion = (seccionId: string) => {

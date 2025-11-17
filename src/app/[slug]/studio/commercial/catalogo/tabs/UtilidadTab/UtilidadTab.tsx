@@ -22,9 +22,10 @@ import { useConfiguracionPreciosRefresh } from '@/hooks/useConfiguracionPreciosR
 
 interface UtilidadTabProps {
     studioSlug: string;
+    onClose?: () => void;
 }
 
-export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
+export function UtilidadTab({ studioSlug, onClose }: UtilidadTabProps) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const { triggerUpdate } = useConfiguracionPreciosRefresh();
@@ -123,10 +124,17 @@ export function UtilidadTab({ studioSlug }: UtilidadTabProps) {
                 toast.success('Configuración actualizada exitosamente');
                 // Actualizar valores iniciales después de guardar
                 setInitialConfig(config);
-                // Disparar evento para notificar a otros componentes
-                // config.sobreprecio está en porcentaje (10), convertir a decimal para el hook
-                const sobreprecioDecimal = config.sobreprecio ? parseFloat(config.sobreprecio) / 100 : undefined;
-                triggerUpdate(studioSlug, sobreprecioDecimal);
+                // Disparar evento para notificar a otros componentes con configuración completa
+                triggerUpdate(studioSlug, {
+                    utilidad_servicio: config.utilidad_servicio ? parseFloat(config.utilidad_servicio) / 100 : undefined,
+                    utilidad_producto: config.utilidad_producto ? parseFloat(config.utilidad_producto) / 100 : undefined,
+                    comision_venta: config.comision_venta ? parseFloat(config.comision_venta) / 100 : undefined,
+                    sobreprecio: config.sobreprecio ? parseFloat(config.sobreprecio) / 100 : undefined,
+                });
+                // Cerrar modal si se proporciona callback
+                if (onClose) {
+                    onClose();
+                }
             } else {
                 toast.error(result.error || 'Error al actualizar la configuración');
             }

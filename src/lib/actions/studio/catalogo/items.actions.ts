@@ -276,9 +276,13 @@ export async function actualizarItem(
         const validated = UpdateItemSchema.parse(data);
         console.log("[ITEMS] Datos validados:", validated);
 
-        // Verificar que existe
+        // Verificar que existe y obtener el slug del studio
         const existente = await prisma.studio_items.findUnique({
             where: { id: validated.id },
+            select: {
+                id: true,
+                studio: { select: { slug: true } },
+            },
         });
 
         if (!existente) {
@@ -364,8 +368,8 @@ export async function actualizarItem(
 
         console.log(`[ITEMS] Item actualizado exitosamente: ${item.id} - ${item.name} - Costo: ${item.cost} - Gastos: ${JSON.stringify(item.item_expenses)}`);
 
-        // Revalidar la ruta para actualizar la UI
-        revalidatePath(`/${slug}/studio/commercial/catalogo`);
+        // No revalidar la ruta - el estado local se actualiza en el componente
+        // revalidatePath causaría un refresh completo del catálogo
 
         return {
             success: true,

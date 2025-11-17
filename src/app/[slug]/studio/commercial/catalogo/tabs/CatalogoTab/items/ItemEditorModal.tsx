@@ -54,6 +54,7 @@ interface ItemEditorModalProps {
     studioSlug: string;
     categoriaId: string;
     preciosConfig?: ConfiguracionPrecios;
+    showOverlay?: boolean;
 }
 
 /**
@@ -70,6 +71,7 @@ export function ItemEditorModal({
     studioSlug,
     categoriaId,
     preciosConfig,
+    showOverlay = true,
 }: ItemEditorModalProps) {
     // Estados del formulario
     const [formData, setFormData] = useState<ItemFormData>({
@@ -693,9 +695,12 @@ export function ItemEditorModal({
                         setLocalIsOpen(true);
                     }
                 }}
-                modal={false}
+                modal={showOverlay}
             >
-                <SheetContent className="w-full max-w-4xl p-0 bg-zinc-900 border-l border-zinc-800 overflow-y-auto">
+                <SheetContent 
+                    className="w-full max-w-4xl p-0 bg-zinc-900 border-l border-zinc-800 overflow-y-auto"
+                    showOverlay={showOverlay}
+                >
                     <SheetHeader className="p-6 pb-4">
                         <SheetTitle className="text-xl font-semibold text-zinc-100">
                             {item ? "Editar Item" : "Nuevo Item"}
