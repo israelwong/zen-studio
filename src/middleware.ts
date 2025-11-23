@@ -236,8 +236,9 @@ function checkRouteAccess(userRole: string, pathname: string): boolean {
 
     case "suscriptor":
     case "studio_owner":
-      // Suscriptor y studio_owner pueden acceder a rutas de studio dinámicas [slug]/studio
-      return pathname.match(/^\/([a-zA-Z0-9-]+)\/studio(\/.*)?$/) !== null;
+      // Suscriptor y studio_owner pueden acceder a rutas de studio dinámicas [slug]/studio y [slug]/profile/edit
+      return pathname.match(/^\/([a-zA-Z0-9-]+)\/studio(\/.*)?$/) !== null ||
+             pathname.match(/^\/([a-zA-Z0-9-]+)\/profile\/edit(\/.*)?$/) !== null;
 
     default:
       return false;
