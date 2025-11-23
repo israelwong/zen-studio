@@ -11,16 +11,11 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Cliente de Prisma centralizado con singleton
+// Prisma 7.x lee DATABASE_URL automáticamente del schema.prisma o variables de entorno
 const prisma = globalThis.__prisma || new PrismaClient({
   // Configuración optimizada para producción
   log: ['error'],
   errorFormat: 'pretty',
-  // Configuración de conexión optimizada
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
-  },
 });
 
 // Reutilización del cliente para evitar agotamiento de conexiones
