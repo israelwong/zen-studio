@@ -78,7 +78,11 @@ export async function middleware(request: NextRequest) {
   const isClienteRoute = pathname.match(/^\/([a-zA-Z0-9-]+)\/client(\/.*)?$/);
   const isClienteProtected = isClienteRoute && !isReservedPath(pathname);
 
-  if (isProtectedRoute || isStudioProtected || isClienteProtected) {
+  // Verificar si es una ruta de profile edit [slug]/profile/edit
+  const isProfileEditRoute = pathname.match(/^\/([a-zA-Z0-9-]+)\/profile\/edit(\/.*)?$/);
+  const isProfileEditProtected = isProfileEditRoute && !isReservedPath(pathname);
+
+  if (isProtectedRoute || isStudioProtected || isClienteProtected || isProfileEditProtected) {
     const response = NextResponse.next();
     
     const supabase = createServerClient(

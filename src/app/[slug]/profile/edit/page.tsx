@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 export default async function ProfileEditorIndex({
     params,
@@ -7,6 +7,6 @@ export default async function ProfileEditorIndex({
 }) {
     const { slug } = await params;
     // Redirigir a la primera sección del editor (posts)
-    redirect(`/${slug}/profile/edit/content/posts`);
+    permanentRedirect(`/${slug}/profile/edit/content/posts`);
 }
 
