@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import {
     PaqueteSchema,
     CrearPaqueteSchema,
@@ -12,8 +12,6 @@ import {
     type CalculoPaquete,
     type ServicioConCantidad,
 } from '@/lib/actions/schemas/paquete-schemas';
-
-const prisma = new PrismaClient();
 
 /**
  * Obtener el ID del studio desde el slug

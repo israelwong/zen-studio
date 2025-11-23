@@ -1,6 +1,6 @@
 'use server';
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 import {
     CreateReglaAgendamiento,
     UpdateReglaAgendamiento,
@@ -8,8 +8,6 @@ import {
     ReglaAgendamientoResponse,
     ReglasAgendamientoListResponse
 } from '@/lib/actions/schemas/reglas-agendamiento-schemas';
-
-const prisma = new PrismaClient();
 
 // =============================================================================
 // OBTENER REGLAS DE AGENDAMIENTO

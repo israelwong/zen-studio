@@ -16,6 +16,9 @@ if (!process.env.DATABASE_URL) {
 // Crear pool de conexiones PostgreSQL (singleton)
 const pgPool = globalThis.__pgPool || new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 10, // Máximo de conexiones en el pool
+  idleTimeoutMillis: 30000, // Cerrar conexiones inactivas después de 30s
+  connectionTimeoutMillis: 2000, // Timeout para obtener conexión del pool
 });
 
 // Reutilizar el pool en desarrollo (en producción Next.js cachea los módulos)
@@ -24,6 +27,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Crear adapter de Prisma para PostgreSQL
+// El adapter necesita el pool para manejar las conexiones
 const adapter = new PrismaPg(pgPool);
 
 // Cliente de Prisma centralizado con singleton
