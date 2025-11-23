@@ -157,7 +157,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
                     {/* Link a Profile Editor */}
                     <div className="px-4 py-2 mb-3">
                         <Link
-                            href={`/${studioSlug}/profile/edit/content/posts`}
+                            href={`/${studioSlug}/profile/edit`}
                             className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/30 transition-all duration-200 rounded-md border border-zinc-700/50"
                         >
                             <Camera className="w-4 h-4 text-zinc-400" />
