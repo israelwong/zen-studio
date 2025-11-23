@@ -12,9 +12,11 @@ if (!process.env.DATABASE_URL) {
 
 // Cliente de Prisma centralizado con singleton
 // Prisma 7.x lee DATABASE_URL automáticamente del schema.prisma o variables de entorno
+// Si el generator tiene engineType: "client", se requiere adapter o accelerateUrl
+// Para uso estándar sin Accelerate, no pasar ninguna configuración especial
 const prisma = globalThis.__prisma || new PrismaClient({
   // Configuración optimizada para producción
-  log: ['error'],
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   errorFormat: 'pretty',
 });
 

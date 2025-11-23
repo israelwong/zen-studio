@@ -2,8 +2,6 @@ import React from 'react';
 import {
     Kanban, Settings, BarChart3, Bot, LayoutTemplate, Rocket, Sparkles
 } from 'lucide-react';
-import { prisma } from '@/lib/prisma';
-import { getActiveModules } from '@/lib/modules';
 import {
     ZenSidebar, ZenSidebarContent, ZenSidebarHeader, ZenSidebarFooter, ZenSidebarMenu,
     ZenSidebarMenuItem
@@ -27,6 +25,10 @@ interface DashboardSidebarZenProps {
 }
 
 export async function DashboardSidebarZen({ className, studioSlug }: DashboardSidebarZenProps) {
+    // Importar dependencias dinámicamente para evitar problemas con Prisma 7 en bundling
+    const { prisma } = await import('@/lib/prisma');
+    const { getActiveModules } = await import('@/lib/modules');
+
     // console.log('🔍 DashboardSidebarZen - studioSlug recibido:', studioSlug);
     // console.log('🔍 DashboardSidebarZen - tipo de studioSlug:', typeof studioSlug);
 
