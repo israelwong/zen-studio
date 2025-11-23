@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import {
     ZenSidebar, ZenSidebarContent, ZenSidebarHeader, ZenSidebarFooter, ZenSidebarMenu,
     ZenSidebarMenuItem, ZenButton, useZenSidebar
@@ -39,46 +40,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
     };
 
     // Configuración de navegación modular según Plan Maestro ZEN
+    // Nota: Profile y Content ahora están en /profile/edit/ con su propio sidebar
     const builderNavItems = [
-        // 1. PERFIL (Gratuito - Base)
-        {
-            id: 'profile',
-            title: 'Profile',
-            icon: User,
-            items: [
-                { id: 'identidad', name: 'Identidad', href: `/profile/identidad`, icon: Star },
-                { id: 'redes-sociales', name: 'Redes Sociales', href: `/profile/redes-sociales`, icon: Share2 },
-                { id: 'telefonos', name: 'Teléfonos', href: `/profile/telefonos`, icon: Phone },
-                { id: 'horarios', name: 'Horarios', href: `/profile/horarios`, icon: Calendar },
-                { id: 'ubicacion', name: 'Ubicación', href: `/profile/ubicacion`, icon: Navigation },
-                { id: 'zonas-trabajo', name: 'Zonas de Trabajo', href: `/profile/zonas-trabajo`, icon: MapPin },
-            ],
-        },
-
-        // // 2. CUENTA
-        // {
-        //     id: 'account',
-        //     title: 'Account',
-        //     icon: UserCog,
-        //     items: [
-        //         { id: 'perfil', name: 'Perfil', href: `/studio/account/perfil`, icon: UserCheck },
-        //         { id: 'seguridad', name: 'Seguridad', href: `/studio/account/seguridad`, icon: Shield },
-        //         { id: 'suscripcion', name: 'Suscripción', href: `/studio/account/suscripcion`, icon: CreditCard },
-        //     ],
-        // },
-
-        // 3. CONTENT (Freemium)
-        {
-            id: 'content',
-            title: 'Content',
-            icon: Camera,
-            items: [
-                { id: 'profile-design', name: 'Layout', href: `/content/profile-design`, icon: Layout },
-                { id: 'posts', name: 'Posts', href: `/content/posts`, icon: Newspaper },
-                { id: 'portfolios', name: 'Portafolios', href: `/content/portfolios`, icon: Grid3X3 },
-                { id: 'faq', name: 'FAQ', href: `/content/faq`, icon: HelpCircle },
-            ],
-        },
 
         // 5. COMERCIAL (Pago - Plan Pro+)
         {
@@ -191,8 +154,19 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
 
             <ZenSidebarContent className="px-4">
                 <ZenSidebarMenu>
-                    {/* Sección Studio Builder */}
-                    <div className="px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 mb-3">Studio Builder</div>
+                    {/* Link a Profile Editor */}
+                    <div className="px-4 py-2 mb-3">
+                        <Link
+                            href={`/${studioSlug}/profile/edit/content/posts`}
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/30 transition-all duration-200 rounded-md border border-zinc-700/50"
+                        >
+                            <Camera className="w-4 h-4 text-zinc-400" />
+                            <span>Editor de Perfil Público</span>
+                        </Link>
+                    </div>
+                    
+                    {/* Sección Studio */}
+                    <div className="px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 mb-3">Studio</div>
 
                     {builderNavItems.map(group => (
                         <CollapsibleGroup key={group.id} group={group}>
