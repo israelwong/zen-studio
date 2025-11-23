@@ -20,7 +20,7 @@ interface ProfileEditorSidebarProps {
 
 export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSidebarProps) {
     const { isOpen, toggleSidebar } = useZenSidebar();
-    const [expandedGroup, setExpandedGroup] = React.useState<string | null>(null);
+    const [expandedGroup, setExpandedGroup] = React.useState<string | null>('content'); // Expandir 'content' por defecto
 
     const toggleGroup = (groupId: string) => {
         setExpandedGroup(prev => prev === groupId ? null : groupId);
@@ -29,7 +29,7 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
     const navItems = [
         {
             id: 'content',
-            title: 'Content',
+            title: 'Contenido',
             icon: Camera,
             items: [
                 { id: 'posts', name: 'Posts', href: `/profile/edit/content/posts`, icon: Newspaper },
@@ -39,7 +39,7 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
         },
         {
             id: 'settings',
-            title: 'Settings',
+            title: 'Configuración',
             icon: Star,
             items: [
                 { id: 'identity', name: 'Identidad', href: `/profile/edit/settings/identity`, icon: Star },
@@ -89,9 +89,7 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'}`}>
             <ZenSidebarHeader>
                 <div className="flex items-center justify-between">
-                    <Link href={`/${studioSlug}`} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-200 hover:text-white">
-                        <span>Ver Perfil Público</span>
-                    </Link>
+                    <div className="text-lg font-bold text-white">Editor de Perfil</div>
                     <ZenButton
                         variant="ghost"
                         size="sm"
@@ -105,10 +103,6 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
 
             <ZenSidebarContent className="px-4">
                 <ZenSidebarMenu>
-                    <div className="px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 mb-3">
-                        Editor de Perfil
-                    </div>
-
                     {navItems.map(group => (
                         <CollapsibleGroup key={group.id} group={group}>
                             {group.items.map(item => (
