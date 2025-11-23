@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard, Shield } from "lucide-react";
+import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard, Shield, Camera, Eye } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -130,9 +130,12 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
     // Determinar rutas basadas en la ruta actual
     const isInConfiguracion = pathname.includes('/configuracion');
     const basePath = studioSlug ? `/${studioSlug}/studio` : '';
+    const profilePath = studioSlug ? `/${studioSlug}/profile/edit` : '';
 
     // Rutas del menú
     const menuRoutes = {
+        perfilPublico: `${profilePath}/content/posts`,
+        verPerfilPublico: studioSlug ? `/${studioSlug}` : '',
         perfil: `${basePath}/account/perfil`,
         seguridad: `${basePath}/account/seguridad`,
         suscripcion: `${basePath}/account/suscripcion`,
@@ -187,10 +190,27 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                     <div className="text-xs font-medium text-zinc-400">Gestionar</div>
                 </div>
 
+                {studioSlug && (
+                    <>
+                        <ZenDropdownMenuItem className="cursor-pointer" asChild>
+                            <Link href={menuRoutes.perfilPublico}>
+                                <Camera className="mr-2 h-4 w-4" />
+                                <span>Mi Perfil Público</span>
+                            </Link>
+                        </ZenDropdownMenuItem>
+                        <ZenDropdownMenuItem className="cursor-pointer" asChild>
+                            <Link href={menuRoutes.verPerfilPublico}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                <span>Ver Perfil Público</span>
+                            </Link>
+                        </ZenDropdownMenuItem>
+                    </>
+                )}
+
                 <ZenDropdownMenuItem className="cursor-pointer" asChild>
                     <Link href={menuRoutes.perfil}>
                         <UserCircle className="mr-2 h-4 w-4" />
-                        <span>Perfil</span>
+                        <span>Account</span>
                     </Link>
                 </ZenDropdownMenuItem>
 

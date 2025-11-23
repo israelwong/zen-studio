@@ -47,7 +47,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
         };
 
         return (
-            <ProfilePageClient profileData={mappedProfileData} />
+            <ProfilePageClient profileData={mappedProfileData} studioSlug={slug} />
         );
     } catch (error) {
         console.error('❌ [PublicProfilePage] Error:', error);

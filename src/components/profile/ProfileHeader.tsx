@@ -3,6 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { Star } from 'lucide-react';
+import { PublicProfileEditButton } from './PublicProfileEditButton';
 
 interface ProfileHeaderProps {
     data?: {
@@ -11,6 +12,7 @@ interface ProfileHeaderProps {
         logo_url?: string | null;
     };
     loading?: boolean;
+    studioSlug?: string;
 }
 
 /**
@@ -21,7 +23,7 @@ interface ProfileHeaderProps {
  * - Builder preview (header sticky)
  * - Perfil público (header completo)
  */
-export function ProfileHeader({ data, loading = false }: ProfileHeaderProps) {
+export function ProfileHeader({ data, loading = false, studioSlug }: ProfileHeaderProps) {
     const studioData = data || {};
 
     // Solo mostrar header si hay datos reales o está cargando
@@ -75,8 +77,9 @@ export function ProfileHeader({ data, loading = false }: ProfileHeaderProps) {
                     </div>
                 </div>
 
-                {/* Columna 2: Icono de promoción (más delgada) */}
-                <div className="flex justify-end w-12">
+                {/* Columna 2: Botón Editar (si es dueño) o Icono de promoción */}
+                <div className="flex justify-end items-center gap-2">
+                    {studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
                     <div className="w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
                         <Star className="h-3 w-3 text-yellow-400" />
                     </div>

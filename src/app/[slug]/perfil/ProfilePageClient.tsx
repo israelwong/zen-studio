@@ -8,6 +8,7 @@ import { isProPlan } from '@/lib/utils/profile-utils';
 
 interface ProfilePageClientProps {
     profileData: PublicProfileData;
+    studioSlug: string;
 }
 
 /**
@@ -15,7 +16,7 @@ interface ProfilePageClientProps {
  * Manages tab state and 3-column responsive layout
  * Mobile-first design that expands to desktop
  */
-export function ProfilePageClient({ profileData }: ProfilePageClientProps) {
+export function ProfilePageClient({ profileData, studioSlug }: ProfilePageClientProps) {
     const [activeTab, setActiveTab] = useState<string>('inicio');
 
     const { studio } = profileData;
@@ -43,6 +44,7 @@ export function ProfilePageClient({ profileData }: ProfilePageClientProps) {
                         slogan: studio.slogan,
                         logo_url: studio.logo_url
                     }}
+                    studioSlug={studioSlug}
                 />
 
                 {/* Navigation Tabs */}
@@ -99,6 +101,7 @@ export function ProfilePageClient({ profileData }: ProfilePageClientProps) {
                             slogan: studio.slogan,
                             logo_url: studio.logo_url
                         }}
+                        studioSlug={studioSlug}
                     />
 
                     {/* Navigation Tabs */}
