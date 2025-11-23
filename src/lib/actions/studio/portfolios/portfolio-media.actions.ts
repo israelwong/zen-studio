@@ -125,8 +125,8 @@ export async function uploadPortfolioImage(
 
         // Revalidar paths
         if (portfolio?.studio.slug) {
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios/${portfolioId}`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios/${portfolioId}`);
         }
 
         return {
@@ -220,8 +220,8 @@ export async function uploadPortfolioVideo(
 
         // Revalidar paths
         if (portfolio?.studio.slug) {
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios/${portfolioId}`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios/${portfolioId}`);
         }
 
         return {
@@ -293,8 +293,8 @@ export async function deletePortfolioMedia(mediaId: string) {
 
         // Revalidar paths
         if (media.portfolio.studio.slug) {
-            revalidatePath(`/${media.portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${media.portfolio.studio.slug}/studio/content/portfolios/${media.portfolio.id}`);
+            revalidatePath(`/${media.portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${media.portfolio.studio.slug}/profile/edit/content/portfolios/${media.portfolio.id}`);
         }
 
         return { success: true };
@@ -332,8 +332,8 @@ export async function reorderPortfolioMedia(mediaIds: string[]) {
 
         // Revalidar paths
         if (firstMedia?.portfolio.studio.slug) {
-            revalidatePath(`/${firstMedia.portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${firstMedia.portfolio.studio.slug}/studio/content/portfolios/${firstMedia.portfolio.id}`);
+            revalidatePath(`/${firstMedia.portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${firstMedia.portfolio.studio.slug}/profile/edit/content/portfolios/${firstMedia.portfolio.id}`);
         }
 
         return { success: true };
@@ -374,8 +374,8 @@ export async function updatePortfolioMedia(
 
         // Revalidar paths
         if (media.portfolio.studio.slug) {
-            revalidatePath(`/${media.portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${media.portfolio.studio.slug}/studio/content/portfolios/${media.portfolio.id}`);
+            revalidatePath(`/${media.portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${media.portfolio.studio.slug}/profile/edit/content/portfolios/${media.portfolio.id}`);
         }
 
         return { success: true };

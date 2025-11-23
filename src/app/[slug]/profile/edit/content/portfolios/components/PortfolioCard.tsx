@@ -105,7 +105,7 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
                 // IMPORTANTE: Solo redirigir si realmente estamos en esa página, no desde la lista
                 if (isEditingThisPortfolio) {
                     // Usar replace inmediatamente para evitar navegación accidental
-                    router.replace(`/${studioSlug}/studio/content/portfolios`);
+                    router.replace(`/${studioSlug}/profile/edit/content/portfolios`);
                 }
             } else {
                 toast.error(result.error || "Error al eliminar portfolio");
@@ -408,7 +408,7 @@ export function PortfolioCard({ portfolio, studioSlug, onUpdate, onDuplicatingSt
         if (isDeleting || showDeleteModal) {
             return;
         }
-        router.push(`/${studioSlug}/studio/content/portfolios/${localPortfolio.id}/editar`);
+        router.push(`/${studioSlug}/profile/edit/content/portfolios/${localPortfolio.id}/editar`);
     };
 
     // Mostrar hasta 3 tags, si hay más mostrar +

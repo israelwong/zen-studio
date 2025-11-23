@@ -672,7 +672,7 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
             }
 
             // Redirigir a la lista de portfolios
-            router.push(`/${studioSlug}/studio/content/portfolios`);
+            router.push(`/${studioSlug}/profile/edit/content/portfolios`);
 
         } catch (error) {
             console.error("Error saving portfolio:", error);
@@ -1475,7 +1475,7 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                         const result = await deleteStudioPortfolio(portfolio.id);
                         if (result.success) {
                             toast.success("Portfolio eliminado exitosamente");
-                            router.push(`/${studioSlug}/studio/content/portfolios`);
+                            router.push(`/${studioSlug}/profile/edit/content/portfolios`);
                         } else {
                             toast.error(result.error || "Error al eliminar portfolio");
                             setIsDeleting(false);

@@ -72,8 +72,8 @@ export async function createPortfolioContentBlock(
 
         // Revalidar paths
         if (portfolio?.studio.slug) {
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios/${portfolioId}`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios/${portfolioId}`);
         }
 
         return {
@@ -162,8 +162,8 @@ export async function updatePortfolioContentBlock(
 
         // Revalidar paths
         if (existingBlock.portfolio.studio.slug) {
-            revalidatePath(`/${existingBlock.portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${existingBlock.portfolio.studio.slug}/studio/content/portfolios/${existingBlock.portfolio.id}`);
+            revalidatePath(`/${existingBlock.portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${existingBlock.portfolio.studio.slug}/profile/edit/content/portfolios/${existingBlock.portfolio.id}`);
         }
 
         return {
@@ -206,8 +206,8 @@ export async function deletePortfolioContentBlock(blockId: string) {
 
         // Revalidar paths
         if (block.portfolio.studio.slug) {
-            revalidatePath(`/${block.portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${block.portfolio.studio.slug}/studio/content/portfolios/${block.portfolio.id}`);
+            revalidatePath(`/${block.portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${block.portfolio.studio.slug}/profile/edit/content/portfolios/${block.portfolio.id}`);
         }
 
         return { success: true };
@@ -244,8 +244,8 @@ export async function reorderPortfolioContentBlocks(
 
         // Revalidar paths
         if (portfolio?.studio.slug) {
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios/${portfolioId}`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios/${portfolioId}`);
         }
 
         return { success: true };
@@ -391,8 +391,8 @@ export async function batchUpdatePortfolioContentBlocks(
 
         // Revalidar paths
         if (portfolio?.studio.slug) {
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
-            revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios/${portfolioId}`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+            revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios/${portfolioId}`);
         }
 
         return { success: true };

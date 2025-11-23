@@ -258,7 +258,7 @@ export function PostCard({ post, studioSlug, onUpdate }: PostCardProps) {
         : null;
 
     const handleCardClick = () => {
-        router.push(`/${studioSlug}/studio/content/posts/${localPost.id}/editar`);
+        router.push(`/${studioSlug}/profile/edit/content/posts/${localPost.id}/editar`);
     };
 
     return (

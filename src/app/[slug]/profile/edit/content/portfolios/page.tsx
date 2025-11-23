@@ -159,7 +159,7 @@ export default function PortfoliosPage() {
                                 </ZenCardDescription>
                             </div>
                         </div>
-                        <Link href={`/${studioSlug}/studio/content/portfolios/nuevo`}>
+                        <Link href={`/${studioSlug}/profile/edit/content/portfolios/nuevo`}>
                             <ZenButton className="gap-2">
                                 <Plus className="w-4 h-4" />
                                 Nuevo Portfolio

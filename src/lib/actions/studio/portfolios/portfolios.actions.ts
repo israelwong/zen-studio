@@ -341,7 +341,7 @@ export async function createStudioPortfolio(studioId: string, data: PortfolioFor
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
+        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
         if (portfolio.is_published) {
             revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
         }
@@ -782,7 +782,7 @@ export async function updateStudioPortfolio(
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
+        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
         if (portfolio.is_published) {
             revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
         }
@@ -821,10 +821,10 @@ export async function deleteStudioPortfolio(portfolioId: string) {
         });
 
         // Revalidar lista de portfolios (siempre)
-        revalidatePath(`/${studioSlug}/studio/content/portfolios`);
+        revalidatePath(`/${studioSlug}/profile/edit/content/portfolios`);
         
         // Revalidar página del editor (por si el usuario está en esa página)
-        revalidatePath(`/${studioSlug}/studio/content/portfolios/${portfolioId}/editar`);
+        revalidatePath(`/${studioSlug}/profile/edit/content/portfolios/${portfolioId}/editar`);
         
         // Revalidar página pública solo si estaba publicado
         if (portfolio.is_published) {
@@ -862,7 +862,7 @@ export async function toggleStudioPortfolioPublish(portfolioId: string) {
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/studio/content/portfolios`);
+        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
         revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
 
         return { success: true, data: updatedPortfolio };

@@ -339,7 +339,7 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
                 toast.success(mode === "create" ? "Post creado exitosamente" : "Post actualizado exitosamente");
                 // Actualizar almacenamiento
                 triggerRefresh();
-                router.push(`/${studioSlug}/studio/content/posts`);
+                router.push(`/${studioSlug}/profile/edit/content/posts`);
             } else {
                 toast.error(result.error || "Error al guardar el post");
             }

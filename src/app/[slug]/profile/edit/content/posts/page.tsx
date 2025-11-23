@@ -121,7 +121,7 @@ export default function PostsPage() {
                                 </ZenCardDescription>
                             </div>
                         </div>
-                        <Link href={`/${studioSlug}/studio/content/posts/nuevo`}>
+                        <Link href={`/${studioSlug}/profile/edit/content/posts/nuevo`}>
                             <ZenButton className="gap-2">
                                 <Plus className="w-4 h-4" />
                                 Nuevo Post

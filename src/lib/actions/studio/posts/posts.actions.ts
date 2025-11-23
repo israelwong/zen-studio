@@ -164,7 +164,7 @@ export async function createStudioPost(studioId: string, data: PostFormData) {
 
         const convertedPost = convertPrismaPostToStudioPost(post);
 
-        revalidatePath(`/${post.studio.slug}/studio/content/posts`);
+        revalidatePath(`/${post.studio.slug}/profile/edit/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/posts`);
         if (post.is_published) {
             revalidatePath(`/${post.studio.slug}/post/${post.id}`);
@@ -243,7 +243,7 @@ export async function createStudioPostBySlug(studioSlug: string, data: PostFormD
 
         // Revalidar también la ruta de content/posts
         if (result.success) {
-            revalidatePath(`/${studioSlug}/studio/content/posts`);
+            revalidatePath(`/${studioSlug}/profile/edit/content/posts`);
         }
 
         return result;
@@ -394,7 +394,7 @@ export async function updateStudioPost(
 
         const convertedPost = convertPrismaPostToStudioPost(post);
 
-        revalidatePath(`/${post.studio.slug}/studio/content/posts`);
+        revalidatePath(`/${post.studio.slug}/profile/edit/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/posts`);
         if (post.is_published) {
             revalidatePath(`/${post.studio.slug}/post/${post.id}`);
