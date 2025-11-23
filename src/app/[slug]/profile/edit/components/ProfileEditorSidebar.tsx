@@ -2,11 +2,11 @@
 
 import React from 'react';
 import {
-    ZenSidebar, ZenSidebarContent, ZenSidebarHeader, ZenSidebarFooter, ZenSidebarMenu,
+    ZenSidebar, ZenSidebarContent, ZenSidebarFooter, ZenSidebarMenu,
     ZenSidebarMenuItem, ZenButton, useZenSidebar
 } from '@/components/ui/zen';
+import { SidebarHeader } from '@/components/shared/sidebar';
 import { ActiveLink } from '@/app/[slug]/studio/components/ActiveLink';
-import { StudioHeaderModal } from '@/app/[slug]/studio/components/StudioHeaderModal';
 import { LogoutButton } from '@/components/auth/logout-button';
 import {
     Camera, X, Newspaper, Grid3X3, HelpCircle, Star, Share2, Phone, Calendar,
@@ -95,19 +95,7 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
 
     return (
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'}`}>
-            <ZenSidebarHeader>
-                <div className="flex items-center justify-between">
-                    <StudioHeaderModal studioData={studio} />
-                    <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleSidebar}
-                        className="lg:hidden p-2 text-zinc-400 hover:text-zinc-200"
-                    >
-                        <X className="h-4 w-4" />
-                    </ZenButton>
-                </div>
-            </ZenSidebarHeader>
+            <SidebarHeader studioData={studio} onToggleSidebar={toggleSidebar} />
 
             <ZenSidebarContent className="px-4">
                 <ZenSidebarMenu>

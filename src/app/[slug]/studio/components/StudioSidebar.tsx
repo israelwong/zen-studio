@@ -3,17 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import {
-    ZenSidebar, ZenSidebarContent, ZenSidebarHeader, ZenSidebarFooter, ZenSidebarMenu,
-    ZenSidebarMenuItem, ZenButton, useZenSidebar
+    ZenSidebar, ZenSidebarContent, ZenSidebarFooter, ZenSidebarMenu,
+    ZenSidebarMenuItem, useZenSidebar
 } from '@/components/ui/zen';
-import { StudioHeaderModal } from './StudioHeaderModal';
+import { SidebarHeader } from '@/components/shared/sidebar';
 import { ActiveLink } from './ActiveLink';
 import { LogoutButton } from '@/components/auth/logout-button';
 import {
-    Star, Phone, Camera, X, CreditCard, File, User, Grid3X3, Store, Package, Calendar,
-    Newspaper, Briefcase, Users, Sparkles, Mail, ImageIcon, FileText, UserCheck,
-    ChevronDown, ChevronRight, Share2, HelpCircle, MapPin, Shield,
-    FileSignature, UserCog, DollarSign, ShoppingCart, Navigation, Layout, MessageSquare
+    Camera, CreditCard, File, Store, Package,
+    Briefcase, Users, Sparkles, Mail, ImageIcon, FileText, UserCheck,
+    ChevronDown, ChevronRight, UserCog, DollarSign, ShoppingCart, MessageSquare
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -138,19 +137,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
 
     return (
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'}`}>
-            <ZenSidebarHeader>
-                <div className="flex items-center justify-between">
-                    <StudioHeaderModal studioData={studio} />
-                    <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={toggleSidebar}
-                        className="lg:hidden p-2 text-zinc-400 hover:text-zinc-200"
-                    >
-                        <X className="h-4 w-4" />
-                    </ZenButton>
-                </div>
-            </ZenSidebarHeader>
+            <SidebarHeader studioData={studio} onToggleSidebar={toggleSidebar} />
 
             <ZenSidebarContent className="px-4">
                 <ZenSidebarMenu>
@@ -164,7 +151,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
                             <span>Editor de Perfil Público</span>
                         </Link>
                     </div>
-                    
+
                     {/* Sección Studio */}
                     <div className="px-4 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider border-b border-zinc-800/50 mb-3">Studio</div>
 
