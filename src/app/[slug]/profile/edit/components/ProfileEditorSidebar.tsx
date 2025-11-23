@@ -6,10 +6,11 @@ import {
     ZenSidebarMenuItem, ZenButton, useZenSidebar
 } from '@/components/ui/zen';
 import { ActiveLink } from '@/app/[slug]/studio/components/ActiveLink';
+import { StudioHeaderModal } from '@/app/[slug]/studio/components/StudioHeaderModal';
 import { LogoutButton } from '@/components/auth/logout-button';
 import {
     Camera, X, Newspaper, Grid3X3, HelpCircle, Star, Share2, Phone, Calendar,
-    Navigation, MapPin, ChevronDown, ChevronRight
+    Navigation, MapPin, ChevronDown, ChevronRight, Eye
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -85,11 +86,18 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
         );
     };
 
+    // Datos mock para el studio (similar a StudioSidebar)
+    const studio = {
+        id: 'temp-id',
+        studio_name: 'Mi Estudio',
+        slug: studioSlug
+    };
+
     return (
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'}`}>
             <ZenSidebarHeader>
                 <div className="flex items-center justify-between">
-                    <div className="text-lg font-bold text-white">Editor de Perfil</div>
+                    <StudioHeaderModal studioData={studio} />
                     <ZenButton
                         variant="ghost"
                         size="sm"
@@ -103,16 +111,26 @@ export function ProfileEditorSidebar({ className, studioSlug }: ProfileEditorSid
 
             <ZenSidebarContent className="px-4">
                 <ZenSidebarMenu>
+                    {/* Link a Ver Perfil Público */}
+                    <div className="px-4 py-2 mb-3">
+                        <Link
+                            href={`/${studioSlug}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-zinc-300 hover:text-white hover:bg-zinc-800/30 transition-all duration-200 rounded-md border border-zinc-700/50"
+                        >
+                            <Eye className="w-4 h-4 text-zinc-400" />
+                            <span>Ver Perfil Público</span>
+                        </Link>
+                    </div>
+
                     {navItems.map(group => (
                         <CollapsibleGroup key={group.id} group={group}>
                             {group.items.map(item => (
                                 <ZenSidebarMenuItem key={item.id}>
-                                    <ActiveLink
-                                        href={`/${studioSlug}${item.href}`}
-                                        className="flex items-center gap-3 px-3 py-1.5 text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/30 transition-all duration-200 rounded-md group"
-                                    >
-                                        <item.icon className="w-4 h-4 text-zinc-500 group-hover:text-zinc-300" />
-                                        <span className="text-zinc-300 group-hover:text-white">{item.name}</span>
+                                    <ActiveLink href={`/${studioSlug}${item.href}`}>
+                                        <item.icon className="w-4 h-4" />
+                                        <span>{item.name}</span>
                                     </ActiveLink>
                                 </ZenSidebarMenuItem>
                             ))}

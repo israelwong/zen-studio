@@ -17,14 +17,14 @@ export function ProfileEditorHeader({ studioSlug }: ProfileEditorHeaderProps) {
                 <span className="text-sm font-medium text-zinc-300">Editor de Perfil Público</span>
             </div>
             <div className="flex items-center gap-2 lg:gap-4">
-                <Link href={`/${studioSlug}`}>
+                <Link href={`/${studioSlug}`} target="_blank" rel="noopener noreferrer">
                     <ZenButton
                         variant="outline"
                         size="sm"
                         className="gap-2"
                     >
                         <Eye className="h-4 w-4" />
-                        Ver Público
+                        Ver Perfil Público
                     </ZenButton>
                 </Link>
                 <UserAvatar studioSlug={studioSlug} />
