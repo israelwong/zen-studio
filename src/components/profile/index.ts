@@ -3,7 +3,7 @@
  * 
  * Componentes migrados desde:
  * - Builder preview (/app/[slug]/studio/components/previews/)
- * - Perfil público (/app/[slug]/public-profile/)
+ * - Perfil público (/app/[slug]/profile/public/)
  * 
  * Con mejor naming y reutilización
  */
