@@ -53,7 +53,7 @@ export function PromiseQuickActions({
   };
 
   const handleShareProfile = async () => {
-    const profileUrl = `${window.location.origin}/${studioSlug}/cliente/profile/${contactId}`;
+    const profileUrl = `${window.location.origin}/${studioSlug}/client/profile/${contactId}`;
     
     // Registrar log si hay promiseId
     if (promiseId) {

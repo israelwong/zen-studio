@@ -18,7 +18,7 @@ interface ClientesViewProps {
 /**
  * ClientesView - Client management and information
  * Shows client list, contact details, and session history
- * Used in /[slug]/cliente route
+ * Used in /[slug]/client route
  */
 export function ClientsSection({ clientes = [] }: ClientesViewProps) {
     const getStatusColor = (status: string) => {

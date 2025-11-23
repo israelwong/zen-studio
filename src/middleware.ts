@@ -74,8 +74,8 @@ export async function middleware(request: NextRequest) {
   const isStudioRoute = pathname.match(/^\/([a-zA-Z0-9-]+)\/studio(\/.*)?$/);
   const isStudioProtected = isStudioRoute && !isReservedPath(pathname);
 
-  // Verificar si es una ruta de cliente dinámica [slug]/cliente
-  const isClienteRoute = pathname.match(/^\/([a-zA-Z0-9-]+)\/cliente(\/.*)?$/);
+  // Verificar si es una ruta de cliente dinámica [slug]/client
+  const isClienteRoute = pathname.match(/^\/([a-zA-Z0-9-]+)\/client(\/.*)?$/);
   const isClienteProtected = isClienteRoute && !isReservedPath(pathname);
 
   if (isProtectedRoute || isStudioProtected || isClienteProtected) {
@@ -143,8 +143,8 @@ export async function middleware(request: NextRequest) {
     if (isClienteProtected) {
       const hasClienteAccess = await checkClienteAccess(user, pathname, request);
       if (!hasClienteAccess) {
-        const studioSlug = pathname.match(/^\/([a-zA-Z0-9-]+)\/cliente/)?.[1];
-        const loginUrl = new URL(`/${studioSlug}/cliente/login?redirect=${encodeURIComponent(pathname)}`, request.url);
+        const studioSlug = pathname.match(/^\/([a-zA-Z0-9-]+)\/client/)?.[1];
+        const loginUrl = new URL(`/${studioSlug}/client/login?redirect=${encodeURIComponent(pathname)}`, request.url);
         return NextResponse.redirect(loginUrl);
       }
     }
@@ -205,9 +205,9 @@ export async function middleware(request: NextRequest) {
     // No reescribir rutas que ya existen:
     // - /[slug] (página pública del studio)
     // - /[slug]/studio (panel privado del studio)  
-    // - /[slug]/cliente (portal de clientes)
+    // - /[slug]/client (portal de clientes)
     // - /[slug]/preview (preview de promesas - pública)
-    if (!subPath || subPath.startsWith('/studio') || subPath.startsWith('/cliente') || subPath.startsWith('/preview')) {
+    if (!subPath || subPath.startsWith('/studio') || subPath.startsWith('/client') || subPath.startsWith('/preview')) {
       return NextResponse.next();
     }
 
@@ -243,7 +243,7 @@ function checkRouteAccess(userRole: string, pathname: string): boolean {
 async function checkClienteAccess(user: any, pathname: string, request: NextRequest): Promise<boolean> {
   try {
     // Extraer el slug del studio de la ruta
-    const slugMatch = pathname.match(/^\/([a-zA-Z0-9-]+)\/cliente(\/.*)?$/);
+    const slugMatch = pathname.match(/^\/([a-zA-Z0-9-]+)\/client(\/.*)?$/);
     if (!slugMatch) return false;
 
     const studioSlug = slugMatch[1];

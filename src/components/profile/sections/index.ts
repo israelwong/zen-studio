@@ -8,7 +8,7 @@
  * 
  * Secciones adicionales (rutas específicas):
  * - Payments: PaymentsSection (/[slug]/payment)
- * - Clientes: ClientsSection (/[slug]/cliente)
+ * - Clientes: ClientsSection (/[slug]/client)
  */
 
 // Secciones principales
