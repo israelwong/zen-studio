@@ -8,8 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:push": "prisma db push",
-    "db:migrate": "prisma migrate dev",
+    "db:push": "tsx scripts/prisma-with-direct.ts db push",
+    "db:migrate": "tsx scripts/prisma-with-direct.ts migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-users": "tsx prisma/seed-with-users.ts",
@@ -19,7 +19,7 @@
     "db:seed-plans": "tsx prisma/seed-plans.ts",
     "db:seed-agents": "tsx prisma/seed-agents.ts",
     "db:seed-profiles": "node scripts/seed-professional-profiles.js",
-    "db:reset": "prisma migrate reset --force && npm run db:seed",
+    "db:reset": "tsx scripts/prisma-with-direct.ts migrate reset --force && npm run db:seed",
     "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
   },
   "dependencies": {
