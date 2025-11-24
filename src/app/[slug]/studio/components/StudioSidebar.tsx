@@ -10,9 +10,9 @@ import { ActiveLink } from './ActiveLink';
 import { LogoutButton } from '@/components/auth/logout-button';
 import { useStudioData } from '@/hooks/useStudioData';
 import {
-    CreditCard, File, Store, Package,
-    Briefcase, Users, Sparkles, Mail, ImageIcon, FileText, UserCheck,
-    ChevronDown, ChevronRight, UserCog, DollarSign, ShoppingCart, MessageSquare
+    File,
+    Briefcase, Users, Sparkles, Mail, ImageIcon, FileText,
+    ChevronDown, ChevronRight, UserCog, DollarSign, ShoppingCart, MessageSquare, Megaphone
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -33,10 +33,9 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             title: 'Commercial',
             icon: ShoppingCart,
             items: [
+                { id: 'ofertas', name: 'Ofertas', href: `/commercial/ofertas`, icon: Megaphone },
                 { id: 'conversations', name: 'Conversations', href: `/commercial/conversations`, icon: MessageSquare },
                 { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },
-                { id: 'catalogo', name: 'Catalog', href: `/commercial/catalogo`, icon: Store },
-                { id: 'paquetes', name: 'Packages', href: `/commercial/paquetes`, icon: Package },
             ],
         },
 
@@ -47,10 +46,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             icon: Briefcase,
             items: [
                 { id: 'events', name: 'Events', href: `/business/events`, icon: FileText },
-                // { id: 'payments', name: 'Pagos', href: `/business/pagos`, icon: CreditCard },
                 { id: 'finanzas', name: 'Finanzas', href: `/business/finanzas`, icon: DollarSign },
                 { id: 'personal', name: 'Personal', href: `/business/personal`, icon: UserCog },
-                // { id: 'contratos', name: 'Contratos', href: `/business/contratos`, icon: FileText },
             ],
         },
 
@@ -60,7 +57,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             title: 'Clients',
             icon: Users,
             items: [
-                { id: 'planning', name: 'Planning', href: `/business/planning`, icon: FileText },
+                // { id: 'planning', name: 'Planning', href: `/business/planning`, icon: FileText },
                 { id: 'invitations', name: 'Invitaciones', href: `/invitations`, icon: Mail },
                 { id: 'galleries', name: 'Galerías', href: `/galleries`, icon: ImageIcon },
                 // { id: 'portal', name: 'Portal Cliente*', href: `/portal-cliente`, icon: UserCheck },
@@ -98,7 +95,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
     };
 
     // Obtener datos del studio desde la base de datos
-    const { identidadData, loading } = useStudioData({ studioSlug });
+    const { identidadData } = useStudioData({ studioSlug });
 
     // Preparar datos del studio para SidebarHeader
     const studio = identidadData ? {

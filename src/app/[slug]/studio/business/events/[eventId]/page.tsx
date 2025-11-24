@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, User, Phone, Mail, DollarSign, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Phone, Mail, DollarSign, XCircle, CreditCard, FileText } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { obtenerEventoDetalle, cancelarEvento } from '@/lib/actions/studio/business/events/events.actions';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import { toast } from 'sonner';
+import Link from 'next/link';
 
 export default function EventDetailPage() {
   const params = useParams();
@@ -233,11 +234,27 @@ export default function EventDetailPage() {
               {/* Resumen Financiero */}
               <ZenCard variant="outlined">
                 <ZenCardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-600/20 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-emerald-400" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-600/20 rounded-lg">
+                        <DollarSign className="h-5 w-5 text-emerald-400" />
+                      </div>
+                      <ZenCardTitle className="text-lg">Resumen Financiero</ZenCardTitle>
                     </div>
-                    <ZenCardTitle className="text-lg">Resumen Financiero</ZenCardTitle>
+                    <div className="flex items-center gap-2">
+                      <Link href={`/${studioSlug}/studio/business/pagos`}>
+                        <ZenButton variant="ghost" size="sm" className="gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Métodos de Pago
+                        </ZenButton>
+                      </Link>
+                      <Link href={`/${studioSlug}/studio/business/contratos`}>
+                        <ZenButton variant="ghost" size="sm" className="gap-2">
+                          <FileText className="h-4 w-4" />
+                          Contratos
+                        </ZenButton>
+                      </Link>
+                    </div>
                   </div>
                 </ZenCardHeader>
                 <ZenCardContent className="space-y-4">

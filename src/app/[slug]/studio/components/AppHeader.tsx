@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Sparkles, Calendar, ContactRound } from 'lucide-react';
+import { Sparkles, Calendar, ContactRound, ShoppingBag, Store, Package } from 'lucide-react';
+import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
-import { ZenButton } from '@/components/ui/zen';
+import { ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem } from '@/components/ui/zen';
 import { useZenMagicChat } from './ZenMagic';
 import { UserAvatar } from '@/components/auth/user-avatar';
 import { StorageBadge } from './StorageBadge';
@@ -54,8 +55,34 @@ export function AppHeader({ studioSlug }: AppHeaderProps) {
                     <span className="sr-only">Ver Agenda</span>
                 </ZenButton>
 
-                {/* Notificaciones */}
-                <NotificationsDropdown studioSlug={studioSlug} />
+                {/* Botón Shopping - Catalog y Packages */}
+                <ZenDropdownMenu>
+                    <ZenDropdownMenuTrigger asChild>
+                        <ZenButton
+                            variant="ghost"
+                            size="icon"
+                            className="rounded-full text-zinc-400 hover:text-zinc-200"
+                            title="Catálogo y Paquetes"
+                        >
+                            <ShoppingBag className="h-5 w-5" />
+                            <span className="sr-only">Catálogo y Paquetes</span>
+                        </ZenButton>
+                    </ZenDropdownMenuTrigger>
+                    <ZenDropdownMenuContent align="end" className="w-48">
+                        <ZenDropdownMenuItem asChild>
+                            <Link href={`/${studioSlug}/studio/commercial/catalogo`} className="cursor-pointer">
+                                <Store className="mr-2 h-4 w-4" />
+                                <span>Catálogo</span>
+                            </Link>
+                        </ZenDropdownMenuItem>
+                        <ZenDropdownMenuItem asChild>
+                            <Link href={`/${studioSlug}/studio/commercial/paquetes`} className="cursor-pointer">
+                                <Package className="mr-2 h-4 w-4" />
+                                <span>Paquetes</span>
+                            </Link>
+                        </ZenDropdownMenuItem>
+                    </ZenDropdownMenuContent>
+                </ZenDropdownMenu>
 
                 <ZenButton
                     variant="ghost"
@@ -66,6 +93,9 @@ export function AppHeader({ studioSlug }: AppHeaderProps) {
                     <Sparkles className="h-5 w-5" />
                     <span className="sr-only">ZEN Magic</span>
                 </ZenButton>
+
+                {/* Notificaciones */}
+                <NotificationsDropdown studioSlug={studioSlug} />
 
                 {/* Avatar del usuario - siempre visible */}
                 <UserAvatar studioSlug={studioSlug} />

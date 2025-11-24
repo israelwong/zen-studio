@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Calendar, Search } from 'lucide-react';
+import { Calendar, Search, CreditCard, FileText } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenInput, ZenButton } from '@/components/ui/zen';
 import { obtenerEventos } from '@/lib/actions/studio/business/events/events.actions';
 import type { EventoBasico } from '@/lib/actions/studio/business/events/events.actions';
@@ -69,7 +69,7 @@ export default function EventsPage() {
 
         <ZenCardContent className="p-6">
           <div className="space-y-6">
-            {/* Búsqueda */}
+            {/* Búsqueda y Acciones */}
             <div className="flex items-center gap-4">
               <div className="flex-1">
                 <ZenInput
@@ -80,6 +80,20 @@ export default function EventsPage() {
                   icon={Search}
                   iconPosition="left"
                 />
+              </div>
+              <div className="flex items-center gap-2">
+                <Link href={`/${studioSlug}/studio/business/pagos`}>
+                  <ZenButton variant="outline" size="sm" className="gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Métodos de Pago
+                  </ZenButton>
+                </Link>
+                <Link href={`/${studioSlug}/studio/business/contratos`}>
+                  <ZenButton variant="outline" size="sm" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Contratos
+                  </ZenButton>
+                </Link>
               </div>
             </div>
 

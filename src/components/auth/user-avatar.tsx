@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogOut, Settings, CreditCard, UserCircle, Rocket, LayoutDashboard, Shield, Camera, Eye, Edit } from "lucide-react";
+import { LogOut, CreditCard, UserCircle, LayoutDashboard, Shield, Eye, Edit, Wallet } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -143,7 +143,8 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
         seguridad: `${basePath}/account/seguridad`,
         suscripcion: `${basePath}/account/suscripcion`,
         builder: `${basePath}/builder`,
-        configuracion: isInConfiguracion ? `${basePath}/dashboard` : `${basePath}/configuracion`
+        configuracion: isInConfiguracion ? `${basePath}/dashboard` : `${basePath}/configuracion`,
+        metodosPago: `${basePath}/business/pagos`
     };
 
     return (
@@ -225,15 +226,9 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                             </Link>
                         </ZenDropdownMenuItem>
                         <ZenDropdownMenuItem className="cursor-pointer" asChild>
-                            <Link href={menuRoutes.builder}>
-                                <Rocket className="mr-2 h-4 w-4" />
-                                <span>Studio Builder</span>
-                            </Link>
-                        </ZenDropdownMenuItem>
-                        <ZenDropdownMenuItem className="cursor-pointer" asChild>
-                            <Link href={menuRoutes.configuracion}>
-                                <Settings className="mr-2 h-4 w-4" />
-                                <span>Configuración</span>
+                            <Link href={menuRoutes.metodosPago}>
+                                <Wallet className="mr-2 h-4 w-4" />
+                                <span>Métodos de Pago</span>
                             </Link>
                         </ZenDropdownMenuItem>
                         <ZenDropdownMenuSeparator />
