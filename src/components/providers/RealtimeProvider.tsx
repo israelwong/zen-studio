@@ -46,7 +46,10 @@ export function RealtimeProvider({
 
         // Limpiar canal anterior si existe
         if (channelRef.current) {
-          supabase.removeChannel(channelRef.current);
+          // Verificar estado antes de remover
+          if (channelRef.current.state === 'subscribed' || channelRef.current.state === 'joined') {
+            supabase.removeChannel(channelRef.current);
+          }
           channelRef.current = null;
         }
 
@@ -58,6 +61,7 @@ export function RealtimeProvider({
         const channel = supabase
           .channel(channelName, {
             config: {
+              private: true,
               broadcast: { self: true, ack: true },
             },
           })
@@ -76,12 +80,14 @@ export function RealtimeProvider({
               setIsConnected(true);
               setConnectionError(null);
             } else if (status === 'CHANNEL_ERROR') {
-              console.error('[RealtimeProvider] Error en canal');
-              setConnectionError('Error en canal Realtime');
+              // CHANNEL_ERROR es manejado automáticamente por el cliente con reintentos
+              // No es crítico, solo logueamos para debugging
+              console.warn('[RealtimeProvider] Error en canal (reintentando automáticamente):', err?.message || 'Error desconocido');
+              // No establecemos error crítico aquí ya que el cliente reintentará
               setIsConnected(false);
             } else if (status === 'TIMED_OUT') {
-              console.warn('[RealtimeProvider] Timeout en suscripción');
-              setConnectionError('Timeout en suscripción');
+              console.warn('[RealtimeProvider] Timeout en suscripción (reintentando automáticamente)');
+              // El cliente reintentará automáticamente
               setIsConnected(false);
             } else if (status === 'CLOSED') {
               console.log('[RealtimeProvider] Canal cerrado');
