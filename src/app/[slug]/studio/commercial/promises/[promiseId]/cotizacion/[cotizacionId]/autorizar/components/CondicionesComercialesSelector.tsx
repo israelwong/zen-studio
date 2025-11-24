@@ -23,6 +23,7 @@ interface CondicionesComercialesSelectorProps {
   onSelect: (id: string | null) => void;
   precioBase: number;
   onMontoChange: (monto: string) => void;
+  disabled?: boolean;
 }
 
 export function CondicionesComercialesSelector({
@@ -31,6 +32,7 @@ export function CondicionesComercialesSelector({
   onSelect,
   precioBase,
   onMontoChange,
+  disabled = false,
 }: CondicionesComercialesSelectorProps) {
   const [condiciones, setCondiciones] = useState<CondicionComercial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,8 @@ export function CondicionesComercialesSelector({
               variant="ghost"
               size="sm"
               onClick={() => setShowManager(true)}
-              className="text-zinc-400 hover:text-zinc-300"
+              disabled={disabled}
+              className="text-zinc-400 hover:text-zinc-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Settings2 className="h-4 w-4 mr-2" />
               Gestionar
@@ -144,10 +147,15 @@ export function CondicionesComercialesSelector({
               {condiciones.map((condicion) => (
                 <label
                   key={condicion.id}
-                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-colors ${selectedId === condicion.id
-                    ? 'border-purple-500 bg-purple-500/10'
-                    : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
-                    }`}
+                  className={`flex items-start gap-3 p-4 border rounded-lg transition-colors ${
+                    disabled
+                      ? 'cursor-not-allowed opacity-50'
+                      : 'cursor-pointer'
+                  } ${
+                    selectedId === condicion.id
+                      ? 'border-purple-500 bg-purple-500/10'
+                      : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/50'
+                  }`}
                 >
                   <input
                     type="radio"
@@ -155,7 +163,8 @@ export function CondicionesComercialesSelector({
                     value={condicion.id}
                     checked={selectedId === condicion.id}
                     onChange={() => handleSelect(condicion.id)}
-                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 focus:ring-offset-zinc-900"
+                    disabled={disabled}
+                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500 focus:ring-offset-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                   <div className="flex-1">
                     <div className="font-semibold text-white">{condicion.name}</div>

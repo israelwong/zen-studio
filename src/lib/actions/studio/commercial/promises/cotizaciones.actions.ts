@@ -88,7 +88,6 @@ export async function createCotizacion(
             promise_id: validatedData.promise_id,
             event_type_id: promise.event_type_id || null,
             event_date: promise.defined_date || new Date(),
-            name: 'Pendiente',
             status: 'ACTIVE',
           },
         });
@@ -1060,12 +1059,10 @@ export async function autorizarCotizacion(
       // Actualizar evento existente (puede estar cancelado y necesitar reactivación)
       eventoId = eventoExistente.id;
       
-      // Preparar datos de actualización (solo campos que pueden cambiar)
+      // Preparar datos de actualización (solo campos operativos)
       const updateData: {
         cotizacion_id: string;
         stage_id: string;
-        contract_value: number;
-        pending_amount: number;
         event_date: Date;
         status: string;
         updated_at: Date;
@@ -1073,9 +1070,7 @@ export async function autorizarCotizacion(
       } = {
         cotizacion_id: validatedData.cotizacion_id,
         stage_id: primeraEtapa.id,
-        contract_value: validatedData.monto,
-        pending_amount: validatedData.monto,
-        event_date: eventDate, // Usar fecha de interés
+        event_date: eventDate, // Leer de promise.event_date después
         status: 'ACTIVE', // Reactivar si estaba cancelado
         updated_at: new Date(),
       };
@@ -1089,6 +1084,19 @@ export async function autorizarCotizacion(
         where: { id: eventoId },
         data: updateData,
       });
+
+      // Actualizar promesa con address y event_date si existe
+      if (validatedData.promise_id) {
+        const address = cotizacion.contact?.address || cotizacion.promise?.contact?.address || null;
+        await prisma.studio_promises.update({
+          where: { id: validatedData.promise_id },
+          data: {
+            address: address || undefined,
+            event_date: eventDate,
+            name: cotizacion.promise?.name || cotizacion.name || undefined,
+          },
+        });
+      }
     } else {
       // Crear nuevo evento solo si no existe uno con el promise_id
       const eventTypeId = cotizacion.promise?.event_type_id || cotizacion.event_type_id || null;
@@ -1097,21 +1105,34 @@ export async function autorizarCotizacion(
       // El lugar del evento se obtiene de la promesa si está disponible
       const eventLocation = cotizacion.promise?.event_location || null;
 
+      // promise_id es requerido ahora
+      if (!validatedData.promise_id) {
+        return {
+          success: false,
+          error: 'Se requiere una promesa para crear el evento',
+        };
+      }
+
+      // Actualizar promesa con address y event_date antes de crear evento
+      await prisma.studio_promises.update({
+        where: { id: validatedData.promise_id },
+        data: {
+          address: address || undefined,
+          event_date: eventDate,
+          name: cotizacion.promise?.name || cotizacion.name || undefined,
+        },
+      });
+
       const nuevoEvento = await prisma.studio_events.create({
         data: {
           studio_id: studio.id,
           contact_id: contactId,
-          promise_id: validatedData.promise_id || null,
+          promise_id: validatedData.promise_id, // REQUERIDO
           cotizacion_id: validatedData.cotizacion_id,
           event_type_id: eventTypeId,
           stage_id: primeraEtapa.id,
-          name: cotizacion.name || 'Pendiente',
-          event_date: eventDate,
-          address: address,
-          sede: eventLocation, // Usar sede para el lugar del evento
+          event_date: eventDate, // Leer de promise.event_date después
           status: 'ACTIVE',
-          contract_value: validatedData.monto,
-          pending_amount: validatedData.monto,
         },
       });
 
@@ -1129,22 +1150,6 @@ export async function autorizarCotizacion(
         })
       : null;
 
-    // Obtener todas las cotizaciones de la promesa para archivar las otras
-    const otrasCotizaciones = validatedData.promise_id
-      ? await prisma.studio_cotizaciones.findMany({
-          where: {
-            promise_id: validatedData.promise_id,
-            id: {
-              not: validatedData.cotizacion_id,
-            },
-            archived: false,
-          },
-          select: {
-            id: true,
-          },
-        })
-      : [];
-
     // Transacción para garantizar consistencia
     await prisma.$transaction(async (tx) => {
       // 1. Actualizar cotización autorizada a "aprobada"
@@ -1160,22 +1165,7 @@ export async function autorizarCotizacion(
         },
       });
 
-      // 2. Archivar las otras cotizaciones de la promesa (marcar como archivadas)
-      if (otrasCotizaciones.length > 0) {
-        await tx.studio_cotizaciones.updateMany({
-          where: {
-            id: {
-              in: otrasCotizaciones.map((c) => c.id),
-            },
-          },
-          data: {
-            archived: true,
-            updated_at: new Date(),
-          },
-        });
-      }
-
-      // 3. Cambiar etapa de la promesa a "aprobado"
+      // 2. Cambiar etapa de la promesa a "aprobado"
       if (validatedData.promise_id && etapaAprobado) {
         await tx.studio_promises.update({
           where: { id: validatedData.promise_id },
@@ -1218,8 +1208,6 @@ export async function autorizarCotizacion(
           where: { id: eventoId },
           select: {
             event_date: true,
-            name: true,
-            address: true,
           },
         });
 
@@ -1320,8 +1308,6 @@ export async function autorizarCotizacion(
           where: { id: eventoId },
           select: {
             event_date: true,
-            name: true,
-            address: true,
           },
         });
 

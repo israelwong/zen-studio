@@ -336,6 +336,7 @@ export default function AutorizarCotizacionPage() {
                     onSelect={setCondicionComercialId}
                     precioBase={cotizacion.price}
                     onMontoChange={setMonto}
+                    disabled={isSubmitting || isRedirecting}
                   />
 
                   {/* Monto Total */}
