@@ -2,6 +2,15 @@
 
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
+import {
+  getEventsSchema,
+  moveEventSchema,
+  type GetEventsParams,
+  type MoveEventData,
+  type EventsListResponse,
+  type EventResponse,
+  type EventWithContact,
+} from '@/lib/actions/schemas/events-schemas';
 
 export interface EventoBasico {
   id: string;
@@ -39,13 +48,13 @@ export interface EventoBasico {
 export interface EventoDetalle extends EventoBasico {
   address: string | null;
   sede: string | null;
-  cotizaciones?: Array<{
+  cotizacion?: {
     id: string;
     name: string;
     price: number;
     status: string;
     condiciones_comerciales_id: string | null;
-  }>;
+  } | null; // Solo la cotización aprobada (event.cotizacion_id)
 }
 
 export interface EventosListResponse {
@@ -63,6 +72,353 @@ export interface EventoDetalleResponse {
 export interface CancelarEventoResponse {
   success: boolean;
   error?: string;
+}
+
+/**
+ * Obtener eventos con pipeline stages (para kanban)
+ */
+export async function getEvents(
+  studioSlug: string,
+  params: GetEventsParams = {}
+): Promise<EventsListResponse> {
+  try {
+    const validatedParams = getEventsSchema.parse(params);
+    const { page, limit, search, stage_id, status } = validatedParams;
+
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const where: {
+      studio_id: string;
+      status?: string;
+      stage_id?: string;
+      OR?: Array<{
+        name?: { contains: string; mode: 'insensitive' };
+      }>;
+    } = {
+      studio_id: studio.id,
+    };
+
+    if (status) {
+      where.status = status;
+    } else {
+      // Por defecto, excluir cancelados y archivados
+      where.status = { notIn: ['CANCELLED', 'ARCHIVED'] };
+    }
+
+    if (stage_id) {
+      where.stage_id = stage_id;
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [events, total] = await Promise.all([
+      prisma.studio_events.findMany({
+        where,
+        include: {
+          event_type: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          contact: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
+          promise: {
+            select: {
+              id: true,
+              contact: {
+                select: {
+                  id: true,
+                  name: true,
+                  phone: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          stage: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              color: true,
+              order: true,
+              stage_type: true,
+            },
+          },
+          agenda: {
+            select: {
+              id: true,
+              date: true,
+              time: true,
+              address: true,
+              concept: true,
+            },
+            take: 1,
+            orderBy: {
+              date: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          event_date: 'desc',
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.studio_events.count({ where }),
+    ]);
+
+    // Convertir Decimal a number y mapear a EventWithContact
+    const eventsSerializados: EventWithContact[] = events.map((evento) => ({
+      id: evento.id,
+      studio_id: evento.studio_id,
+      contact_id: evento.contact_id,
+      promise_id: evento.promise_id,
+      cotizacion_id: evento.cotizacion_id,
+      event_type_id: evento.event_type_id,
+      stage_id: evento.stage_id,
+      name: evento.name,
+      event_date: evento.event_date,
+      address: evento.address,
+      sede: evento.sede,
+      status: evento.status,
+      contract_value: evento.contract_value ? Number(evento.contract_value) : null,
+      paid_amount: evento.paid_amount ? Number(evento.paid_amount) : 0,
+      pending_amount: evento.pending_amount ? Number(evento.pending_amount) : 0,
+      created_at: evento.created_at,
+      updated_at: evento.updated_at,
+      event_type: evento.event_type,
+      contact: evento.contact,
+      promise: evento.promise,
+      stage: evento.stage,
+      agenda: evento.agenda[0] || null,
+    }));
+
+    return {
+      success: true,
+      data: {
+        events: eventsSerializados,
+        total,
+      },
+    };
+  } catch (error) {
+    console.error('[EVENTOS] Error obteniendo eventos:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener eventos',
+    };
+  }
+}
+
+/**
+ * Mover evento entre etapas del pipeline
+ */
+export async function moveEvent(
+  studioSlug: string,
+  data: MoveEventData
+): Promise<EventResponse> {
+  try {
+    const validatedData = moveEventSchema.parse(data);
+
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que la etapa existe
+    const stage = await prisma.studio_manager_pipeline_stages.findUnique({
+      where: { id: validatedData.new_stage_id },
+      select: { studio_id: true },
+    });
+
+    if (!stage || stage.studio_id !== studio.id) {
+      return { success: false, error: 'Etapa no encontrada' };
+    }
+
+    // Obtener evento
+    const evento = await prisma.studio_events.findUnique({
+      where: { id: validatedData.event_id },
+      include: {
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        contact: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+        promise: {
+          select: {
+            id: true,
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                email: true,
+              },
+            },
+          },
+        },
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            color: true,
+            order: true,
+            stage_type: true,
+          },
+        },
+        agenda: {
+          select: {
+            id: true,
+            date: true,
+            time: true,
+            address: true,
+            concept: true,
+          },
+          take: 1,
+          orderBy: {
+            date: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!evento) {
+      return { success: false, error: 'Evento no encontrado' };
+    }
+
+    // Actualizar evento
+    const updatedEvento = await prisma.studio_events.update({
+      where: { id: evento.id },
+      data: {
+        stage_id: validatedData.new_stage_id,
+      },
+      include: {
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        contact: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+          },
+        },
+        promise: {
+          select: {
+            id: true,
+            contact: {
+              select: {
+                id: true,
+                name: true,
+                phone: true,
+                email: true,
+              },
+            },
+          },
+        },
+        stage: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            color: true,
+            order: true,
+            stage_type: true,
+          },
+        },
+        agenda: {
+          select: {
+            id: true,
+            date: true,
+            time: true,
+            address: true,
+            concept: true,
+          },
+          take: 1,
+          orderBy: {
+            date: 'asc',
+          },
+        },
+      },
+    });
+
+    // Convertir Decimal a number
+    const eventoSerializado: EventWithContact = {
+      id: updatedEvento.id,
+      studio_id: updatedEvento.studio_id,
+      contact_id: updatedEvento.contact_id,
+      promise_id: updatedEvento.promise_id,
+      cotizacion_id: updatedEvento.cotizacion_id,
+      event_type_id: updatedEvento.event_type_id,
+      stage_id: updatedEvento.stage_id,
+      name: updatedEvento.name,
+      event_date: updatedEvento.event_date,
+      address: updatedEvento.address,
+      sede: updatedEvento.sede,
+      status: updatedEvento.status,
+      contract_value: updatedEvento.contract_value ? Number(updatedEvento.contract_value) : null,
+      paid_amount: updatedEvento.paid_amount ? Number(updatedEvento.paid_amount) : 0,
+      pending_amount: updatedEvento.pending_amount ? Number(updatedEvento.pending_amount) : 0,
+      created_at: updatedEvento.created_at,
+      updated_at: updatedEvento.updated_at,
+      event_type: updatedEvento.event_type,
+      contact: updatedEvento.contact,
+      promise: updatedEvento.promise,
+      stage: updatedEvento.stage,
+      agenda: updatedEvento.agenda[0] || null,
+    };
+
+    // Revalidar paths
+    revalidatePath(`/${studioSlug}/studio/business/events`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${evento.id}`);
+
+    return {
+      success: true,
+      data: eventoSerializado,
+    };
+  } catch (error) {
+    console.error('[EVENTOS] Error moviendo evento:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al mover evento',
+    };
+  }
 }
 
 /**
@@ -191,16 +547,13 @@ export async function obtenerEventoDetalle(
             },
           },
         },
-        cotizaciones: {
+        cotizacion: {
           select: {
             id: true,
             name: true,
             price: true,
             status: true,
             condiciones_comerciales_id: true,
-          },
-          orderBy: {
-            created_at: 'desc',
           },
         },
       },

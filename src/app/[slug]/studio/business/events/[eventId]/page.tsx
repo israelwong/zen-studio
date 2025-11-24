@@ -2,58 +2,138 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Calendar, User, Phone, Mail, DollarSign, XCircle, CreditCard, FileText } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
-import { obtenerEventoDetalle, cancelarEvento } from '@/lib/actions/studio/business/events/events.actions';
-import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
+import { ArrowLeft, MoreVertical, Loader2 } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
+import { obtenerEventoDetalle, cancelarEvento, getEventPipelineStages, moveEvent } from '@/lib/actions/studio/business/events';
+import type { EventPipelineStage } from '@/lib/actions/schemas/events-schemas';
 import { toast } from 'sonner';
-import Link from 'next/link';
 
 export default function EventDetailPage() {
   const params = useParams();
   const router = useRouter();
   const studioSlug = params.slug as string;
   const eventId = params.eventId as string;
-
   const [loading, setLoading] = useState(true);
-  const [evento, setEvento] = useState<EventoDetalle | null>(null);
-  const [cancelling, setCancelling] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<EventPipelineStage[]>([]);
+  const [currentPipelineStageId, setCurrentPipelineStageId] = useState<string | null>(null);
+  const [isChangingStage, setIsChangingStage] = useState(false);
+  const [eventData, setEventData] = useState<{
+    id: string;
+    name: string | null;
+    event_date: Date;
+    address: string | null;
+    sede: string | null;
+    status: string;
+    contract_value: number | null;
+    paid_amount: number;
+    pending_amount: number;
+    contact_id: string;
+    event_type_id: string | null;
+    stage_id: string | null;
+  } | null>(null);
 
   useEffect(() => {
-    const loadEvento = async () => {
+    const loadEvent = async () => {
       try {
         setLoading(true);
         const result = await obtenerEventoDetalle(studioSlug, eventId);
 
         if (result.success && result.data) {
-          setEvento(result.data);
+          setEventData({
+            id: result.data.id,
+            name: result.data.name,
+            event_date: result.data.event_date,
+            address: result.data.address,
+            sede: result.data.sede,
+            status: result.data.status,
+            contract_value: result.data.contract_value,
+            paid_amount: result.data.paid_amount,
+            pending_amount: result.data.pending_amount,
+            contact_id: result.data.contact_id,
+            event_type_id: result.data.event_type_id,
+            stage_id: result.data.stage_id,
+          });
+          setCurrentPipelineStageId(result.data.stage_id);
         } else {
           toast.error(result.error || 'Evento no encontrado');
           router.push(`/${studioSlug}/studio/business/events`);
         }
       } catch (error) {
-        console.error('Error loading evento:', error);
-        toast.error('Error al cargar evento');
+        console.error('Error loading event:', error);
+        toast.error('Error al cargar el evento');
         router.push(`/${studioSlug}/studio/business/events`);
       } finally {
         setLoading(false);
       }
     };
 
-    loadEvento();
-  }, [studioSlug, eventId, router]);
-
-  const handleCancelarEvento = async () => {
-    if (!confirm('¿Estás seguro de cancelar este evento? Esta acción no se puede deshacer.')) {
-      return;
+    if (eventId) {
+      loadEvent();
     }
+  }, [eventId, studioSlug, router]);
 
+  // Cargar pipeline stages
+  useEffect(() => {
+    const loadPipelineStages = async () => {
+      try {
+        const result = await getEventPipelineStages(studioSlug);
+        if (result.success && result.data) {
+          setPipelineStages(result.data);
+        }
+      } catch (error) {
+        console.error('Error cargando pipeline stages:', error);
+      }
+    };
+    loadPipelineStages();
+  }, [studioSlug]);
+
+  const handlePipelineStageChange = async (newStageId: string) => {
+    if (!eventId || newStageId === currentPipelineStageId) return;
+
+    setIsChangingStage(true);
     try {
-      setCancelling(true);
-      const result = await cancelarEvento(studioSlug, eventId);
+      const result = await moveEvent(studioSlug, {
+        event_id: eventId,
+        new_stage_id: newStageId,
+      });
 
       if (result.success) {
-        toast.success('Evento cancelado exitosamente');
+        setCurrentPipelineStageId(newStageId);
+        toast.success('Etapa actualizada correctamente');
+        // Recargar datos del evento
+        const eventResult = await obtenerEventoDetalle(studioSlug, eventId);
+        if (eventResult.success && eventResult.data) {
+          setEventData({
+            id: eventResult.data.id,
+            name: eventResult.data.name,
+            event_date: eventResult.data.event_date,
+            address: eventResult.data.address,
+            sede: eventResult.data.sede,
+            status: eventResult.data.status,
+            contract_value: eventResult.data.contract_value,
+            paid_amount: eventResult.data.paid_amount,
+            pending_amount: eventResult.data.pending_amount,
+            contact_id: eventResult.data.contact_id,
+            event_type_id: eventResult.data.event_type_id,
+            stage_id: eventResult.data.stage_id,
+          });
+        }
+      } else {
+        toast.error(result.error || 'Error al cambiar etapa');
+      }
+    } catch (error) {
+      console.error('Error cambiando etapa:', error);
+      toast.error('Error al cambiar etapa');
+    } finally {
+      setIsChangingStage(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      const result = await cancelarEvento(studioSlug, eventId);
+      if (result.success) {
+        toast.success('Evento cancelado correctamente');
         router.push(`/${studioSlug}/studio/business/events`);
       } else {
         toast.error(result.error || 'Error al cancelar evento');
@@ -61,18 +141,27 @@ export default function EventDetailPage() {
     } catch (error) {
       console.error('Error cancelando evento:', error);
       toast.error('Error al cancelar evento');
-    } finally {
-      setCancelling(false);
     }
   };
 
   if (loading) {
     return (
       <div className="w-full max-w-7xl mx-auto">
-        <ZenCard>
+        <ZenCard variant="default" padding="none">
+          <ZenCardHeader className="border-b border-zinc-800">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 bg-zinc-800 rounded animate-pulse" />
+                <div className="space-y-2">
+                  <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+                </div>
+              </div>
+            </div>
+          </ZenCardHeader>
           <ZenCardContent className="p-6">
-            <div className="flex items-center justify-center py-12">
-              <div className="text-zinc-400">Cargando evento...</div>
+            <div className="text-center py-12 text-zinc-400">
+              Cargando evento...
             </div>
           </ZenCardContent>
         </ZenCard>
@@ -80,234 +169,136 @@ export default function EventDetailPage() {
     );
   }
 
-  if (!evento) {
+  if (!eventData) {
     return null;
   }
 
-  // Determinar contacto (contact o promise.contact)
-  const contacto = evento.contact || evento.promise?.contact;
-  const contactoNombre = evento.contact?.name || evento.promise?.contact?.name || 'Sin nombre';
-  const contactoTelefono = evento.contact?.phone || evento.promise?.contact?.phone || 'Sin teléfono';
-  const contactoEmail = evento.contact?.email || evento.promise?.contact?.email || null;
-
-  // Calcular monto total de cotizaciones autorizadas
-  const montoTotal = evento.cotizaciones
-    ?.filter((c) => c.status === 'autorizada')
-    .reduce((sum, c) => sum + c.price, 0) || 0;
+  const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
+  const isArchived = currentStage?.slug === 'archivado';
 
   return (
     <div className="w-full max-w-7xl mx-auto">
       <ZenCard variant="default" padding="none">
         <ZenCardHeader className="border-b border-zinc-800">
-          <div className="flex items-center gap-3">
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push(`/${studioSlug}/studio/business/events`)}
-              className="p-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </ZenButton>
-            <div className="p-2 bg-blue-600/20 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-400" />
-            </div>
-            <div className="flex-1">
-              <ZenCardTitle>{evento.name || 'Evento sin nombre'}</ZenCardTitle>
-              <ZenCardDescription>
-                {evento.event_type?.name || 'Sin tipo de evento'}
-              </ZenCardDescription>
-            </div>
-            {evento.status === 'active' && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <ZenButton
                 variant="ghost"
                 size="sm"
-                onClick={handleCancelarEvento}
-                disabled={cancelling}
-                loading={cancelling}
-                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                onClick={() => router.push(`/${studioSlug}/studio/business/events`)}
+                className="p-2"
               >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancelar Evento
+                <ArrowLeft className="h-4 w-4" />
               </ZenButton>
-            )}
+              <div>
+                <ZenCardTitle>{eventData.name || 'Evento sin nombre'}</ZenCardTitle>
+                <ZenCardDescription>
+                  Detalle del evento
+                </ZenCardDescription>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              {pipelineStages.length > 0 && currentPipelineStageId && (
+                <div className="relative flex items-center">
+                  <select
+                    value={currentPipelineStageId}
+                    onChange={(e) => handlePipelineStageChange(e.target.value)}
+                    disabled={isChangingStage || loading}
+                    className={`pl-3 pr-8 py-1.5 text-sm bg-zinc-900 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed appearance-none ${isChangingStage
+                      ? "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
+                      : isArchived
+                        ? "border-amber-500 focus:ring-amber-500/50 focus:border-amber-500"
+                        : "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
+                      }`}
+                  >
+                    {isChangingStage ? (
+                      <option value={currentPipelineStageId}>Actualizando estado...</option>
+                    ) : (
+                      pipelineStages.map((stage) => (
+                        <option key={stage.id} value={stage.id}>
+                          {stage.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  {isChangingStage ? (
+                    <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-zinc-400 pointer-events-none" />
+                  ) : (
+                    <div className="absolute right-2 pointer-events-none">
+                      <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+              )}
+              <ZenDropdownMenu>
+                <ZenDropdownMenuTrigger asChild>
+                  <ZenButton
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                  >
+                    <MoreVertical className="h-4 w-4" />
+                  </ZenButton>
+                </ZenDropdownMenuTrigger>
+                <ZenDropdownMenuContent align="end">
+                  {eventData.status !== 'CANCELLED' && (
+                    <>
+                      <ZenDropdownMenuItem
+                        onClick={handleCancel}
+                        className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                      >
+                        Cancelar evento
+                      </ZenDropdownMenuItem>
+                      <ZenDropdownMenuSeparator />
+                    </>
+                  )}
+                </ZenDropdownMenuContent>
+              </ZenDropdownMenu>
+            </div>
           </div>
         </ZenCardHeader>
-
         <ZenCardContent className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Columna 1: Información del Contacto */}
-            <div className="space-y-6">
-              <ZenCard variant="outlined">
-                <ZenCardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-600/20 rounded-lg">
-                      <User className="h-5 w-5 text-purple-400" />
-                    </div>
-                    <ZenCardTitle className="text-lg">Información del Contacto</ZenCardTitle>
-                  </div>
-                </ZenCardHeader>
-                <ZenCardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Nombre</label>
-                    <div className="flex items-center gap-2 text-white">
-                      <User className="h-4 w-4 text-zinc-400" />
-                      <span>{contactoNombre}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Teléfono</label>
-                    <div className="flex items-center gap-2 text-white">
-                      <Phone className="h-4 w-4 text-zinc-400" />
-                      <span>{contactoTelefono}</span>
-                    </div>
-                  </div>
-
-                  {contactoEmail && (
-                    <div>
-                      <label className="text-xs text-zinc-500 mb-1 block">Email</label>
-                      <div className="flex items-center gap-2 text-white">
-                        <Mail className="h-4 w-4 text-zinc-400" />
-                        <span>{contactoEmail}</span>
-                      </div>
-                    </div>
-                  )}
-                </ZenCardContent>
-              </ZenCard>
-
-              {/* Información del Evento */}
-              <ZenCard variant="outlined">
-                <ZenCardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-600/20 rounded-lg">
-                      <Calendar className="h-5 w-5 text-blue-400" />
-                    </div>
-                    <ZenCardTitle className="text-lg">Información del Evento</ZenCardTitle>
-                  </div>
-                </ZenCardHeader>
-                <ZenCardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Fecha del Evento</label>
-                    <div className="text-white">
-                      {new Date(evento.event_date).toLocaleDateString('es-MX', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </div>
-                  </div>
-
-                  {evento.address && (
-                    <div>
-                      <label className="text-xs text-zinc-500 mb-1 block">Dirección</label>
-                      <div className="text-white">{evento.address}</div>
-                    </div>
-                  )}
-
-                  {evento.sede && (
-                    <div>
-                      <label className="text-xs text-zinc-500 mb-1 block">Sede</label>
-                      <div className="text-white">{evento.sede}</div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Estado</label>
-                    <div className={`inline-flex items-center px-2 py-1 rounded text-sm ${
-                      evento.status === 'active' 
-                        ? 'bg-emerald-500/20 text-emerald-400' 
-                        : evento.status === 'cancelled'
-                        ? 'bg-red-500/20 text-red-400'
-                        : 'bg-zinc-800 text-zinc-300'
-                    }`}>
-                      {evento.status === 'active' ? 'Activo' : evento.status === 'cancelled' ? 'Cancelado' : evento.status}
-                    </div>
-                  </div>
-                </ZenCardContent>
-              </ZenCard>
-            </div>
-
-            {/* Columna 2: Cotizaciones y Pagos */}
-            <div className="space-y-6">
-              {/* Resumen Financiero */}
-              <ZenCard variant="outlined">
-                <ZenCardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-emerald-600/20 rounded-lg">
-                        <DollarSign className="h-5 w-5 text-emerald-400" />
-                      </div>
-                      <ZenCardTitle className="text-lg">Resumen Financiero</ZenCardTitle>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Link href={`/${studioSlug}/studio/business/pagos`}>
-                        <ZenButton variant="ghost" size="sm" className="gap-2">
-                          <CreditCard className="h-4 w-4" />
-                          Métodos de Pago
-                        </ZenButton>
-                      </Link>
-                      <Link href={`/${studioSlug}/studio/business/contratos`}>
-                        <ZenButton variant="ghost" size="sm" className="gap-2">
-                          <FileText className="h-4 w-4" />
-                          Contratos
-                        </ZenButton>
-                      </Link>
-                    </div>
-                  </div>
-                </ZenCardHeader>
-                <ZenCardContent className="space-y-4">
-                  <div>
-                    <label className="text-xs text-zinc-500 mb-1 block">Monto Total Autorizado</label>
-                    <div className="text-2xl font-bold text-emerald-400">
-                      ${montoTotal.toLocaleString('es-MX', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-zinc-800">
-                    <p className="text-sm text-zinc-400">
-                      Los pagos se registrarán aquí próximamente
-                    </p>
-                  </div>
-                </ZenCardContent>
-              </ZenCard>
-
-              {/* Cotizaciones */}
-              {evento.cotizaciones && evento.cotizaciones.length > 0 && (
-                <ZenCard variant="outlined">
-                  <ZenCardHeader>
-                    <ZenCardTitle className="text-lg">Cotizaciones</ZenCardTitle>
-                  </ZenCardHeader>
-                  <ZenCardContent>
-                    <div className="space-y-3">
-                      {evento.cotizaciones.map((cotizacion) => (
-                        <div
-                          key={cotizacion.id}
-                          className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <div className="font-medium text-white">{cotizacion.name}</div>
-                              <div className="text-sm text-zinc-400 mt-1">
-                                ${cotizacion.price.toLocaleString('es-MX', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </div>
-                            </div>
-                            <div className="text-xs px-2 py-1 rounded bg-zinc-700 text-zinc-300">
-                              {cotizacion.status}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ZenCardContent>
-                </ZenCard>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-zinc-400 mb-2">Fecha del evento</h3>
+                <p className="text-white">
+                  {new Date(eventData.event_date).toLocaleDateString('es-MX', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </p>
+              </div>
+              {eventData.address && (
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-2">Dirección</h3>
+                  <p className="text-white">{eventData.address}</p>
+                </div>
+              )}
+              {eventData.contract_value && (
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-2">Monto contratado</h3>
+                  <p className="text-white">
+                    ${eventData.contract_value.toLocaleString('es-MX', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </p>
+                </div>
+              )}
+              {eventData.paid_amount > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-zinc-400 mb-2">Pagado</h3>
+                  <p className="text-white">
+                    ${eventData.paid_amount.toLocaleString('es-MX', {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })} ({eventData.contract_value ? ((eventData.paid_amount / eventData.contract_value) * 100).toFixed(0) : 0}%)
+                  </p>
+                </div>
               )}
             </div>
           </div>
@@ -316,4 +307,3 @@ export default function EventDetailPage() {
     </div>
   );
 }
-
