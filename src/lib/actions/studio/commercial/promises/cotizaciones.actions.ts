@@ -1348,18 +1348,22 @@ export async function autorizarCotizacion(
       }
     });
 
-    // Obtener la cotización actualizada para el log
-    const result = await prisma.studio_cotizaciones.findUnique({
+    // Obtener la cotización actualizada con evento_id para asegurar que tenemos el valor correcto
+    const cotizacionActualizada = await prisma.studio_cotizaciones.findUnique({
       where: { id: validatedData.cotizacion_id },
       select: {
         id: true,
         name: true,
         status: true,
+        evento_id: true,
       },
     });
 
+    // Usar el evento_id de la cotización actualizada (puede ser más confiable que eventoId)
+    const eventoIdFinal = cotizacionActualizada?.evento_id || eventoId;
+
     // Registrar log en promise si existe
-    if (validatedData.promise_id && result) {
+    if (validatedData.promise_id && cotizacionActualizada) {
       const { logPromiseAction } = await import('./promise-logs.actions');
       await logPromiseAction(
         validatedData.studio_slug,
@@ -1368,32 +1372,46 @@ export async function autorizarCotizacion(
         'user',
         null,
         {
-          quotationName: result.name,
+          quotationName: cotizacionActualizada.name,
           amount: validatedData.monto,
-          eventId: eventoId,
+          eventId: eventoIdFinal,
         }
       ).catch((error) => {
         console.error('[AUTORIZACION] Error registrando log:', error);
       });
     }
 
+    // Revalidar rutas
     revalidatePath(`/${validatedData.studio_slug}/studio/commercial/promises`);
     revalidatePath(`/${validatedData.studio_slug}/studio/commercial/promises/${validatedData.promise_id}`);
     revalidatePath(`/${validatedData.studio_slug}/studio/business/events`);
     revalidatePath(`/${validatedData.studio_slug}/studio/dashboard/agenda`); // Revalidar calendario
-    if (eventoId) {
-      revalidatePath(`/${validatedData.studio_slug}/studio/business/events/${eventoId}`);
+    if (eventoIdFinal) {
+      revalidatePath(`/${validatedData.studio_slug}/studio/business/events/${eventoIdFinal}`);
     }
 
-    // Crear notificación
+    // Crear notificación usando el evento_id de la cotización actualizada
     try {
       const { notifyQuoteApproved } = await import('@/lib/notifications/studio');
       const contactName = cotizacion.contact?.name || cotizacion.promise?.contact?.name || 'Cliente';
+      
+      console.log('[AUTORIZACION] 📢 Creando notificación con:', {
+        studioId: studio.id,
+        quoteId: validatedData.cotizacion_id,
+        contactName,
+        monto: validatedData.monto,
+        eventoIdOriginal: eventoId,
+        eventoIdFinal,
+        eventoIdFromCotizacion: cotizacionActualizada?.evento_id,
+        eventoIdType: typeof eventoIdFinal,
+      });
+      
       await notifyQuoteApproved(
         studio.id,
         validatedData.cotizacion_id,
         contactName,
-        validatedData.monto
+        validatedData.monto,
+        eventoIdFinal || null
       );
     } catch (notificationError) {
       console.error('[AUTORIZACION] Error creando notificación:', notificationError);
@@ -1403,9 +1421,9 @@ export async function autorizarCotizacion(
     return {
       success: true,
       data: {
-        id: result.id,
-        name: result.name,
-        evento_id: eventoId || undefined,
+        id: cotizacionActualizada?.id || validatedData.cotizacion_id,
+        name: cotizacionActualizada?.name || '',
+        evento_id: eventoIdFinal || undefined,
       },
     };
   } catch (error) {
