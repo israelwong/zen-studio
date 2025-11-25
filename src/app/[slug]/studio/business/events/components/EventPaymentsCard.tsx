@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DollarSign, Calendar, Edit, Plus, X, CreditCard, FileText, MoreVertical } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { 
   ZenCard, 
   ZenCardHeader, 
@@ -9,13 +9,10 @@ import {
   ZenCardContent, 
   ZenButton, 
   ZenConfirmModal,
-  ZenDropdownMenu,
-  ZenDropdownMenuTrigger,
-  ZenDropdownMenuContent,
-  ZenDropdownMenuItem,
-  ZenDropdownMenuSeparator,
 } from '@/components/ui/zen';
 import { PaymentFormModal } from '@/components/shared/payments/PaymentFormModal';
+import { PaymentFormCard } from '@/components/shared/payments/PaymentFormCard';
+import { PaymentReceipt } from '@/components/shared/payments/PaymentReceipt';
 import {
   obtenerPagosPorCotizacion,
   eliminarPago,
@@ -56,10 +53,12 @@ export function EventPaymentsCard({
 }: EventPaymentsCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
@@ -165,107 +164,9 @@ export function EventPaymentsCard({
     }
   };
 
-  const renderPaymentCard = (payment: PaymentItem) => {
-    return (
-      <div
-        key={payment.id}
-        className="p-4 rounded-lg border bg-zinc-800/50 border-zinc-700/50 relative group"
-      >
-        {/* Menú dropdown en esquina superior derecha */}
-        <div className="absolute top-3 right-3">
-          <ZenDropdownMenu open={openMenuId === payment.id} onOpenChange={(open) => setOpenMenuId(open ? payment.id : null)}>
-            <ZenDropdownMenuTrigger asChild>
-              <ZenButton
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </ZenButton>
-            </ZenDropdownMenuTrigger>
-            <ZenDropdownMenuContent align="end">
-              <ZenDropdownMenuItem
-                onClick={() => {
-                  handleEdit(payment);
-                  setOpenMenuId(null);
-                }}
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Editar
-              </ZenDropdownMenuItem>
-              <ZenDropdownMenuSeparator />
-              <ZenDropdownMenuItem
-                onClick={() => {
-                  handleDeleteClick(payment.id);
-                  setOpenMenuId(null);
-                }}
-                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
-              >
-                <X className="mr-2 h-4 w-4" />
-                Eliminar
-              </ZenDropdownMenuItem>
-            </ZenDropdownMenuContent>
-          </ZenDropdownMenu>
-        </div>
-
-        <div className="space-y-3 group">
-          {/* Monto */}
-          <div className="flex items-start gap-2.5">
-            <DollarSign className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-zinc-400 mb-0.5">Monto</p>
-              <p className="text-sm font-semibold text-emerald-200">
-                {formatAmount(payment.amount)}
-              </p>
-            </div>
-          </div>
-
-        {/* Método de pago */}
-        <div className="flex items-center gap-2">
-          <CreditCard className="h-4 w-4 text-blue-400 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-zinc-400 mb-0.5">Método de pago</p>
-            <p className="text-xs font-semibold text-zinc-200 capitalize">
-              {payment.payment_method}
-            </p>
-          </div>
-        </div>
-
-        {/* Fecha */}
-        <div className="flex items-start gap-2.5">
-          <Calendar className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-zinc-400 mb-0.5">Fecha</p>
-            <p className="text-sm font-semibold text-zinc-200">
-              {formatDate(payment.payment_date)}
-            </p>
-          </div>
-        </div>
-
-        {/* Concepto */}
-        {payment.concept && (
-          <div className="flex items-start gap-2.5">
-            <FileText className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-zinc-400 mb-0.5">Concepto</p>
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                {payment.concept}
-              </p>
-            </div>
-          </div>
-        )}
-
-          {/* Descripción */}
-          {payment.description && (
-            <div className="pt-2 border-t border-zinc-700/30">
-              <p className="text-xs text-zinc-300 leading-relaxed">
-                {payment.description}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const handleViewReceipt = (paymentId: string) => {
+    setReceiptPaymentId(paymentId);
+    setIsReceiptModalOpen(true);
   };
 
   return (
@@ -316,7 +217,18 @@ export function EventPaymentsCard({
               {/* Lista de pagos */}
               {payments.length > 0 ? (
                 <div className="space-y-3">
-                  {payments.map((payment) => renderPaymentCard(payment))}
+                  {payments.map((payment) => (
+                    <PaymentFormCard
+                      key={payment.id}
+                      payment={payment}
+                      studioSlug={studioSlug}
+                      onEdit={handleEdit}
+                      onDelete={handleDeleteClick}
+                      onViewReceipt={handleViewReceipt}
+                      openMenuId={openMenuId}
+                      onMenuOpenChange={setOpenMenuId}
+                    />
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-4">
@@ -369,6 +281,19 @@ export function EventPaymentsCard({
           variant="destructive"
           loading={isDeleting}
           loadingText="Eliminando..."
+        />
+      )}
+
+      {/* Modal de comprobante */}
+      {isReceiptModalOpen && receiptPaymentId && (
+        <PaymentReceipt
+          isOpen={isReceiptModalOpen}
+          onClose={() => {
+            setIsReceiptModalOpen(false);
+            setReceiptPaymentId(null);
+          }}
+          studioSlug={studioSlug}
+          paymentId={receiptPaymentId}
         />
       )}
     </>
