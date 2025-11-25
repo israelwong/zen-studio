@@ -9,46 +9,32 @@ const METODOS_PAGO_BASICOS = [
     {
         payment_method_name: "Efectivo",
         payment_method: "cash",
-        comision_porcentaje_base: 0,
-        comision_fija_monto: 0,
-        tipo: "manual",
-        requiere_stripe: false,
+        base_commission_percentage: 0,
+        fixed_commission_amount: 0,
+        is_manual: true,
+        available_for_quotes: false, // NO disponible en cotizaciones para prospectos
         status: "active",
-        orden: 1,
+        order: 1,
+        banco: null,
+        beneficiario: null,
+        cuenta_clabe: null,
     },
     {
-        payment_method_name: "SPEI Directo",
-        payment_method: "spei_directo",
-        comision_porcentaje_base: 0,
-        comision_fija_monto: 0,
-        tipo: "manual",
-        requiere_stripe: false,
-        status: "active",
-        orden: 2,
-    },
-    {
-        payment_method_name: "Transferencia Bancaria",
+        payment_method_name: "Transferencia a cuenta del negocio",
         payment_method: "transferencia",
-        comision_porcentaje_base: 0,
-        comision_fija_monto: 0,
-        tipo: "manual",
-        requiere_stripe: false,
-        status: "active",
-        orden: 3,
-    },
-    {
-        payment_method_name: "Depósito Bancario",
-        payment_method: "deposito",
-        comision_porcentaje_base: 0,
-        comision_fija_monto: 0,
-        tipo: "manual",
-        requiere_stripe: false,
-        status: "active",
-        orden: 4,
+        base_commission_percentage: 0,
+        fixed_commission_amount: 0,
+        is_manual: true,
+        available_for_quotes: true, // SÍ disponible en cotizaciones para prospectos
+        status: "inactive", // Inactivo hasta que se configure (banco, beneficiario, CLABE)
+        order: 2,
+        banco: null, // Requiere configuración
+        beneficiario: null,
+        cuenta_clabe: null,
     },
 ];
 
-// Sembrar métodos de pago básicos para un studio
+// Sembrar métodos de pago básicos para un studio (por ID)
 export async function sembrarMetodosPagoBasicos(studio_id: string) {
     try {
         // Verificar si ya existen métodos para este studio
@@ -67,7 +53,17 @@ export async function sembrarMetodosPagoBasicos(studio_id: string) {
         await prisma.studio_metodos_pago.createMany({
             data: METODOS_PAGO_BASICOS.map(metodo => ({
                 studio_id,
-                ...metodo,
+                payment_method_name: metodo.payment_method_name,
+                payment_method: metodo.payment_method,
+                base_commission_percentage: metodo.base_commission_percentage,
+                fixed_commission_amount: metodo.fixed_commission_amount,
+                is_manual: metodo.is_manual,
+                available_for_quotes: metodo.available_for_quotes,
+                status: metodo.status,
+                order: metodo.order,
+                banco: metodo.banco,
+                beneficiario: metodo.beneficiario,
+                cuenta_clabe: metodo.cuenta_clabe,
                 updated_at: new Date(),
             })),
         });
@@ -125,6 +121,31 @@ export async function obtenerMetodosPagoActivos(studio_id: string) {
         return {
             success: false,
             error: "Error al obtener métodos de pago activos",
+        };
+    }
+}
+
+// Sembrar métodos de pago básicos para un studio (por slug)
+export async function sembrarMetodosPagoBasicosPorSlug(studioSlug: string) {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return {
+                success: false,
+                error: "Studio no encontrado",
+            };
+        }
+
+        return await sembrarMetodosPagoBasicos(studio.id);
+    } catch (error) {
+        console.error("Error al sembrar métodos de pago por slug:", error);
+        return {
+            success: false,
+            error: "Error al sembrar métodos de pago",
         };
     }
 }

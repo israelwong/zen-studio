@@ -445,9 +445,77 @@ async function seedDemoStudio() {
     });
     console.log(`  ✅ Horarios de atención creados`);
 
+    // Sembrar métodos de pago básicos
+    await seedMetodosPagoBasicos(demoStudio.id);
+    console.log(`  ✅ Métodos de pago básicos sembrados`);
+
     // El nuevo modelo de monetización no requiere activación de módulos
     // Los estudios tienen acceso completo a todas las funcionalidades
     console.log(`  ✅ Studio configurado con acceso completo`);
+}
+
+// ============================================
+// HELPER: SEMBRAR MÉTODOS DE PAGO BÁSICOS
+// ============================================
+
+async function seedMetodosPagoBasicos(studio_id: string) {
+    // Verificar si ya existen métodos para este studio
+    const metodosExistentes = await prisma.studio_metodos_pago.findFirst({
+        where: { studio_id },
+    });
+
+    if (metodosExistentes) {
+        return; // Ya existen métodos, no sembrar
+    }
+
+    // Métodos de pago básicos que se siembran automáticamente
+    const METODOS_PAGO_BASICOS = [
+        {
+            payment_method_name: "Efectivo",
+            payment_method: "cash",
+            base_commission_percentage: 0,
+            fixed_commission_amount: 0,
+            is_manual: true,
+            available_for_quotes: false, // NO disponible en cotizaciones para prospectos
+            status: "active",
+            order: 1,
+            banco: null,
+            beneficiario: null,
+            cuenta_clabe: null,
+        },
+        {
+            payment_method_name: "Transferencia a cuenta del negocio",
+            payment_method: "transferencia",
+            base_commission_percentage: 0,
+            fixed_commission_amount: 0,
+            is_manual: true,
+            available_for_quotes: true, // SÍ disponible en cotizaciones para prospectos
+            status: "inactive", // Inactivo hasta que se configure (banco, beneficiario, CLABE)
+            order: 2,
+            banco: null, // Requiere configuración
+            beneficiario: null,
+            cuenta_clabe: null,
+        },
+    ];
+
+    // Crear métodos básicos
+    await prisma.studio_metodos_pago.createMany({
+        data: METODOS_PAGO_BASICOS.map(metodo => ({
+            studio_id,
+            payment_method_name: metodo.payment_method_name,
+            payment_method: metodo.payment_method,
+            base_commission_percentage: metodo.base_commission_percentage,
+            fixed_commission_amount: metodo.fixed_commission_amount,
+            is_manual: metodo.is_manual,
+            available_for_quotes: metodo.available_for_quotes,
+            status: metodo.status,
+            order: metodo.order,
+            banco: metodo.banco,
+            beneficiario: metodo.beneficiario,
+            cuenta_clabe: metodo.cuenta_clabe,
+            updated_at: new Date(),
+        })),
+    });
 }
 
 

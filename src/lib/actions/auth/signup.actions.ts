@@ -161,6 +161,10 @@ export async function createStudioAndSubscription(
       });
     }
 
+    // Sembrar métodos de pago básicos
+    const { sembrarMetodosPagoBasicos } = await import('@/lib/actions/studio/config/metodos-pago-sembrados.actions');
+    await sembrarMetodosPagoBasicos(studio.id);
+
     // Actualizar metadata de Supabase Auth con studio_slug
     await supabase.auth.updateUser({
       data: {

@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Calendar, DollarSign, FileText, CreditCard } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, DollarSign, FileText, CreditCard, Settings } from 'lucide-react';
 import { ZenButton, ZenInput } from '@/components/ui/zen';
-import { obtenerMetodosPago } from '@/lib/actions/studio/config/metodos-pago.actions';
+import { obtenerMetodosPagoManuales } from '@/lib/actions/studio/config/metodos-pago.actions';
+import { PaymentMethodRadio } from './PaymentMethodRadio';
+import { PaymentMethodsModal } from './PaymentMethodsModal';
 
 interface PaymentFormData {
   amount: number;
@@ -46,62 +48,65 @@ export function PaymentForm({
     }
     return new Date().toISOString().split('T')[0];
   });
-  const [metodosPago, setMetodosPago] = useState<Array<{ id: string; payment_method_name: string }>>([]);
+  const [metodosPago, setMetodosPago] = useState<Array<{ id: string; payment_method_name: string; payment_method: string | null }>>([]);
   const [loadingMetodos, setLoadingMetodos] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showMethodsModal, setShowMethodsModal] = useState(false);
+
+  const loadMetodos = useCallback(async () => {
+    setLoadingMetodos(true);
+    try {
+      const result = await obtenerMetodosPagoManuales(studioSlug);
+      if (result.success && result.data) {
+        const metodos = result.data.map(m => ({
+          id: m.id,
+          payment_method_name: m.payment_method_name,
+          payment_method: m.payment_method,
+        }));
+        setMetodosPago(metodos);
+        if (!initialData && metodos.length > 0) {
+          setMetodoPago(metodos[0].payment_method_name);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    } finally {
+      setLoadingMetodos(false);
+    }
+  }, [studioSlug, initialData]);
 
   useEffect(() => {
-    const loadMetodos = async () => {
-      setLoadingMetodos(true);
-      try {
-        const result = await obtenerMetodosPago(studioSlug);
-        if (result.success && result.data) {
-          setMetodosPago(result.data.map(m => ({
-            id: m.id,
-            payment_method_name: m.payment_method_name,
-          })));
-          if (!initialData && result.data.length > 0) {
-            setMetodoPago(result.data[0].payment_method_name);
-          }
-        }
-      } catch (error) {
-        console.error('Error loading payment methods:', error);
-      } finally {
-        setLoadingMetodos(false);
-      }
-    };
-
     loadMetodos();
-  }, [studioSlug, initialData]);
+  }, [loadMetodos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const newErrors: Record<string, string> = {};
-    
+
     if (!amount || parseFloat(amount) <= 0) {
       newErrors.amount = 'El monto debe ser mayor a 0';
     }
-    
+
     if (!metodoPago) {
       newErrors.metodoPago = 'Selecciona un método de pago';
     }
-    
+
     if (!concept.trim()) {
       newErrors.concept = 'El concepto es requerido';
     }
-    
+
     if (!paymentDate) {
       newErrors.paymentDate = 'La fecha es requerida';
     }
-    
+
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    
+
     setErrors({});
-    
+
     await onSubmit({
       amount: parseFloat(amount),
       metodo_pago: metodoPago,
@@ -136,29 +141,62 @@ export function PaymentForm({
 
       {/* Método de pago */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-          <CreditCard className="h-4 w-4" />
-          Método de pago *
-        </label>
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Método de pago *
+          </label>
+          {metodosPago.length === 0 && !loadingMetodos && (
+            <ZenButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMethodsModal(true)}
+            >
+              <Settings className="h-4 w-4 mr-1" />
+              Gestionar métodos
+            </ZenButton>
+          )}
+        </div>
         {loadingMetodos ? (
-          <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-12 bg-zinc-800 rounded animate-pulse" />
+            <div className="h-12 bg-zinc-800 rounded animate-pulse" />
+          </div>
+        ) : metodosPago.length === 0 ? (
+          <div className="p-4 rounded-lg border border-zinc-700 bg-zinc-800/30 text-center">
+            <CreditCard className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
+            <p className="text-sm text-zinc-400 mb-3">
+              No hay métodos de pago configurados
+            </p>
+            <ZenButton
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => setShowMethodsModal(true)}
+            >
+              <Settings className="h-4 w-4 mr-1" />
+              Gestionar métodos de pago
+            </ZenButton>
+          </div>
         ) : (
-          <select
-            value={metodoPago}
-            onChange={(e) => {
-              setMetodoPago(e.target.value);
-              if (errors.metodoPago) setErrors(prev => ({ ...prev, metodoPago: '' }));
-            }}
-            disabled={loading}
-            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-md text-sm text-zinc-300 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <option value="">Selecciona un método</option>
+          <div className="space-y-2">
             {metodosPago.map((metodo) => (
-              <option key={metodo.id} value={metodo.payment_method_name}>
-                {metodo.payment_method_name}
-              </option>
+              <PaymentMethodRadio
+                key={metodo.id}
+                id={`metodo-${metodo.id}`}
+                name="metodoPago"
+                value={metodo.payment_method_name}
+                label={metodo.payment_method_name}
+                checked={metodoPago === metodo.payment_method_name}
+                onChange={(value) => {
+                  setMetodoPago(value);
+                  if (errors.metodoPago) setErrors(prev => ({ ...prev, metodoPago: '' }));
+                }}
+                disabled={loading}
+              />
             ))}
-          </select>
+          </div>
         )}
         {errors.metodoPago && (
           <p className="text-xs text-red-400">{errors.metodoPago}</p>
@@ -238,6 +276,16 @@ export function PaymentForm({
           {initialData ? 'Actualizar' : 'Crear'} pago
         </ZenButton>
       </div>
+
+      {/* Modal de gestión de métodos */}
+      <PaymentMethodsModal
+        isOpen={showMethodsModal}
+        onClose={() => setShowMethodsModal(false)}
+        studioSlug={studioSlug}
+        onSuccess={() => {
+          loadMetodos();
+        }}
+      />
     </form>
   );
 }

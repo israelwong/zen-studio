@@ -2052,6 +2052,11 @@ model studio_metodos_pago {
   msi_installments                    Int?
   order                               Int?                                         @default(0)
   payment_method_name                 String
+  banco                               String?
+  beneficiario                        String?
+  cuenta_clabe                        String?
+  is_manual                           Boolean                                      @default(true)
+  available_for_quotes                 Boolean                                      @default(false)
   condiciones_comerciales_metodo_pago studio_condiciones_comerciales_metodo_pago[]
   studio                              studios                                      @relation(fields: [studio_id], references: [id])
   pagos                               studio_pagos[]

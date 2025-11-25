@@ -107,7 +107,9 @@ export function EventCardView({
             payments={(eventData.payments ?? []).map(payment => ({
               id: payment.id,
               amount: payment.amount,
-              date: payment.payment_date.toISOString().split('T')[0],
+              payment_method: payment.payment_method,
+              payment_date: payment.payment_date,
+              concept: payment.concept || '',
             }))}
             onPaymentAdded={onEventUpdated}
           />
