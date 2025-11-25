@@ -1,8 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { DollarSign, Calendar, Edit, Plus, X, CreditCard, FileText } from 'lucide-react';
-import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
+import { DollarSign, Calendar, Edit, Plus, X, CreditCard, FileText, MoreVertical } from 'lucide-react';
+import { 
+  ZenCard, 
+  ZenCardHeader, 
+  ZenCardTitle, 
+  ZenCardContent, 
+  ZenButton, 
+  ZenConfirmModal,
+  ZenDropdownMenu,
+  ZenDropdownMenuTrigger,
+  ZenDropdownMenuContent,
+  ZenDropdownMenuItem,
+  ZenDropdownMenuSeparator,
+} from '@/components/ui/zen';
 import { PaymentFormModal } from '@/components/shared/payments/PaymentFormModal';
 import {
   obtenerPagosPorCotizacion,
@@ -49,40 +61,43 @@ export function EventPaymentsCard({
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
   const [deletingPaymentId, setDeletingPaymentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const loadPayments = useCallback(async () => {
-    if (!cotizacionId) {
-      // Si no hay cotizacionId, usar los pagos iniciales
-      setPayments(
-        initialPayments.map(p => ({
-          id: p.id,
-          amount: p.amount,
-          payment_method: p.payment_method,
-          payment_date: p.payment_date,
-          concept: p.concept,
-          description: null,
-          created_at: p.payment_date,
-        }))
-      );
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const result = await obtenerPagosPorCotizacion(studioSlug, cotizacionId);
-      if (result.success) {
-        setPayments(result.data || []);
-      }
-    } catch (error) {
-      console.error('Error loading payments:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [studioSlug, cotizacionId, initialPayments]);
-
+  // Cargar pagos solo una vez al montar o cuando cambia cotizacionId
   useEffect(() => {
+    const loadPayments = async () => {
+      if (!cotizacionId) {
+        // Si no hay cotizacionId, usar los pagos iniciales
+        setPayments(
+          initialPayments.map(p => ({
+            id: p.id,
+            amount: p.amount,
+            payment_method: p.payment_method,
+            payment_date: p.payment_date,
+            concept: p.concept,
+            description: null,
+            created_at: p.payment_date,
+          }))
+        );
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const result = await obtenerPagosPorCotizacion(studioSlug, cotizacionId);
+        if (result.success) {
+          setPayments(result.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading payments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadPayments();
-  }, [loadPayments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioSlug, cotizacionId]); // Solo recargar cuando cambia cotizacionId, no cuando cambian initialPayments
 
   const handleAddNew = () => {
     if (!cotizacionId) {
@@ -108,15 +123,18 @@ export function EventPaymentsCard({
       setPayments(prev => {
         const existingIndex = prev.findIndex(p => p.id === newOrUpdatedPayment.id);
         if (existingIndex > -1) {
+          // Actualizar pago existente
           return prev.map(p => p.id === newOrUpdatedPayment.id ? newOrUpdatedPayment : p);
         } else {
+          // Agregar nuevo pago
           return [...prev, newOrUpdatedPayment].sort((a, b) =>
             new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime()
           );
         }
       });
     }
-    onPaymentAdded?.();
+    // No llamar onPaymentAdded para evitar recargar todo el componente padre
+    // Solo actualizar los totales si es necesario (se puede hacer con un callback más específico)
   };
 
   const handleDelete = async () => {
@@ -131,7 +149,7 @@ export function EventPaymentsCard({
       const result = await eliminarPago(studioSlug, deletingPaymentId);
       if (result.success) {
         toast.success('Pago eliminado correctamente');
-        onPaymentAdded?.();
+        // No llamar onPaymentAdded para evitar recargar todo el componente padre
         setIsDeleteModalOpen(false);
         setDeletingPaymentId(null);
       } else {
@@ -147,22 +165,60 @@ export function EventPaymentsCard({
     }
   };
 
-  const renderPaymentCard = (payment: PaymentItem) => (
-    <div
-      key={payment.id}
-      className="p-4 rounded-lg border bg-zinc-800/50 border-zinc-700/50"
-    >
-      <div className="space-y-3">
-        {/* Monto */}
-        <div className="flex items-start gap-2.5">
-          <DollarSign className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-zinc-400 mb-0.5">Monto</p>
-            <p className="text-sm font-semibold text-emerald-200">
-              {formatAmount(payment.amount)}
-            </p>
-          </div>
+  const renderPaymentCard = (payment: PaymentItem) => {
+    return (
+      <div
+        key={payment.id}
+        className="p-4 rounded-lg border bg-zinc-800/50 border-zinc-700/50 relative group"
+      >
+        {/* Menú dropdown en esquina superior derecha */}
+        <div className="absolute top-3 right-3">
+          <ZenDropdownMenu open={openMenuId === payment.id} onOpenChange={(open) => setOpenMenuId(open ? payment.id : null)}>
+            <ZenDropdownMenuTrigger asChild>
+              <ZenButton
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </ZenButton>
+            </ZenDropdownMenuTrigger>
+            <ZenDropdownMenuContent align="end">
+              <ZenDropdownMenuItem
+                onClick={() => {
+                  handleEdit(payment);
+                  setOpenMenuId(null);
+                }}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </ZenDropdownMenuItem>
+              <ZenDropdownMenuSeparator />
+              <ZenDropdownMenuItem
+                onClick={() => {
+                  handleDeleteClick(payment.id);
+                  setOpenMenuId(null);
+                }}
+                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Eliminar
+              </ZenDropdownMenuItem>
+            </ZenDropdownMenuContent>
+          </ZenDropdownMenu>
         </div>
+
+        <div className="space-y-3 group">
+          {/* Monto */}
+          <div className="flex items-start gap-2.5">
+            <DollarSign className="h-4 w-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-zinc-400 mb-0.5">Monto</p>
+              <p className="text-sm font-semibold text-emerald-200">
+                {formatAmount(payment.amount)}
+              </p>
+            </div>
+          </div>
 
         {/* Método de pago */}
         <div className="flex items-center gap-2">
@@ -199,38 +255,18 @@ export function EventPaymentsCard({
           </div>
         )}
 
-        {/* Descripción */}
-        {payment.description && (
-          <div className="pt-2 border-t border-zinc-700/30">
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              {payment.description}
-            </p>
-          </div>
-        )}
-
-        {/* Acciones */}
-        <div className="flex items-center gap-2 pt-2 border-t border-zinc-700/50">
-          <ZenButton
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(payment)}
-            className="flex-1 text-xs text-zinc-400 hover:text-zinc-300"
-          >
-            <Edit className="h-3.5 w-3.5 mr-1.5" />
-            Editar
-          </ZenButton>
-          <ZenButton
-            variant="ghost"
-            size="sm"
-            onClick={() => handleDeleteClick(payment.id)}
-            className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/20"
-          >
-            <X className="h-3.5 w-3.5" />
-          </ZenButton>
+          {/* Descripción */}
+          {payment.description && (
+            <div className="pt-2 border-t border-zinc-700/30">
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                {payment.description}
+              </p>
+            </div>
+          )}
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <>

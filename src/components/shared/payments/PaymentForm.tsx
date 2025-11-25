@@ -1,11 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, DollarSign, FileText, CreditCard, Settings } from 'lucide-react';
-import { ZenButton, ZenInput } from '@/components/ui/zen';
+import { CalendarIcon, DollarSign, FileText, CreditCard, Settings } from 'lucide-react';
+import { ZenButton, ZenInput, ZenCalendar, type ZenCalendarProps } from '@/components/ui/zen';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { obtenerMetodosPagoManuales } from '@/lib/actions/studio/config/metodos-pago.actions';
 import { PaymentMethodRadio } from './PaymentMethodRadio';
 import { PaymentMethodsModal } from './PaymentMethodsModal';
+import { es } from 'date-fns/locale';
+
+// Tipo específico para ZenCalendar con mode="single"
+type ZenCalendarSingleProps = Omit<ZenCalendarProps, 'mode' | 'selected' | 'onSelect'> & {
+  mode: 'single';
+  selected?: Date;
+  onSelect?: (date: Date | undefined) => void;
+};
 
 interface PaymentFormData {
   amount: number;
@@ -41,13 +50,13 @@ export function PaymentForm({
   const [metodoPago, setMetodoPago] = useState<string>(initialData?.payment_method || '');
   const [concept, setConcept] = useState<string>(initialData?.concept || '');
   const [description, setDescription] = useState<string>(initialData?.description || '');
-  const [paymentDate, setPaymentDate] = useState<string>(() => {
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>(() => {
     if (initialData?.payment_date) {
-      const date = new Date(initialData.payment_date);
-      return date.toISOString().split('T')[0];
+      return new Date(initialData.payment_date);
     }
-    return new Date().toISOString().split('T')[0];
+    return new Date();
   });
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [metodosPago, setMetodosPago] = useState<Array<{ id: string; payment_method_name: string; payment_method: string | null }>>([]);
   const [loadingMetodos, setLoadingMetodos] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -112,7 +121,7 @@ export function PaymentForm({
       metodo_pago: metodoPago,
       concept: concept.trim(),
       description: description.trim() || undefined,
-      payment_date: new Date(paymentDate),
+      payment_date: paymentDate!,
     });
   };
 
@@ -206,19 +215,53 @@ export function PaymentForm({
       {/* Fecha de pago */}
       <div className="space-y-2">
         <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-          <Calendar className="h-4 w-4" />
+          <CalendarIcon className="h-4 w-4" />
           Fecha de pago *
         </label>
-        <ZenInput
-          type="date"
-          value={paymentDate}
-          onChange={(e) => {
-            setPaymentDate(e.target.value);
-            if (errors.paymentDate) setErrors(prev => ({ ...prev, paymentDate: '' }));
-          }}
-          error={errors.paymentDate}
-          disabled={loading}
-        />
+        <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+          <PopoverTrigger asChild>
+            <ZenButton
+              type="button"
+              variant="outline"
+              icon={CalendarIcon}
+              iconPosition="left"
+              className="w-full justify-start"
+              disabled={loading}
+            >
+              {paymentDate ? new Intl.DateTimeFormat('es-MX', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              }).format(paymentDate) : 'Seleccionar fecha'}
+            </ZenButton>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-auto p-0 bg-zinc-900 border-zinc-700"
+            align="start"
+            side="bottom"
+            sideOffset={4}
+            style={{ zIndex: 100000 } as React.CSSProperties}
+          >
+            <ZenCalendar
+              {...({
+                mode: 'single' as const,
+                selected: paymentDate,
+                onSelect: (selectedDate: Date | undefined) => {
+                  if (selectedDate) {
+                    setPaymentDate(selectedDate);
+                    setCalendarOpen(false);
+                    if (errors.paymentDate) setErrors(prev => ({ ...prev, paymentDate: '' }));
+                  }
+                },
+                locale: es,
+              } as ZenCalendarSingleProps)}
+            />
+          </PopoverContent>
+        </Popover>
+        {errors.paymentDate && (
+          <p className="text-xs text-red-400">{errors.paymentDate}</p>
+        )}
       </div>
 
       {/* Concepto */}

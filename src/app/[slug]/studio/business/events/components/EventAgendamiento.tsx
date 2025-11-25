@@ -1,8 +1,20 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, MapPin, Clock, Edit, Plus, Video, Link as LinkIcon, X, Copy, Check, Star } from 'lucide-react';
-import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
+import { Calendar, MapPin, Clock, Edit, Plus, Video, Link as LinkIcon, X, Copy, Check, Star, MoreVertical } from 'lucide-react';
+import { 
+  ZenCard, 
+  ZenCardHeader, 
+  ZenCardTitle, 
+  ZenCardContent, 
+  ZenButton, 
+  ZenConfirmModal,
+  ZenDropdownMenu,
+  ZenDropdownMenuTrigger,
+  ZenDropdownMenuContent,
+  ZenDropdownMenuItem,
+  ZenDropdownMenuSeparator,
+} from '@/components/ui/zen';
 import { AgendaFormModal } from '@/components/shared/agenda';
 import { obtenerAgendamientosPorEvento, eliminarAgendamiento } from '@/lib/actions/shared/agenda-unified.actions';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
@@ -30,6 +42,7 @@ export function EventAgendamiento({
   const [editingAgendamiento, setEditingAgendamiento] = useState<AgendaItem | null>(null);
   const [deletingAgendamientoId, setDeletingAgendamientoId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   const loadAgendamientos = useCallback(async () => {
     setLoading(true);
@@ -140,11 +153,50 @@ export function EventAgendamiento({
   const renderAgendamientoCard = (agendamiento: AgendaItem, isMainDate = false) => (
     <div
       key={agendamiento.id}
-      className={`p-4 rounded-lg border ${isMainDate
+      className={`p-4 rounded-lg border relative ${isMainDate
         ? 'bg-emerald-950/20 border-emerald-500/30'
         : 'bg-zinc-800/50 border-zinc-700/50'
         }`}
     >
+      {/* Menú dropdown en esquina superior derecha (solo para agendamientos adicionales) */}
+      {!isMainDate && (
+        <div className="absolute top-3 right-3">
+          <ZenDropdownMenu open={openMenuId === agendamiento.id} onOpenChange={(open) => setOpenMenuId(open ? agendamiento.id : null)}>
+            <ZenDropdownMenuTrigger asChild>
+              <ZenButton
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </ZenButton>
+            </ZenDropdownMenuTrigger>
+            <ZenDropdownMenuContent align="end">
+              <ZenDropdownMenuItem
+                onClick={() => {
+                  handleEdit(agendamiento);
+                  setOpenMenuId(null);
+                }}
+              >
+                <Edit className="mr-2 h-4 w-4" />
+                Editar
+              </ZenDropdownMenuItem>
+              <ZenDropdownMenuSeparator />
+              <ZenDropdownMenuItem
+                onClick={() => {
+                  handleDeleteClick(agendamiento.id);
+                  setOpenMenuId(null);
+                }}
+                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+              >
+                <X className="mr-2 h-4 w-4" />
+                Eliminar
+              </ZenDropdownMenuItem>
+            </ZenDropdownMenuContent>
+          </ZenDropdownMenu>
+        </div>
+      )}
+
       {isMainDate && (
         <div className="flex items-center gap-1.5 mb-3">
           <Star className="h-3.5 w-3.5 text-emerald-400 fill-emerald-400" />
@@ -276,28 +328,6 @@ export function EventAgendamiento({
           </div>
         )}
 
-        {/* Acciones (solo para agendamientos adicionales) */}
-        {!isMainDate && (
-          <div className="flex items-center gap-2 pt-2 border-t border-zinc-700/50">
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={() => handleEdit(agendamiento)}
-              className="flex-1 text-xs text-zinc-400 hover:text-zinc-300"
-            >
-              <Edit className="h-3.5 w-3.5 mr-1.5" />
-              Editar
-            </ZenButton>
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteClick(agendamiento.id)}
-              className="text-xs text-red-400 hover:text-red-300 hover:bg-red-950/20"
-            >
-              <X className="h-3.5 w-3.5" />
-            </ZenButton>
-          </div>
-        )}
       </div>
     </div>
   );
