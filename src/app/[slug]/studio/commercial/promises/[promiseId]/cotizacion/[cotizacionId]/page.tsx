@@ -41,6 +41,12 @@ export default function EditarCotizacionPage() {
   }, [cotizacionId, studioSlug]);
 
   const handleAutorizar = async () => {
+    // Validar que la cotización no esté ya autorizada
+    if (isAlreadyAuthorized) {
+      toast.error('Esta cotización ya está autorizada');
+      return;
+    }
+
     // Validar que exista al menos una fecha definida
     try {
       setIsValidatingDate(true);
@@ -70,6 +76,8 @@ export default function EditarCotizacionPage() {
   };
 
   // Verificar si la cotización ya está autorizada o aprobada
+  // Regla de negocio: Solo se puede autorizar si la cotización NO está autorizada/aprobada
+  // Una promesa puede tener múltiples cotizaciones aprobadas, así que no restringimos por otras cotizaciones
   const isAlreadyAuthorized =
     cotizacionStatus === 'autorizada' ||
     cotizacionStatus === 'aprobada' ||

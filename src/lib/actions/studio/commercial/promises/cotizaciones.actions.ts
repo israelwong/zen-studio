@@ -1461,14 +1461,6 @@ export async function cancelarCotizacion(
           studio_id: studio.id,
         },
       },
-      include: {
-        evento: {
-          select: {
-            id: true,
-            status: true,
-          },
-        },
-      },
     });
 
     if (!cotizacion) {
@@ -1534,14 +1526,6 @@ export async function cancelarCotizacionYEvento(
         id: cotizacionId,
         promise: {
           studio_id: studio.id,
-        },
-      },
-      include: {
-        evento: {
-          select: {
-            id: true,
-            status: true,
-          },
         },
       },
     });
