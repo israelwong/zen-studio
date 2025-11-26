@@ -11,6 +11,7 @@ import {
   type CotizacionResponse,
   type AutorizarCotizacionData,
 } from '@/lib/actions/schemas/cotizaciones-schemas';
+import { guardarEstructuraCotizacionAutorizada } from './cotizacion-pricing';
 
 export interface CotizacionListItem {
   id: string;
@@ -1164,6 +1165,14 @@ export async function autorizarCotizacion(
           payment_registered: false,
         },
       });
+
+      // 🆕 CRÍTICO: Guardar estructura + precios de cotización en el momento de autorización
+      // Esto crea un "snapshot" histórico que protege contra cambios futuros en el catálogo
+      await guardarEstructuraCotizacionAutorizada(
+        tx,
+        validatedData.cotizacion_id,
+        studio.id
+      );
 
       // 2. Cambiar etapa de la promesa a "aprobado"
       if (validatedData.promise_id && etapaAprobado) {
