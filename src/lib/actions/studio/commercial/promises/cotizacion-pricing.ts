@@ -19,7 +19,7 @@ import { calcularPrecio, type ConfiguracionPrecios } from '@/lib/actions/studio/
 export async function guardarEstructuraCotizacionAutorizada(
   tx: any,
   cotizacionId: string,
-  studioId: string
+  configPrecios: ConfiguracionPrecios
 ): Promise<void> {
   try {
     // 1️⃣ Obtener items con sus datos en catálogo
@@ -42,23 +42,7 @@ export async function guardarEstructuraCotizacionAutorizada(
 
     if (items.length === 0) return;
 
-    // 2️⃣ Obtener config de precios
-    const config = await tx.studio_catalogo_utilidad.findFirst({
-      where: { studio_id: studioId },
-    });
-
-    if (!config) {
-      throw new Error('Configuración de precios no encontrada');
-    }
-
-    const configPrecios: ConfiguracionPrecios = {
-      utilidad_servicio: Number(config.utilidad_servicio) || 0,
-      utilidad_producto: Number(config.utilidad_producto) || 0,
-      comision_venta: Number(config.comision_venta) || 0,
-      sobreprecio: Number(config.sobreprecio) || 0,
-    };
-
-    // 3️⃣ Guardar precios para cada item
+    // 2️⃣ Guardar precios para cada item
     for (const item of items) {
       if (!item.items || !item.service_categories) continue;
 

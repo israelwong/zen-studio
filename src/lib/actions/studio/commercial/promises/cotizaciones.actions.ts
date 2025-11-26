@@ -12,6 +12,7 @@ import {
   type AutorizarCotizacionData,
 } from '@/lib/actions/schemas/cotizaciones-schemas';
 import { guardarEstructuraCotizacionAutorizada } from './cotizacion-pricing';
+import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 
 export interface CotizacionListItem {
   id: string;
@@ -1151,6 +1152,15 @@ export async function autorizarCotizacion(
         })
       : null;
 
+    // 🆕 Obtener configuración de precios ANTES de la transacción
+    const configResult = await obtenerConfiguracionPrecios(validatedData.studio_slug);
+    const configPrecios = {
+      utilidad_servicio: Number(configResult?.utilidad_servicio) || 0,
+      utilidad_producto: Number(configResult?.utilidad_producto) || 0,
+      comision_venta: Number(configResult?.comision_venta) || 0,
+      sobreprecio: Number(configResult?.sobreprecio) || 0,
+    };
+
     // Transacción para garantizar consistencia
     await prisma.$transaction(async (tx) => {
       // 1. Actualizar cotización autorizada a "aprobada"
@@ -1171,7 +1181,7 @@ export async function autorizarCotizacion(
       await guardarEstructuraCotizacionAutorizada(
         tx,
         validatedData.cotizacion_id,
-        studio.id
+        configPrecios
       );
 
       // 2. Cambiar etapa de la promesa a "aprobado"
