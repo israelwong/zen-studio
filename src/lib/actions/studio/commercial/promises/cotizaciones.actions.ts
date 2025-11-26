@@ -545,7 +545,7 @@ export async function duplicateCotizacion(
     // Generar nombre único para la cotización duplicada
     let newName = `${original.name} (Copia)`;
     let counter = 1;
-    
+
     // Verificar si ya existe una cotización con ese nombre en la promise
     while (true) {
       const existing = await prisma.studio_cotizaciones.findFirst({
@@ -1056,11 +1056,11 @@ export async function autorizarCotizacion(
 
     // Determinar evento existente o crear uno nuevo
     let eventoId: string | null = null;
-    
+
     if (eventoExistente) {
       // Actualizar evento existente (puede estar cancelado y necesitar reactivación)
       eventoId = eventoExistente.id;
-      
+
       // Preparar datos de actualización (solo campos operativos)
       const updateData: {
         cotizacion_id: string;
@@ -1144,12 +1144,12 @@ export async function autorizarCotizacion(
     // Obtener etapa "aprobado" del pipeline de promises
     const etapaAprobado = validatedData.promise_id
       ? await prisma.studio_promise_pipeline_stages.findFirst({
-          where: {
-            studio_id: studio.id,
-            slug: 'approved',
-            is_active: true,
-          },
-        })
+        where: {
+          studio_id: studio.id,
+          slug: 'approved',
+          is_active: true,
+        },
+      })
       : null;
 
     // 🆕 Obtener configuración de precios ANTES de la transacción
@@ -1181,7 +1181,8 @@ export async function autorizarCotizacion(
       await guardarEstructuraCotizacionAutorizada(
         tx,
         validatedData.cotizacion_id,
-        configPrecios
+        configPrecios,
+        validatedData.studio_slug
       );
 
       // 2. Cambiar etapa de la promesa a "aprobado"
@@ -1413,7 +1414,7 @@ export async function autorizarCotizacion(
     try {
       const { notifyQuoteApproved } = await import('@/lib/notifications/studio');
       const contactName = cotizacion.contact?.name || cotizacion.promise?.contact?.name || 'Cliente';
-      
+
       console.log('[AUTORIZACION] 📢 Creando notificación con:', {
         studioId: studio.id,
         quoteId: validatedData.cotizacion_id,
@@ -1424,7 +1425,7 @@ export async function autorizarCotizacion(
         eventoIdFromCotizacion: cotizacionActualizada?.evento_id,
         eventoIdType: typeof eventoIdFinal,
       });
-      
+
       await notifyQuoteApproved(
         studio.id,
         validatedData.cotizacion_id,
