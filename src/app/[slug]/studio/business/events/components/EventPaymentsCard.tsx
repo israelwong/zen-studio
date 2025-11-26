@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
-import { 
-  ZenCard, 
-  ZenCardHeader, 
-  ZenCardTitle, 
-  ZenCardContent, 
-  ZenButton, 
+import {
+  ZenCard,
+  ZenCardHeader,
+  ZenCardTitle,
+  ZenCardContent,
+  ZenButton,
   ZenConfirmModal,
 } from '@/components/ui/zen';
 import { PaymentFormModal } from '@/components/shared/payments/PaymentFormModal';
@@ -18,7 +18,7 @@ import {
   eliminarPago,
   type PaymentItem,
 } from '@/lib/actions/studio/business/events/payments.actions';
-import { formatDate, formatNumber } from '@/lib/actions/utils/formatting';
+import { formatNumber } from '@/lib/actions/utils/formatting';
 import { toast } from 'sonner';
 
 // Helper para formatear montos con separadores de miles
@@ -49,7 +49,7 @@ export function EventPaymentsCard({
   paidAmount = 0,
   pendingAmount = 0,
   payments: initialPayments,
-  onPaymentAdded,
+  // onPaymentAdded, // No se utiliza actualmente - comentado para evitar re-cargas innecesarias
 }: EventPaymentsCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -221,7 +221,6 @@ export function EventPaymentsCard({
                     <PaymentFormCard
                       key={payment.id}
                       payment={payment}
-                      studioSlug={studioSlug}
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
                       onViewReceipt={handleViewReceipt}
