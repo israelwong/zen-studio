@@ -33,6 +33,13 @@ export interface ReceiptData {
     paid: number;
     pending: number;
   };
+  event?: {
+    name: string | null;
+    event_date: Date | null;
+    event_location: string | null;
+    address: string | null;
+    event_type_name: string | null;
+  } | null;
 }
 
 export async function obtenerDatosComprobante(
@@ -66,7 +73,7 @@ export async function obtenerDatosComprobante(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Obtener pago con cotización
+    // Obtener pago con cotización y promesa/evento
     const pago = await prisma.studio_pagos.findFirst({
       where: {
         id: paymentId,
@@ -90,6 +97,20 @@ export async function obtenerDatosComprobante(
               select: {
                 id: true,
                 amount: true,
+              },
+            },
+            promise: {
+              select: {
+                id: true,
+                name: true,
+                defined_date: true,
+                event_location: true,
+                address: true,
+                event_type: {
+                  select: {
+                    name: true,
+                  },
+                },
               },
             },
           },
@@ -120,6 +141,15 @@ export async function obtenerDatosComprobante(
       address: cotizacion.contact.address,
     } : null;
 
+    // Datos del evento/promesa
+    const eventData = cotizacion.promise ? {
+      name: cotizacion.promise.name,
+      event_date: cotizacion.promise.defined_date,
+      event_location: cotizacion.promise.event_location,
+      address: cotizacion.promise.address,
+      event_type_name: cotizacion.promise.event_type?.name || null,
+    } : null;
+
     return {
       success: true,
       data: {
@@ -148,6 +178,7 @@ export async function obtenerDatosComprobante(
           paid,
           pending,
         },
+        event: eventData,
       },
     };
   } catch (error) {

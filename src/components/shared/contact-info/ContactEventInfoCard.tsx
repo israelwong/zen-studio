@@ -331,20 +331,30 @@ export function ContactEventInfoCard({
 
           <SeparadorZen spacing="md" variant="subtle" />
 
-          {/* Datos del Evento */}
+          {/* Detalles del Evento */}
           <div className="space-y-3">
             <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">
-              Datos del Evento
+              Detalles del Evento
             </h3>
-            {/* Nombre del Evento - Mostrar cuando existe (tanto en promise como en event) */}
-            {eventData.event_name && (
+
+            {/* Nombre del Evento */}
+            {eventData.event_name ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
                   Nombre del Evento
                 </label>
                 <p className="text-sm text-zinc-200 font-medium">{eventData.event_name}</p>
               </div>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Nombre del Evento
+                </label>
+                <p className="text-sm text-zinc-400 italic">No especificado</p>
+              </div>
             )}
+
+            {/* Tipo de Evento */}
             {eventData.event_type_name ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
@@ -361,42 +371,32 @@ export function ContactEventInfoCard({
               </div>
             )}
 
-            {/* Lugar del evento */}
+            {/* Locación / Sede */}
             {eventData.event_location ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Lugar del Evento
+                  Locación / Sede
                 </label>
                 <p className="text-sm text-zinc-200">{eventData.event_location}</p>
               </div>
             ) : eventData.address ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Dirección
+                  Locación / Sede
                 </label>
                 <p className="text-sm text-zinc-200">{eventData.address}</p>
               </div>
-            ) : eventData.event_type_name ? (
+            ) : (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Lugar del Evento
+                  Locación / Sede
                 </label>
-                <p className="text-sm text-zinc-400 italic">No especificado</p>
-              </div>
-            ) : null}
-
-            {/* Sede (solo para eventos confirmados) */}
-            {isEventConfirmed && eventData.sede && (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Sede
-                </label>
-                <p className="text-sm text-zinc-200">{eventData.sede}</p>
+                <p className="text-sm text-zinc-400 italic">No especificada</p>
               </div>
             )}
 
-            {/* Fechas */}
-            {context === 'event' && eventData.event_date ? (
+            {/* Fecha del Evento */}
+            {eventData.event_date ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
                   Fecha del Evento
@@ -405,23 +405,7 @@ export function ContactEventInfoCard({
                   {formatDate(eventData.event_date)}
                 </p>
               </div>
-            ) : context === 'event' && eventData.interested_dates && eventData.interested_dates.length > 0 ? (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Fecha(s) de Interés
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {eventData.interested_dates.map((date, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center px-2 py-1 rounded text-xs bg-emerald-600/20 text-emerald-300 border border-emerald-600/30"
-                    >
-                      {formatDate(new Date(date))}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : context === 'promise' && eventData.interested_dates && eventData.interested_dates.length > 0 ? (
+            ) : eventData.interested_dates && eventData.interested_dates.length > 0 ? (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
                   Fecha(s) de Interés
@@ -440,9 +424,9 @@ export function ContactEventInfoCard({
             ) : (
               <div>
                 <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  {context === 'event' ? 'Fecha del Evento' : 'Fecha(s) de Interés'}
+                  Fecha del Evento
                 </label>
-                <p className="text-sm text-zinc-400 italic">Sin fechas seleccionadas</p>
+                <p className="text-sm text-zinc-400 italic">Sin fecha seleccionada</p>
               </div>
             )}
           </div>

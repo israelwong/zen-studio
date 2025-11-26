@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { DollarSign, Calendar, Edit, X, CreditCard, FileText, MoreVertical, Receipt } from 'lucide-react';
-import { 
+import {
   ZenButton,
   ZenDropdownMenu,
   ZenDropdownMenuTrigger,
@@ -20,7 +20,6 @@ const formatAmount = (amount: number): string => {
 
 interface PaymentFormCardProps {
   payment: PaymentItem;
-  studioSlug: string;
   onEdit?: (payment: PaymentItem) => void;
   onDelete?: (paymentId: string) => void;
   onViewReceipt?: (paymentId: string) => void;
@@ -30,7 +29,6 @@ interface PaymentFormCardProps {
 
 export function PaymentFormCard({
   payment,
-  studioSlug,
   onEdit,
   onDelete,
   onViewReceipt,
@@ -43,8 +41,8 @@ export function PaymentFormCard({
     <div className="p-4 rounded-lg border bg-zinc-800/50 border-zinc-700/50 relative group">
       {/* Menú dropdown en esquina superior derecha */}
       <div className="absolute top-3 right-3">
-        <ZenDropdownMenu 
-          open={isMenuOpen} 
+        <ZenDropdownMenu
+          open={isMenuOpen}
           onOpenChange={(open) => onMenuOpenChange?.(open ? payment.id : null)}
         >
           <ZenDropdownMenuTrigger asChild>
@@ -84,7 +82,7 @@ export function PaymentFormCard({
             )}
             {onDelete && (
               <>
-                {(onEdit || onGenerateReceipt || onSendReceipt) && <ZenDropdownMenuSeparator />}
+                {onEdit && <ZenDropdownMenuSeparator />}
                 <ZenDropdownMenuItem
                   onClick={() => {
                     onDelete(payment.id);
