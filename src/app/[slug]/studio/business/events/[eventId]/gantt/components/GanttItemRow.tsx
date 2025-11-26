@@ -30,7 +30,8 @@ export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttIte
                 <GanttAgrupacionCell
                     servicio={itemData.servicioNombre}
                     quantity={item.quantity}
-                    description={item.description}
+                    costo={item.cost ?? 0}
+                    profitType={item.profit_type}
                 />
             </td>
 

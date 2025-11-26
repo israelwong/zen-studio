@@ -12,9 +12,10 @@ function formatCurrency(value: number) {
 }
 
 export function GanttCostCell({ item }: GanttCostCellProps) {
-  // Usar subtotal (unit_price * quantity) en lugar de cost
-  // cost es el costo interno, subtotal es lo que paga el cliente
-  const totalCost = item.subtotal ?? 0;
+  // Mostrar costo total interno: costo (unitario) * cantidad
+  // Este es el costo que se paga al personal, no el precio al cliente
+  const unitaryCost = item.cost ?? 0;
+  const totalCost = unitaryCost * item.quantity;
 
   return (
     <div className="text-sm text-zinc-300 font-medium">

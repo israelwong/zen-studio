@@ -85,11 +85,29 @@ export async function guardarEstructuraCotizacionAutorizada(
         categoria: datosCatalogo.categoria,
       });
 
+      // Validar que tipoUtilidad no sea vacío
+      if (!datosCatalogo.tipoUtilidad) {
+        console.warn(`[PRICING] ⚠️ Item ${item.item_id} (${datosCatalogo.nombre}) tiene tipoUtilidad vacío`);
+      }
+
+      // Normalizar tipoUtilidad: puede venir como 'service', 'servicio', 'product', 'producto', etc.
+      const normalizedTipoUtilidad = datosCatalogo.tipoUtilidad?.toLowerCase() || 'service';
+      const tipoUtilidadFinal = normalizedTipoUtilidad.includes('service') || normalizedTipoUtilidad.includes('servicio') 
+        ? 'servicio' 
+        : 'producto';
+
+      // 🔍 DEBUG: Log detallado del tipo de utilidad
+      console.log(`[PRICING] Item: ${datosCatalogo.nombre}`, {
+        tipoUtilidad_original: datosCatalogo.tipoUtilidad,
+        tipoUtilidad_normalized: normalizedTipoUtilidad,
+        tipoUtilidad_final: tipoUtilidadFinal,
+      });
+
       // Calcular precios con valores del catálogo (igual que ResumenCotizacion)
       const precios = calcularPrecio(
         datosCatalogo.costo || 0,
         datosCatalogo.gasto || 0,
-        datosCatalogo.tipoUtilidad === 'service' ? 'servicio' : 'producto',
+        tipoUtilidadFinal,
         configPrecios
       );
 
@@ -112,7 +130,7 @@ export async function guardarEstructuraCotizacionAutorizada(
           subtotal: precios.precio_final * item.quantity,
           profit: precios.utilidad_base,
           public_price: precios.precio_final,
-          profit_type: datosCatalogo.tipoUtilidad === 'service' ? 'servicio' : 'producto',
+          profit_type: tipoUtilidadFinal,
 
           // SNAPSHOTS (congelado al momento de autorización - inmutable para auditoría)
           name_snapshot: datosCatalogo.nombre,
@@ -123,7 +141,7 @@ export async function guardarEstructuraCotizacionAutorizada(
           unit_price_snapshot: precios.precio_final,
           profit_snapshot: precios.utilidad_base,
           public_price_snapshot: precios.precio_final,
-          profit_type_snapshot: datosCatalogo.tipoUtilidad === 'service' ? 'servicio' : 'producto',
+          profit_type_snapshot: tipoUtilidadFinal,
         },
       });
     }

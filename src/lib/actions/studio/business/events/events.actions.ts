@@ -131,6 +131,8 @@ export interface EventoDetalle extends EventoBasico {
       subtotal: number;
       cost: number;
       cost_snapshot: number;
+      profit_type: string | null;
+      profit_type_snapshot: string | null;
       task_type: string | null;
       assigned_to_crew_member_id: string | null;
       gantt_task_id: string | null;
@@ -882,6 +884,8 @@ export async function obtenerEventoDetalle(
                 subtotal: true,
                 cost: true,
                 cost_snapshot: true,
+                profit_type: true,
+                profit_type_snapshot: true,
                 task_type: true,
                 assigned_to_crew_member_id: true,
                 gantt_task_id: true,
