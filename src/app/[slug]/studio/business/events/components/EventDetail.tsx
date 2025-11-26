@@ -8,19 +8,19 @@ import { EventAgendamiento } from './EventAgendamiento';
 
 import type { EventoDetalle } from '@/lib/actions/studio/business/events';
 
-interface EventCardViewProps {
+interface EventDetailProps {
   studioSlug: string;
   eventId: string;
   eventData: EventoDetalle;
   onEventUpdated?: () => void;
 }
 
-export function EventCardView({
+export function EventDetail({
   studioSlug,
   eventId,
   eventData,
   onEventUpdated,
-}: EventCardViewProps) {
+}: EventDetailProps) {
   return (
     <div className="space-y-6">
       {/* Layout de 3 columnas */}

@@ -9,5 +9,5 @@ export { EventGanttCard } from './EventGanttCard';
 export { EventPaymentsCard } from './EventPaymentsCard';
 export { EventAgendaCard } from './EventAgendaCard';
 export { EventAgendamiento } from './EventAgendamiento';
-export { EventCardView } from './EventCardView';
+export { EventDetail } from './EventDetail';
 
