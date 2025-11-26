@@ -127,6 +127,10 @@ export interface EventoDetalle extends EventoBasico {
       quantity: number;
       name: string | null;
       description: string | null;
+      unit_price: number;
+      subtotal: number;
+      cost: number;
+      cost_snapshot: number;
       task_type: string | null;
       assigned_to_crew_member_id: string | null;
       gantt_task_id: string | null;
@@ -874,6 +878,10 @@ export async function obtenerEventoDetalle(
                 quantity: true,
                 name: true,
                 description: true,
+                unit_price: true,
+                subtotal: true,
+                cost: true,
+                cost_snapshot: true,
                 task_type: true,
                 assigned_to_crew_member_id: true,
                 gantt_task_id: true,
@@ -1067,6 +1075,10 @@ export async function obtenerEventoDetalle(
         price: Number(cot.price),
         cotizacion_items: cot.cotizacion_items.map(item => ({
           ...item,
+          unit_price: item.unit_price ? Number(item.unit_price) : 0,
+          subtotal: item.subtotal ? Number(item.subtotal) : 0,
+          cost: item.cost ? Number(item.cost) : 0,
+          cost_snapshot: item.cost_snapshot ? Number(item.cost_snapshot) : 0,
           internal_delivery_days: item.internal_delivery_days ? Number(item.internal_delivery_days) : null,
           client_delivery_days: item.client_delivery_days ? Number(item.client_delivery_days) : null,
         })),
@@ -1865,7 +1877,7 @@ export async function asignarCrewAItem(
     const item = await prisma.studio_cotizacion_items.findFirst({
       where: {
         id: itemId,
-        cotizacion: {
+        cotizaciones: {
           studio_id: studio.id,
         },
       },
