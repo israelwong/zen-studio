@@ -18,11 +18,9 @@ export function GanttCardTable({ secciones, itemsMap, studioSlug, dateRange }: G
             <table className="w-full border-collapse bg-zinc-950 text-left text-sm">
                 <thead className="bg-zinc-900/90 text-zinc-400 font-medium backdrop-blur-sm sticky top-0 z-20">
                     <tr>
-                        <th className="px-4 py-3 sticky left-0 bg-zinc-900 z-30 min-w-[250px] border-b border-zinc-800">Item</th>
-                        <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Costo</th>
-                        <th className="px-4 py-3 border-b border-zinc-800 min-w-[200px]">Personal</th>
+                        <th className="px-4 py-3 sticky left-0 bg-zinc-900 z-30 min-w-[240px] border-b border-zinc-800">Item</th>
                         <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Duración</th>
-                        <th className="px-4 py-3 border-b border-zinc-800 min-w-[150px]">Progreso</th>
+                        <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Progreso</th>
                         <th className="p-0 border-b border-zinc-800 min-w-[300px]">
                             <GanttTimelineRow dateRange={dateRange} isHeader />
                         </th>
@@ -36,7 +34,7 @@ export function GanttCardTable({ secciones, itemsMap, studioSlug, dateRange }: G
                                 <td className="px-4 py-2 sticky left-0 bg-zinc-900/50 z-10 border-r border-zinc-800/50">
                                     <span className="text-sm font-semibold text-zinc-300">{seccion.nombre}</span>
                                 </td>
-                                <td colSpan={5} className="bg-zinc-900/50"></td>
+                                <td colSpan={3} className="bg-zinc-900/50"></td>
                             </tr>
 
                             {/* Categorías dentro de la sección */}
@@ -47,7 +45,7 @@ export function GanttCardTable({ secciones, itemsMap, studioSlug, dateRange }: G
                                         <td className="px-6 py-1.5 sticky left-0 bg-zinc-900/30 z-10 border-r border-zinc-800/50">
                                             <span className="text-xs font-medium text-zinc-400">{categoria.nombre}</span>
                                         </td>
-                                        <td colSpan={5} className="bg-zinc-900/30"></td>
+                                        <td colSpan={3} className="bg-zinc-900/30"></td>
                                     </tr>
 
                                     {/* Items dentro de la categoría */}

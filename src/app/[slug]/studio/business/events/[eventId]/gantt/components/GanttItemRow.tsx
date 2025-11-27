@@ -1,10 +1,9 @@
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import { GanttAgrupacionCell } from './GanttAgrupacionCell';
-import { GanttCostCell } from './GanttCostCell';
-import { GanttPersonalCell } from './GanttPersonalCell';
 import { GanttDurationCell } from './GanttDurationCell';
 import { GanttProgressCell } from './GanttProgressCell';
 import { GanttTimelineRow } from './GanttTimelineRow';
+import { GanttItemPopover } from './GanttItemPopover';
 
 import { type DateRange } from 'react-day-picker';
 
@@ -27,25 +26,15 @@ export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttIte
         <tr className="border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
             {/* Agrupación (Sticky Left) */}
             <td className="px-4 py-3 sticky left-0 bg-zinc-950 z-20 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800/50">
-                <GanttAgrupacionCell
-                    servicio={itemData.servicioNombre}
-                    quantity={item.quantity}
-                    costo={item.cost ?? 0}
-                    profitType={item.profit_type}
-                />
-            </td>
-
-            {/* Costo */}
-            <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors">
-                <GanttCostCell item={item} />
-            </td>
-
-            {/* Personal */}
-            <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors min-w-[200px]">
-                <GanttPersonalCell
+                <GanttItemPopover
                     item={item}
+                    servicioNombre={itemData.servicioNombre}
                     studioSlug={studioSlug}
-                />
+                >
+                    <button className="w-full text-left">
+                        <GanttAgrupacionCell servicio={itemData.servicioNombre} />
+                    </button>
+                </GanttItemPopover>
             </td>
 
             {/* Duración */}

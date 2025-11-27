@@ -1,5 +1,4 @@
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
-import { Clock } from 'lucide-react';
 
 interface GanttDurationCellProps {
     item: NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items'][0];
@@ -12,9 +11,8 @@ export function GanttDurationCell({ item }: GanttDurationCellProps) {
         : 0;
 
     return (
-        <div className="flex items-center gap-2 text-sm text-zinc-400">
-            <Clock className="w-3.5 h-3.5" />
-            <span>{duration > 0 ? `${duration} días` : '—'}</span>
+        <div className="text-sm text-zinc-400">
+            {duration > 0 ? `${duration} días` : '—'}
         </div>
     );
 }
