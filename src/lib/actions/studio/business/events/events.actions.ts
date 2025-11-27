@@ -116,6 +116,7 @@ export interface EventoDetalle extends EventoBasico {
     id: string;
     name: string;
     price: number;
+    discount?: number | null;
     status: string;
     created_at: Date;
     updated_at: Date;
@@ -868,6 +869,7 @@ export async function obtenerEventoDetalle(
             id: true,
             name: true,
             price: true,
+            discount: true,
             status: true,
             created_at: true,
             updated_at: true,
