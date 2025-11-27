@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
+import { ZenDialog } from '@/components/ui/zen';
 import { CrewMemberForm } from './CrewMemberForm';
 
 interface CrewMember {
@@ -32,7 +32,8 @@ interface CrewMemberFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMember?: CrewMember | null;
-  onSuccess: () => void;
+  onSuccess: (payload: Record<string, unknown>) => void;
+  onDelete?: () => void;
 }
 
 export function CrewMemberFormModal({
@@ -41,26 +42,30 @@ export function CrewMemberFormModal({
   onClose,
   initialMember,
   onSuccess,
+  onDelete,
 }: CrewMemberFormModalProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800">
-        <DialogHeader>
-          <DialogTitle className="text-xl">
-            {initialMember ? 'Editar Personal' : 'Crear Personal'}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="mt-6">
-          <CrewMemberForm
-            studioSlug={studioSlug}
-            initialMember={initialMember}
-            onSuccess={onSuccess}
-            onCancel={onClose}
-          />
-        </div>
-      </DialogContent>
-    </Dialog>
+    <ZenDialog
+      isOpen={isOpen}
+      onClose={onClose}
+      title={initialMember ? 'Editar Personal' : 'Crear Personal'}
+      description={
+        initialMember
+          ? 'Actualiza la información del miembro del equipo'
+          : 'Agrega un nuevo miembro a tu equipo de trabajo'
+      }
+      maxWidth="lg"
+      showCloseButton={true}
+      closeOnClickOutside={false}
+    >
+      <CrewMemberForm
+        studioSlug={studioSlug}
+        initialMember={initialMember}
+        onSuccess={onSuccess}
+        onCancel={onClose}
+        onDelete={onDelete}
+      />
+    </ZenDialog>
   );
 }
 

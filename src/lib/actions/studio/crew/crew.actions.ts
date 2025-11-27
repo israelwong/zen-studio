@@ -224,16 +224,30 @@ export async function actualizarCrewMember(
     }
 
     // Actualizar datos básicos
+    const updateData: {
+      name: string;
+      email: string | null;
+      phone: string | null;
+      tipo: string;
+      status?: string;
+      fixed_salary: number | null;
+      variable_salary: number | null;
+    } = {
+      name: validated.name,
+      email: validated.email || null,
+      phone: validated.phone || null,
+      tipo: validated.tipo,
+      fixed_salary: validated.fixed_salary || null,
+      variable_salary: validated.variable_salary || null,
+    };
+
+    if (validated.status !== undefined) {
+      updateData.status = validated.status;
+    }
+
     const updated = await prisma.studio_crew_members.update({
       where: { id: crewMemberId },
-      data: {
-        name: validated.name,
-        email: validated.email || null,
-        phone: validated.phone || null,
-        tipo: validated.tipo,
-        fixed_salary: validated.fixed_salary || null,
-        variable_salary: validated.variable_salary || null,
-      },
+      data: updateData,
       include: {
         skills: {
           include: {
@@ -273,6 +287,112 @@ export async function actualizarCrewMember(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al actualizar crew member',
+    };
+  }
+}
+
+/**
+ * Verificar si un crew member tiene asociaciones (eventos/tareas)
+ */
+export async function checkCrewMemberAssociations(
+  studioSlug: string,
+  crewMemberId: string
+): Promise<{
+  success: boolean;
+  hasAssociations: boolean;
+  hasEvents: boolean;
+  hasTasks: boolean;
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        hasAssociations: false,
+        hasEvents: false,
+        hasTasks: false,
+        error: 'Studio no encontrado',
+      };
+    }
+
+    // Verificar items de cotización asignados (que pueden tener tareas en Gantt)
+    const cotizacionItems = await prisma.studio_cotizacion_items.findMany({
+      where: {
+        assigned_to_crew_member_id: crewMemberId,
+        cotizaciones: {
+          studio_id: studio.id,
+        },
+      },
+      select: {
+        id: true,
+        cotizacion_id: true,
+      },
+      take: 1,
+    });
+
+    // Verificar tareas de Gantt asignadas a través de cotizacion_items
+    // Las tareas se relacionan con crew members a través de cotizacion_items
+    const ganttTasks = await prisma.studio_gantt_event_tasks.findMany({
+      where: {
+        cotizacion_item: {
+          assigned_to_crew_member_id: crewMemberId,
+          cotizaciones: {
+            studio_id: studio.id,
+          },
+        },
+      },
+      select: {
+        id: true,
+      },
+      take: 1,
+    });
+
+    // Si hay items de cotización asignados o tareas de Gantt, hay tareas asociadas
+    const hasTasks = cotizacionItems.length > 0 || ganttTasks.length > 0;
+    const hasCotizacionItems = cotizacionItems.length > 0;
+
+    // Verificar eventos asociados a través de cotizaciones
+    let hasEvents = false;
+    if (hasCotizacionItems) {
+      const cotizacionIds = cotizacionItems.map((item) => item.cotizacion_id);
+      const eventos = await prisma.studio_events.findMany({
+        where: {
+          studio_id: studio.id,
+          cotizaciones: {
+            some: {
+              id: { in: cotizacionIds },
+            },
+          },
+        },
+        select: {
+          id: true,
+        },
+        take: 1,
+      });
+      hasEvents = eventos.length > 0;
+    }
+
+    const hasAssociations = hasEvents || hasTasks || hasCotizacionItems;
+
+    return {
+      success: true,
+      hasAssociations,
+      hasEvents,
+      hasTasks,
+    };
+  } catch (error) {
+    console.error('[CREW] Error verificando asociaciones:', error);
+    return {
+      success: false,
+      hasAssociations: false,
+      hasEvents: false,
+      hasTasks: false,
+      error: error instanceof Error ? error.message : 'Error al verificar asociaciones',
     };
   }
 }

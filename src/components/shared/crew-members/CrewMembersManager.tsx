@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, Search, Users } from 'lucide-react';
 import { ZenButton, ZenInput } from '@/components/ui/zen';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/shadcn/sheet';
-import { obtenerCrewMembers } from '@/lib/actions/studio/crew';
+import { obtenerCrewMembers, crearCrewMember, actualizarCrewMember } from '@/lib/actions/studio/crew';
 import { toast } from 'sonner';
 import { CrewMemberCard } from './CrewMemberCard';
+import { CrewMemberCardSkeleton } from './CrewMemberCardSkeleton';
+import { CrewMembersCardView } from './CrewMembersCardView';
 import { CrewMemberFormModal } from './CrewMemberFormModal';
 
 interface CrewMembersManagerProps {
@@ -51,6 +53,7 @@ export function CrewMembersManager({
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [formModalOpen, setFormModalOpen] = useState(false);
+  const formModalOpenRef = useRef(false);
   const [editingMember, setEditingMember] = useState<CrewMember | null>(null);
 
   const loadData = useCallback(async () => {
@@ -74,8 +77,17 @@ export function CrewMembersManager({
   useEffect(() => {
     if (isOpen) {
       loadData();
+    } else {
+      // Resetear estados del modal cuando se cierra el sheet
+      setFormModalOpen(false);
+      setEditingMember(null);
     }
   }, [isOpen, loadData]);
+
+  // Actualizar ref cuando cambia el estado del modal
+  useEffect(() => {
+    formModalOpenRef.current = formModalOpen;
+  }, [formModalOpen]);
 
   const handleMemberClick = (memberId: string) => {
     if (mode === 'select' && onMemberSelect) {
@@ -84,23 +96,142 @@ export function CrewMembersManager({
     }
   };
 
-  const handleCrewCreated = () => {
-    setFormModalOpen(false);
-    loadData();
-    toast.success('Personal creado exitosamente');
-  };
+  const handleCloseModal = useCallback(() => {
+    // Usar setTimeout para evitar que el Sheet se cierre durante la transición
+    setTimeout(() => {
+      setFormModalOpen(false);
+      formModalOpenRef.current = false;
+      setEditingMember(null);
+    }, 100);
+  }, []);
 
-  const handleCrewUpdated = () => {
-    setEditingMember(null);
-    setFormModalOpen(false);
-    loadData();
-    toast.success('Personal actualizado exitosamente');
-  };
 
-  const handleCrewDeleted = () => {
-    loadData();
-    toast.success('Personal eliminado exitosamente');
-  };
+  const handleCrewCreated = useCallback(async (formData: Record<string, unknown>) => {
+    // Guardar estado anterior para rollback
+    const previousMembers = [...members];
+
+    try {
+      // Crear optimista temporal
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMember: CrewMember = {
+        id: tempId,
+        name: (formData.name as string) || '',
+        email: (formData.email as string) || null,
+        phone: (formData.phone as string) || null,
+        tipo: formData.tipo as string,
+        status: 'activo',
+        fixed_salary: formData.fixed_salary ? Number(formData.fixed_salary) : null,
+        variable_salary: formData.variable_salary ? Number(formData.variable_salary) : null,
+        skills: [],
+        account: null,
+      };
+
+      // Actualización optimista local
+      setMembers((prev) => [...prev, optimisticMember].sort((a, b) => a.name.localeCompare(b.name)));
+      handleCloseModal();
+
+      // Crear en servidor
+      const result = await crearCrewMember(studioSlug, formData);
+
+      if (result.success && result.data) {
+        // Obtener datos completos del nuevo miembro (con skills)
+        const memberResult = await obtenerCrewMembers(studioSlug);
+        if (memberResult.success && memberResult.data) {
+          // Encontrar el nuevo miembro por nombre (ya que no tenemos el ID real aún)
+          const newMember = memberResult.data.find(
+            (m) => m.name === optimisticMember.name && m.phone === optimisticMember.phone
+          );
+          if (newMember) {
+            // Reemplazar temporal con datos reales completos
+            setMembers((prev) =>
+              prev
+                .map((m) => (m.id === tempId ? newMember : m))
+                .sort((a, b) => a.name.localeCompare(b.name))
+            );
+          } else {
+            // Si no se encuentra, mantener el optimista y recargar todo
+            setMembers(memberResult.data);
+          }
+        }
+        toast.success('Personal creado exitosamente');
+      } else {
+        // Revertir en caso de error
+        setMembers(previousMembers);
+        toast.error(result.error || 'Error al crear personal');
+      }
+    } catch (error) {
+      // Revertir en caso de error
+      setMembers(previousMembers);
+      console.error('Error creating crew member:', error);
+      toast.error('Error al crear personal');
+    }
+  }, [members, studioSlug, handleCloseModal]);
+
+  const handleCrewUpdated = useCallback(async (memberId: string, formData: Record<string, unknown>) => {
+    // Guardar estado anterior para rollback
+    const previousMembers = [...members];
+
+    try {
+      // Actualización optimista local
+      const optimisticMember: CrewMember = {
+        ...members.find((m) => m.id === memberId)!,
+        name: (formData.name as string) || '',
+        email: (formData.email as string) || null,
+        phone: (formData.phone as string) || null,
+        tipo: formData.tipo as string,
+        fixed_salary: formData.fixed_salary ? Number(formData.fixed_salary) : null,
+        variable_salary: formData.variable_salary ? Number(formData.variable_salary) : null,
+      };
+
+      setMembers((prev) =>
+        prev
+          .map((m) => (m.id === memberId ? optimisticMember : m))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      );
+      handleCloseModal();
+
+      // Actualizar en servidor
+      const result = await actualizarCrewMember(studioSlug, memberId, formData);
+
+      if (result.success && result.data) {
+        // Obtener datos completos del miembro actualizado (con skills)
+        const memberResult = await obtenerCrewMembers(studioSlug);
+        if (memberResult.success && memberResult.data) {
+          // Encontrar el miembro actualizado por ID
+          const updatedMember = memberResult.data.find((m) => m.id === memberId);
+          if (updatedMember) {
+            // Actualizar solo ese miembro con datos completos
+            setMembers((prev) =>
+              prev
+                .map((m) => (m.id === memberId ? updatedMember : m))
+                .sort((a, b) => a.name.localeCompare(b.name))
+            );
+          } else {
+            // Si no se encuentra, recargar todo
+            setMembers(memberResult.data);
+          }
+        }
+        toast.success('Personal actualizado exitosamente');
+      } else {
+        // Revertir en caso de error
+        setMembers(previousMembers);
+        toast.error(result.error || 'Error al actualizar personal');
+      }
+    } catch (error) {
+      // Revertir en caso de error
+      setMembers(previousMembers);
+      console.error('Error updating crew member:', error);
+      toast.error('Error al actualizar personal');
+    }
+  }, [members, studioSlug, handleCloseModal]);
+
+  const handleCrewDeleted = useCallback((memberId: string) => {
+    // Actualización optimista local
+    setMembers((prev) => prev.filter((m) => m.id !== memberId));
+
+    // El componente CrewMemberCard ya maneja la eliminación en el servidor
+    // Si hay error, el componente mostrará el toast y no se eliminará del estado
+  }, []);
 
   // Filtrar miembros por búsqueda
   const filteredMembers = members.filter((member) =>
@@ -112,13 +243,34 @@ export function CrewMembersManager({
     a.name.localeCompare(b.name)
   );
 
+  // Prevenir que el Sheet se cierre cuando el modal está abierto
+  const handleSheetOpenChange = useCallback((newOpen: boolean) => {
+    // Si el modal está abierto (usando ref para evitar problemas de timing), no permitir que el Sheet se cierre
+    if (!newOpen && (formModalOpen || formModalOpenRef.current)) {
+      return;
+    }
+    onClose();
+  }, [formModalOpen, onClose]);
+
   return (
     <>
       {/* SHEET: LISTA DE PERSONAL */}
-      <Sheet open={isOpen} onOpenChange={onClose}>
+      <Sheet open={isOpen} onOpenChange={handleSheetOpenChange}>
         <SheetContent
           side="right"
           className="w-full sm:max-w-2xl bg-zinc-900 border-l border-zinc-800 overflow-y-auto p-0"
+          onInteractOutside={(e) => {
+            // Prevenir que el Sheet se cierre cuando se interactúa con el modal
+            if (formModalOpen) {
+              e.preventDefault();
+            }
+          }}
+          onEscapeKeyDown={(e) => {
+            // Prevenir que el Sheet se cierre con Escape cuando el modal está abierto
+            if (formModalOpen) {
+              e.preventDefault();
+            }
+          }}
         >
           {/* Header */}
           <SheetHeader className="border-b border-zinc-800 pb-4 px-6 pt-6">
@@ -155,6 +307,7 @@ export function CrewMembersManager({
                   onClick={() => {
                     setEditingMember(null);
                     setFormModalOpen(true);
+                    formModalOpenRef.current = true;
                   }}
                   className="w-full sm:w-auto"
                 >
@@ -177,8 +330,10 @@ export function CrewMembersManager({
 
             {/* LISTA DE PERSONAL */}
             {loading ? (
-              <div className="text-center py-12 text-zinc-400">
-                Cargando personal...
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <CrewMemberCardSkeleton key={i} />
+                ))}
               </div>
             ) : members.length === 0 ? (
               <div className="text-center py-12">
@@ -188,6 +343,7 @@ export function CrewMembersManager({
                     onClick={() => {
                       setEditingMember(null);
                       setFormModalOpen(true);
+                      formModalOpenRef.current = true;
                     }}
                     className="gap-2"
                   >
@@ -200,6 +356,21 @@ export function CrewMembersManager({
               <div className="text-center py-8 text-zinc-400">
                 No hay coincidencias para &quot;{searchTerm}&quot;
               </div>
+            ) : mode === 'manage' ? (
+              <CrewMembersCardView
+                members={sortedMembers}
+                loading={false}
+                onEdit={(memberId) => {
+                  const member = sortedMembers.find((m) => m.id === memberId);
+                  if (member) {
+                    setEditingMember(member);
+                    setFormModalOpen(true);
+                    formModalOpenRef.current = true;
+                  }
+                }}
+                onDelete={(memberId) => handleCrewDeleted(memberId)}
+                studioSlug={studioSlug}
+              />
             ) : (
               <div className="space-y-3">
                 {sortedMembers.map((member) => (
@@ -211,8 +382,9 @@ export function CrewMembersManager({
                     onEdit={() => {
                       setEditingMember(member);
                       setFormModalOpen(true);
+                      formModalOpenRef.current = true;
                     }}
-                    onDelete={handleCrewDeleted}
+                    onDelete={() => handleCrewDeleted(member.id)}
                     studioSlug={studioSlug}
                   />
                 ))}
@@ -227,12 +399,16 @@ export function CrewMembersManager({
         <CrewMemberFormModal
           studioSlug={studioSlug}
           isOpen={formModalOpen}
-          onClose={() => {
-            setEditingMember(null);
-            setFormModalOpen(false);
-          }}
+          onClose={handleCloseModal}
           initialMember={editingMember}
-          onSuccess={editingMember ? handleCrewUpdated : handleCrewCreated}
+          onSuccess={(payload) => {
+            if (editingMember) {
+              handleCrewUpdated(editingMember.id, payload);
+            } else {
+              handleCrewCreated(payload);
+            }
+          }}
+          onDelete={editingMember ? () => handleCrewDeleted(editingMember.id) : undefined}
         />
       )}
     </>

@@ -27,16 +27,18 @@ export const CrewMemberCreateSchema = z.object({
   }),
 
   fixed_salary: z
-    .number()
-    .positive('El salario fijo debe ser mayor a 0')
-    .optional()
-    .nullable(),
+    .union([
+      z.number().positive('El salario fijo debe ser mayor a 0'),
+      z.null(),
+    ])
+    .optional(),
 
   variable_salary: z
-    .number()
-    .positive('El salario variable debe ser mayor a 0')
-    .optional()
-    .nullable(),
+    .union([
+      z.number().positive('El salario variable debe ser mayor a 0'),
+      z.null(),
+    ])
+    .optional(),
 
   skill_ids: z
     .array(z.string().cuid())
@@ -70,17 +72,25 @@ export const CrewMemberUpdateSchema = z.object({
     errorMap: () => ({ message: 'Tipo de personal inválido' }),
   }),
 
+  status: z
+    .enum(['activo', 'inactivo'], {
+      errorMap: () => ({ message: 'Estado inválido' }),
+    })
+    .optional(),
+
   fixed_salary: z
-    .number()
-    .positive('El salario fijo debe ser mayor a 0')
-    .optional()
-    .nullable(),
+    .union([
+      z.number().positive('El salario fijo debe ser mayor a 0'),
+      z.null(),
+    ])
+    .optional(),
 
   variable_salary: z
-    .number()
-    .positive('El salario variable debe ser mayor a 0')
-    .optional()
-    .nullable(),
+    .union([
+      z.number().positive('El salario variable debe ser mayor a 0'),
+      z.null(),
+    ])
+    .optional(),
 
   skill_ids: z
     .array(z.string().cuid())

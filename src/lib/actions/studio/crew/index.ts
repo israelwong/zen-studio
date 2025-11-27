@@ -4,6 +4,7 @@ export {
   crearCrewMember,
   actualizarCrewMember,
   eliminarCrewMember,
+  checkCrewMemberAssociations,
 } from './crew.actions';
 
 export {

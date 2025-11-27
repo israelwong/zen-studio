@@ -72,6 +72,7 @@ export function SkillsInput({
       const newIds = [...selectedSkillIds, skillId];
       onSkillsChange(newIds);
       setSearchTerm('');
+      setShowDropdown(false);
     }
   };
 
@@ -92,6 +93,7 @@ export function SkillsInput({
       if (result.success && result.data) {
         setSkills((prev) => [...prev, result.data]);
         handleAddSkill(result.data.id);
+        setShowDropdown(false);
         toast.success('Habilidad creada');
       } else {
         toast.error(result.error || 'Error al crear habilidad');
@@ -117,28 +119,6 @@ export function SkillsInput({
 
   return (
     <div className="space-y-3">
-      {/* Tags de skills seleccionadas */}
-      <div className="flex flex-wrap gap-2 min-h-8">
-        {selectedSkills.map((skill) => (
-          <div
-            key={skill.id}
-            className="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium text-white"
-            style={{
-              backgroundColor: skill.color || '#6366f1',
-            }}
-          >
-            {skill.name}
-            <button
-              type="button"
-              onClick={() => handleRemoveSkill(skill.id)}
-              className="ml-1 hover:opacity-80 transition-opacity"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
-      </div>
-
       {/* Dropdown Input */}
       <div className="relative" ref={dropdownRef}>
         <div className="relative">
@@ -159,7 +139,7 @@ export function SkillsInput({
 
         {/* Dropdown Menu */}
         {showDropdown && (
-          <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg z-50 max-h-64 overflow-y-auto shadow-lg">
+          <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg z-[60] max-h-64 overflow-y-auto shadow-lg">
             {searchTerm.length > 0 && (
               <div className="space-y-2 p-2">
                 {/* Skills coincidentes */}
@@ -244,11 +224,35 @@ export function SkillsInput({
         )}
       </div>
 
+      {/* Tags de skills seleccionadas - Solo mostrar si hay habilidades */}
+      {selectedSkills.length > 0 && (
+        <div className="flex flex-wrap gap-2 relative z-10 pt-1">
+          {selectedSkills.map((skill) => (
+            <div
+              key={skill.id}
+              className="flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium text-white"
+              style={{
+                backgroundColor: skill.color || '#6366f1',
+              }}
+            >
+              {skill.name}
+              <button
+                type="button"
+                onClick={() => handleRemoveSkill(skill.id)}
+                className="ml-1 hover:opacity-80 transition-opacity"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {error && (
         <p className="text-sm text-red-400">{error}</p>
       )}
 
-      {selectedSkills.length === 0 && (
+      {selectedSkills.length === 0 && !error && (
         <p className="text-xs text-zinc-500">
           Selecciona al menos una habilidad
         </p>

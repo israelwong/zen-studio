@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Trash2, Edit2, Check, X } from 'lucide-react';
 import { ZenInput, ZenButton, ZenDialog, ZenConfirmModal } from '@/components/ui/zen';
+import { Skeleton } from '@/components/ui/shadcn/Skeleton';
 import { toast } from 'sonner';
 import {
     obtenerCrewSkills,
@@ -36,6 +37,7 @@ export function CrewSkillsManageModal({
     const [isCreatingSkills, setIsCreatingSkills] = useState(false);
     const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
     const [editingSkillName, setEditingSkillName] = useState('');
+    const [editingSkillColor, setEditingSkillColor] = useState<string>('#6366F1');
     const [isSavingEdit, setIsSavingEdit] = useState(false);
     const [skillToDelete, setSkillToDelete] = useState<CrewSkill | null>(null);
     const [isDeletingSkill, setIsDeletingSkill] = useState(false);
@@ -142,6 +144,7 @@ export function CrewSkillsManageModal({
     const handleStartEdit = (skill: CrewSkill) => {
         setEditingSkillId(skill.id);
         setEditingSkillName(skill.name);
+        setEditingSkillColor(skill.color || '#6366F1');
     };
 
     const handleSaveEdit = useCallback(async () => {
@@ -162,6 +165,7 @@ export function CrewSkillsManageModal({
         try {
             const result = await actualizarCrewSkill(studioSlug, editingSkillId, {
                 name: editingSkillName.trim(),
+                color: editingSkillColor || null,
             });
 
             if (result.success && result.data) {
@@ -180,11 +184,12 @@ export function CrewSkillsManageModal({
         } finally {
             setIsSavingEdit(false);
         }
-    }, [studioSlug, editingSkillId, editingSkillName, skills, isSavingEdit]);
+    }, [studioSlug, editingSkillId, editingSkillName, editingSkillColor, skills, isSavingEdit]);
 
     const handleCancelEdit = () => {
         setEditingSkillId(null);
         setEditingSkillName('');
+        setEditingSkillColor('#6366F1');
     };
 
     const handleDeleteSkill = useCallback(async () => {
@@ -210,119 +215,202 @@ export function CrewSkillsManageModal({
 
     return (
         <>
-            <ZenDialog isOpen={isOpen} onClose={onClose} title="Gestionar Habilidades">
-                <div className="space-y-4 max-h-96 overflow-y-auto w-80">
+            <ZenDialog
+                isOpen={isOpen}
+                onClose={onClose}
+                title="Gestionar Habilidades"
+                description="Crea y administra las habilidades y roles de tu equipo"
+                maxWidth="lg"
+                showCloseButton={true}
+                closeOnClickOutside={false}
+                zIndex={10052}
+            >
+                <div className="space-y-6">
                     {/* Crear nuevas habilidades */}
-                    <div className="space-y-2">
-                        <label className="block text-xs font-medium text-zinc-400 uppercase">
-                            Crear Habilidades
-                        </label>
-                        <div className="flex gap-2">
-                            <ZenInput
-                                value={newSkillInput}
-                                onChange={(e) => setNewSkillInput(e.target.value)}
-                                placeholder="Ej: Fotografía, Edición, Retoque"
-                                disabled={isCreatingSkills}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleCreateSkills();
-                                    }
-                                }}
-                            />
-                            <ZenButton
-                                onClick={handleCreateSkills}
-                                loading={isCreatingSkills}
-                                disabled={isCreatingSkills || !newSkillInput.trim()}
-                                size="sm"
-                            >
-                                Crear
-                            </ZenButton>
+                    <div className="space-y-3">
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-200 mb-2">
+                                Crear Habilidades
+                            </label>
+                            <div className="space-y-2">
+                                <ZenInput
+                                    value={newSkillInput}
+                                    onChange={(e) => setNewSkillInput(e.target.value)}
+                                    placeholder="Ej: Fotografía, Edición, Retoque"
+                                    disabled={isCreatingSkills}
+                                    className="w-full"
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleCreateSkills();
+                                        }
+                                    }}
+                                />
+                                <ZenButton
+                                    onClick={handleCreateSkills}
+                                    loading={isCreatingSkills}
+                                    disabled={isCreatingSkills || !newSkillInput.trim()}
+                                    size="md"
+                                    className="w-full"
+                                >
+                                    Crear Habilidad(es)
+                                </ZenButton>
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-2">
+                                Separa múltiples habilidades con comas
+                            </p>
                         </div>
-                        <p className="text-xs text-zinc-500">
-                            Separa múltiples habilidades con comas
-                        </p>
                     </div>
 
                     {/* Divider */}
                     <div className="border-t border-zinc-700" />
 
                     {/* Lista de habilidades */}
-                    <div className="space-y-2">
-                        <label className="block text-xs font-medium text-zinc-400 uppercase">
-                            Habilidades ({skills.filter((s) => !s.isPending).length})
-                        </label>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="block text-sm font-medium text-zinc-200">
+                                Habilidades Existentes
+                            </label>
+                            <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-1 rounded">
+                                {skills.filter((s) => !s.isPending).length}
+                            </span>
+                        </div>
                         {isLoading ? (
-                            <p className="text-sm text-zinc-400">Cargando...</p>
+                            <div className="space-y-2">
+                                {[1, 2, 3].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="flex items-center gap-3 p-3 rounded-lg border border-zinc-700 bg-zinc-800/30"
+                                    >
+                                        <Skeleton className="w-3 h-3 rounded-full flex-shrink-0" />
+                                        <Skeleton className="h-4 flex-1 max-w-[200px]" />
+                                        <div className="flex items-center gap-1 ml-auto">
+                                            <Skeleton className="h-8 w-8 rounded" />
+                                            <Skeleton className="h-8 w-8 rounded" />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         ) : skills.filter((s) => !s.isPending).length === 0 ? (
-                            <p className="text-sm text-zinc-400">No hay habilidades aún</p>
+                            <div className="py-8 text-center border border-zinc-700 rounded-lg bg-zinc-800/30">
+                                <p className="text-sm text-zinc-400">No hay habilidades aún</p>
+                                <p className="text-xs text-zinc-500 mt-1">
+                                    Crea tu primera habilidad arriba
+                                </p>
+                            </div>
                         ) : (
-                            <div className="space-y-1">
+                            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                                 {skills.map((skill) => {
-                                    if (skill.isPending) return null;
-
                                     const isEditing = editingSkillId === skill.id;
+                                    const isPending = skill.isPending;
+
+                                    if (isPending) {
+                                        return (
+                                            <div
+                                                key={skill.id}
+                                                className="flex items-center gap-3 p-3 rounded-lg border border-zinc-700 bg-zinc-800/20 opacity-60"
+                                            >
+                                                <div
+                                                    className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm animate-pulse"
+                                                    style={{ backgroundColor: skill.color || '#6366F1' }}
+                                                />
+                                                <span className="flex-1 text-sm font-medium text-zinc-400">
+                                                    {skill.name}
+                                                </span>
+                                                <span className="text-xs text-zinc-500 italic">
+                                                    Creando...
+                                                </span>
+                                            </div>
+                                        );
+                                    }
 
                                     return (
                                         <div
                                             key={skill.id}
-                                            className="flex items-center gap-2 p-2 rounded hover:bg-zinc-800 group transition-colors"
+                                            className="flex items-center gap-3 p-3 rounded-lg border border-zinc-700 bg-zinc-800/30 hover:bg-zinc-800/50 hover:border-zinc-600 group transition-all"
                                         >
-                                            <div
-                                                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStartEdit(skill)}
+                                                className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm hover:scale-110 transition-transform cursor-pointer"
                                                 style={{ backgroundColor: skill.color || '#6366F1' }}
+                                                title="Click para editar color y nombre"
                                             />
 
                                             {isEditing ? (
                                                 <>
-                                                    <input
-                                                        type="text"
-                                                        value={editingSkillName}
-                                                        onChange={(e) => setEditingSkillName(e.target.value)}
-                                                        className="flex-1 px-2 py-1 bg-zinc-700 border border-zinc-600 rounded text-sm text-zinc-200 focus:outline-none focus:border-zinc-500"
-                                                        autoFocus
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') {
-                                                                e.preventDefault();
-                                                                handleSaveEdit();
-                                                            } else if (e.key === 'Escape') {
-                                                                handleCancelEdit();
-                                                            }
-                                                        }}
+                                                    <div
+                                                        className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm ring-2 ring-emerald-400/50"
+                                                        style={{ backgroundColor: editingSkillColor }}
                                                     />
-                                                    <button
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <input
+                                                            type="color"
+                                                            value={editingSkillColor}
+                                                            onChange={(e) => setEditingSkillColor(e.target.value)}
+                                                            className="w-8 h-8 rounded border border-zinc-600 bg-zinc-800 cursor-pointer flex-shrink-0"
+                                                            title="Cambiar color"
+                                                        />
+                                                        <ZenInput
+                                                            value={editingSkillName}
+                                                            onChange={(e) => setEditingSkillName(e.target.value)}
+                                                            className="flex-1"
+                                                            autoFocus
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    handleSaveEdit();
+                                                                } else if (e.key === 'Escape') {
+                                                                    handleCancelEdit();
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <ZenButton
                                                         type="button"
                                                         onClick={handleSaveEdit}
                                                         disabled={isSavingEdit}
-                                                        className="p-1 text-emerald-400 hover:bg-emerald-400/10 rounded transition-colors"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10"
                                                     >
                                                         <Check className="h-4 w-4" />
-                                                    </button>
-                                                    <button
+                                                    </ZenButton>
+                                                    <ZenButton
                                                         type="button"
                                                         onClick={handleCancelEdit}
-                                                        className="p-1 text-zinc-500 hover:text-zinc-400 rounded transition-colors"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-zinc-500 hover:text-zinc-400"
                                                     >
                                                         <X className="h-4 w-4" />
-                                                    </button>
+                                                    </ZenButton>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className="flex-1 text-sm text-zinc-200">{skill.name}</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleStartEdit(skill)}
-                                                        className="p-1 text-zinc-500 hover:text-zinc-300 opacity-0 group-hover:opacity-100 rounded transition-colors"
-                                                    >
-                                                        <Edit2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setSkillToDelete(skill)}
-                                                        className="p-1 text-zinc-500 hover:text-red-400 opacity-0 group-hover:opacity-100 rounded transition-colors"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
+                                                    <span className="flex-1 text-sm font-medium text-zinc-200">
+                                                        {skill.name}
+                                                    </span>
+                                                    <div className="flex items-center gap-1">
+                                                        <ZenButton
+                                                            type="button"
+                                                            onClick={() => handleStartEdit(skill)}
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-300"
+                                                        >
+                                                            <Edit2 className="h-3.5 w-3.5" />
+                                                        </ZenButton>
+                                                        <ZenButton
+                                                            type="button"
+                                                            onClick={() => setSkillToDelete(skill)}
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="h-8 w-8 p-0 text-zinc-400 hover:text-red-400"
+                                                        >
+                                                            <Trash2 className="h-3.5 w-3.5" />
+                                                        </ZenButton>
+                                                    </div>
                                                 </>
                                             )}
                                         </div>

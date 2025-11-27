@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings2 } from 'lucide-react';
-import { ZenButton, ZenInput } from '@/components/ui/zen';
-import { ZenSelect } from '@/components/ui/zen';
-import { crearCrewMember, actualizarCrewMember } from '@/lib/actions/studio/crew';
+import { Settings2, Trash2 } from 'lucide-react';
+import { ZenButton, ZenInput, ZenSelect, ZenSwitch, ZenConfirmModal } from '@/components/ui/zen';
+import { crearCrewMember, actualizarCrewMember, eliminarCrewMember, checkCrewMemberAssociations } from '@/lib/actions/studio/crew';
 import { toast } from 'sonner';
 import { SkillsInput } from './SkillsInput';
 import { CrewSkillsManageModal } from './CrewSkillsManageModal';
@@ -18,12 +17,14 @@ interface CrewMemberFormProps {
     email: string | null;
     phone: string | null;
     tipo: string;
+    status?: string;
     fixed_salary: number | null;
     variable_salary: number | null;
     skills: Array<{ id: string; name: string; is_primary: boolean }>;
   } | null;
-  onSuccess: () => void;
+  onSuccess: (payload: Record<string, unknown>) => void;
   onCancel: () => void;
+  onDelete?: () => void;
 }
 
 export function CrewMemberForm({
@@ -31,12 +32,45 @@ export function CrewMemberForm({
   initialMember,
   onSuccess,
   onCancel,
+  onDelete,
 }: CrewMemberFormProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [salaryType, setSalaryType] = useState<'fixed' | 'variable'>(
     initialMember?.fixed_salary ? 'fixed' : 'variable'
   );
+
+  const handleSalaryTypeChange = (newType: 'fixed' | 'variable') => {
+    setSalaryType(newType);
+    // Limpiar valores del tipo no seleccionado
+    if (newType === 'fixed') {
+      setFormData((prev) => ({
+        ...prev,
+        variable_salary: '',
+      }));
+      if (errors.variable_salary) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.variable_salary;
+          return newErrors;
+        });
+      }
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        fixed_salary: '',
+      }));
+      if (errors.fixed_salary) {
+        setErrors((prev) => {
+          const newErrors = { ...prev };
+          delete newErrors.fixed_salary;
+          return newErrors;
+        });
+      }
+    }
+  };
   const [isSkillsModalOpen, setIsSkillsModalOpen] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -44,6 +78,7 @@ export function CrewMemberForm({
     email: initialMember?.email || '',
     phone: initialMember?.phone || '',
     tipo: (initialMember?.tipo as PersonalType) || 'OPERATIVO',
+    status: initialMember?.status || 'activo',
     fixed_salary: initialMember?.fixed_salary?.toString() || '',
     variable_salary: initialMember?.variable_salary?.toString() || '',
     skill_ids: initialMember?.skills.map((s) => s.id) || [],
@@ -79,7 +114,47 @@ export function CrewMemberForm({
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    let value = e.target.value;
+
+    // Remover todo lo que no sea número (+, espacios, guiones, paréntesis, etc.)
+    value = value.replace(/\D/g, '');
+
+    // Si viene con código de país de México (52) y tiene más de 10 dígitos, remover el código
+    if (value.length > 10 && value.startsWith('52')) {
+      value = value.slice(2);
+    }
+
+    // Limitar a 10 dígitos
+    value = value.slice(0, 10);
+
+    setFormData((prev) => ({
+      ...prev,
+      phone: value,
+    }));
+    if (errors.phone) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
+    }
+  };
+
+  const handlePhonePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+
+    // Remover todo lo que no sea número
+    let value = pastedText.replace(/\D/g, '');
+
+    // Si viene con código de país de México (52) y tiene más de 10 dígitos, remover el código
+    if (value.length > 10 && value.startsWith('52')) {
+      value = value.slice(2);
+    }
+
+    // Limitar a 10 dígitos
+    value = value.slice(0, 10);
+
     setFormData((prev) => ({
       ...prev,
       phone: value,
@@ -117,12 +192,18 @@ export function CrewMemberForm({
     if (!formData.tipo) {
       newErrors.tipo = 'Selecciona un tipo de personal';
     }
-    if (salaryType === 'fixed' && !formData.fixed_salary.trim()) {
-      newErrors.fixed_salary = 'Ingresa el salario fijo';
+    if (salaryType === 'fixed') {
+      if (!formData.fixed_salary.trim()) {
+        newErrors.fixed_salary = 'El monto mensual es obligatorio';
+      } else {
+        const fixedValue = parseFloat(formData.fixed_salary);
+        if (isNaN(fixedValue) || fixedValue <= 0) {
+          newErrors.fixed_salary = 'El monto mensual debe ser mayor a 0';
+        }
+      }
     }
-    if (salaryType === 'variable' && !formData.variable_salary.trim()) {
-      newErrors.variable_salary = 'Ingresa el monto variable base';
-    }
+    // Para honorarios variables, el monto es opcional (se calcula según presupuesto)
+    // No validamos variable_salary aquí ya que no hay campo visible
     if (formData.skill_ids.length === 0) {
       newErrors.skill_ids = 'Selecciona al menos una habilidad';
     }
@@ -134,15 +215,29 @@ export function CrewMemberForm({
     }
 
     try {
-      const payload = {
-        name: formData.name,
-        email: formData.email || undefined,
-        phone: formData.phone || undefined,
+      // Construir payload según tipo de salario
+      const payload: Record<string, unknown> = {
+        name: formData.name.trim(),
+        email: formData.email?.trim() || '',
+        phone: formData.phone?.trim() || '',
         tipo: formData.tipo,
-        fixed_salary: formData.fixed_salary ? parseFloat(formData.fixed_salary) : undefined,
-        variable_salary: formData.variable_salary ? parseFloat(formData.variable_salary) : undefined,
+        status: formData.status,
         skill_ids: formData.skill_ids,
       };
+
+      // Si es salario fijo, establecer fixed_salary y limpiar variable_salary
+      if (salaryType === 'fixed') {
+        const fixedValue = parseFloat(formData.fixed_salary);
+        payload.fixed_salary = fixedValue;
+        payload.variable_salary = null;
+      } else {
+        // Si es variable, establecer variable_salary y limpiar fixed_salary
+        const variableValue = formData.variable_salary
+          ? parseFloat(formData.variable_salary)
+          : null;
+        payload.variable_salary = variableValue;
+        payload.fixed_salary = null;
+      }
 
       let result;
       if (initialMember) {
@@ -151,14 +246,28 @@ export function CrewMemberForm({
         result = await crearCrewMember(studioSlug, payload);
       }
 
-      if (result.success) {
-        onSuccess();
+      if (result?.success) {
+        // onSuccess ya muestra el toast, no duplicar
+        onSuccess(payload);
       } else {
-        toast.error(result.error || 'Error al guardar');
+        const errorMessage = result?.error || 'Error al guardar';
+        toast.error(errorMessage);
+
+        // Si hay errores de validación específicos, mostrarlos en los campos
+        if (errorMessage.includes('nombre')) {
+          setErrors((prev) => ({ ...prev, name: errorMessage }));
+        } else if (errorMessage.includes('teléfono') || errorMessage.includes('phone')) {
+          setErrors((prev) => ({ ...prev, phone: errorMessage }));
+        } else if (errorMessage.includes('salario fijo') || errorMessage.includes('fixed_salary')) {
+          setErrors((prev) => ({ ...prev, fixed_salary: errorMessage }));
+        } else if (errorMessage.includes('salario variable') || errorMessage.includes('variable_salary')) {
+          setErrors((prev) => ({ ...prev, variable_salary: errorMessage }));
+        }
       }
     } catch (error) {
-      console.error('Form submission error:', error);
-      toast.error('Error al guardar personal');
+      console.error('[CREW FORM] Exception:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error al guardar personal';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -192,6 +301,7 @@ export function CrewMemberForm({
             name="phone"
             value={formData.phone}
             onChange={handlePhoneChange}
+            onPaste={handlePhonePaste}
             placeholder="1234567890"
             error={errors.phone}
             inputMode="numeric"
@@ -251,7 +361,7 @@ export function CrewMemberForm({
               name="salaryType"
               value="variable"
               checked={salaryType === 'variable'}
-              onChange={(e) => setSalaryType(e.target.value as 'variable')}
+              onChange={() => handleSalaryTypeChange('variable')}
               className="mt-1"
             />
             <div className="flex-1">
@@ -272,7 +382,7 @@ export function CrewMemberForm({
               name="salaryType"
               value="fixed"
               checked={salaryType === 'fixed'}
-              onChange={(e) => setSalaryType(e.target.value as 'fixed')}
+              onChange={() => handleSalaryTypeChange('fixed')}
               className="mt-1"
             />
             <div className="flex-1">
@@ -291,7 +401,7 @@ export function CrewMemberForm({
       {salaryType === 'fixed' && (
         <div>
           <label className="block text-sm font-medium text-zinc-200 mb-2">
-            Monto Mensual
+            Monto Mensual *
           </label>
           <ZenInput
             name="fixed_salary"
@@ -301,6 +411,7 @@ export function CrewMemberForm({
             placeholder="15000"
             min="0"
             step="0.01"
+            required
             error={errors.fixed_salary}
           />
         </div>
@@ -329,13 +440,79 @@ export function CrewMemberForm({
         />
       </div>
 
+      {/* Estatus - Solo si está editando */}
+      {initialMember && (
+        <div className="border-t border-zinc-700 pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="block text-sm font-medium text-zinc-200 mb-1">
+                Estado
+              </label>
+              <p className="text-xs text-zinc-400">
+                {formData.status === 'activo' ? 'El personal está activo y disponible' : 'El personal está inactivo'}
+              </p>
+            </div>
+            <ZenSwitch
+              checked={formData.status === 'activo'}
+              onCheckedChange={(checked) => {
+                setFormData((prev) => ({
+                  ...prev,
+                  status: checked ? 'activo' : 'inactivo',
+                }));
+              }}
+              label={formData.status === 'activo' ? 'Activo' : 'Inactivo'}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Botones */}
       <div className="flex gap-3 pt-6 border-t border-zinc-700">
+        {initialMember && onDelete && (
+          <ZenButton
+            type="button"
+            variant="ghost"
+            onClick={async () => {
+              try {
+                // Verificar asociaciones antes de mostrar el modal
+                const checkResult = await checkCrewMemberAssociations(studioSlug, initialMember.id);
+
+                if (!checkResult.success) {
+                  toast.error(checkResult.error || 'Error al verificar asociaciones');
+                  return;
+                }
+
+                if (checkResult.hasAssociations) {
+                  // Mensaje de error específico según el tipo de asociación
+                  if (checkResult.hasEvents && checkResult.hasTasks) {
+                    toast.error('No se puede eliminar porque tiene eventos y tareas asociadas.');
+                  } else if (checkResult.hasEvents) {
+                    toast.error('No se puede eliminar porque tiene eventos asociados.');
+                  } else if (checkResult.hasTasks) {
+                    toast.error('No se puede eliminar porque tiene tareas asociadas.');
+                  }
+                  return;
+                }
+
+                // Si no tiene asociaciones, abrir modal de confirmación
+                setIsDeleteModalOpen(true);
+              } catch (error) {
+                console.error('Error checking crew member associations:', error);
+                toast.error('Error al verificar asociaciones del personal');
+              }
+            }}
+            disabled={loading || isDeleting}
+            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            size="sm"
+          >
+            <Trash2 className="h-4 w-4" />
+          </ZenButton>
+        )}
         <ZenButton
           type="button"
           variant="ghost"
           onClick={onCancel}
-          disabled={loading}
+          disabled={loading || isDeleting}
           className="flex-1"
         >
           Cancelar
@@ -343,7 +520,7 @@ export function CrewMemberForm({
         <ZenButton
           type="submit"
           loading={loading}
-          disabled={loading}
+          disabled={loading || isDeleting}
           className="flex-1"
         >
           {initialMember ? 'Actualizar' : 'Crear'}
@@ -356,6 +533,47 @@ export function CrewMemberForm({
         onClose={() => setIsSkillsModalOpen(false)}
         studioSlug={studioSlug}
       />
+
+      {/* Modal de confirmación de eliminación */}
+      {initialMember && (
+        <ZenConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={async () => {
+            if (!initialMember) return;
+
+            try {
+              setIsDeleting(true);
+
+              // Llamar onDelete primero para actualización optimista
+              onDelete?.();
+
+              // Eliminar en servidor
+              const result = await eliminarCrewMember(studioSlug, initialMember.id);
+
+              if (result.success) {
+                toast.success('Personal eliminado exitosamente');
+                setIsDeleteModalOpen(false);
+                onCancel();
+              } else {
+                toast.error(result.error || 'Error al eliminar');
+              }
+            } catch (error) {
+              console.error('Error deleting crew member:', error);
+              toast.error('Error al eliminar personal');
+            } finally {
+              setIsDeleting(false);
+            }
+          }}
+          title="Eliminar personal"
+          description={`¿Estás seguro de que deseas eliminar a ${initialMember.name}? Esta acción no se puede deshacer.`}
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          variant="destructive"
+          loading={isDeleting}
+          loadingText="Eliminando..."
+        />
+      )}
     </form>
   );
 }

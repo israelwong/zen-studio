@@ -24,6 +24,7 @@ export interface ZenDialogProps {
   onDelete?: () => void;
   deleteLabel?: string;
   showDeleteButton?: boolean;
+  zIndex?: number;
 }
 
 const maxWidthClasses = {
@@ -55,7 +56,8 @@ export function ZenDialog({
   closeOnClickOutside = false,
   onDelete,
   deleteLabel = 'Eliminar',
-  showDeleteButton = false
+  showDeleteButton = false,
+  zIndex = 10050
 }: ZenDialogProps) {
   const [mounted, setMounted] = React.useState(false);
 
@@ -73,12 +75,15 @@ export function ZenDialog({
     }
   };
 
+  const overlayZIndex = zIndex;
+  const contentZIndex = zIndex + 1;
+
   const modalContent = (
     <>
       {/* Overlay separado */}
       <div 
         className="fixed inset-0 bg-black/70 backdrop-blur-sm"
-        style={{ zIndex: 10050, position: 'fixed' }}
+        style={{ zIndex: overlayZIndex }}
         onClick={(e) => {
           if (closeOnClickOutside && e.target === e.currentTarget) {
             onClose();
@@ -88,7 +93,7 @@ export function ZenDialog({
       {/* Contenido del modal */}
       <div 
         className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
-        style={{ zIndex: 10051 }}
+        style={{ zIndex: contentZIndex }}
       >
         <div 
           className={cn(
