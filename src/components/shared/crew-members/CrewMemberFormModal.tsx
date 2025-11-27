@@ -44,7 +44,7 @@ export function CrewMemberFormModal({
 }: CrewMemberFormModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto bg-zinc-900 border-zinc-800">
         <DialogHeader>
           <DialogTitle className="text-xl">
             {initialMember ? 'Editar Personal' : 'Crear Personal'}
