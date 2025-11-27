@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { Plus, Search, Users } from 'lucide-react';
 import { ZenButton, ZenInput } from '@/components/ui/zen';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/shadcn/sheet';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/shadcn/sheet';
 import { obtenerCrewMembers } from '@/lib/actions/studio/crew';
 import { toast } from 'sonner';
-import { CrewMemberForm } from './CrewMemberForm';
 import { CrewMemberCard } from './CrewMemberCard';
+import { CrewMemberFormModal } from './CrewMemberFormModal';
 
 interface CrewMembersManagerProps {
   studioSlug: string;
@@ -51,7 +50,7 @@ export function CrewMembersManager({
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'lista' | 'crear'>('lista');
+  const [formModalOpen, setFormModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<CrewMember | null>(null);
 
   const loadData = useCallback(async () => {
@@ -86,20 +85,19 @@ export function CrewMembersManager({
   };
 
   const handleCrewCreated = () => {
-    setActiveTab('lista');
+    setFormModalOpen(false);
     loadData();
     toast.success('Personal creado exitosamente');
   };
 
   const handleCrewUpdated = () => {
     setEditingMember(null);
-    setActiveTab('lista');
+    setFormModalOpen(false);
     loadData();
     toast.success('Personal actualizado exitosamente');
   };
 
   const handleCrewDeleted = () => {
-    setActiveTab('lista');
     loadData();
     toast.success('Personal eliminado exitosamente');
   };
@@ -115,56 +113,81 @@ export function CrewMembersManager({
   );
 
   return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full max-w-2xl bg-zinc-900 border-zinc-800 sm:max-w-2xl overflow-y-auto h-screen flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="text-xl">Gestión de Personal</SheetTitle>
-        </SheetHeader>
+    <>
+      {/* SHEET: LISTA DE PERSONAL */}
+      <Sheet open={isOpen} onOpenChange={onClose}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-2xl bg-zinc-900 border-l border-zinc-800 overflow-y-auto p-0"
+        >
+          {/* Header */}
+          <SheetHeader className="border-b border-zinc-800 pb-4 px-6 pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-emerald-600/20 rounded-lg">
+                <Users className="h-5 w-5 text-emerald-400" />
+              </div>
+              <div className="flex-1">
+                <SheetTitle className="text-xl font-semibold text-white">
+                  Personal
+                </SheetTitle>
+                <SheetDescription className="text-zinc-400">
+                  Gestiona el equipo de trabajo
+                </SheetDescription>
+              </div>
+            </div>
+          </SheetHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'lista' | 'crear')} className="mt-6 flex flex-col flex-1">
-          <TabsList className="grid w-full grid-cols-2 bg-zinc-800">
-            <TabsTrigger value="lista">Lista</TabsTrigger>
-            <TabsTrigger value="crear">
-              {editingMember ? 'Editar' : 'Crear'}
-            </TabsTrigger>
-          </TabsList>
-
-          {/* TAB: LISTA */}
-          <TabsContent value="lista" className="space-y-4 mt-6 flex-1 overflow-y-auto">
+          {/* Contenedor con padding */}
+          <div className="p-6 space-y-4">
+            {/* SEARCH + CREAR */}
             {mode === 'manage' && (
-              <div className="flex gap-2">
-                <ZenInput
-                  placeholder="Buscar por nombre..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  icon={Search}
-                  className="flex-1"
-                />
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                <div className="flex-1 w-full">
+                  <ZenInput
+                    placeholder="Buscar por nombre..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    icon={Search}
+                    iconClassName="h-4 w-4"
+                  />
+                </div>
                 <ZenButton
-                  size="sm"
-                  className="gap-2"
                   onClick={() => {
                     setEditingMember(null);
-                    setActiveTab('crear');
+                    setFormModalOpen(true);
                   }}
+                  className="w-full sm:w-auto"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 mr-2" />
                   Crear
                 </ZenButton>
               </div>
             )}
 
+            {/* Contador */}
+            <div className="text-sm text-zinc-400 min-h-[20px]">
+              {loading ? (
+                <span className="text-zinc-500">Cargando...</span>
+              ) : (
+                <span>
+                  {sortedMembers.length} {sortedMembers.length === 1 ? 'persona' : 'personas'}
+                </span>
+              )}
+            </div>
+
+            {/* LISTA DE PERSONAL */}
             {loading ? (
-              <div className="text-center py-12 text-zinc-400">Cargando personal...</div>
+              <div className="text-center py-12 text-zinc-400">
+                Cargando personal...
+              </div>
             ) : members.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-zinc-400 mb-4">No hay personal registrado</p>
                 {mode === 'manage' && (
                   <ZenButton
-                    size="sm"
                     onClick={() => {
                       setEditingMember(null);
-                      setActiveTab('crear');
+                      setFormModalOpen(true);
                     }}
                     className="gap-2"
                   >
@@ -175,7 +198,7 @@ export function CrewMembersManager({
               </div>
             ) : sortedMembers.length === 0 ? (
               <div className="text-center py-8 text-zinc-400">
-                No hay coincidencias para "{searchTerm}"
+                No hay coincidencias para &quot;{searchTerm}&quot;
               </div>
             ) : (
               <div className="space-y-3">
@@ -187,7 +210,7 @@ export function CrewMembersManager({
                     onSelect={() => handleMemberClick(member.id)}
                     onEdit={() => {
                       setEditingMember(member);
-                      setActiveTab('crear');
+                      setFormModalOpen(true);
                     }}
                     onDelete={handleCrewDeleted}
                     studioSlug={studioSlug}
@@ -195,28 +218,23 @@ export function CrewMembersManager({
                 ))}
               </div>
             )}
-          </TabsContent>
+          </div>
+        </SheetContent>
+      </Sheet>
 
-          {/* TAB: CREAR/EDITAR */}
-          <TabsContent value="crear" className="mt-6 flex-1 overflow-y-auto">
-            {mode === 'manage' ? (
-              <CrewMemberForm
-                studioSlug={studioSlug}
-                initialMember={editingMember}
-                onSuccess={editingMember ? handleCrewUpdated : handleCrewCreated}
-                onCancel={() => {
-                  setEditingMember(null);
-                  setActiveTab('lista');
-                }}
-              />
-            ) : (
-              <div className="text-center py-12 text-zinc-400">
-                Este modo no permite crear personal
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </SheetContent>
-    </Sheet>
+      {/* MODAL: CREAR/EDITAR PERSONAL */}
+      {mode === 'manage' && (
+        <CrewMemberFormModal
+          studioSlug={studioSlug}
+          isOpen={formModalOpen}
+          onClose={() => {
+            setEditingMember(null);
+            setFormModalOpen(false);
+          }}
+          initialMember={editingMember}
+          onSuccess={editingMember ? handleCrewUpdated : handleCrewCreated}
+        />
+      )}
+    </>
   );
 }
