@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
 import { obtenerCrewMembers, obtenerCategoriasCrew } from '@/lib/actions/studio/business/events';
@@ -18,6 +18,7 @@ interface CrewMember {
     id: string;
     name: string;
   };
+  additional_roles: string[];
   fixed_salary: number | null;
   variable_salary: number | null;
 }
@@ -33,7 +34,6 @@ interface CrewCategory {
 
 interface CrewMembersManagerProps {
   studioSlug: string;
-  eventId?: string;
   onMemberSelect?: (memberId: string) => void;
   mode?: 'select' | 'manage';
   isOpen: boolean;
@@ -42,7 +42,6 @@ interface CrewMembersManagerProps {
 
 export function CrewMembersManager({
   studioSlug,
-  eventId,
   onMemberSelect,
   mode = 'manage',
   isOpen,
@@ -52,13 +51,7 @@ export function CrewMembersManager({
   const [categories, setCategories] = useState<CrewCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen, studioSlug]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       const [membersResult, categoriesResult] = await Promise.all([
@@ -79,7 +72,13 @@ export function CrewMembersManager({
     } finally {
       setLoading(false);
     }
-  };
+  }, [studioSlug]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadData();
+    }
+  }, [isOpen, loadData]);
 
   const handleMemberClick = (memberId: string) => {
     if (mode === 'select' && onMemberSelect) {
@@ -92,12 +91,7 @@ export function CrewMembersManager({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-zinc-900 border-zinc-800">
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">Gestión de Personal</DialogTitle>
-            <ZenButton variant="ghost" size="sm" onClick={onClose} className="p-2">
-              <X className="h-4 w-4" />
-            </ZenButton>
-          </div>
+          <DialogTitle className="text-xl">Gestión de Personal</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -145,6 +139,12 @@ export function CrewMembersManager({
                               <div className="font-medium text-zinc-200">
                                 {member.name}
                               </div>
+                              <div className="text-xs text-zinc-500">
+                                {category.name}
+                                {member.additional_roles.length > 0 && (
+                                  <span> + {member.additional_roles.length} más</span>
+                                )}
+                              </div>
                               {member.email && (
                                 <div className="text-sm text-zinc-400">{member.email}</div>
                               )}
@@ -160,7 +160,6 @@ export function CrewMembersManager({
                                   className="p-2"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // TODO: Implementar edición
                                     toast.info('Edición próximamente disponible');
                                   }}
                                 >
@@ -172,7 +171,6 @@ export function CrewMembersManager({
                                   className="p-2 text-red-400 hover:text-red-300"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    // TODO: Implementar eliminación
                                     toast.info('Eliminación próximamente disponible');
                                   }}
                                 >
@@ -198,4 +196,3 @@ export function CrewMembersManager({
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
-

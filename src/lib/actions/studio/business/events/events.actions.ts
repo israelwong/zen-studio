@@ -1848,6 +1848,7 @@ export async function obtenerCrewMembers(studioSlug: string) {
           id: member.category.id,
           name: member.category.name,
         },
+        additional_roles: member.additional_roles || [],
         fixed_salary: member.fixed_salary ? Number(member.fixed_salary) : null,
         variable_salary: member.variable_salary ? Number(member.variable_salary) : null,
       })),

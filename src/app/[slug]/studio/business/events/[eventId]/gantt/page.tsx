@@ -124,7 +124,6 @@ export default function EventGanttPage() {
 
       <CrewMembersManager
         studioSlug={studioSlug}
-        eventId={eventId}
         mode="manage"
         isOpen={crewManagerOpen}
         onClose={() => setCrewManagerOpen(false)}
