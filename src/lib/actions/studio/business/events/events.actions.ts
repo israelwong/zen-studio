@@ -901,12 +901,6 @@ export async function obtenerEventoDetalle(
                     id: true,
                     name: true,
                     tipo: true,
-                    category: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
-                    },
                   },
                 },
                 gantt_task: {
@@ -1821,16 +1815,17 @@ export async function obtenerCrewMembers(studioSlug: string) {
         studio_id: studio.id,
         status: 'activo',
       },
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        tipo: true,
+        status: true,
+        fixed_salary: true,
+        variable_salary: true,
       },
       orderBy: [
-        { order: 'asc' },
         { name: 'asc' },
       ],
     });
@@ -1844,11 +1839,6 @@ export async function obtenerCrewMembers(studioSlug: string) {
         phone: member.phone,
         tipo: member.tipo,
         status: member.status,
-        category: {
-          id: member.category.id,
-          name: member.category.name,
-        },
-        additional_roles: member.additional_roles || [],
         fixed_salary: member.fixed_salary ? Number(member.fixed_salary) : null,
         variable_salary: member.variable_salary ? Number(member.variable_salary) : null,
       })),

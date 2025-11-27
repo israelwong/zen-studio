@@ -13,6 +13,7 @@
 ### ✅ COMPLETADO
 
 **FASE 1: Schema & BD**
+
 - ✅ Eliminar `studio_crew_categories` (redundante)
 - ✅ Crear `studio_crew_skills` (habilidades reutilizables)
 - ✅ Crear `studio_crew_member_skills` (M:N relationship)
@@ -22,6 +23,7 @@
 - ✅ Prisma Client generado
 
 **FASE 2: Server Actions**
+
 - ✅ `crew.actions.ts` (5 funciones CRUD)
 - ✅ `skills.actions.ts` (7 funciones gestión skills)
 - ✅ `accounts.actions.ts` (6 funciones panel personal)
@@ -29,6 +31,7 @@
 - ✅ Todos los actions con error handling y revalidación
 
 **FASE 3: Componentes UI**
+
 - ✅ `CrewMembersManager` (Sheet + Tabs)
 - ✅ `CrewMemberCard` (Tarjeta con acciones)
 - ✅ `CrewMemberForm` (Create/Edit)
@@ -38,6 +41,7 @@
 ### ⏳ PENDIENTE
 
 **FASE 4: Panel Administrativo Crew**
+
 - [ ] Crear rutas `/studio/[slug]/crew/dashboard`
 - [ ] Crear componentes de dashboard
 - [ ] Listar asignaciones (cotizaciones/eventos)
@@ -46,6 +50,7 @@
 - [ ] Descargar documentos/recibos
 
 **FASE 5: Testing & Docs**
+
 - [ ] Testing manual de flujos completos
 - [ ] Testing edge cases
 - [ ] Documentación de usuario final
@@ -54,15 +59,15 @@
 
 ### 📊 MÉTRICAS
 
-| Métrica | Valor |
-|---------|-------|
+| Métrica                  | Valor |
+| ------------------------ | ----- |
 | Líneas de código creadas | 2,026 |
-| Server actions | 18 |
-| Componentes React | 4 |
-| Archivos modificados | 6 |
-| Commits | 3 |
-| Tablas DB creadas | 3 |
-| Tablas DB eliminadas | 3 |
+| Server actions           | 18    |
+| Componentes React        | 4     |
+| Archivos modificados     | 6     |
+| Commits                  | 3     |
+| Tablas DB creadas        | 3     |
+| Tablas DB eliminadas     | 3     |
 
 ---
 
@@ -840,11 +845,12 @@ DROP TABLE studio_crew_categories;
 Toda la documentación está en: `/docs/CREW_MANAGEMENT_SYSTEM.md`
 
 Queries de ejemplo:
+
 ```sql
 -- Ver mis asignaciones
 SELECT * FROM studio_cotizacion_items WHERE assigned_to_crew_member_id = $crew_id;
 
--- Ver mis nóminas  
+-- Ver mis nóminas
 SELECT * FROM studio_nominas WHERE personal_id = $crew_id ORDER BY created_at DESC;
 
 -- Ver mis skills
