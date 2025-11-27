@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useCallback } from 'react';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import { GanttAgrupacionCell } from './GanttAgrupacionCell';
 import { GanttDurationCell } from './GanttDurationCell';
@@ -22,17 +25,49 @@ interface GanttItemRowProps {
 }
 
 export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttItemRowProps) {
+    // Estado local del item para actualización en tiempo real
+    const [localItem, setLocalItem] = useState(item);
+
+    // Callback para actualizar el crew member asignado
+    const handleCrewMemberUpdate = useCallback((crewMemberId: string | null, crewMember?: { id: string; name: string; tipo: string } | null) => {
+        if (crewMemberId && crewMember) {
+            setLocalItem(prev => ({
+                ...prev,
+                assigned_to_crew_member_id: crewMemberId,
+                assigned_to_crew_member: {
+                    id: crewMember.id,
+                    name: crewMember.name,
+                    tipo: crewMember.tipo as 'OPERATIVO' | 'ADMINISTRATIVO' | 'PROVEEDOR',
+                    category: {
+                        id: '',
+                        name: crewMember.tipo || 'Sin categoría', // Usar tipo como fallback temporal
+                    },
+                },
+            } as typeof prev));
+        } else {
+            // Quitar asignación
+            setLocalItem(prev => ({
+                ...prev,
+                assigned_to_crew_member_id: null,
+                assigned_to_crew_member: null,
+            }));
+        }
+    }, []);
+
     return (
         <tr className="border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
             {/* Agrupación (Sticky Left) */}
             <td className="px-4 py-3 sticky left-0 bg-zinc-950 z-20 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800/50">
                 <GanttItemPopover
-                    item={item}
-                    servicioNombre={itemData.servicioNombre}
+                    item={localItem}
                     studioSlug={studioSlug}
+                    onCrewMemberUpdate={handleCrewMemberUpdate}
                 >
                     <button className="w-full text-left">
-                        <GanttAgrupacionCell servicio={itemData.servicioNombre} />
+                        <GanttAgrupacionCell
+                            servicio={itemData.servicioNombre}
+                            assignedCrewMember={localItem.assigned_to_crew_member}
+                        />
                     </button>
                 </GanttItemPopover>
             </td>

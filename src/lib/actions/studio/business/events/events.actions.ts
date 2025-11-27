@@ -1870,12 +1870,21 @@ export async function asignarCrewAItem(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que el item existe y pertenece al studio
+    // Verificar que el item existe y pertenece al studio, obtener también el evento
     const item = await prisma.studio_cotizacion_items.findFirst({
       where: {
         id: itemId,
         cotizaciones: {
           studio_id: studio.id,
+        },
+      },
+      select: {
+        id: true,
+        cotizacion_id: true,
+        cotizaciones: {
+          select: {
+            evento_id: true,
+          },
         },
       },
     });
@@ -1907,7 +1916,13 @@ export async function asignarCrewAItem(
       },
     });
 
+    // Obtener eventId desde evento_id de la cotización
+    const eventId = item.cotizaciones?.evento_id;
+    
     revalidatePath(`/${studioSlug}/studio/business/events`);
+    if (eventId) {
+      revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+    }
     return { success: true };
   } catch (error) {
     console.error('[EVENTOS] Error asignando crew a item:', error);
