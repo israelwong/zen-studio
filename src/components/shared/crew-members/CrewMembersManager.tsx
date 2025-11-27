@@ -137,7 +137,7 @@ export function CrewMembersManager({
                   placeholder="Buscar por nombre..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  startIcon={<Search className="h-4 w-4" />}
+                  icon={Search}
                   className="flex-1"
                 />
                 <ZenButton
