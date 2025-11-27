@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ZenButton, ZenInput } from '@/components/ui/zen';
 import { ZenSelect } from '@/components/ui/zen';
-import { crearCrewMember, actualizarCrewMember, obtenerCrewSkills } from '@/lib/actions/studio/crew';
+import { crearCrewMember, actualizarCrewMember } from '@/lib/actions/studio/crew';
 import { toast } from 'sonner';
 import { SkillsInput } from './SkillsInput';
 import { PersonalType } from '@prisma/client';
@@ -32,6 +32,9 @@ export function CrewMemberForm({
 }: CrewMemberFormProps) {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [salaryType, setSalaryType] = useState<'fixed' | 'variable'>(
+    initialMember?.fixed_salary ? 'fixed' : 'variable'
+  );
 
   const [formData, setFormData] = useState({
     name: initialMember?.name || '',
@@ -58,6 +61,35 @@ export function CrewMemberForm({
     }
   };
 
+  const handleTipoChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tipo: value as PersonalType,
+    }));
+    if (errors.tipo) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.tipo;
+        return newErrors;
+      });
+    }
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData((prev) => ({
+      ...prev,
+      phone: value,
+    }));
+    if (errors.phone) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.phone;
+        return newErrors;
+      });
+    }
+  };
+
   const handleSkillsChange = (skillIds: string[]) => {
     setFormData((prev) => ({
       ...prev,
@@ -69,6 +101,28 @@ export function CrewMemberForm({
     e.preventDefault();
     setErrors({});
     setLoading(true);
+
+    // Validación básica
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'El nombre es requerido';
+    }
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'El teléfono es requerido';
+    }
+    if (!formData.tipo || formData.tipo === '') {
+      newErrors.tipo = 'Selecciona un tipo de personal';
+    }
+    if (formData.skill_ids.length === 0) {
+      newErrors.skill_ids = 'Selecciona al menos una habilidad';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      setLoading(false);
+      return;
+    }
 
     try {
       const payload = {
@@ -112,39 +166,46 @@ export function CrewMemberForm({
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Ej: Israel Wong"
+          placeholder="Ej: Juan Pérez"
           required
           error={errors.name}
         />
       </div>
 
-      {/* Email */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-200 mb-2">
-          Correo (opcional)
-        </label>
-        <ZenInput
-          name="email"
-          type="email"
-          value={formData.email}
-          onChange={handleChange}
-          placeholder="israel@studio.com"
-          error={errors.email}
-        />
-      </div>
+      {/* Email & Teléfono - 2 Columnas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Teléfono */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-200 mb-2">
+            Teléfono *
+          </label>
+          <ZenInput
+            name="phone"
+            value={formData.phone}
+            onChange={handlePhoneChange}
+            placeholder="1234567890"
+            error={errors.phone}
+            inputMode="numeric"
+            required
+          />
+        </div>
 
-      {/* Teléfono */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-200 mb-2">
-          Teléfono (opcional)
-        </label>
-        <ZenInput
-          name="phone"
-          value={formData.phone}
-          onChange={handleChange}
-          placeholder="+52 123 456 7890"
-          error={errors.phone}
-        />
+        {/* Email */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-200 mb-2">
+            Correo (opcional)
+          </label>
+          <ZenInput
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="juan@mi-studio.com"
+            error={errors.email}
+          />
+        </div>
+
+
       </div>
 
       {/* Tipo */}
@@ -153,50 +214,86 @@ export function CrewMemberForm({
           Tipo de Personal *
         </label>
         <ZenSelect
-          name="tipo"
           value={formData.tipo}
-          onChange={handleChange}
+          onValueChange={handleTipoChange}
           options={[
             { value: 'OPERATIVO', label: 'Operativo (fotografía, edición, etc.)' },
             { value: 'ADMINISTRATIVO', label: 'Administrativo' },
             { value: 'PROVEEDOR', label: 'Proveedor' },
           ]}
+          error={errors.tipo}
+          disableSearch
         />
       </div>
 
-      {/* Salario Fijo */}
+      {/* Tipo de Honorarios - Radio Buttons */}
       <div>
-        <label className="block text-sm font-medium text-zinc-200 mb-2">
-          Salario Fijo (opcional)
+        <label className="block text-sm font-medium text-zinc-200 mb-3">
+          Tipo de Honorarios (opcional)
         </label>
-        <ZenInput
-          name="fixed_salary"
-          type="number"
-          value={formData.fixed_salary}
-          onChange={handleChange}
-          placeholder="15000"
-          min="0"
-          step="0.01"
-          error={errors.fixed_salary}
-        />
+        <div className="space-y-3">
+          {/* Radio: Salario Fijo */}
+          <div className="flex items-start gap-3">
+            <input
+              type="radio"
+              id="salary-fixed"
+              name="salaryType"
+              value="fixed"
+              checked={salaryType === 'fixed'}
+              onChange={(e) => setSalaryType(e.target.value as 'fixed')}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <label htmlFor="salary-fixed" className="block text-sm font-medium text-zinc-200 cursor-pointer">
+                Salario Fijo
+              </label>
+              <p className="text-xs text-zinc-400">
+                Ingresa un monto fijo que recibirá por mes
+              </p>
+            </div>
+          </div>
+
+          {/* Radio: Honorarios Variables */}
+          <div className="flex items-start gap-3">
+            <input
+              type="radio"
+              id="salary-variable"
+              name="salaryType"
+              value="variable"
+              checked={salaryType === 'variable'}
+              onChange={(e) => setSalaryType(e.target.value as 'variable')}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <label htmlFor="salary-variable" className="block text-sm font-medium text-zinc-200 cursor-pointer">
+                Honorarios Variables
+              </label>
+              <p className="text-xs text-zinc-400">
+                Se ganará según el presupuesto definido en la tarea asignada
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Salario Variable */}
-      <div>
-        <label className="block text-sm font-medium text-zinc-200 mb-2">
-          Salario Variable (opcional)
-        </label>
-        <ZenInput
-          name="variable_salary"
-          type="number"
-          value={formData.variable_salary}
-          onChange={handleChange}
-          placeholder="5000"
-          min="0"
-          step="0.01"
-          error={errors.variable_salary}
-        />
-      </div>
+      {/* Salario Fijo - Solo si selecciona fijo */}
+      {salaryType === 'fixed' && (
+        <div>
+          <label className="block text-sm font-medium text-zinc-200 mb-2">
+            Monto Mensual
+          </label>
+          <ZenInput
+            name="fixed_salary"
+            type="number"
+            value={formData.fixed_salary}
+            onChange={handleChange}
+            placeholder="15000"
+            min="0"
+            step="0.01"
+            error={errors.fixed_salary}
+          />
+        </div>
+      )}
 
       {/* Skills */}
       <div>
