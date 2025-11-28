@@ -71,71 +71,83 @@ export default function EventSchedulerPage() {
                 <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
               </div>
             </div>
-        </ZenCardHeader>
-        <ZenCardContent className="p-6">
-          {/* Skeleton del Scheduler */}
-          <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
-            <div className="flex">
-              {/* Sidebar Skeleton */}
-              <div className="w-[280px] border-r border-zinc-800 flex-shrink-0">
-                {/* Header */}
-                <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center px-4">
-                  <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
-                </div>
-                {/* Items */}
-                <div>
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="h-[60px] border-b border-zinc-800/50 px-4 flex items-center">
-                      <div className="flex items-center gap-2 w-full">
-                        <div className="h-8 w-8 bg-zinc-800 rounded-full animate-pulse" />
-                        <div className="flex-1 space-y-1.5">
-                          <div className="h-3 w-32 bg-zinc-800 rounded animate-pulse" />
-                          <div className="h-2 w-20 bg-zinc-800/50 rounded animate-pulse" />
+          </ZenCardHeader>
+          <ZenCardContent className="p-6">
+            {/* Skeleton del Scheduler */}
+            <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
+              <div className="flex">
+                {/* Sidebar Skeleton */}
+                <div className="w-[280px] border-r border-zinc-800 flex-shrink-0">
+                  {/* Header */}
+                  <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center px-4">
+                    <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
+                  </div>
+                  {/* Items */}
+                  <div>
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="h-[60px] border-b border-zinc-800/50 px-4 flex items-center">
+                        <div className="flex items-center gap-2 w-full">
+                          <div className="h-8 w-8 bg-zinc-800 rounded-full animate-pulse" />
+                          <div className="flex-1 space-y-1.5">
+                            <div className="h-3 w-32 bg-zinc-800 rounded animate-pulse" />
+                            <div className="h-2 w-20 bg-zinc-800/50 rounded animate-pulse" />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-              
-              {/* Timeline Skeleton */}
-              <div className="flex-1 overflow-hidden">
-                {/* Header con fechas */}
-                <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center gap-1 px-2">
-                  {[...Array(12)].map((_, i) => (
-                    <div key={i} className="w-[60px] h-10 bg-zinc-800/50 rounded animate-pulse flex-shrink-0" />
-                  ))}
-                </div>
+
+                {/* Timeline Skeleton */}
+                <div className="flex-1 overflow-hidden">
+                  {/* Header con fechas */}
+                  <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center gap-1 px-2">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="w-[60px] h-10 bg-zinc-800/50 rounded animate-pulse flex-shrink-0" />
+                    ))}
+                  </div>
                 {/* Rows con TaskBars */}
                 <div>
                   {[...Array(8)].map((_, i) => (
                     <div key={i} className="h-[60px] border-b border-zinc-800/50 relative px-2 flex items-center gap-1">
-                      {/* Simular algunas TaskBars en diferentes posiciones */}
-                      {i % 2 === 0 && (
+                      {/* Simular un TaskBar por fila en diferentes posiciones y tamaños */}
+                      {i === 1 && (
                         <div 
                           className="absolute h-12 bg-blue-500/20 rounded animate-pulse" 
-                          style={{ 
-                            left: `${(i * 60) % 240 + 8}px`, 
-                            width: `${120 + (i * 20)}px` 
-                          }} 
+                          style={{ left: '68px', width: '180px' }} 
                         />
                       )}
-                      {i % 3 === 0 && (
+                      {i === 2 && (
                         <div 
                           className="absolute h-12 bg-emerald-500/20 rounded animate-pulse" 
-                          style={{ 
-                            left: `${(i * 80) % 300 + 200}px`, 
-                            width: `${100 + (i * 15)}px` 
-                          }} 
+                          style={{ left: '188px', width: '240px' }} 
+                        />
+                      )}
+                      {i === 4 && (
+                        <div 
+                          className="absolute h-12 bg-blue-500/20 rounded animate-pulse" 
+                          style={{ left: '8px', width: '120px' }} 
+                        />
+                      )}
+                      {i === 5 && (
+                        <div 
+                          className="absolute h-12 bg-purple-500/20 rounded animate-pulse" 
+                          style={{ left: '308px', width: '180px' }} 
+                        />
+                      )}
+                      {i === 7 && (
+                        <div 
+                          className="absolute h-12 bg-emerald-500/20 rounded animate-pulse" 
+                          style={{ left: '128px', width: '300px' }} 
                         />
                       )}
                     </div>
                   ))}
                 </div>
+                </div>
               </div>
             </div>
-          </div>
-        </ZenCardContent>
+          </ZenCardContent>
         </ZenCard>
       </div>
     );
