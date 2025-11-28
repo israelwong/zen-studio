@@ -21,6 +21,7 @@ interface SchedulerSidebarProps {
   studioSlug: string;
   eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 interface SchedulerItemProps {
@@ -29,6 +30,7 @@ interface SchedulerItemProps {
   studioSlug: string;
   eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 function getInitials(name: string) {
@@ -41,7 +43,7 @@ function getInitials(name: string) {
 }
 
 // Componente individual para cada item con su propio estado
-function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, renderItem }: SchedulerItemProps) {
+function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, renderItem, onTaskToggleComplete }: SchedulerItemProps) {
   const [localItem, setLocalItem] = useState(initialItem);
 
   // Sincronizar cuando el item externo cambia (actualización desde TaskBar o sidebar popover)
@@ -55,7 +57,8 @@ function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, rende
     initialItem.assigned_to_crew_member_id,
   ]);
 
-  const handleTaskCompletedUpdate = useCallback((isCompleted: boolean) => {
+  const handleTaskCompletedUpdate = useCallback(async (isCompleted: boolean) => {
+    // Actualizar UI local inmediatamente
     setLocalItem(prev => {
       if (!prev.gantt_task) return prev;
       
@@ -67,7 +70,12 @@ function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, rende
         },
       } as typeof prev;
     });
-  }, []);
+
+    // Propagar al padre para actualizar badge y otros componentes
+    if (localItem.gantt_task?.id && onTaskToggleComplete) {
+      await onTaskToggleComplete(localItem.gantt_task.id, isCompleted);
+    }
+  }, [localItem.gantt_task?.id, onTaskToggleComplete]);
 
   const handleCrewMemberUpdate = useCallback((crewMemberId: string | null, crewMember?: { id: string; name: string; tipo: string } | null) => {
     if (crewMemberId && crewMember) {
@@ -151,6 +159,7 @@ export const SchedulerSidebar = React.memo(({
   studioSlug,
   eventId,
   renderItem,
+  onTaskToggleComplete,
 }: SchedulerSidebarProps) => {
   return (
     <div className="w-full bg-zinc-950">
@@ -197,6 +206,7 @@ export const SchedulerSidebar = React.memo(({
                       studioSlug={studioSlug}
                       eventId={eventId}
                       renderItem={renderItem}
+                      onTaskToggleComplete={onTaskToggleComplete}
                     />
                   </div>
                 );

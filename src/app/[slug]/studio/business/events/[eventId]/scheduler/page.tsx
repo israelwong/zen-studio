@@ -1,15 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Users, Clock, TrendingUp } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
+import { ArrowLeft, Users, CheckCircle2 } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenBadge } from '@/components/ui/zen';
 import { obtenerEventoDetalle, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import { toast } from 'sonner';
 import { EventSchedulerView, SchedulerDateRangeConfig } from './index';
 import { CrewMembersManager } from '@/components/shared/crew-members/CrewMembersManager';
 import { type DateRange } from 'react-day-picker';
-import { cn } from '@/lib/utils';
 
 export default function EventSchedulerPage() {
   const params = useParams();
@@ -20,8 +19,18 @@ export default function EventSchedulerPage() {
   const [eventData, setEventData] = useState<EventoDetalle | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [crewManagerOpen, setCrewManagerOpen] = useState(false);
-  const [showDuration, setShowDuration] = useState(false);
-  const [showProgress, setShowProgress] = useState(false);
+
+  // Calcular progreso global
+  const progressStats = useMemo(() => {
+    if (!eventData?.cotizaciones) return { completed: 0, total: 0, percentage: 0 };
+
+    const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
+    const total = allItems.length;
+    const completed = allItems.filter(item => item.gantt_task?.completed_at).length;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { completed, total, percentage };
+  }, [eventData]);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -31,6 +40,13 @@ export default function EventSchedulerPage() {
 
         if (result.success && result.data) {
           setEventData(result.data);
+          // Inicializar dateRange si existe gantt configurado
+          if (result.data.gantt?.start_date && result.data.gantt?.end_date) {
+            setDateRange({
+              from: result.data.gantt.start_date,
+              to: result.data.gantt.end_date,
+            });
+          }
         } else {
           toast.error(result.error || 'Evento no encontrado');
           router.push(`/${studioSlug}/studio/business/events/${eventId}`);
@@ -106,44 +122,44 @@ export default function EventSchedulerPage() {
                       <div key={i} className="w-[60px] h-10 bg-zinc-800/50 rounded animate-pulse flex-shrink-0" />
                     ))}
                   </div>
-                {/* Rows con TaskBars */}
-                <div>
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="h-[60px] border-b border-zinc-800/50 relative px-2 flex items-center gap-1">
-                      {/* Simular un TaskBar por fila en diferentes posiciones y tamaños */}
-                      {i === 1 && (
-                        <div 
-                          className="absolute h-12 bg-blue-500/20 rounded animate-pulse" 
-                          style={{ left: '68px', width: '180px' }} 
-                        />
-                      )}
-                      {i === 2 && (
-                        <div 
-                          className="absolute h-12 bg-emerald-500/20 rounded animate-pulse" 
-                          style={{ left: '188px', width: '240px' }} 
-                        />
-                      )}
-                      {i === 4 && (
-                        <div 
-                          className="absolute h-12 bg-blue-500/20 rounded animate-pulse" 
-                          style={{ left: '8px', width: '120px' }} 
-                        />
-                      )}
-                      {i === 5 && (
-                        <div 
-                          className="absolute h-12 bg-purple-500/20 rounded animate-pulse" 
-                          style={{ left: '308px', width: '180px' }} 
-                        />
-                      )}
-                      {i === 7 && (
-                        <div 
-                          className="absolute h-12 bg-emerald-500/20 rounded animate-pulse" 
-                          style={{ left: '128px', width: '300px' }} 
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
+                  {/* Rows con TaskBars */}
+                  <div>
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="h-[60px] border-b border-zinc-800/50 relative px-2 flex items-center gap-1">
+                        {/* Simular un TaskBar por fila en diferentes posiciones y tamaños */}
+                        {i === 1 && (
+                          <div
+                            className="absolute h-12 bg-blue-500/20 rounded animate-pulse"
+                            style={{ left: '68px', width: '180px' }}
+                          />
+                        )}
+                        {i === 2 && (
+                          <div
+                            className="absolute h-12 bg-emerald-500/20 rounded animate-pulse"
+                            style={{ left: '188px', width: '240px' }}
+                          />
+                        )}
+                        {i === 4 && (
+                          <div
+                            className="absolute h-12 bg-blue-500/20 rounded animate-pulse"
+                            style={{ left: '8px', width: '120px' }}
+                          />
+                        )}
+                        {i === 5 && (
+                          <div
+                            className="absolute h-12 bg-purple-500/20 rounded animate-pulse"
+                            style={{ left: '308px', width: '180px' }}
+                          />
+                        )}
+                        {i === 7 && (
+                          <div
+                            className="absolute h-12 bg-emerald-500/20 rounded animate-pulse"
+                            style={{ left: '128px', width: '300px' }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -174,7 +190,7 @@ export default function EventSchedulerPage() {
               <div>
                 <ZenCardTitle>{eventData.promise?.name || eventData.name || 'Evento sin nombre'}</ZenCardTitle>
                 <ZenCardDescription>
-                  Cronograma Gantt
+                  Cronograma
                 </ZenCardDescription>
               </div>
             </div>
@@ -207,30 +223,18 @@ export default function EventSchedulerPage() {
                 }}
               />
               <div className="h-6 w-px bg-zinc-700 mx-1" />
-              <ZenButton
-                variant={showDuration ? "primary" : "ghost"}
-                size="sm"
-                onClick={() => setShowDuration(!showDuration)}
-                className={cn(
-                  "gap-2 transition-all",
-                  showDuration && "bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 border border-blue-600/30"
-                )}
-              >
-                <Clock className="h-3.5 w-3.5" />
-                Duración
-              </ZenButton>
-              <ZenButton
-                variant={showProgress ? "primary" : "ghost"}
-                size="sm"
-                onClick={() => setShowProgress(!showProgress)}
-                className={cn(
-                  "gap-2 transition-all",
-                  showProgress && "bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-600/30"
-                )}
-              >
-                <TrendingUp className="h-3.5 w-3.5" />
-                Progreso
-              </ZenButton>
+              {/* Badge de progreso global */}
+              {progressStats.total > 0 && (
+                <ZenBadge
+                  variant="outline"
+                  className="gap-1.5 px-3 py-1.5 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium">
+                    {progressStats.completed} de {progressStats.total} ({progressStats.percentage}%)
+                  </span>
+                </ZenBadge>
+              )}
               <div className="h-6 w-px bg-zinc-700 mx-1" />
               <ZenButton
                 variant="ghost"
@@ -251,8 +255,7 @@ export default function EventSchedulerPage() {
             eventData={eventData}
             ganttInstance={eventData.gantt || undefined}
             dateRange={dateRange}
-            showDuration={showDuration}
-            showProgress={showProgress}
+            onDataChange={setEventData}
           />
         </ZenCardContent>
       </ZenCard>

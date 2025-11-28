@@ -13,9 +13,10 @@ interface SchedulerAgrupacionCellProps {
             name: string;
         } | null;
     } | null;
+    duration?: number; // Duración en días
 }
 
-export function SchedulerAgrupacionCell({ servicio, isCompleted = false, assignedCrewMember }: SchedulerAgrupacionCellProps) {
+export function SchedulerAgrupacionCell({ servicio, isCompleted = false, assignedCrewMember, duration }: SchedulerAgrupacionCellProps) {
     const hasAssigned = !!assignedCrewMember;
     
     // Generar iniciales del nombre
@@ -64,14 +65,21 @@ export function SchedulerAgrupacionCell({ servicio, isCompleted = false, assigne
                 )}
             </ZenAvatar>
             
-            {/* Nombre del servicio */}
-            <p className={`text-sm break-words cursor-pointer transition-colors flex-1 min-w-0 ${
-                isCompleted 
-                    ? 'text-zinc-500 line-through decoration-zinc-600 hover:text-zinc-400' 
-                    : 'text-zinc-300 hover:text-zinc-200'
-            }`}>
-                {servicio}
-            </p>
+            {/* Nombre del servicio con duración */}
+            <div className="flex-1 min-w-0">
+                <p className={`text-sm break-words cursor-pointer transition-colors ${
+                    isCompleted 
+                        ? 'text-zinc-500 line-through decoration-zinc-600 hover:text-zinc-400' 
+                        : 'text-zinc-300 hover:text-zinc-200'
+                }`}>
+                    {servicio}
+                    {duration && duration > 0 && (
+                        <span className="ml-1.5 text-zinc-600 text-xs font-normal">
+                            {duration}d
+                        </span>
+                    )}
+                </p>
+            </div>
         </div>
     );
 }

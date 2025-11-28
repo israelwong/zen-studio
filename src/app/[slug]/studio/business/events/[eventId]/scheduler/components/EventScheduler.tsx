@@ -26,6 +26,7 @@ interface EventSchedulerProps {
   eventData: EventoDetalle;
   dateRange?: DateRange;
   secciones: SeccionData[];
+  onDataChange?: (data: EventoDetalle) => void;
 }
 
 export function EventScheduler({
@@ -34,6 +35,7 @@ export function EventScheduler({
   eventData,
   dateRange,
   secciones,
+  onDataChange,
 }: EventSchedulerProps) {
   const router = useRouter();
   
@@ -242,6 +244,7 @@ export function EventScheduler({
         }
 
         // Actualización optimista: actualizar completed_at
+        let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
           
@@ -261,8 +264,14 @@ export function EventScheduler({
             }),
           }));
 
+          updatedData = newData;
           return newData;
         });
+
+        // Notificar al padre del cambio después del setState
+        if (updatedData! && onDataChange) {
+          onDataChange(updatedData);
+        }
 
         toast.success(isCompleted ? 'Tarea completada' : 'Tarea marcada como pendiente');
         router.refresh();
@@ -271,7 +280,7 @@ export function EventScheduler({
         toast.error('Error al actualizar el estado');
       }
     },
-    [studioSlug, eventId, router]
+    [studioSlug, eventId, router, onDataChange]
   );
 
   // Renderizar item en sidebar

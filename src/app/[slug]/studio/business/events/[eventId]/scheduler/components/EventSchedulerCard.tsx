@@ -17,8 +17,6 @@ interface EventSchedulerCardProps {
   eventId: string;
   eventDate: Date | null;
   dateRange?: DateRange;
-  showDuration?: boolean;
-  showProgress?: boolean;
 }
 
 interface GroupedItem {
@@ -27,7 +25,7 @@ interface GroupedItem {
   items: NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items'];
 }
 
-export function EventSchedulerCard({ cotizacion, studioSlug, eventId, eventDate, dateRange, showDuration = false, showProgress = false }: EventSchedulerCardProps) {
+export function EventSchedulerCard({ cotizacion, studioSlug, eventId, eventDate, dateRange }: EventSchedulerCardProps) {
   const router = useRouter();
   const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,8 +136,6 @@ export function EventSchedulerCard({ cotizacion, studioSlug, eventId, eventDate,
           itemsMap={itemsMap}
           studioSlug={studioSlug}
           dateRange={dateRange}
-          showDuration={showDuration}
-          showProgress={showProgress}
           onTaskClick={(taskId, dayDate, itemId) => {
             const item = itemsMap.get(itemId);
             setTaskModalState({

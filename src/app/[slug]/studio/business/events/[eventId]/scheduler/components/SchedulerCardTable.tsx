@@ -10,8 +10,6 @@ interface SchedulerCardTableProps {
     itemsMap: Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>;
     studioSlug: string;
     dateRange?: DateRange;
-    showDuration?: boolean;
-    showProgress?: boolean;
     onTaskClick?: (taskId: string, dayDate: Date, itemId: string) => void;
     onAddTaskClick?: (dayDate: Date, itemId: string, itemName: string) => void;
 }
@@ -21,8 +19,6 @@ export function SchedulerCardTable({
     itemsMap,
     studioSlug,
     dateRange,
-    showDuration = false,
-    showProgress = false,
     onTaskClick,
     onAddTaskClick
 }: SchedulerCardTableProps) {
@@ -32,12 +28,6 @@ export function SchedulerCardTable({
                 <thead className="bg-zinc-900/90 text-zinc-400 font-medium backdrop-blur-sm sticky top-0 z-20">
                     <tr>
                         <th className="px-4 py-3 sticky left-0 bg-zinc-900 z-30 min-w-[360px] border-b border-zinc-800">Item</th>
-                        {showDuration && (
-                            <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Duración</th>
-                        )}
-                        {showProgress && (
-                            <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Progreso</th>
-                        )}
                         <th className="p-0 border-b border-zinc-800 min-w-[400px]">
                             <SchedulerTimelineRow dateRange={dateRange} isHeader />
                         </th>
@@ -51,7 +41,7 @@ export function SchedulerCardTable({
                                 <td className="px-4 py-2 sticky left-0 bg-zinc-900/50 z-10 border-r border-zinc-800/50">
                                     <span className="text-sm font-semibold text-zinc-300">{seccion.nombre}</span>
                                 </td>
-                                <td colSpan={(showDuration ? 1 : 0) + (showProgress ? 1 : 0) + 1} className="bg-zinc-900/50"></td>
+                                <td className="bg-zinc-900/50"></td>
                             </tr>
 
                             {/* Categorías dentro de la sección */}
@@ -62,7 +52,7 @@ export function SchedulerCardTable({
                                         <td className="px-6 py-1.5 sticky left-0 bg-zinc-900/30 z-10 border-r border-zinc-800/50">
                                             <span className="text-xs font-medium text-zinc-400">{categoria.nombre}</span>
                                         </td>
-                                        <td colSpan={(showDuration ? 1 : 0) + (showProgress ? 1 : 0) + 1} className="bg-zinc-900/30"></td>
+                                        <td className="bg-zinc-900/30"></td>
                                     </tr>
 
                                     {/* Items dentro de la categoría */}
@@ -82,8 +72,6 @@ export function SchedulerCardTable({
                                                 }}
                                                 studioSlug={studioSlug}
                                                 dateRange={dateRange}
-                                                showDuration={showDuration}
-                                                showProgress={showProgress}
                                                 onTaskClick={onTaskClick}
                                                 onAddTaskClick={onAddTaskClick}
                                             />

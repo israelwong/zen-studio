@@ -97,6 +97,7 @@ export const SchedulerV2 = React.memo(({
             studioSlug={studioSlug}
             eventId={eventId}
             renderItem={renderSidebarItem}
+            onTaskToggleComplete={onTaskToggleComplete}
           />
         </div>
 

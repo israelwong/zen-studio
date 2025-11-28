@@ -15,8 +15,7 @@ interface EventSchedulerViewProps {
   eventData: EventoDetalle;
   ganttInstance?: EventoDetalle['gantt'];
   dateRange?: DateRange;
-  showDuration?: boolean;
-  showProgress?: boolean;
+  onDataChange?: (data: EventoDetalle) => void;
 }
 
 export function EventSchedulerView({
@@ -25,8 +24,7 @@ export function EventSchedulerView({
   eventData,
   ganttInstance,
   dateRange: propDateRange,
-  showDuration = false,
-  showProgress = false,
+  onDataChange,
 }: EventSchedulerViewProps) {
   const [secciones, setSecciones] = useState<SeccionData[]>([]);
   const [loadingSecciones, setLoadingSecciones] = useState(true);
@@ -108,6 +106,7 @@ export function EventSchedulerView({
         eventData={eventData}
         dateRange={defaultDateRange}
         secciones={secciones}
+        onDataChange={onDataChange}
       />
     );
   }
@@ -126,8 +125,6 @@ export function EventSchedulerView({
               eventId={eventId}
               eventDate={eventData.event_date || eventData.promise?.event_date || null}
               dateRange={defaultDateRange}
-              showDuration={showDuration}
-              showProgress={showProgress}
             />
           ))}
         </div>
