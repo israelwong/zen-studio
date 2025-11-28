@@ -24,27 +24,19 @@ export const SchedulerGrid = React.memo(({
 
   return (
     <div
-      className="flex-1 overflow-x-auto overflow-y-hidden bg-zinc-950/50"
-      style={{ maxHeight: 'calc(100vh - 300px)' }}
+      className="flex flex-col bg-zinc-950/50"
+      style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
     >
-      <div
-        className="flex flex-col"
-        style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
-      >
         {secciones.map((seccion) => (
           <React.Fragment key={seccion.id}>
-            {/* Sección Header */}
-            <div className="h-[32px] bg-zinc-900/50 border-b border-zinc-800 flex items-center px-4 sticky top-0 z-10">
-              <span className="text-sm font-semibold text-zinc-300">{seccion.nombre}</span>
-            </div>
+            {/* Sección Header - Phantom (sin contenido, solo para alineación) */}
+            <div className="h-[32px] bg-zinc-900/50 border-b border-zinc-800 flex-shrink-0" />
 
             {/* Categorías */}
             {seccion.categorias.map((categoria) => (
               <React.Fragment key={categoria.id}>
-                {/* Categoría Header */}
-                <div className="h-[24px] bg-zinc-900/30 border-b border-zinc-800/50 flex items-center px-6">
-                  <span className="text-xs font-medium text-zinc-400">{categoria.nombre}</span>
-                </div>
+                {/* Categoría Header - Phantom (sin contenido, solo para alineación) */}
+                <div className="h-[24px] bg-zinc-900/30 border-b border-zinc-800/50 flex-shrink-0" />
 
                 {/* Items (Rows) */}
                 {categoria.servicios.map((servicio) => {
@@ -77,7 +69,6 @@ export const SchedulerGrid = React.memo(({
             ))}
           </React.Fragment>
         ))}
-      </div>
     </div>
   );
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import type { DateRange } from 'react-day-picker';
@@ -20,26 +20,18 @@ export const SchedulerTimeline = React.memo(({
   dateRange,
   onTaskUpdate,
 }: SchedulerTimelineProps) => {
-  const [isScrolling, setIsScrolling] = useState(false);
-
   return (
-    <div className="flex-1 flex flex-col border-l border-zinc-800 overflow-hidden">
+    <div className="flex flex-col border-l border-zinc-800 w-full">
       {/* Header con fechas */}
       <SchedulerHeader dateRange={dateRange} />
 
       {/* Grid con tareas */}
-      <div
-        onScroll={() => setIsScrolling(true)}
-        onScrollEnd={() => setIsScrolling(false)}
-        className="flex-1 overflow-auto"
-      >
-        <SchedulerGrid
-          secciones={secciones}
-          itemsMap={itemsMap}
-          dateRange={dateRange}
-          onTaskUpdate={onTaskUpdate}
-        />
-      </div>
+      <SchedulerGrid
+        secciones={secciones}
+        itemsMap={itemsMap}
+        dateRange={dateRange}
+        onTaskUpdate={onTaskUpdate}
+      />
     </div>
   );
 });

@@ -25,23 +25,28 @@ export const SchedulerSidebar = React.memo(({
   renderItem,
 }: SchedulerSidebarProps) => {
   return (
-    <div className="w-[360px] flex-shrink-0 border-r border-zinc-800 bg-zinc-950 overflow-y-auto">
+    <div className="w-full bg-zinc-950">
+      {/* Header placeholder - altura exacta 60px para alinear con SchedulerHeader */}
+      <div className="h-[60px] bg-zinc-900/50 border-b border-zinc-800 flex items-center px-4 flex-shrink-0">
+        <span className="text-xs font-semibold text-zinc-400 uppercase">Servicios</span>
+      </div>
+
       {secciones.map((seccion) => (
         <React.Fragment key={seccion.id}>
-          {/* Sección */}
-          <div className="bg-zinc-900/50 border-b border-zinc-800 px-4 py-2 sticky top-0 z-20">
+          {/* Sección - altura exacta 32px */}
+          <div className="h-[32px] bg-zinc-900/50 border-b border-zinc-800 px-4 flex items-center">
             <span className="text-sm font-semibold text-zinc-300">{seccion.nombre}</span>
           </div>
 
           {/* Categorías */}
           {seccion.categorias.map((categoria) => (
             <React.Fragment key={categoria.id}>
-              {/* Categoría */}
-              <div className="bg-zinc-900/30 border-b border-zinc-800/50 px-6 py-1.5">
+              {/* Categoría - altura exacta 24px */}
+              <div className="h-[24px] bg-zinc-900/30 border-b border-zinc-800/50 px-6 flex items-center">
                 <span className="text-xs font-medium text-zinc-400">{categoria.nombre}</span>
               </div>
 
-              {/* Items */}
+              {/* Items - altura exacta 60px */}
               {categoria.servicios.map((servicio) => {
                 const item = itemsMap.get(servicio.id);
                 if (!item) return null;

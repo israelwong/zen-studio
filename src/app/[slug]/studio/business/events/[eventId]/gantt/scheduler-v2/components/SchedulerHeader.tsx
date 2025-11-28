@@ -34,7 +34,7 @@ export const SchedulerHeader = React.memo(({ dateRange }: SchedulerHeaderProps) 
 
   return (
     <div
-      className="flex h-[60px] bg-zinc-900/50 border-b border-zinc-800 sticky top-0 z-10"
+      className="flex h-[60px] bg-zinc-900/50 border-b border-zinc-800 flex-shrink-0"
       style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
     >
       {days.map((day, index) => {

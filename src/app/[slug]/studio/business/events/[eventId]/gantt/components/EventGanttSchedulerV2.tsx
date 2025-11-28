@@ -34,19 +34,38 @@ export function EventGanttSchedulerV2({
   secciones,
 }: EventGanttSchedulerV2Props) {
   // Construir map de items desde cotizaciones aprobadas
+  // Indexar por item_id (catálogo) para matching con servicios en secciones
   const itemsMap = useMemo(() => {
     const map = new Map<string, CotizacionItem>();
 
     eventData.cotizaciones?.forEach((cotizacion) => {
       if (cotizacion.status === 'autorizada' || cotizacion.status === 'aprobada' || cotizacion.status === 'approved') {
         cotizacion.cotizacion_items?.forEach((item) => {
-          map.set(item.id, item);
+          // Indexar por item_id para que coincida con servicio.id del catálogo
+          if (item.item_id) {
+            map.set(item.item_id, item);
+          }
         });
       }
     });
 
     return map;
   }, [eventData.cotizaciones]);
+
+  // Filtrar secciones del catálogo para mostrar solo items que están en la cotización
+  const seccionesFiltradasConItems = useMemo(() => {
+    return secciones
+      .map((seccion) => ({
+        ...seccion,
+        categorias: seccion.categorias
+          .map((categoria) => ({
+            ...categoria,
+            servicios: categoria.servicios.filter((servicio) => itemsMap.has(servicio.id)),
+          }))
+          .filter((categoria) => categoria.servicios.length > 0),
+      }))
+      .filter((seccion) => seccion.categorias.length > 0);
+  }, [secciones, itemsMap]);
 
   // Manejar actualización de tareas
   const handleTaskUpdate = useCallback(
@@ -90,7 +109,7 @@ export function EventGanttSchedulerV2({
     );
   }
 
-  if (itemsMap.size === 0) {
+  if (itemsMap.size === 0 || seccionesFiltradasConItems.length === 0) {
     return (
       <div className="flex items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
         <p className="text-zinc-600">No hay items para mostrar en el scheduler</p>
@@ -101,7 +120,7 @@ export function EventGanttSchedulerV2({
   return (
     <div className="w-full">
       <SchedulerV2
-        secciones={secciones}
+        secciones={seccionesFiltradasConItems}
         itemsMap={itemsMap}
         studioSlug={studioSlug}
         dateRange={dateRange}

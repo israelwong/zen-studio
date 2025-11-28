@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import type { DateRange } from 'react-day-picker';
@@ -40,6 +40,12 @@ export const SchedulerV2 = React.memo(({
   renderSidebarItem,
 }: SchedulerV2Props) => {
   const [isLoading, setIsLoading] = useState(false);
+  const timelineRef = useRef<HTMLDivElement>(null);
+
+  // No necesitamos sincronización, todo usa el mismo scroll
+  const handleTimelineScroll = () => {
+    // El scroll es unificado en el contenedor padre
+  };
 
   const handleTaskUpdate = useCallback(
     async (taskId: string, startDate: Date, endDate: Date) => {
@@ -83,22 +89,30 @@ export const SchedulerV2 = React.memo(({
 
   return (
     <div className="border border-zinc-800 rounded-lg overflow-hidden shadow-sm">
-      {/* Contenedor principal con CSS Grid para sincronizar scroll */}
-      <div className="flex h-[calc(100vh-300px)] bg-zinc-950">
-        {/* Sidebar - scroll vertical sincronizado */}
-        <SchedulerSidebar
-          secciones={secciones}
-          itemsMap={itemsMap}
-          renderItem={renderSidebarItem || defaultRenderSidebarItem}
-        />
+      {/* Contenedor principal con scroll unificado */}
+      <div 
+        ref={timelineRef}
+        onScroll={handleTimelineScroll}
+        className="flex h-[calc(100vh-300px)] bg-zinc-950 relative overflow-auto"
+      >
+        {/* Sidebar Sticky Left */}
+        <div className="w-[360px] flex-shrink-0 border-r border-zinc-800 bg-zinc-950 sticky left-0 z-10">
+          <SchedulerSidebar
+            secciones={secciones}
+            itemsMap={itemsMap}
+            renderItem={renderSidebarItem || defaultRenderSidebarItem}
+          />
+        </div>
 
-        {/* Timeline - scroll vertical y horizontal sincronizado */}
-        <SchedulerTimeline
-          secciones={secciones}
-          itemsMap={itemsMap}
-          dateRange={dateRange}
-          onTaskUpdate={handleTaskUpdate}
-        />
+        {/* Timeline */}
+        <div className="flex-1">
+          <SchedulerTimeline
+            secciones={secciones}
+            itemsMap={itemsMap}
+            dateRange={dateRange}
+            onTaskUpdate={handleTaskUpdate}
+          />
+        </div>
 
         {/* Loading overlay */}
         {isLoading && (
