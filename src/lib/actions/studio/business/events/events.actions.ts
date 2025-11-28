@@ -1918,7 +1918,7 @@ export async function asignarCrewAItem(
 
     // Obtener eventId desde evento_id de la cotización
     const eventId = item.cotizaciones?.evento_id;
-    
+
     revalidatePath(`/${studioSlug}/studio/business/events`);
     if (eventId) {
       revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
@@ -1934,7 +1934,21 @@ export async function asignarCrewAItem(
 }
 
 /**
+ * Tipo para categoría de crew
+ */
+type CrewCategory = {
+  id: string;
+  name: string;
+  tipo: string;
+  color: string | null;
+  icono: string | null;
+  order: number;
+};
+
+/**
  * Obtener categorías de crew members
+ * Nota: El modelo studio_crew_categories no existe en el schema actual.
+ * Esta función retorna un array vacío hasta que se implemente el modelo.
  */
 export async function obtenerCategoriasCrew(studioSlug: string) {
   try {
@@ -1947,20 +1961,13 @@ export async function obtenerCategoriasCrew(studioSlug: string) {
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    const categorias = await prisma.studio_crew_categories.findMany({
-      where: {
-        studio_id: studio.id,
-        is_active: true,
-      },
-      orderBy: [
-        { order: 'asc' },
-        { name: 'asc' },
-      ],
-    });
+    // TODO: Implementar cuando el modelo studio_crew_categories esté disponible
+    // Por ahora retornamos array vacío ya que el modelo no existe en el schema
+    const categorias: CrewCategory[] = [];
 
     return {
       success: true,
-      data: categorias.map((cat) => ({
+      data: categorias.map((cat: CrewCategory) => ({
         id: cat.id,
         name: cat.name,
         tipo: cat.tipo,
@@ -1974,6 +1981,444 @@ export async function obtenerCategoriasCrew(studioSlug: string) {
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al obtener categorías',
+    };
+  }
+}
+
+/**
+ * Obtener o crear instancia de Gantt para un evento
+ */
+async function obtenerOCrearGanttInstance(
+  studioSlug: string,
+  eventId: string,
+  dateRange?: { from: Date; to: Date }
+): Promise<{ success: boolean; data?: { id: string }; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Buscar instancia existente
+    let instance = await prisma.studio_gantt_event_instances.findUnique({
+      where: { event_id: eventId },
+      select: { id: true },
+    });
+
+    // Si no existe, crear una nueva
+    if (!instance) {
+      const event = await prisma.studio_events.findUnique({
+        where: { id: eventId },
+        select: { event_date: true },
+      });
+
+      if (!event) {
+        return { success: false, error: 'Evento no encontrado' };
+      }
+
+      const startDate = dateRange?.from || new Date(event.event_date);
+      const endDate = dateRange?.to || new Date(event.event_date);
+      endDate.setDate(endDate.getDate() + 30); // Default: 30 días después
+
+      instance = await prisma.studio_gantt_event_instances.create({
+        data: {
+          event_id: eventId,
+          event_date: event.event_date,
+          start_date: startDate,
+          end_date: endDate,
+        },
+        select: { id: true },
+      });
+    }
+
+    return { success: true, data: instance };
+  } catch (error) {
+    console.error('[GANTT] Error obteniendo/creando instancia:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener instancia Gantt',
+    };
+  }
+}
+
+/**
+ * Crear tarea de Gantt
+ */
+export async function crearGanttTask(
+  studioSlug: string,
+  eventId: string,
+  data: {
+    itemId: string;
+    name: string;
+    description?: string;
+    startDate: Date;
+    endDate: Date;
+    assignedToCrewMemberId?: string | null;
+    notes?: string;
+    isCompleted?: boolean;
+  }
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que el item existe y pertenece al studio
+    const item = await prisma.studio_cotizacion_items.findFirst({
+      where: {
+        id: data.itemId,
+        cotizaciones: {
+          studio_id: studio.id,
+          evento_id: eventId,
+        },
+      },
+      select: {
+        id: true,
+        cotizacion_id: true,
+      },
+    });
+
+    if (!item) {
+      return { success: false, error: 'Item no encontrado' };
+    }
+
+    // Obtener o crear instancia de Gantt
+    const instanceResult = await obtenerOCrearGanttInstance(studioSlug, eventId);
+    if (!instanceResult.success || !instanceResult.data) {
+      return instanceResult;
+    }
+
+    const ganttInstanceId = instanceResult.data.id;
+
+    // Verificar que no existe ya una tarea para este item
+    const existingTask = await prisma.studio_gantt_event_tasks.findUnique({
+      where: { cotizacion_item_id: data.itemId },
+      select: { id: true },
+    });
+
+    if (existingTask) {
+      return { success: false, error: 'Ya existe una tarea para este item' };
+    }
+
+    // Calcular duración en días
+    const durationDays = Math.ceil(
+      (data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ) + 1;
+
+    // Crear la tarea
+    const task = await prisma.studio_gantt_event_tasks.create({
+      data: {
+        gantt_instance_id: ganttInstanceId,
+        cotizacion_item_id: data.itemId,
+        name: data.name,
+        description: data.description || null,
+        start_date: data.startDate,
+        end_date: data.endDate,
+        duration_days: durationDays,
+        category: 'PLANNING', // Default category
+        priority: 'MEDIUM', // Default priority
+        status: data.isCompleted ? 'COMPLETED' : 'PENDING',
+        progress_percent: data.isCompleted ? 100 : 0,
+        notes: data.notes || null,
+        completed_at: data.isCompleted ? new Date() : null,
+      },
+      include: {
+        cotizacion_item: {
+          select: {
+            id: true,
+            assigned_to_crew_member_id: true,
+          },
+        },
+      },
+    });
+
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+
+    return { success: true, data: task };
+  } catch (error) {
+    console.error('[GANTT] Error creando tarea:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al crear tarea',
+    };
+  }
+}
+
+/**
+ * Actualizar tarea de Gantt
+ */
+export async function actualizarGanttTask(
+  studioSlug: string,
+  eventId: string,
+  taskId: string,
+  data: {
+    name?: string;
+    description?: string;
+    startDate?: Date;
+    endDate?: Date;
+    assignedToCrewMemberId?: string | null;
+    notes?: string;
+    isCompleted?: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que la tarea existe y pertenece al evento
+    const task = await prisma.studio_gantt_event_tasks.findFirst({
+      where: {
+        id: taskId,
+        gantt_instance: {
+          event_id: eventId,
+        },
+      },
+      select: {
+        id: true,
+        start_date: true,
+        end_date: true,
+        cotizacion_item_id: true,
+      },
+    });
+
+    if (!task) {
+      return { success: false, error: 'Tarea no encontrada' };
+    }
+
+    // Preparar datos de actualización
+    const updateData: {
+      name?: string;
+      description?: string | null;
+      start_date?: Date;
+      end_date?: Date;
+      duration_days?: number;
+      status?: 'PENDING' | 'IN_PROGRESS' | 'BLOCKED' | 'COMPLETED' | 'CANCELLED';
+      progress_percent?: number;
+      notes?: string | null;
+      completed_at?: Date | null;
+    } = {};
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description || null;
+    if (data.notes !== undefined) updateData.notes = data.notes || null;
+
+    const finalStartDate = data.startDate || task.start_date;
+    const finalEndDate = data.endDate || task.end_date;
+
+    if (data.startDate || data.endDate) {
+      updateData.start_date = finalStartDate;
+      updateData.end_date = finalEndDate;
+      updateData.duration_days = Math.ceil(
+        (finalEndDate.getTime() - finalStartDate.getTime()) / (1000 * 60 * 60 * 24)
+      ) + 1;
+    }
+
+    if (data.isCompleted !== undefined) {
+      updateData.status = data.isCompleted ? 'COMPLETED' : 'PENDING';
+      updateData.progress_percent = data.isCompleted ? 100 : 0;
+      updateData.completed_at = data.isCompleted ? new Date() : null;
+    }
+
+    // Actualizar la tarea
+    await prisma.studio_gantt_event_tasks.update({
+      where: { id: taskId },
+      data: updateData,
+    });
+
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[GANTT] Error actualizando tarea:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al actualizar tarea',
+    };
+  }
+}
+
+/**
+ * Actualizar rango de fechas de la instancia de Gantt
+ */
+export async function actualizarRangoGantt(
+  studioSlug: string,
+  eventId: string,
+  dateRange: { from: Date; to: Date }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Obtener o crear instancia de Gantt
+    let instance = await prisma.studio_gantt_event_instances.findUnique({
+      where: { event_id: eventId },
+      select: { id: true },
+    });
+
+    if (!instance) {
+      const event = await prisma.studio_events.findUnique({
+        where: { id: eventId },
+        select: { event_date: true },
+      });
+
+      if (!event) {
+        return { success: false, error: 'Evento no encontrado' };
+      }
+
+      instance = await prisma.studio_gantt_event_instances.create({
+        data: {
+          event_id: eventId,
+          event_date: event.event_date,
+          start_date: dateRange.from,
+          end_date: dateRange.to,
+        },
+        select: { id: true },
+      });
+    } else {
+      // Actualizar rango existente
+      await prisma.studio_gantt_event_instances.update({
+        where: { id: instance.id },
+        data: {
+          start_date: dateRange.from,
+          end_date: dateRange.to,
+        },
+      });
+    }
+
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+    return { success: true };
+  } catch (error) {
+    console.error('[GANTT] Error actualizando rango:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al actualizar rango',
+    };
+  }
+}
+
+/**
+ * Obtener tarea de Gantt por ID
+ */
+export async function obtenerGanttTask(
+  studioSlug: string,
+  eventId: string,
+  taskId: string
+): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const task = await prisma.studio_gantt_event_tasks.findFirst({
+      where: {
+        id: taskId,
+        gantt_instance: {
+          event_id: eventId,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        start_date: true,
+        end_date: true,
+        duration_days: true,
+        status: true,
+        progress_percent: true,
+        notes: true,
+        cotizacion_item_id: true,
+      },
+    });
+
+    if (!task) {
+      return { success: false, error: 'Tarea no encontrada' };
+    }
+
+    return { success: true, data: task };
+  } catch (error) {
+    console.error('[GANTT] Error obteniendo tarea:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener tarea',
+    };
+  }
+}
+
+/**
+ * Eliminar tarea de Gantt
+ */
+export async function eliminarGanttTask(
+  studioSlug: string,
+  eventId: string,
+  taskId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que la tarea existe y pertenece al evento
+    const task = await prisma.studio_gantt_event_tasks.findFirst({
+      where: {
+        id: taskId,
+        gantt_instance: {
+          event_id: eventId,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!task) {
+      return { success: false, error: 'Tarea no encontrada' };
+    }
+
+    // Eliminar la tarea
+    await prisma.studio_gantt_event_tasks.delete({
+      where: { id: taskId },
+    });
+
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[GANTT] Error eliminando tarea:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al eliminar tarea',
     };
   }
 }

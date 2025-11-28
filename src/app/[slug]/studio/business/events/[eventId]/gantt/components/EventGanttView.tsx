@@ -10,6 +10,7 @@ interface EventGanttViewProps {
   eventId: string;
   eventData: EventoDetalle;
   ganttInstance?: EventoDetalle['gantt'];
+  dateRange?: DateRange;
 }
 
 export function EventGanttView({
@@ -17,8 +18,8 @@ export function EventGanttView({
   eventId,
   eventData,
   ganttInstance,
+  dateRange: propDateRange,
 }: EventGanttViewProps) {
-  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
 
   // Filtrar cotizaciones aprobadas
   const cotizacionesAprobadas = useMemo(() => {
@@ -31,7 +32,15 @@ export function EventGanttView({
 
   // Calcular rango por defecto si no está configurado
   const defaultDateRange = useMemo(() => {
-    if (dateRange) return dateRange;
+    // Prioridad: dateRange prop > ganttInstance > fecha del evento
+    if (propDateRange) return propDateRange;
+
+    if (ganttInstance?.start_date && ganttInstance?.end_date) {
+      return {
+        from: new Date(ganttInstance.start_date),
+        to: new Date(ganttInstance.end_date),
+      };
+    }
 
     const eventDate = eventData.event_date || eventData.promise?.event_date;
     if (!eventDate) return undefined;
@@ -43,7 +52,7 @@ export function EventGanttView({
     end.setDate(end.getDate() + 30); // 30 días después del evento
 
     return { from: start, to: end };
-  }, [dateRange, eventData.event_date, eventData.promise?.event_date]);
+  }, [propDateRange, ganttInstance, eventData.event_date, eventData.promise?.event_date]);
 
   return (
     <div className="space-y-6">
@@ -55,7 +64,9 @@ export function EventGanttView({
               key={cotizacion.id}
               cotizacion={cotizacion}
               studioSlug={studioSlug}
+              eventId={eventId}
               eventDate={eventData.event_date || eventData.promise?.event_date || null}
+              dateRange={defaultDateRange}
             />
           ))}
         </div>
@@ -68,12 +79,12 @@ export function EventGanttView({
       )}
 
       {/* Placeholder para vista Gantt Chart */}
-      <div className="p-8 bg-zinc-900 rounded-lg border border-zinc-800 text-center">
+      {/* <div className="p-8 bg-zinc-900 rounded-lg border border-zinc-800 text-center">
         <p className="text-sm text-zinc-400 mb-2">Vista Gantt Chart</p>
         <p className="text-xs text-zinc-500">
           La visualización temporal del cronograma estará disponible próximamente
         </p>
-      </div>
+      </div> */}
     </div>
   );
 }

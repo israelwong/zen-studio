@@ -99,6 +99,29 @@ export default function EventGanttPage() {
               <GanttDateRangeConfig
                 dateRange={dateRange}
                 onDateRangeChange={setDateRange}
+                studioSlug={studioSlug}
+                eventId={eventId}
+                onSave={() => {
+                  // Recargar datos del evento para obtener el nuevo rango
+                  const loadEvent = async () => {
+                    try {
+                      const result = await obtenerEventoDetalle(studioSlug, eventId);
+                      if (result.success && result.data) {
+                        setEventData(result.data);
+                        // Actualizar dateRange desde ganttInstance si existe
+                        if (result.data.gantt) {
+                          setDateRange({
+                            from: result.data.gantt.start_date,
+                            to: result.data.gantt.end_date,
+                          });
+                        }
+                      }
+                    } catch (error) {
+                      console.error('Error reloading event:', error);
+                    }
+                  };
+                  loadEvent();
+                }}
               />
               <ZenButton
                 variant="ghost"
@@ -118,6 +141,7 @@ export default function EventGanttPage() {
             eventId={eventId}
             eventData={eventData}
             ganttInstance={eventData.gantt || undefined}
+            dateRange={dateRange}
           />
         </ZenCardContent>
       </ZenCard>

@@ -1,13 +1,30 @@
 import { type DateRange } from 'react-day-picker';
-import { eachDayOfInterval } from 'date-fns';
+import { eachDayOfInterval, isSameMonth } from 'date-fns';
 import { DayCell } from './DayCell';
 
 interface GanttTimelineRowProps {
     dateRange?: DateRange;
     isHeader?: boolean;
+    itemId?: string;
+    tasks?: Array<{
+        id: string;
+        name: string;
+        start_date: Date;
+        end_date: Date;
+        status: string;
+    }>;
+    onDayClick?: (date: Date) => void;
+    onTaskClick?: (taskId: string, date: Date) => void;
 }
 
-export function GanttTimelineRow({ dateRange, isHeader = false }: GanttTimelineRowProps) {
+export function GanttTimelineRow({
+    dateRange,
+    isHeader = false,
+    itemId,
+    tasks = [],
+    onDayClick,
+    onTaskClick
+}: GanttTimelineRowProps) {
     if (!dateRange?.from || !dateRange?.to) {
         return (
             <div className={`h-full w-full min-h-[40px] flex items-center justify-center ${isHeader ? '' : 'bg-zinc-900/20 rounded border border-zinc-800/50 border-dashed'}`}>
@@ -23,11 +40,37 @@ export function GanttTimelineRow({ dateRange, isHeader = false }: GanttTimelineR
         end: dateRange.to,
     });
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Determinar si mostrar mes para cada día (mostrar en el primer día de cada mes)
+    const shouldShowMonth = (day: Date, index: number) => {
+        if (index === 0) return true;
+        const prevDay = days[index - 1];
+        return !isSameMonth(day, prevDay);
+    };
+
     return (
-        <div className="flex h-full min-h-[40px]">
-            {days.map((day) => (
-                <DayCell key={day.toISOString()} date={day} isHeader={isHeader} />
-            ))}
+        <div className="flex h-full min-h-[40px] relative">
+            {days.map((day, index) => {
+                const dayDate = new Date(day);
+                dayDate.setHours(0, 0, 0, 0);
+                const isToday = dayDate.getTime() === today.getTime();
+
+                return (
+                    <DayCell
+                        key={day.toISOString()}
+                        date={day}
+                        isHeader={isHeader}
+                        itemId={itemId}
+                        tasks={tasks}
+                        onDayClick={onDayClick}
+                        onTaskClick={onTaskClick}
+                        showMonth={isHeader && shouldShowMonth(day, index)}
+                        isToday={isToday}
+                    />
+                );
+            })}
         </div>
     );
 }

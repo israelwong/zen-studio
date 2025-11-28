@@ -8,6 +8,11 @@ export {
   obtenerCrewMembers,
   asignarCrewAItem,
   obtenerCategoriasCrew,
+  actualizarRangoGantt,
+  crearGanttTask,
+  actualizarGanttTask,
+  eliminarGanttTask,
+  obtenerGanttTask,
 } from './events.actions';
 
 export {

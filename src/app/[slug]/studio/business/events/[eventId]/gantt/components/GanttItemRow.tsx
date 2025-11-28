@@ -20,11 +20,18 @@ interface GanttItemRowProps {
     };
     studioSlug: string;
     dateRange?: DateRange;
-    // onTaskClick: (taskId: string, dayDate: Date) => void; // To be added later
-    // onAddTaskClick: (dayDate: Date) => void; // To be added later
+    onTaskClick?: (taskId: string, dayDate: Date, itemId: string) => void;
+    onAddTaskClick?: (dayDate: Date, itemId: string) => void;
 }
 
-export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttItemRowProps) {
+export function GanttItemRow({ 
+    item, 
+    itemData, 
+    studioSlug, 
+    dateRange,
+    onTaskClick,
+    onAddTaskClick 
+}: GanttItemRowProps) {
     // Estado local del item para actualización en tiempo real
     const [localItem, setLocalItem] = useState(item);
 
@@ -54,10 +61,26 @@ export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttIte
         }
     }, []);
 
+    // Callback para click en día del timeline
+    const handleDayClick = useCallback((date: Date) => {
+        if (onAddTaskClick) {
+            onAddTaskClick(date, localItem.id);
+        }
+    }, [onAddTaskClick, localItem.id]);
+
+    // Obtener tareas del item (si existen)
+    const tasks = localItem.gantt_task ? [localItem.gantt_task].map(task => ({
+        id: task.id,
+        name: task.name,
+        start_date: task.start_date,
+        end_date: task.end_date,
+        status: task.status,
+    })) : [];
+
     return (
         <tr className="border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
             {/* Agrupación (Sticky Left) */}
-            <td className="px-4 py-3 sticky left-0 bg-zinc-950 z-20 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800/50">
+            <td className="px-4 py-3 sticky left-0 bg-zinc-950 z-20 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800/50 min-w-[360px]">
                 <GanttItemPopover
                     item={localItem}
                     studioSlug={studioSlug}
@@ -83,8 +106,18 @@ export function GanttItemRow({ item, itemData, studioSlug, dateRange }: GanttIte
             </td>
 
             {/* Timeline */}
-            <td className="px-4 py-3 min-w-[300px]">
-                <GanttTimelineRow dateRange={dateRange} />
+            <td className="px-4 py-3 min-w-[400px]">
+                <GanttTimelineRow 
+                    dateRange={dateRange}
+                    itemId={localItem.id}
+                    tasks={tasks}
+                    onDayClick={handleDayClick}
+                    onTaskClick={(taskId, dayDate) => {
+                        if (onTaskClick) {
+                            onTaskClick(taskId, dayDate, localItem.id);
+                        }
+                    }}
+                />
             </td>
         </tr>
     );

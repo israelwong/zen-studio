@@ -10,18 +10,27 @@ interface GanttCardTableProps {
     itemsMap: Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>;
     studioSlug: string;
     dateRange?: DateRange;
+    onTaskClick?: (taskId: string, dayDate: Date, itemId: string) => void;
+    onAddTaskClick?: (dayDate: Date, itemId: string) => void;
 }
 
-export function GanttCardTable({ secciones, itemsMap, studioSlug, dateRange }: GanttCardTableProps) {
+export function GanttCardTable({ 
+    secciones, 
+    itemsMap, 
+    studioSlug, 
+    dateRange,
+    onTaskClick,
+    onAddTaskClick 
+}: GanttCardTableProps) {
     return (
         <div className="overflow-x-auto border border-zinc-800 rounded-lg shadow-sm">
             <table className="w-full border-collapse bg-zinc-950 text-left text-sm">
                 <thead className="bg-zinc-900/90 text-zinc-400 font-medium backdrop-blur-sm sticky top-0 z-20">
                     <tr>
-                        <th className="px-4 py-3 sticky left-0 bg-zinc-900 z-30 min-w-[240px] border-b border-zinc-800">Item</th>
+                        <th className="px-4 py-3 sticky left-0 bg-zinc-900 z-30 min-w-[360px] border-b border-zinc-800">Item</th>
                         <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Duración</th>
                         <th className="px-4 py-3 border-b border-zinc-800 min-w-[100px]">Progreso</th>
-                        <th className="p-0 border-b border-zinc-800 min-w-[300px]">
+                        <th className="p-0 border-b border-zinc-800 min-w-[400px]">
                             <GanttTimelineRow dateRange={dateRange} isHeader />
                         </th>
                     </tr>
@@ -65,6 +74,8 @@ export function GanttCardTable({ secciones, itemsMap, studioSlug, dateRange }: G
                                                 }}
                                                 studioSlug={studioSlug}
                                                 dateRange={dateRange}
+                                                onTaskClick={onTaskClick}
+                                                onAddTaskClick={onAddTaskClick}
                                             />
                                         );
                                     })}

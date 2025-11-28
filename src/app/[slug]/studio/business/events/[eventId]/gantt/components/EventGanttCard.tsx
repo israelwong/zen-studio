@@ -6,12 +6,14 @@ import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import { GanttCardTable } from './GanttCardTable';
+import { GanttTaskModal } from './GanttTaskModal';
 
 import { type DateRange } from 'react-day-picker';
 
 interface EventGanttCardProps {
   cotizacion: NonNullable<EventoDetalle['cotizaciones']>[0];
   studioSlug: string;
+  eventId: string;
   eventDate: Date | null;
   dateRange?: DateRange;
 }
@@ -22,9 +24,13 @@ interface GroupedItem {
   items: NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items'];
 }
 
-export function EventGanttCard({ cotizacion, studioSlug, eventDate, dateRange }: EventGanttCardProps) {
+export function EventGanttCard({ cotizacion, studioSlug, eventId, eventDate, dateRange }: EventGanttCardProps) {
   const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [selectedDayDate, setSelectedDayDate] = useState<Date | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
   // Crear mapa de items de la cotización usando item_id
   const itemsMap = useMemo(() => {
@@ -113,8 +119,43 @@ export function EventGanttCard({ cotizacion, studioSlug, eventDate, dateRange }:
           itemsMap={itemsMap}
           studioSlug={studioSlug}
           dateRange={dateRange}
+          onTaskClick={(taskId, dayDate, itemId) => {
+            setSelectedTaskId(taskId);
+            setSelectedDayDate(dayDate);
+            setSelectedItemId(itemId);
+            setIsTaskModalOpen(true);
+          }}
+          onAddTaskClick={(dayDate, itemId) => {
+            setSelectedTaskId(null);
+            setSelectedDayDate(dayDate);
+            setSelectedItemId(itemId);
+            setIsTaskModalOpen(true);
+          }}
         />
       </ZenCardContent>
+
+      {/* Modal de tarea */}
+      {isTaskModalOpen && selectedItemId && (
+        <GanttTaskModal
+          isOpen={isTaskModalOpen}
+          onClose={() => {
+            setIsTaskModalOpen(false);
+            setSelectedTaskId(null);
+            setSelectedDayDate(null);
+            setSelectedItemId(null);
+          }}
+          studioSlug={studioSlug}
+          eventId={eventId}
+          itemId={selectedItemId}
+          dayDate={selectedDayDate}
+          dateRange={dateRange}
+          taskId={selectedTaskId}
+          onSuccess={() => {
+            // Recargar la página para mostrar los cambios
+            window.location.reload();
+          }}
+        />
+      )}
     </ZenCard>
   );
 }
