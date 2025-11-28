@@ -16,6 +16,8 @@ interface EventGanttCardProps {
   eventId: string;
   eventDate: Date | null;
   dateRange?: DateRange;
+  showDuration?: boolean;
+  showProgress?: boolean;
 }
 
 interface GroupedItem {
@@ -24,7 +26,7 @@ interface GroupedItem {
   items: NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items'];
 }
 
-export function EventGanttCard({ cotizacion, studioSlug, eventId, eventDate, dateRange }: EventGanttCardProps) {
+export function EventGanttCard({ cotizacion, studioSlug, eventId, eventDate, dateRange, showDuration = false, showProgress = false }: EventGanttCardProps) {
   const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
@@ -119,6 +121,8 @@ export function EventGanttCard({ cotizacion, studioSlug, eventId, eventDate, dat
           itemsMap={itemsMap}
           studioSlug={studioSlug}
           dateRange={dateRange}
+          showDuration={showDuration}
+          showProgress={showProgress}
           onTaskClick={(taskId, dayDate, itemId) => {
             setSelectedTaskId(taskId);
             setSelectedDayDate(dayDate);

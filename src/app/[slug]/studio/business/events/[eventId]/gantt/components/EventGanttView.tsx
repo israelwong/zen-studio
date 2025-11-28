@@ -11,6 +11,8 @@ interface EventGanttViewProps {
   eventData: EventoDetalle;
   ganttInstance?: EventoDetalle['gantt'];
   dateRange?: DateRange;
+  showDuration?: boolean;
+  showProgress?: boolean;
 }
 
 export function EventGanttView({
@@ -19,6 +21,8 @@ export function EventGanttView({
   eventData,
   ganttInstance,
   dateRange: propDateRange,
+  showDuration = false,
+  showProgress = false,
 }: EventGanttViewProps) {
 
   // Filtrar cotizaciones aprobadas
@@ -67,6 +71,8 @@ export function EventGanttView({
               eventId={eventId}
               eventDate={eventData.event_date || eventData.promise?.event_date || null}
               dateRange={defaultDateRange}
+              showDuration={showDuration}
+              showProgress={showProgress}
             />
           ))}
         </div>

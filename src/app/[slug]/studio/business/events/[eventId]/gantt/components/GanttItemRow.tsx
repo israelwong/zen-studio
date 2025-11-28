@@ -20,6 +20,8 @@ interface GanttItemRowProps {
     };
     studioSlug: string;
     dateRange?: DateRange;
+    showDuration?: boolean;
+    showProgress?: boolean;
     onTaskClick?: (taskId: string, dayDate: Date, itemId: string) => void;
     onAddTaskClick?: (dayDate: Date, itemId: string) => void;
 }
@@ -29,6 +31,8 @@ export function GanttItemRow({
     itemData, 
     studioSlug, 
     dateRange,
+    showDuration = false,
+    showProgress = false,
     onTaskClick,
     onAddTaskClick 
 }: GanttItemRowProps) {
@@ -96,14 +100,18 @@ export function GanttItemRow({
             </td>
 
             {/* Duración */}
-            <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors">
-                <GanttDurationCell item={item} />
-            </td>
+            {showDuration && (
+                <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors">
+                    <GanttDurationCell item={item} />
+                </td>
+            )}
 
             {/* Progreso */}
-            <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors">
-                <GanttProgressCell item={item} />
-            </td>
+            {showProgress && (
+                <td className="px-4 py-3 bg-zinc-950 group-hover:bg-zinc-900 transition-colors">
+                    <GanttProgressCell item={item} />
+                </td>
+            )}
 
             {/* Timeline */}
             <td className="px-4 py-3 min-w-[400px]">
