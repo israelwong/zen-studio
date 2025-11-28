@@ -3,6 +3,7 @@ import { ZenAvatar, ZenAvatarFallback } from '@/components/ui/zen';
 
 interface GanttAgrupacionCellProps {
     servicio: string;
+    isCompleted?: boolean;
     assignedCrewMember?: {
         id: string;
         name: string;
@@ -14,7 +15,7 @@ interface GanttAgrupacionCellProps {
     } | null;
 }
 
-export function GanttAgrupacionCell({ servicio, assignedCrewMember }: GanttAgrupacionCellProps) {
+export function GanttAgrupacionCell({ servicio, isCompleted = false, assignedCrewMember }: GanttAgrupacionCellProps) {
     const hasAssigned = !!assignedCrewMember;
     
     // Generar iniciales del nombre
@@ -53,7 +54,7 @@ export function GanttAgrupacionCell({ servicio, assignedCrewMember }: GanttAgrup
             {/* Avatar */}
             <ZenAvatar className="h-7 w-7 flex-shrink-0">
                 {hasAssigned && assignedCrewMember ? (
-                    <ZenAvatarFallback className={getAvatarColor()}>
+                    <ZenAvatarFallback className={isCompleted ? "bg-emerald-600/20 text-emerald-400 text-[10px]" : getAvatarColor()}>
                         {getInitials(assignedCrewMember.name)}
                     </ZenAvatarFallback>
                 ) : (
@@ -64,7 +65,11 @@ export function GanttAgrupacionCell({ servicio, assignedCrewMember }: GanttAgrup
             </ZenAvatar>
             
             {/* Nombre del servicio */}
-            <p className="text-sm text-zinc-300 break-words cursor-pointer hover:text-zinc-200 transition-colors flex-1 min-w-0">
+            <p className={`text-sm break-words cursor-pointer transition-colors flex-1 min-w-0 ${
+                isCompleted 
+                    ? 'text-zinc-500 line-through decoration-zinc-600 hover:text-zinc-400' 
+                    : 'text-zinc-300 hover:text-zinc-200'
+            }`}>
                 {servicio}
             </p>
         </div>

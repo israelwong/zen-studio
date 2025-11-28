@@ -19,6 +19,7 @@ interface SchedulerSidebarProps {
   secciones: SeccionData[];
   itemsMap: Map<string, CotizacionItem>;
   studioSlug: string;
+  eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
 }
 
@@ -26,6 +27,7 @@ interface SchedulerItemProps {
   item: CotizacionItem;
   metadata: ItemMetadata;
   studioSlug: string;
+  eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
 }
 
@@ -39,8 +41,22 @@ function getInitials(name: string) {
 }
 
 // Componente individual para cada item con su propio estado
-function SchedulerItem({ item: initialItem, metadata, studioSlug, renderItem }: SchedulerItemProps) {
+function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, renderItem }: SchedulerItemProps) {
   const [localItem, setLocalItem] = useState(initialItem);
+
+  const handleTaskCompletedUpdate = useCallback((isCompleted: boolean) => {
+    setLocalItem(prev => {
+      if (!prev.gantt_task) return prev;
+      
+      return {
+        ...prev,
+        gantt_task: {
+          ...prev.gantt_task,
+          completed_at: isCompleted ? new Date() : null,
+        },
+      } as typeof prev;
+    });
+  }, []);
 
   const handleCrewMemberUpdate = useCallback((crewMemberId: string | null, crewMember?: { id: string; name: string; tipo: string } | null) => {
     if (crewMemberId && crewMember) {
@@ -66,18 +82,35 @@ function SchedulerItem({ item: initialItem, metadata, studioSlug, renderItem }: 
     }
   }, []);
 
+  // Determinar si está completado
+  const isCompleted = !!localItem.gantt_task?.completed_at;
+
   const DefaultItemRender = () => (
     <div className="w-full flex items-center gap-2">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-zinc-200 truncate">{metadata.servicioNombre}</p>
+        <p className={`text-sm font-medium truncate ${
+          isCompleted 
+            ? 'text-zinc-500 line-through decoration-zinc-600' 
+            : 'text-zinc-200'
+        }`}>
+          {metadata.servicioNombre}
+        </p>
         {localItem.assigned_to_crew_member && (
           <div className="flex items-center gap-1.5 mt-1">
             <ZenAvatar className="h-4 w-4 flex-shrink-0">
-              <ZenAvatarFallback className="bg-blue-600/20 text-blue-400 text-[8px]">
+              <ZenAvatarFallback className={
+                isCompleted 
+                  ? "bg-emerald-600/20 text-emerald-400 text-[8px]" 
+                  : "bg-blue-600/20 text-blue-400 text-[8px]"
+              }>
                 {getInitials(localItem.assigned_to_crew_member.name)}
               </ZenAvatarFallback>
             </ZenAvatar>
-            <p className="text-xs text-zinc-500 truncate">
+            <p className={`text-xs truncate ${
+              isCompleted 
+                ? 'text-zinc-600 line-through decoration-zinc-700' 
+                : 'text-zinc-500'
+            }`}>
               {localItem.assigned_to_crew_member.name}
             </p>
           </div>
@@ -90,7 +123,9 @@ function SchedulerItem({ item: initialItem, metadata, studioSlug, renderItem }: 
     <SchedulerItemPopover
       item={localItem}
       studioSlug={studioSlug}
+      eventId={eventId}
       onCrewMemberUpdate={handleCrewMemberUpdate}
+      onTaskCompletedUpdate={handleTaskCompletedUpdate}
     >
       <button className="w-full text-left">
         {renderItem ? renderItem(localItem, metadata) : <DefaultItemRender />}
@@ -103,6 +138,7 @@ export const SchedulerSidebar = React.memo(({
   secciones,
   itemsMap,
   studioSlug,
+  eventId,
   renderItem,
 }: SchedulerSidebarProps) => {
   return (
@@ -148,6 +184,7 @@ export const SchedulerSidebar = React.memo(({
                       item={item}
                       metadata={metadata}
                       studioSlug={studioSlug}
+                      eventId={eventId}
                       renderItem={renderItem}
                     />
                   </div>

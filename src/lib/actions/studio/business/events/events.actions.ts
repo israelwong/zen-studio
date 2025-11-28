@@ -158,6 +158,7 @@ export interface EventoDetalle extends EventoBasico {
         end_date: Date;
         status: string;
         progress_percent: number;
+        completed_at: Date | null;
         assigned_to_user_id: string | null;
         depends_on_task_id: string | null;
       } | null;
@@ -911,6 +912,7 @@ export async function obtenerEventoDetalle(
                     end_date: true,
                     status: true,
                     progress_percent: true,
+                    completed_at: true,
                     assigned_to_user_id: true,
                     depends_on_task_id: true,
                   },

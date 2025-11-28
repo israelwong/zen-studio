@@ -20,6 +20,7 @@ interface SchedulerV2Props {
   secciones: SeccionData[];
   itemsMap: Map<string, CotizacionItem>;
   studioSlug: string;
+  eventId: string;
   dateRange?: DateRange;
   onTaskUpdate?: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   renderSidebarItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
@@ -35,6 +36,7 @@ export const SchedulerV2 = React.memo(({
   secciones,
   itemsMap,
   studioSlug,
+  eventId,
   dateRange,
   onTaskUpdate,
   renderSidebarItem,
@@ -87,6 +89,7 @@ export const SchedulerV2 = React.memo(({
             secciones={secciones}
             itemsMap={itemsMap}
             studioSlug={studioSlug}
+            eventId={eventId}
             renderItem={renderSidebarItem}
           />
         </div>

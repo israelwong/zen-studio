@@ -92,12 +92,17 @@ export function EventGanttSchedulerV2({
 
   // Renderizar item en sidebar
   const renderSidebarItem = useCallback(
-    (item: CotizacionItem, metadata: ItemMetadata) => (
-      <GanttAgrupacionCell
-        servicio={metadata.servicioNombre}
-        assignedCrewMember={item.assigned_to_crew_member}
-      />
-    ),
+    (item: CotizacionItem, metadata: ItemMetadata) => {
+      const isCompleted = !!item.gantt_task?.completed_at;
+      
+      return (
+        <GanttAgrupacionCell
+          servicio={metadata.servicioNombre}
+          isCompleted={isCompleted}
+          assignedCrewMember={item.assigned_to_crew_member}
+        />
+      );
+    },
     []
   );
 
@@ -123,6 +128,7 @@ export function EventGanttSchedulerV2({
         secciones={seccionesFiltradasConItems}
         itemsMap={itemsMap}
         studioSlug={studioSlug}
+        eventId={eventId}
         dateRange={dateRange}
         onTaskUpdate={handleTaskUpdate}
         renderSidebarItem={renderSidebarItem}

@@ -3,12 +3,15 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { ZenInput, ZenButton, ZenBadge, ZenAvatar, ZenAvatarFallback } from '@/components/ui/zen';
+import { Checkbox } from '@/components/ui/shadcn/checkbox';
 import { CrewMemberFormModal } from '@/components/shared/crew-members/CrewMemberFormModal';
-import { asignarCrewAItem, obtenerCrewMembers } from '@/lib/actions/studio/business/events';
+import { asignarCrewAItem, obtenerCrewMembers, actualizarGanttTask } from '@/lib/actions/studio/business/events';
 import { toast } from 'sonner';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
-import { Check, X } from 'lucide-react';
+import { Check, X, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 interface CrewMember {
     id: string;
@@ -24,8 +27,10 @@ interface CrewMember {
 interface SchedulerItemPopoverProps {
     item: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
     studioSlug: string;
+    eventId: string;
     children: React.ReactNode;
     onCrewMemberUpdate?: (crewMemberId: string | null, crewMember?: CrewMember | null) => void;
+    onTaskCompletedUpdate?: (isCompleted: boolean) => void;
 }
 
 function formatCurrency(value: number) {
@@ -44,18 +49,25 @@ function getInitials(name: string) {
         .slice(0, 2);
 }
 
-export function SchedulerItemPopover({ item, studioSlug, children, onCrewMemberUpdate }: SchedulerItemPopoverProps) {
+export function SchedulerItemPopover({ item, studioSlug, eventId, children, onCrewMemberUpdate, onTaskCompletedUpdate }: SchedulerItemPopoverProps) {
     const [open, setOpen] = useState(false);
     const [members, setMembers] = useState<CrewMember[]>([]);
     const [loadingMembers, setLoadingMembers] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedMemberId, setSelectedMemberId] = useState<string | null>(item.assigned_to_crew_member_id || null);
     const [formModalOpen, setFormModalOpen] = useState(false);
+    const [isTaskCompleted, setIsTaskCompleted] = useState(!!item.gantt_task?.completed_at);
+    const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false);
 
     // Sincronizar selectedMemberId cuando cambie el item
     useEffect(() => {
         setSelectedMemberId(item.assigned_to_crew_member_id || null);
     }, [item.assigned_to_crew_member_id]);
+
+    // Sincronizar isTaskCompleted cuando cambie el item
+    useEffect(() => {
+        setIsTaskCompleted(!!item.gantt_task?.completed_at);
+    }, [item.gantt_task?.completed_at]);
 
     const isService = item.profit_type === 'servicio' || item.profit_type === 'service';
     const itemName = item.name || 'Sin nombre';
@@ -136,6 +148,42 @@ export function SchedulerItemPopover({ item, studioSlug, children, onCrewMemberU
         }, 150);
     };
 
+    const handleTaskCompletionToggle = async (checked: boolean) => {
+        if (!item.gantt_task) {
+            toast.error('Esta tarea no tiene un slot asignado en el calendario');
+            return;
+        }
+
+        setIsUpdatingCompletion(true);
+        try {
+            const result = await actualizarGanttTask(
+                studioSlug,
+                eventId,
+                item.gantt_task.id,
+                {
+                    isCompleted: checked,
+                }
+            );
+
+            if (result.success) {
+                setIsTaskCompleted(checked);
+                onTaskCompletedUpdate?.(checked);
+                toast.success(checked ? 'Tarea marcada como completada' : 'Tarea marcada como pendiente');
+            } else {
+                toast.error(result.error || 'Error al actualizar el estado de la tarea');
+            }
+        } catch (error) {
+            console.error('Error updating task completion:', error);
+            toast.error('Error al actualizar el estado de la tarea');
+        } finally {
+            setIsUpdatingCompletion(false);
+        }
+    };
+
+    const hasTask = !!item.gantt_task;
+    const taskStartDate = item.gantt_task ? new Date(item.gantt_task.start_date) : null;
+    const taskEndDate = item.gantt_task ? new Date(item.gantt_task.end_date) : null;
+
     return (
         <>
             <Popover open={open} onOpenChange={setOpen}>
@@ -176,6 +224,57 @@ export function SchedulerItemPopover({ item, studioSlug, children, onCrewMemberU
 
                         {/* Separador */}
                         <div className="border-t border-zinc-800" />
+
+                        {/* Estado de la tarea (si tiene slot asignado) */}
+                        {hasTask && (
+                            <>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-zinc-400">
+                                        Programación:
+                                    </label>
+                                    <div className="text-xs text-zinc-500 space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span>Inicio:</span>
+                                            <span className="text-zinc-300">
+                                                {taskStartDate ? format(taskStartDate, "d 'de' MMMM", { locale: es }) : '—'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span>Fin:</span>
+                                            <span className="text-zinc-300">
+                                                {taskEndDate ? format(taskEndDate, "d 'de' MMMM", { locale: es }) : '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Checkbox de completado */}
+                                    <div className="flex items-center gap-2 py-2">
+                                        <Checkbox
+                                            id={`task-completed-${item.id}`}
+                                            checked={isTaskCompleted}
+                                            onCheckedChange={handleTaskCompletionToggle}
+                                            disabled={isUpdatingCompletion}
+                                            className="border-zinc-700 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                                        />
+                                        <label
+                                            htmlFor={`task-completed-${item.id}`}
+                                            className={cn(
+                                                "text-sm font-medium cursor-pointer select-none",
+                                                isTaskCompleted ? "text-emerald-400" : "text-zinc-400"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                {isTaskCompleted && <CheckCircle2 className="h-3.5 w-3.5" />}
+                                                <span>Tarea completada</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Separador */}
+                                <div className="border-t border-zinc-800" />
+                            </>
+                        )}
 
                         {/* Mostrar personal asignado o sección de asignación */}
                         {selectedMemberId ? (
