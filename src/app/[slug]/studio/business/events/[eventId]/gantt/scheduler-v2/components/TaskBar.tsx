@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useState, useEffect } from 'react';
-import { Rnd, type RndDragEvent, type RndResizeEvent } from 'react-rnd';
+import { Rnd, type RndDragEvent } from 'react-rnd';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { DateRange } from 'react-day-picker';
@@ -9,14 +9,13 @@ import {
   getPositionFromDate,
   getDateFromPosition,
   getWidthFromDuration,
-  normalizeDate,
   isDateInRange,
 } from '../utils/coordinate-utils';
 import {
   calculateTaskStatus,
   getStatusColor,
 } from '../utils/task-status-utils';
-import { TaskBarPopover } from './TaskBarPopover';
+import { TaskBarContextMenu } from './TaskBarContextMenu';
 
 interface TaskBarProps {
   taskId: string;
@@ -48,10 +47,8 @@ export const TaskBar = React.memo(({
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
-  const [popoverOpen, setPopoverOpen] = useState(false);
   
-  // Track movimiento real
-  const isDraggingRef = React.useRef(false);
+  // Track movimiento real para prevenir context menu durante drag/resize
   const dragStartPosRef = React.useRef({ x: 0, width: 0 });
 
   // Sincronizar estado local cuando las props cambien (actualización optimista externa)
@@ -73,30 +70,22 @@ export const TaskBar = React.memo(({
   // Manejar drag start - guardar posición inicial
   const handleDragStart = useCallback((_e: RndDragEvent, d: { x: number; y: number }) => {
     dragStartPosRef.current.x = d.x;
-    isDraggingRef.current = false; // No es drag hasta que haya movimiento
   }, []);
 
-  // Manejar drag stop - detectar movimiento real
+  // Manejar drag stop - solo actualizar si hubo movimiento real
   const handleDragStop = useCallback(
     async (_e: RndDragEvent, d: { x: number; y: number }) => {
       // Detectar si hubo movimiento real (threshold de 5px)
       const hasMoved = Math.abs(d.x - dragStartPosRef.current.x) > 5;
       
-      if (hasMoved) {
-        isDraggingRef.current = true; // Marcar como drag real
-      }
-      
       if (!hasMoved) {
-        // No hubo movimiento, fue solo un click
-        isDraggingRef.current = false;
-        return;
+        return; // No hubo movimiento, ignorar
       }
 
       const newStartDate = getDateFromPosition(d.x, dateRange);
       
       // Validar que esté dentro del rango
       if (!isDateInRange(newStartDate, dateRange)) {
-        setTimeout(() => isDraggingRef.current = false, 150);
         return;
       }
 
@@ -106,7 +95,6 @@ export const TaskBar = React.memo(({
 
       // Validar que la fecha de fin no salga del rango
       if (!isDateInRange(newEndDate, dateRange)) {
-        setTimeout(() => isDraggingRef.current = false, 150);
         return;
       }
 
@@ -121,8 +109,6 @@ export const TaskBar = React.memo(({
         setLocalEndDate(endDate);
       } finally {
         setIsUpdating(false);
-        // Mantener flag por 200ms para bloquear onClick
-        setTimeout(() => isDraggingRef.current = false, 200);
       }
     },
     [taskId, localStartDate, localEndDate, dateRange, onUpdate, startDate, endDate]
@@ -131,10 +117,9 @@ export const TaskBar = React.memo(({
   // Manejar resize start - guardar ancho inicial
   const handleResizeStart = useCallback((_e: React.SyntheticEvent, _direction: string, ref: HTMLElement) => {
     dragStartPosRef.current.width = ref.offsetWidth;
-    isDraggingRef.current = false; // No es resize hasta que haya cambio
   }, []);
 
-  // Manejar resize stop - detectar cambio real
+  // Manejar resize stop - solo actualizar si hubo cambio real
   const handleResizeStop = useCallback(
     async (
       _e: React.SyntheticEvent,
@@ -148,14 +133,8 @@ export const TaskBar = React.memo(({
       // Detectar si hubo cambio real (threshold de 10px = grid snap)
       const hasResized = Math.abs(newWidth - dragStartPosRef.current.width) > 10;
       
-      if (hasResized) {
-        isDraggingRef.current = true; // Marcar como resize real
-      }
-      
       if (!hasResized) {
-        // No hubo resize, fue solo un click
-        isDraggingRef.current = false;
-        return;
+        return; // No hubo resize, ignorar
       }
 
       const newStartDate = getDateFromPosition(position.x, dateRange);
@@ -167,7 +146,6 @@ export const TaskBar = React.memo(({
 
       // Validar que las fechas estén dentro del rango
       if (!isDateInRange(newStartDate, dateRange) || !isDateInRange(newEndDate, dateRange)) {
-        setTimeout(() => isDraggingRef.current = false, 150);
         return;
       }
 
@@ -182,8 +160,6 @@ export const TaskBar = React.memo(({
         setLocalEndDate(endDate);
       } finally {
         setIsUpdating(false);
-        // Mantener flag por 200ms para bloquear onClick
-        setTimeout(() => isDraggingRef.current = false, 200);
       }
     },
     [taskId, dateRange, onUpdate, startDate, endDate]
@@ -201,73 +177,59 @@ export const TaskBar = React.memo(({
     }
   }, [onToggleComplete]);
 
-  const handleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevenir propagación al row
-    
-    // Solo abrir popover si NO hubo drag/resize
-    if (!isDraggingRef.current) {
-      setPopoverOpen(true);
-    }
-    
-    onClick?.(e);
-  }, [onClick]);
-
   return (
-    <Rnd
-      key={`${taskId}-${itemId}`}
-      default={{
-        x: initialX,
-        y: 6,
-        width: Math.max(width, 60),
-        height: 48,
-      }}
-      onDragStart={handleDragStart}
-      onDragStop={handleDragStop}
-      onResizeStart={handleResizeStart}
-      onResizeStop={handleResizeStop}
-      dragAxis="x"
-      dragGrid={[60, 0]}
-      resizeGrid={[60, 0]}
-      enableResizing={{
-        top: false,
-        bottom: false,
-        left: true,
-        right: true,
-        topLeft: false,
-        topRight: false,
-        bottomLeft: false,
-        bottomRight: false,
-      }}
-      bounds="parent"
-      className={`
-        ${statusColor}
-        rounded px-2 py-1 shadow-md cursor-grab active:cursor-grabbing
-        transition-colors
-        ${isUpdating ? 'opacity-75' : 'opacity-100'}
-        flex items-center justify-center text-xs font-medium text-white
-        overflow-hidden whitespace-nowrap
-      `}
+    <TaskBarContextMenu
+      taskId={taskId}
+      taskName={taskName}
+      startDate={localStartDate}
+      endDate={localEndDate}
+      isCompleted={isCompleted}
+      onDelete={handleDelete}
+      onToggleComplete={handleToggleComplete}
     >
-      <TaskBarPopover
-        taskId={taskId}
-        taskName={taskName}
-        startDate={localStartDate}
-        endDate={localEndDate}
-        isCompleted={isCompleted}
-        open={popoverOpen}
-        onOpenChange={setPopoverOpen}
-        onDelete={handleDelete}
-        onToggleComplete={handleToggleComplete}
+      <Rnd
+        key={`${taskId}-${itemId}`}
+        default={{
+          x: initialX,
+          y: 6,
+          width: Math.max(width, 60),
+          height: 48,
+        }}
+        onDragStart={handleDragStart}
+        onDragStop={handleDragStop}
+        onResizeStart={handleResizeStart}
+        onResizeStop={handleResizeStop}
+        dragAxis="x"
+        dragGrid={[60, 0]}
+        resizeGrid={[60, 0]}
+        enableResizing={{
+          top: false,
+          bottom: false,
+          left: true,
+          right: true,
+          topLeft: false,
+          topRight: false,
+          bottomLeft: false,
+          bottomRight: false,
+        }}
+        bounds="parent"
+        className={`
+          ${statusColor}
+          rounded px-2 py-1 shadow-md cursor-grab active:cursor-grabbing
+          transition-colors
+          ${isUpdating ? 'opacity-75' : 'opacity-100'}
+          flex items-center justify-center text-xs font-medium text-white
+          overflow-hidden whitespace-nowrap
+        `}
       >
         <div
-          className="w-full h-full flex items-center justify-center text-center truncate"
+          className="w-full h-full flex items-center justify-center text-center truncate pointer-events-none"
           title={`${taskName}\n${format(localStartDate, 'd MMM', { locale: es })} - ${format(localEndDate, 'd MMM', { locale: es })}`}
-          onClick={handleClick}
         >
           {taskName}
         </div>
-      </TaskBarPopover>
-    </Rnd>
+      </Rnd>
+    </TaskBarContextMenu>
   );
 });
 
