@@ -1,3 +1,4 @@
+import React from 'react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Plus } from 'lucide-react';
@@ -34,7 +35,7 @@ function DayCellHeader({ date, showMonth = false }: DayCellHeaderProps) {
     const isTodayCell = cellDate.getTime() === today.getTime();
 
     return (
-        <div className="min-w-[60px] h-full flex flex-col items-center justify-center border-r border-zinc-800/50 bg-zinc-900/50 relative">
+        <div className="w-[60px] flex-shrink-0 h-full flex flex-col items-center justify-center border-r border-zinc-800/50 bg-zinc-900/50 relative">
             {showMonth && (
                 <span className="text-[9px] font-semibold text-zinc-400 uppercase mb-0.5">
                     {format(date, 'MMM', { locale: es })}
@@ -75,13 +76,11 @@ export function DayCell({
     cellDate.setHours(0, 0, 0, 0);
     const isTodayCell = cellDate.getTime() === today.getTime();
 
-    // Verificar si hay tareas en este día
     const tasksThisDay = tasks.filter(task => {
         const taskStart = new Date(task.start_date);
         const taskEnd = new Date(task.end_date);
         const dayDate = new Date(date);
 
-        // Normalizar fechas para comparación (solo día, sin hora)
         const normalizeDate = (d: Date) => {
             const normalized = new Date(d);
             normalized.setHours(0, 0, 0, 0);
@@ -92,21 +91,18 @@ export function DayCell({
         const normalizedStart = normalizeDate(taskStart);
         const normalizedEnd = normalizeDate(taskEnd);
 
-        // La tarea está en este día si el día está entre start_date y end_date (inclusive)
         return normalizedDay >= normalizedStart && normalizedDay <= normalizedEnd;
     });
 
-    const handleClick = (e: React.MouseEvent) => {
-        // Si el click viene de una tarea, no hacer nada (la tarea maneja su propio click)
+
+    const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
         const target = e.target as HTMLElement;
-        const taskCard = target.closest('[data-task-card]');
-        if (taskCard) {
+        if (target.closest('[data-task-card]')) {
             return;
         }
 
-        // Cualquier otro click en el área del día permite agregar nueva tarea
-        e.stopPropagation();
         if (onDayClick) {
+            e.stopPropagation();
             onDayClick(date);
         }
     };
@@ -118,49 +114,36 @@ export function DayCell({
         }
     };
 
+    const hasTasks = tasksThisDay.length > 0;
+
     return (
         <div
-            className="min-w-[60px] h-full border-r border-zinc-800/50 relative hover:bg-zinc-800/30 transition-colors group cursor-pointer"
+            data-day-cell={date.toISOString()}
+            className="w-[60px] flex-shrink-0 h-full relative hover:bg-zinc-800/30 transition-colors group cursor-pointer border-r border-zinc-800/50"
             onClick={handleClick}
         >
-            {/* Línea vertical para hoy */}
+            {/* Indicador de hoy - full height */}
             {isTodayCell && (
-                <div className="absolute top-0 bottom-0 left-0 w-0.5 bg-emerald-500 z-10 pointer-events-none" />
+                <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
             )}
-            {/* Tareas del día */}
-            {tasksThisDay.length > 0 ? (
-                <>
-                    {/* Contenedor de tareas - solo las tareas reciben clicks */}
-                    <div className="absolute inset-0 p-0.5 flex flex-col gap-0.5 overflow-hidden pointer-events-none">
-                        {tasksThisDay.map(task => (
-                            <div key={task.id} className="pointer-events-auto">
-                                <TaskCard
-                                    task={task}
-                                    day={date}
-                                    onClick={(e) => handleTaskClick(e, task.id)}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                    {/* Área visual del botón + cuando hay tareas */}
-                    <div
-                        className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-none z-0"
-                        aria-hidden="true"
-                    >
-                        <div className="w-5 h-5 rounded bg-zinc-800/80 border border-zinc-700 flex items-center justify-center pointer-events-none">
-                            <Plus className="h-3 w-3 text-zinc-400" />
+
+            {/* Tareas del día - ocupan todo el espacio */}
+            {hasTasks ? (
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                    {tasksThisDay.map(task => (
+                        <div key={task.id} className="min-h-[50px] pointer-events-auto">
+                            <TaskCard
+                                task={task}
+                                day={date}
+                                onClick={(e) => handleTaskClick(e, task.id)}
+                            />
                         </div>
-                    </div>
-                </>
+                    ))}
+                </div>
             ) : (
-                /* Botón agregar si no hay tareas - el área completa es clickeable */
-                <div
-                    className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center pointer-events-none"
-                    aria-hidden="true"
-                >
-                    <div className="w-5 h-5 rounded bg-zinc-800/80 border border-zinc-700 flex items-center justify-center pointer-events-none">
-                        <Plus className="h-3 w-3 text-zinc-400" />
-                    </div>
+                /* Botón + solo cuando NO hay tareas */
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 flex items-center justify-center ">
+                    <Plus className="h-4 w-4 text-zinc-600" />
                 </div>
             )}
         </div>

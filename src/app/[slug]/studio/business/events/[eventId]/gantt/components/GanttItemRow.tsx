@@ -23,18 +23,18 @@ interface GanttItemRowProps {
     showDuration?: boolean;
     showProgress?: boolean;
     onTaskClick?: (taskId: string, dayDate: Date, itemId: string) => void;
-    onAddTaskClick?: (dayDate: Date, itemId: string) => void;
+    onAddTaskClick?: (dayDate: Date, itemId: string, itemName: string) => void;
 }
 
-export function GanttItemRow({ 
-    item, 
-    itemData, 
-    studioSlug, 
+export function GanttItemRow({
+    item,
+    itemData,
+    studioSlug,
     dateRange,
     showDuration = false,
     showProgress = false,
     onTaskClick,
-    onAddTaskClick 
+    onAddTaskClick
 }: GanttItemRowProps) {
     // Estado local del item para actualización en tiempo real
     const [localItem, setLocalItem] = useState(item);
@@ -65,12 +65,11 @@ export function GanttItemRow({
         }
     }, []);
 
-    // Callback para click en día del timeline
     const handleDayClick = useCallback((date: Date) => {
         if (onAddTaskClick) {
-            onAddTaskClick(date, localItem.id);
+            onAddTaskClick(date, localItem.id, itemData.servicioNombre);
         }
-    }, [onAddTaskClick, localItem.id]);
+    }, [onAddTaskClick, localItem.id, itemData.servicioNombre]);
 
     // Obtener tareas del item (si existen)
     const tasks = localItem.gantt_task ? [localItem.gantt_task].map(task => ({
@@ -114,8 +113,8 @@ export function GanttItemRow({
             )}
 
             {/* Timeline */}
-            <td className="px-4 py-3 min-w-[400px]">
-                <GanttTimelineRow 
+            <td className="p-0 min-w-[400px]">
+                <GanttTimelineRow
                     dateRange={dateRange}
                     itemId={localItem.id}
                     tasks={tasks}
