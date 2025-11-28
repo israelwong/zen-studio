@@ -12,6 +12,9 @@ interface SchedulerGridProps {
   itemsMap: Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>;
   dateRange: DateRange;
   onTaskUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
+  onTaskCreate?: (itemId: string, catalogItemId: string, itemName: string, startDate: Date) => Promise<void>;
+  onTaskDelete?: (taskId: string) => Promise<void>;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 export const SchedulerGrid = React.memo(({
@@ -19,6 +22,9 @@ export const SchedulerGrid = React.memo(({
   itemsMap,
   dateRange,
   onTaskUpdate,
+  onTaskCreate,
+  onTaskDelete,
+  onTaskToggleComplete,
 }: SchedulerGridProps) => {
   const totalWidth = getTotalGridWidth(dateRange);
 
@@ -50,7 +56,7 @@ export const SchedulerGrid = React.memo(({
                           name: item.gantt_task.name,
                           start_date: new Date(item.gantt_task.start_date),
                           end_date: new Date(item.gantt_task.end_date),
-                          is_completed: item.gantt_task.is_completed || false,
+                          is_completed: !!item.gantt_task.completed_at,
                         },
                       ]
                     : [];
@@ -59,9 +65,14 @@ export const SchedulerGrid = React.memo(({
                     <SchedulerRow
                       key={item.id}
                       itemId={item.id}
+                      catalogItemId={servicio.id}
+                      itemName={item.name || servicio.nombre}
                       tasks={tasks}
                       dateRange={dateRange}
                       onTaskUpdate={onTaskUpdate}
+                      onTaskCreate={onTaskCreate}
+                      onTaskDelete={onTaskDelete}
+                      onTaskToggleComplete={onTaskToggleComplete}
                     />
                   );
                 })}

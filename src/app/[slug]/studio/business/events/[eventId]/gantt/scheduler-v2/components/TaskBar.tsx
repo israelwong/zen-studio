@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Rnd, type RndDragEvent, type RndResizeEvent } from 'react-rnd';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -16,6 +16,7 @@ import {
   calculateTaskStatus,
   getStatusColor,
 } from '../utils/task-status-utils';
+import { TaskBarPopover } from './TaskBarPopover';
 
 interface TaskBarProps {
   taskId: string;
@@ -26,6 +27,8 @@ interface TaskBarProps {
   isCompleted: boolean;
   dateRange: DateRange;
   onUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
+  onDelete?: (taskId: string) => Promise<void>;
+  onToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
   onClick?: (e: React.MouseEvent) => void;
 }
 
@@ -38,11 +41,21 @@ export const TaskBar = React.memo(({
   isCompleted,
   dateRange,
   onUpdate,
+  onDelete,
+  onToggleComplete,
   onClick,
 }: TaskBarProps) => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Sincronizar estado local cuando las props cambien (actualización optimista externa)
+  useEffect(() => {
+    setLocalStartDate(startDate);
+    setLocalEndDate(endDate);
+  }, [startDate, endDate]);
 
   const status = calculateTaskStatus({
     startDate: localStartDate,
@@ -54,13 +67,28 @@ export const TaskBar = React.memo(({
   const initialX = getPositionFromDate(localStartDate, dateRange);
   const width = getWidthFromDuration(localStartDate, localEndDate);
 
+  // Manejar drag start
+  const handleDragStart = useCallback(() => {
+    setIsDragging(true);
+  }, []);
+
   // Manejar drag (movimiento horizontal)
   const handleDragStop = useCallback(
     async (_e: RndDragEvent, d: { x: number; y: number }) => {
+      // Solo actualizar si hubo movimiento real
+      const currentX = getPositionFromDate(localStartDate, dateRange);
+      const hasMoved = d.x !== currentX;
+      
+      if (!hasMoved) {
+        setIsDragging(false);
+        return; // No hubo movimiento, ignorar
+      }
+
       const newStartDate = getDateFromPosition(d.x, dateRange);
       
       // Validar que esté dentro del rango
       if (!isDateInRange(newStartDate, dateRange)) {
+        setIsDragging(false);
         return;
       }
 
@@ -70,6 +98,7 @@ export const TaskBar = React.memo(({
 
       // Validar que la fecha de fin no salga del rango
       if (!isDateInRange(newEndDate, dateRange)) {
+        setIsDragging(false);
         return;
       }
 
@@ -85,10 +114,16 @@ export const TaskBar = React.memo(({
         setLocalEndDate(endDate);
       } finally {
         setIsUpdating(false);
+        setIsDragging(false);
       }
     },
     [taskId, localStartDate, localEndDate, dateRange, onUpdate, startDate, endDate]
   );
+
+  // Manejar resize start
+  const handleResizeStart = useCallback(() => {
+    setIsDragging(true);
+  }, []);
 
   // Manejar resize (cambio de duración)
   const handleResizeStop = useCallback(
@@ -109,6 +144,7 @@ export const TaskBar = React.memo(({
 
       // Validar que las fechas estén dentro del rango
       if (!isDateInRange(newStartDate, dateRange) || !isDateInRange(newEndDate, dateRange)) {
+        setIsDragging(false);
         return;
       }
 
@@ -124,10 +160,34 @@ export const TaskBar = React.memo(({
         setLocalEndDate(endDate);
       } finally {
         setIsUpdating(false);
+        setIsDragging(false);
       }
     },
     [taskId, dateRange, onUpdate, startDate, endDate]
   );
+
+  const handleDelete = useCallback(async (id: string) => {
+    if (onDelete) {
+      await onDelete(id);
+    }
+  }, [onDelete]);
+
+  const handleToggleComplete = useCallback(async (id: string, completed: boolean) => {
+    if (onToggleComplete) {
+      await onToggleComplete(id, completed);
+    }
+  }, [onToggleComplete]);
+
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevenir propagación al row
+    
+    // Solo abrir popover si NO hubo drag/resize
+    if (!isDragging) {
+      setPopoverOpen(true);
+    }
+    
+    onClick?.(e);
+  }, [isDragging, onClick]);
 
   return (
     <Rnd
@@ -138,7 +198,9 @@ export const TaskBar = React.memo(({
         width: Math.max(width, 60),
         height: 48,
       }}
+      onDragStart={handleDragStart}
       onDragStop={handleDragStop}
+      onResizeStart={handleResizeStart}
       onResizeStop={handleResizeStop}
       dragAxis="x"
       dragGrid={[60, 0]}
@@ -162,14 +224,26 @@ export const TaskBar = React.memo(({
         flex items-center justify-center text-xs font-medium text-white
         overflow-hidden whitespace-nowrap
       `}
-      onClick={onClick}
     >
-      <div
-        className="w-full text-center truncate"
-        title={`${taskName}\n${format(localStartDate, 'd MMM', { locale: es })} - ${format(localEndDate, 'd MMM', { locale: es })}`}
+      <TaskBarPopover
+        taskId={taskId}
+        taskName={taskName}
+        startDate={localStartDate}
+        endDate={localEndDate}
+        isCompleted={isCompleted}
+        open={popoverOpen}
+        onOpenChange={setPopoverOpen}
+        onDelete={handleDelete}
+        onToggleComplete={handleToggleComplete}
       >
-        {taskName}
-      </div>
+        <div
+          className="w-full h-full flex items-center justify-center text-center truncate"
+          title={`${taskName}\n${format(localStartDate, 'd MMM', { locale: es })} - ${format(localEndDate, 'd MMM', { locale: es })}`}
+          onClick={handleClick}
+        >
+          {taskName}
+        </div>
+      </TaskBarPopover>
     </Rnd>
   );
 });

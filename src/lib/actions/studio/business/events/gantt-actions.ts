@@ -39,12 +39,11 @@ export async function actualizarGanttTask(
     }
 
     // Actualizar la tarea en BD
-    const updatedTask = await prisma.gantt_task.update({
+    const updatedTask = await prisma.studio_gantt_event_tasks.update({
       where: { id: taskId },
       data: {
         start_date: startDate,
         end_date: endDate,
-        updated_at: new Date(),
       },
     });
 
@@ -69,7 +68,7 @@ export async function actualizarGanttTask(
  */
 export async function obtenerGanttTareas(studioSlug: string, eventId: string) {
   try {
-    const tareas = await prisma.gantt_task.findMany({
+    const tareas = await prisma.studio_gantt_event_tasks.findMany({
       where: {
         cotizacion_item: {
           cotizacion: {
@@ -105,11 +104,12 @@ export async function marcarTareaCompletada(
   isCompleted: boolean
 ) {
   try {
-    const updatedTask = await prisma.gantt_task.update({
+    const updatedTask = await prisma.studio_gantt_event_tasks.update({
       where: { id: taskId },
       data: {
-        is_completed: isCompleted,
-        updated_at: new Date(),
+        completed_at: isCompleted ? new Date() : null,
+        status: isCompleted ? 'COMPLETED' : 'PENDING',
+        progress_percent: isCompleted ? 100 : 0,
       },
     });
 

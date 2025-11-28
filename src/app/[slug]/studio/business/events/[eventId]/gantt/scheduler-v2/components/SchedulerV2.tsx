@@ -23,6 +23,9 @@ interface SchedulerV2Props {
   eventId: string;
   dateRange?: DateRange;
   onTaskUpdate?: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
+  onTaskCreate?: (itemId: string, catalogItemId: string, itemName: string, startDate: Date) => Promise<void>;
+  onTaskDelete?: (taskId: string) => Promise<void>;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
   renderSidebarItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
 }
 
@@ -39,6 +42,9 @@ export const SchedulerV2 = React.memo(({
   eventId,
   dateRange,
   onTaskUpdate,
+  onTaskCreate,
+  onTaskDelete,
+  onTaskToggleComplete,
   renderSidebarItem,
 }: SchedulerV2Props) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -101,6 +107,9 @@ export const SchedulerV2 = React.memo(({
             itemsMap={itemsMap}
             dateRange={dateRange}
             onTaskUpdate={handleTaskUpdate}
+            onTaskCreate={onTaskCreate}
+            onTaskDelete={onTaskDelete}
+            onTaskToggleComplete={onTaskToggleComplete}
           />
         </div>
 

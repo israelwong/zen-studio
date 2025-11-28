@@ -25,7 +25,8 @@ export function getPositionFromDate(date: Date, dateRange: DateRange): number {
 export function getDateFromPosition(x: number, dateRange: DateRange): Date {
   if (!dateRange?.from) return new Date();
   
-  const dayIndex = Math.round(x / COLUMN_WIDTH);
+  // Usar floor para que tome el día donde se hizo click (no redondear al siguiente)
+  const dayIndex = Math.floor(x / COLUMN_WIDTH);
   return addDays(new Date(dateRange.from), dayIndex);
 }
 
