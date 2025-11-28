@@ -4,15 +4,19 @@ import React from 'react';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 
+type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
+
+interface ItemMetadata {
+  seccionNombre: string;
+  categoriaNombre: string;
+  servicioNombre: string;
+  servicioId: string;
+}
+
 interface SchedulerSidebarProps {
   secciones: SeccionData[];
-  itemsMap: Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>;
-  renderItem: (item: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>, metadata: {
-    seccionNombre: string;
-    categoriaNombre: string;
-    servicioNombre: string;
-    servicioId: string;
-  }) => React.ReactNode;
+  itemsMap: Map<string, CotizacionItem>;
+  renderItem: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
 }
 
 export const SchedulerSidebar = React.memo(({

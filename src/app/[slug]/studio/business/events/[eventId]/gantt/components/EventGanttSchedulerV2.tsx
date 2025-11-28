@@ -9,6 +9,15 @@ import { actualizarGanttTask } from '@/lib/actions/studio/business/events/gantt-
 import { toast } from 'sonner';
 import { GanttAgrupacionCell } from './GanttAgrupacionCell';
 
+type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
+
+interface ItemMetadata {
+  seccionNombre: string;
+  categoriaNombre: string;
+  servicioNombre: string;
+  servicioId: string;
+}
+
 interface EventGanttSchedulerV2Props {
   studioSlug: string;
   eventId: string;
@@ -26,7 +35,7 @@ export function EventGanttSchedulerV2({
 }: EventGanttSchedulerV2Props) {
   // Construir map de items desde cotizaciones aprobadas
   const itemsMap = useMemo(() => {
-    const map = new Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>();
+    const map = new Map<string, CotizacionItem>();
 
     eventData.cotizaciones?.forEach((cotizacion) => {
       if (cotizacion.status === 'autorizada' || cotizacion.status === 'aprobada' || cotizacion.status === 'approved') {
@@ -64,12 +73,7 @@ export function EventGanttSchedulerV2({
 
   // Renderizar item en sidebar
   const renderSidebarItem = useCallback(
-    (item: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0], metadata: {
-      seccionNombre: string;
-      categoriaNombre: string;
-      servicioNombre: string;
-      servicioId: string;
-    }) => (
+    (item: CotizacionItem, metadata: ItemMetadata) => (
       <GanttAgrupacionCell
         servicio={metadata.servicioNombre}
         assignedCrewMember={item.assigned_to_crew_member}

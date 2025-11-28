@@ -7,18 +7,22 @@ import type { DateRange } from 'react-day-picker';
 import { SchedulerSidebar } from './SchedulerSidebar';
 import { SchedulerTimeline } from './SchedulerTimeline';
 
+type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
+
+interface ItemMetadata {
+  seccionNombre: string;
+  categoriaNombre: string;
+  servicioNombre: string;
+  servicioId: string;
+}
+
 interface SchedulerV2Props {
   secciones: SeccionData[];
-  itemsMap: Map<string, NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>;
+  itemsMap: Map<string, CotizacionItem>;
   studioSlug: string;
   dateRange?: DateRange;
   onTaskUpdate?: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
-  renderSidebarItem?: (item: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]>, metadata: {
-    seccionNombre: string;
-    categoriaNombre: string;
-    servicioNombre: string;
-    servicioId: string;
-  }) => React.ReactNode;
+  renderSidebarItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
 }
 
 /**
@@ -56,12 +60,7 @@ export const SchedulerV2 = React.memo(({
 
   // Función por defecto para renderizar items en sidebar
   const defaultRenderSidebarItem = useCallback(
-    (item: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0], metadata: {
-      seccionNombre: string;
-      categoriaNombre: string;
-      servicioNombre: string;
-      servicioId: string;
-    }) => (
+    (item: CotizacionItem, metadata: ItemMetadata) => (
       <div className="w-full">
         <p className="text-sm font-medium text-zinc-200">{metadata.servicioNombre}</p>
         {item.assigned_to_crew_member && (
