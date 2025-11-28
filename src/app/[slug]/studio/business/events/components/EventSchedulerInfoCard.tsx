@@ -10,34 +10,34 @@ interface CotizacionItem {
   price: number;
 }
 
-interface GanttInstance {
+interface SchedulerInstance {
   id: string;
   name: string;
 }
 
-interface EventGanttCardProps {
+interface EventSchedulerInfoCardProps {
   studioSlug: string;
   eventId: string;
   cotizacionId?: string;
-  ganttInstance?: GanttInstance;
+  schedulerInstance?: SchedulerInstance;
   cotizacionItems?: CotizacionItem[];
   onTaskUpdated?: () => void;
 }
 
-export function EventGanttCard({
+export function EventSchedulerInfoCard({
   studioSlug,
   eventId,
   cotizacionId,
-  ganttInstance,
+  schedulerInstance,
   cotizacionItems,
   onTaskUpdated,
-}: EventGanttCardProps) {
+}: EventSchedulerInfoCardProps) {
   return (
     <ZenCard title="Cronograma">
       <div className="space-y-4">
-        {ganttInstance ? (
+        {schedulerInstance ? (
           <div className="p-4 bg-zinc-900 rounded-lg">
-            <p className="text-sm text-zinc-400">Gantt: {ganttInstance.name}</p>
+            <p className="text-sm text-zinc-400">Scheduler: {schedulerInstance.name}</p>
           </div>
         ) : (
           <p className="text-sm text-zinc-400">No hay cronograma asignado</p>

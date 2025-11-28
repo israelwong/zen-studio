@@ -16,15 +16,15 @@ interface SchedulerCardTableProps {
     onAddTaskClick?: (dayDate: Date, itemId: string, itemName: string) => void;
 }
 
-export function SchedulerCardTable({ 
-    secciones, 
-    itemsMap, 
-    studioSlug, 
+export function SchedulerCardTable({
+    secciones,
+    itemsMap,
+    studioSlug,
     dateRange,
     showDuration = false,
     showProgress = false,
     onTaskClick,
-    onAddTaskClick 
+    onAddTaskClick
 }: SchedulerCardTableProps) {
     return (
         <div className="overflow-x-auto border border-zinc-800 rounded-lg shadow-sm">

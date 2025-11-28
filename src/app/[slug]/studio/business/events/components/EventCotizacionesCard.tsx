@@ -86,7 +86,7 @@ export function EventCotizacionesCard({
     router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
   };
 
-  const handleGestionarGantt = () => {
+  const handleGestionarScheduler = () => {
     router.push(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
   };
 
@@ -201,11 +201,11 @@ export function EventCotizacionesCard({
             <ZenButton
               variant="ghost"
               size="sm"
-              onClick={handleGestionarGantt}
+              onClick={handleGestionarScheduler}
               className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20"
             >
               <Calendar className="h-3 w-3 mr-1" />
-              Gantt
+              Scheduler
             </ZenButton>
           </div>
         </div>
