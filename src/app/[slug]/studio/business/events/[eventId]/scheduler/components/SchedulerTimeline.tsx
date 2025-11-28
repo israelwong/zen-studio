@@ -6,6 +6,7 @@ import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.
 import type { DateRange } from 'react-day-picker';
 import { SchedulerHeader } from './SchedulerHeader';
 import { SchedulerGrid } from './SchedulerGrid';
+import { getTodayPosition } from '../utils/coordinate-utils';
 
 interface SchedulerTimelineProps {
   secciones: SeccionData[];
@@ -26,8 +27,11 @@ export const SchedulerTimeline = React.memo(({
   onTaskDelete,
   onTaskToggleComplete,
 }: SchedulerTimelineProps) => {
+  // Calcular posición de la línea "HOY"
+  const todayPosition = getTodayPosition(dateRange);
+
   return (
-    <div className="flex flex-col border-l border-zinc-800 w-full">
+    <div className="flex flex-col border-l border-zinc-800 w-full relative">
       {/* Header con fechas */}
       <SchedulerHeader dateRange={dateRange} />
 
@@ -41,6 +45,14 @@ export const SchedulerTimeline = React.memo(({
         onTaskDelete={onTaskDelete}
         onTaskToggleComplete={onTaskToggleComplete}
       />
+
+      {/* Línea vertical "HOY" */}
+      {todayPosition !== null && (
+        <div
+          className="absolute top-0 bottom-0 w-[2px] bg-emerald-500/40 z-10 pointer-events-none"
+          style={{ left: `${todayPosition}px` }}
+        />
+      )}
     </div>
   );
 });

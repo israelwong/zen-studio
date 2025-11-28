@@ -78,3 +78,23 @@ export function getTotalGridWidth(dateRange: DateRange): number {
   return getTotalDays(dateRange) * COLUMN_WIDTH;
 }
 
+/**
+ * Obtiene la posición X de la línea "HOY" en el timeline
+ * @param dateRange - Rango de fechas del scheduler
+ * @returns Posición en píxeles, o null si hoy no está en el rango
+ */
+export function getTodayPosition(dateRange: DateRange): number | null {
+  if (!dateRange?.from || !dateRange?.to) return null;
+  
+  const today = normalizeDate(new Date());
+  
+  // Verificar si hoy está dentro del rango
+  if (!isDateInRange(today, dateRange)) {
+    return null;
+  }
+  
+  // Calcular posición (inicio de la columna del día actual)
+  const position = getPositionFromDate(today, dateRange);
+  return position; // Inicio de la columna
+}
+

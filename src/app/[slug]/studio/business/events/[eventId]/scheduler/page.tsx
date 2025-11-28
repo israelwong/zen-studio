@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Users, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Users, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenBadge } from '@/components/ui/zen';
 import { obtenerEventoDetalle, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import { toast } from 'sonner';
@@ -20,17 +20,47 @@ export default function EventSchedulerPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [crewManagerOpen, setCrewManagerOpen] = useState(false);
 
-  // Calcular progreso global
-  const progressStats = useMemo(() => {
-    if (!eventData?.cotizaciones) return { completed: 0, total: 0, percentage: 0 };
+  // Calcular progreso y estadísticas de tareas
+  const taskStats = useMemo(() => {
+    if (!eventData?.cotizaciones || !dateRange) {
+      return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0 };
+    }
 
     const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const total = allItems.length;
-    const completed = allItems.filter(item => item.gantt_task?.completed_at).length;
+    const itemsWithTasks = allItems.filter(item => item.gantt_task);
+    const unassigned = total - itemsWithTasks.length;
+
+    const completed = itemsWithTasks.filter(item => item.gantt_task?.completed_at).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-    return { completed, total, percentage };
-  }, [eventData]);
+    // Calcular estados basados en fechas
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let delayed = 0;
+    let inProcess = 0;
+    let pending = 0;
+
+    itemsWithTasks.forEach(item => {
+      if (item.gantt_task?.completed_at) return; // Ya completadas no cuentan
+
+      const startDate = new Date(item.gantt_task!.start_date);
+      const endDate = new Date(item.gantt_task!.end_date);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+
+      if (today > endDate) {
+        delayed++;
+      } else if (today >= startDate && today <= endDate) {
+        inProcess++;
+      } else if (today < startDate) {
+        pending++;
+      }
+    });
+
+    return { completed, total, percentage, delayed, inProcess, pending, unassigned };
+  }, [eventData, dateRange]);
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -223,19 +253,6 @@ export default function EventSchedulerPage() {
                 }}
               />
               <div className="h-6 w-px bg-zinc-700 mx-1" />
-              {/* Badge de progreso global */}
-              {progressStats.total > 0 && (
-                <ZenBadge
-                  variant="outline"
-                  className="gap-1.5 px-3 py-1.5 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">
-                    {progressStats.completed} de {progressStats.total} ({progressStats.percentage}%)
-                  </span>
-                </ZenBadge>
-              )}
-              <div className="h-6 w-px bg-zinc-700 mx-1" />
               <ZenButton
                 variant="ghost"
                 size="sm"
@@ -248,15 +265,98 @@ export default function EventSchedulerPage() {
             </div>
           </div>
         </ZenCardHeader>
-        <ZenCardContent className="p-6">
-          <EventSchedulerView
-            studioSlug={studioSlug}
-            eventId={eventId}
-            eventData={eventData}
-            ganttInstance={eventData.gantt || undefined}
-            dateRange={dateRange}
-            onDataChange={setEventData}
-          />
+        <ZenCardContent className="p-0">
+          {/* Stats Bar - Sticky */}
+          {taskStats.total > 0 && (
+            <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 px-6 py-3">
+              <div className="flex items-center justify-between gap-6">
+                {/* Columna 1: Progreso */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-500 font-medium">Progreso:</span>
+                  <ZenBadge
+                    variant="outline"
+                    className="gap-1.5 px-3 py-1.5 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span className="text-xs font-medium">
+                      {taskStats.completed} de {taskStats.total} ({taskStats.percentage}%)
+                    </span>
+                  </ZenBadge>
+                </div>
+
+                {/* Columna 2: Tareas por estado */}
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-zinc-500 font-medium">Tareas:</span>
+                  <div className="flex items-center gap-2">
+                    {/* Sin asignar */}
+                    {taskStats.unassigned > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-zinc-900 text-zinc-500 border-zinc-800"
+                      >
+                        <span className="text-xs font-medium">{taskStats.unassigned} Sin asignar</span>
+                      </ZenBadge>
+                    )}
+
+                    {/* Pendientes */}
+                    {taskStats.pending > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-zinc-800 text-zinc-400 border-zinc-700"
+                      >
+                        <span className="text-xs font-medium">{taskStats.pending} Pendientes</span>
+                      </ZenBadge>
+                    )}
+
+                    {/* En proceso */}
+                    {taskStats.inProcess > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-blue-950/30 text-blue-400 border-blue-800/50"
+                      >
+                        <Clock className="h-3 w-3" />
+                        <span className="text-xs font-medium">{taskStats.inProcess} En proceso</span>
+                      </ZenBadge>
+                    )}
+
+                    {/* Completadas */}
+                    {taskStats.completed > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span className="text-xs font-medium">{taskStats.completed} Completadas</span>
+                      </ZenBadge>
+                    )}
+
+                    {/* Atrasadas */}
+                    {taskStats.delayed > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-red-950/30 text-red-400 border-red-800/50"
+                      >
+                        <AlertCircle className="h-3 w-3" />
+                        <span className="text-xs font-medium">{taskStats.delayed} Atrasadas</span>
+                      </ZenBadge>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Scheduler */}
+          <div className="p-6">
+            <EventSchedulerView
+              studioSlug={studioSlug}
+              eventId={eventId}
+              eventData={eventData}
+              ganttInstance={eventData.gantt || undefined}
+              dateRange={dateRange}
+              onDataChange={setEventData}
+            />
+          </div>
         </ZenCardContent>
       </ZenCard>
 

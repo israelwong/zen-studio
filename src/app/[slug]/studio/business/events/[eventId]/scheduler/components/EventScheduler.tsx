@@ -81,6 +81,7 @@ export function EventScheduler({
     async (taskId: string, startDate: Date, endDate: Date) => {
       try {
         // Actualización optimista: actualizar el estado local primero
+        let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
           
@@ -101,8 +102,14 @@ export function EventScheduler({
             }),
           }));
 
+          updatedData = newData;
           return newData;
         });
+
+        // Notificar al padre del cambio
+        if (updatedData! && onDataChange) {
+          onDataChange(updatedData);
+        }
 
         const result = await actualizarGanttTask(studioSlug, eventId, taskId, {
           start_date: startDate,
@@ -121,7 +128,7 @@ export function EventScheduler({
         throw error;
       }
     },
-    [studioSlug, eventId, router]
+    [studioSlug, eventId, router, onDataChange]
   );
 
   // Manejar creación de tareas (click en slot vacío)
@@ -145,6 +152,7 @@ export function EventScheduler({
         }
 
         // Actualización optimista: agregar la tarea al estado local inmediatamente
+        let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
           
@@ -175,8 +183,14 @@ export function EventScheduler({
             }),
           }));
 
+          updatedData = newData;
           return newData;
         });
+
+        // Notificar al padre del cambio
+        if (updatedData! && onDataChange) {
+          onDataChange(updatedData);
+        }
 
         toast.success('Slot asignado correctamente');
         router.refresh();
@@ -185,7 +199,7 @@ export function EventScheduler({
         toast.error('Error al asignar el slot');
       }
     },
-    [studioSlug, eventId, router]
+    [studioSlug, eventId, router, onDataChange]
   );
 
   // Manejar eliminación de tareas (vaciar slot)
@@ -200,6 +214,7 @@ export function EventScheduler({
         }
 
         // Actualización optimista: remover la tarea del estado local
+        let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
           
@@ -217,8 +232,14 @@ export function EventScheduler({
             }),
           }));
 
+          updatedData = newData;
           return newData;
         });
+
+        // Notificar al padre del cambio
+        if (updatedData! && onDataChange) {
+          onDataChange(updatedData);
+        }
 
         toast.success('Slot vaciado correctamente');
         router.refresh();
@@ -227,7 +248,7 @@ export function EventScheduler({
         toast.error('Error al vaciar el slot');
       }
     },
-    [studioSlug, eventId, router]
+    [studioSlug, eventId, router, onDataChange]
   );
 
   // Manejar toggle de completado desde TaskBar
