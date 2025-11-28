@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import { SchedulerItemPopover } from './SchedulerItemPopover';
@@ -43,6 +43,17 @@ function getInitials(name: string) {
 // Componente individual para cada item con su propio estado
 function SchedulerItem({ item: initialItem, metadata, studioSlug, eventId, renderItem }: SchedulerItemProps) {
   const [localItem, setLocalItem] = useState(initialItem);
+
+  // Sincronizar cuando el item externo cambia (actualización desde TaskBar o sidebar popover)
+  useEffect(() => {
+    setLocalItem(initialItem);
+  }, [
+    initialItem,
+    initialItem.gantt_task?.start_date,
+    initialItem.gantt_task?.end_date,
+    initialItem.gantt_task?.completed_at,
+    initialItem.assigned_to_crew_member_id,
+  ]);
 
   const handleTaskCompletedUpdate = useCallback((isCompleted: boolean) => {
     setLocalItem(prev => {
