@@ -29,8 +29,7 @@ export function EventGanttView({
   showProgress = false,
 }: EventGanttViewProps) {
   const [secciones, setSecciones] = useState<SeccionData[]>([]);
-  const [loadingSecciones, setLoadingSecciones] = useState(false);
-  const [useSchedulerV2, setUseSchedulerV2] = useState(true); // Toggle entre V1 y V2
+  const [loadingSecciones, setLoadingSecciones] = useState(true);
 
   // Cargar secciones del catálogo
   useEffect(() => {
@@ -41,11 +40,10 @@ export function EventGanttView({
         if (result.success && result.data) {
           setSecciones(result.data);
         } else {
-          toast.error('Error al cargar las secciones');
+          console.error('Error al cargar las secciones:', result.error);
         }
       } catch (error) {
         console.error('Error loading secciones:', error);
-        toast.error('Error al cargar las secciones');
       } finally {
         setLoadingSecciones(false);
       }
@@ -89,8 +87,20 @@ export function EventGanttView({
     return { from: start, to: end };
   }, [propDateRange, ganttInstance, eventData.event_date, eventData.promise?.event_date]);
 
-  // Si SchedulerV2 está habilitado y hay secciones cargadas
-  if (useSchedulerV2 && secciones.length > 0 && defaultDateRange) {
+  // Loading state
+  if (loadingSecciones) {
+    return (
+      <div className="flex items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-zinc-600 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-zinc-600">Cargando scheduler...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Usar SchedulerV2 como vista principal (V2 es la nueva vista por defecto)
+  if (secciones.length > 0 && defaultDateRange) {
     return (
       <EventGanttSchedulerV2
         studioSlug={studioSlug}
@@ -102,6 +112,7 @@ export function EventGanttView({
     );
   }
 
+  // Fallback a V1 si no hay secciones o dateRange
   return (
     <div className="space-y-6">
       {/* Lista de cotizaciones */}
@@ -127,14 +138,6 @@ export function EventGanttView({
           </p>
         </div>
       )}
-
-      {/* Placeholder para vista Gantt Chart */}
-      {/* <div className="p-8 bg-zinc-900 rounded-lg border border-zinc-800 text-center">
-        <p className="text-sm text-zinc-400 mb-2">Vista Gantt Chart</p>
-        <p className="text-xs text-zinc-500">
-          La visualización temporal del cronograma estará disponible próximamente
-        </p>
-      </div> */}
     </div>
   );
 }
