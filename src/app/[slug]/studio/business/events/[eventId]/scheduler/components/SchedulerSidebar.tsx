@@ -165,7 +165,7 @@ export const SchedulerSidebar = React.memo(({
     <div className="w-full bg-zinc-950">
       {/* Header placeholder - altura exacta 60px para alinear con SchedulerHeader */}
       <div className="h-[60px] bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 flex items-center px-4 flex-shrink-0 sticky top-0 left-0 z-30">
-        <span className="text-xs font-semibold text-zinc-400 uppercase">Servicios</span>
+        <span className="text-xs font-semibold text-zinc-400 uppercase">Tareas</span>
       </div>
 
       {secciones.map((seccion) => (

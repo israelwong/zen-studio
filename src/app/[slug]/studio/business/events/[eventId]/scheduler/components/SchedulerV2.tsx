@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import type { DateRange } from 'react-day-picker';
@@ -47,7 +47,6 @@ export const SchedulerV2 = React.memo(({
   onTaskToggleComplete,
   renderSidebarItem,
 }: SchedulerV2Props) => {
-  const [isLoading, setIsLoading] = useState(false);
   const timelineRef = useRef<HTMLDivElement>(null);
 
   // No necesitamos sincronización, todo usa el mismo scroll
@@ -59,14 +58,11 @@ export const SchedulerV2 = React.memo(({
     async (taskId: string, startDate: Date, endDate: Date) => {
       if (!onTaskUpdate) return;
 
-      setIsLoading(true);
       try {
         await onTaskUpdate(taskId, startDate, endDate);
       } catch (error) {
         console.error('Error updating task:', error);
         throw error;
-      } finally {
-        setIsLoading(false);
       }
     },
     [onTaskUpdate]
@@ -113,13 +109,6 @@ export const SchedulerV2 = React.memo(({
             onTaskToggleComplete={onTaskToggleComplete}
           />
         </div>
-
-        {/* Loading overlay */}
-        {isLoading && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center rounded-lg">
-            <div className="w-8 h-8 border-2 border-zinc-600 border-t-emerald-500 rounded-full animate-spin" />
-          </div>
-        )}
       </div>
     </div>
   );

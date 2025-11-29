@@ -13,6 +13,20 @@ import { SchedulerAgrupacionCell } from './SchedulerAgrupacionCell';
 
 type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
 
+interface CreatedGanttTask {
+  id: string;
+  name: string;
+  start_date: Date;
+  end_date: Date;
+  status: string;
+  progress_percent: number;
+  completed_at: Date | null;
+  cotizacion_item: {
+    id: string;
+    assigned_to_crew_member_id: string | null;
+  };
+}
+
 interface ItemMetadata {
   seccionNombre: string;
   categoriaNombre: string;
@@ -38,7 +52,7 @@ export function EventScheduler({
   onDataChange,
 }: EventSchedulerProps) {
   const router = useRouter();
-  
+
   // Estado local para actualizaciones optimistas
   const [localEventData, setLocalEventData] = useState(eventData);
 
@@ -84,7 +98,7 @@ export function EventScheduler({
         let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
-          
+
           newData.cotizaciones = prev.cotizaciones?.map(cotizacion => ({
             ...cotizacion,
             cotizacion_items: cotizacion.cotizacion_items?.map(item => {
@@ -155,14 +169,14 @@ export function EventScheduler({
         let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
-          
+
           // Buscar y actualizar el item en las cotizaciones
           newData.cotizaciones = prev.cotizaciones?.map(cotizacion => ({
             ...cotizacion,
             cotizacion_items: cotizacion.cotizacion_items?.map(item => {
               // Encontrar el item correcto por item_id del catálogo
               if (item.item_id === catalogItemId && result.data) {
-                const taskData = result.data as any;
+                const taskData = result.data as CreatedGanttTask;
                 return {
                   ...item,
                   gantt_task_id: taskData.id,
@@ -217,7 +231,7 @@ export function EventScheduler({
         let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
-          
+
           newData.cotizaciones = prev.cotizaciones?.map(cotizacion => ({
             ...cotizacion,
             cotizacion_items: cotizacion.cotizacion_items?.map(item => {
@@ -268,7 +282,7 @@ export function EventScheduler({
         let updatedData: EventoDetalle;
         setLocalEventData(prev => {
           const newData = { ...prev };
-          
+
           newData.cotizaciones = prev.cotizaciones?.map(cotizacion => ({
             ...cotizacion,
             cotizacion_items: cotizacion.cotizacion_items?.map(item => {
@@ -308,7 +322,7 @@ export function EventScheduler({
   const renderSidebarItem = useCallback(
     (item: CotizacionItem, metadata: ItemMetadata) => {
       const isCompleted = !!item.gantt_task?.completed_at;
-      
+
       return (
         <SchedulerAgrupacionCell
           servicio={metadata.servicioNombre}
@@ -322,8 +336,9 @@ export function EventScheduler({
 
   if (!dateRange?.from || !dateRange?.to) {
     return (
-      <div className="flex items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
-        <p className="text-zinc-600">Configura el rango de fechas para usar el scheduler</p>
+      <div className="flex flex-col items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
+        <p className="text-zinc-400 text-lg font-medium">Define la fecha de inicio y término de tu proyecto</p>
+        <p className="text-zinc-600 text-sm mt-2">Usa el botón de configuración de rango arriba</p>
       </div>
     );
   }

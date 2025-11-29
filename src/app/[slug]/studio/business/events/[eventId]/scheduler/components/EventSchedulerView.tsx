@@ -2,12 +2,10 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { type DateRange } from 'react-day-picker';
-import { EventSchedulerCard } from './EventSchedulerCard';
 import { EventScheduler } from './EventScheduler';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
-import { toast } from 'sonner';
 
 interface EventSchedulerViewProps {
   studioSlug: string;
@@ -52,15 +50,6 @@ export function EventSchedulerView({
     }
   }, [studioSlug]);
 
-  // Filtrar cotizaciones aprobadas
-  const cotizacionesAprobadas = useMemo(() => {
-    return (
-      eventData.cotizaciones?.filter(
-        (c) => c.status === 'autorizada' || c.status === 'aprobada' || c.status === 'approved'
-      ) || []
-    );
-  }, [eventData.cotizaciones]);
-
   // Calcular rango por defecto si no está configurado
   const defaultDateRange = useMemo(() => {
     // Prioridad: dateRange prop > ganttInstance > fecha del evento
@@ -85,16 +74,10 @@ export function EventSchedulerView({
     return { from: start, to: end };
   }, [propDateRange, ganttInstance, eventData.event_date, eventData.promise?.event_date]);
 
-  // Loading state
+
+  // Mostrar skeleton mientras carga secciones (evita mostrar V1/fallback)
   if (loadingSecciones) {
-    return (
-      <div className="flex items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-zinc-600 border-t-emerald-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-zinc-600">Cargando scheduler...</p>
-        </div>
-      </div>
-    );
+    return null; // El skeleton del page.tsx se encarga
   }
 
   // Usar SchedulerV2 como vista principal (V2 es la nueva vista por defecto)
@@ -111,30 +94,10 @@ export function EventSchedulerView({
     );
   }
 
-  // Fallback a V1 si no hay secciones o dateRange
+  // Si no hay secciones o dateRange, mostrar mensaje
   return (
-    <div className="space-y-6">
-      {/* Lista de cotizaciones */}
-      {cotizacionesAprobadas.length > 0 ? (
-        <div className="space-y-4">
-          {cotizacionesAprobadas.map((cotizacion) => (
-            <EventSchedulerCard
-              key={cotizacion.id}
-              cotizacion={cotizacion}
-              studioSlug={studioSlug}
-              eventId={eventId}
-              eventDate={eventData.event_date || eventData.promise?.event_date || null}
-              dateRange={defaultDateRange}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="p-8 bg-zinc-900 rounded-lg border border-zinc-800 text-center">
-          <p className="text-sm text-zinc-400">
-            No hay cotizaciones aprobadas para mostrar en el cronograma
-          </p>
-        </div>
-      )}
+    <div className="flex items-center justify-center h-[400px] border border-zinc-800 rounded-lg bg-zinc-900/20">
+      <p className="text-zinc-600">No hay datos para mostrar en el scheduler</p>
     </div>
   );
 }
