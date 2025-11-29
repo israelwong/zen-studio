@@ -126,9 +126,9 @@ export function CommandMenu({
           href: `/${studioSlug}/studio/commercial/promises`,
         },
         {
-          label: 'Paquetes',
+          label: 'Oferta Comercial',
           icon: Users,
-          href: `/${studioSlug}/studio/commercial/paquetes`,
+          href: `/${studioSlug}/studio/commercial/catalogo`,
         },
         {
           label: 'Personal',

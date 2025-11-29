@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, ContactRound, ShoppingBag, Sparkles, BarChart3, Users } from 'lucide-react';
+import { Calendar, ContactRound, ShoppingBag, Sparkles, BarChart3, Users, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { ZenButton } from '@/components/ui/zen';
 
@@ -56,6 +56,12 @@ export function UtilityDock({
       icon: BarChart3,
       label: 'Analytics',
       href: `/${studioSlug}/studio/dashboard/finanzas`,
+    },
+    {
+      id: 'help',
+      icon: HelpCircle,
+      label: 'Ayuda',
+      href: `/${studioSlug}/studio/ayuda`,
     },
   ];
 

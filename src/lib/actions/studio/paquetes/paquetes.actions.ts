@@ -194,7 +194,7 @@ export async function crearPaquete(
         });
 
         // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
 
         return {
             success: true,
@@ -459,7 +459,7 @@ export async function actualizarPaquete(
         });
 
         // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
 
         return {
             success: true,
@@ -517,7 +517,7 @@ export async function eliminarPaquete(
         });
 
         // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
 
         return { success: true };
     } catch (error) {
@@ -693,7 +693,7 @@ export async function duplicarPaquete(
         });
 
         // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
 
         return {
             success: true,

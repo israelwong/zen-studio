@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenSwitch, ZenConfirmModal } from '@/components/ui/zen';
-import { PaqueteFormularioAvanzado } from '../tabs/PaquetesTab/PaqueteFormularioAvanzado';
+import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 
 interface PaqueteEditorProps {
@@ -27,16 +27,16 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }:
     }, [paquete?.status, paquete]);
 
     const handleBack = () => {
-        router.push(`/${studioSlug}/studio/commercial/paquetes`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
     };
 
     const handleSave = (savedPaquete: PaqueteFromDB) => {
         // Redirigir a la página principal - PaquetesWrapper detectará el cambio y recargará datos
-        router.push(`/${studioSlug}/studio/commercial/paquetes`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
     };
 
     const handleCancel = () => {
-        router.push(`/${studioSlug}/studio/commercial/paquetes`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
     };
 
     const handleFeaturedClick = () => {

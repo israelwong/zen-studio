@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Eye, EyeOff, HardDrive } from "lucide-react";
 import Image from "next/image";
@@ -16,6 +16,7 @@ import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
 import { SeccionEditorModal, SeccionFormData } from "./secciones";
 import { CategoriaEditorModal, CategoriaFormData } from "./categorias";
 import { ItemEditorModal, ItemFormData } from "./items";
+import { CatalogoTabSkeleton } from "./CatalogoTabSkeleton";
 import { ConfiguracionPrecios, calcularPrecio as calcularPrecioSistema } from "@/lib/actions/studio/catalogo/calcular-precio";
 import {
     crearSeccion,
@@ -99,14 +100,18 @@ interface Item {
 interface CatalogoTabProps {
     studioSlug: string;
     secciones: Seccion[];
+    isActive?: boolean;
 }
 
 export function CatalogoTab({
     studioSlug,
     secciones: initialSecciones,
+    isActive = true,
 }: CatalogoTabProps) {
-    // Estados de expansión
-    const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
+    // Estados de expansión - inicializar todas las secciones expandidas
+    const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(() => {
+        return new Set(initialSecciones.map(s => s.id));
+    });
     const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
 
     // Datos
@@ -118,6 +123,7 @@ export function CatalogoTab({
     // Estados de carga
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const loadedRef = useRef(false);
 
     // Estados para drag & drop
     const [activeId, setActiveId] = useState<string | null>(null);
@@ -179,26 +185,31 @@ export function CatalogoTab({
         await loadConfiguracionPrecios();
     });
 
-    // Cargar datos iniciales
+    // Cargar datos cuando la tab está activa
     useEffect(() => {
-        const loadInitialData = async () => {
+        if (!isActive) {
+            loadedRef.current = false;
+            return;
+        }
+        if (loadedRef.current) return;
+        
+        loadedRef.current = true;
+        
+        const loadData = async () => {
             try {
-                setIsLoading(true);
-
-                // Cargar todo el catálogo completo y media en paralelo
+                setIsInitialLoading(true);
+                
                 const [catalogoResponse, mediaResponse] = await Promise.all([
-                    obtenerCatalogo(studioSlug, false), // false = traer todos los items (activos e inactivos)
+                    obtenerCatalogo(studioSlug, false),
                     obtenerMediaItemsMap(studioSlug),
                 ]);
 
                 if (catalogoResponse.success && catalogoResponse.data) {
-                    // Pre-popular categorías Y items desde el inicio (sin loading bajo demanda)
                     const newCategoriasData: Record<string, Categoria[]> = {};
                     const newItemsData: Record<string, Item[]> = {};
                     const mediaMap = mediaResponse.success && mediaResponse.data ? mediaResponse.data : {};
 
                     catalogoResponse.data.forEach((seccion) => {
-                        // Mapear categorías con contadores
                         newCategoriasData[seccion.id] = seccion.categorias.map(cat => ({
                             id: cat.id,
                             name: cat.nombre,
@@ -208,7 +219,6 @@ export function CatalogoTab({
                             mediaSize: 0,
                         }));
 
-                        // Pre-popular items para cada categoría (todo cargado de una vez)
                         seccion.categorias.forEach(cat => {
                             newItemsData[cat.id] = cat.servicios.map(servicio => {
                                 const itemMedia = mediaMap[servicio.id] || {
@@ -216,13 +226,10 @@ export function CatalogoTab({
                                     hasVideos: false,
                                     thumbnailUrl: undefined,
                                 };
-                                // Mapear utility_type de BD: 'service' -> 'servicio', 'product' -> 'producto'
                                 const tipoUtilidad: 'servicio' | 'producto' =
-                                    servicio.tipo_utilidad === 'service'
-                                        ? 'servicio'
-                                        : servicio.tipo_utilidad === 'product'
-                                            ? 'producto'
-                                            : 'servicio'; // default a servicio si no se reconoce
+                                    servicio.tipo_utilidad === 'service' ? 'servicio'
+                                    : servicio.tipo_utilidad === 'product' ? 'producto'
+                                    : 'servicio';
                                 return {
                                     id: servicio.id,
                                     name: servicio.nombre,
@@ -252,20 +259,17 @@ export function CatalogoTab({
                 } else {
                     toast.error(catalogoResponse.error || "Error al cargar el catálogo");
                 }
-
             } catch (error) {
-                console.error("Error loading initial data:", error);
-                toast.error("Error al cargar datos iniciales");
+                console.error("Error loading data:", error);
+                toast.error("Error al cargar datos");
             } finally {
-                setIsLoading(false);
                 setIsInitialLoading(false);
             }
         };
 
         loadConfiguracionPrecios();
-        loadInitialData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studioSlug, secciones]);
+        loadData();
+    }, [studioSlug, isActive]);
 
     const toggleSeccion = (seccionId: string) => {
         const isExpanded = seccionesExpandidas.has(seccionId);
@@ -1450,47 +1454,15 @@ export function CatalogoTab({
         }
     };
 
-    // Skeleton components
-    const AcordeonSkeleton = () => (
-        <div className="space-y-2">
-            {[1, 2, 3].map((i) => (
-                <div key={i} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 animate-pulse">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-4 h-4 bg-zinc-700 rounded"></div>
-                            <div className="h-4 bg-zinc-700 rounded w-32"></div>
-                        </div>
-                        <div className="h-4 bg-zinc-700 rounded w-16"></div>
-                    </div>
-                </div>
-            ))}
-        </div>
-    );
-
-
-
     if (isInitialLoading) {
-        return (
-            <div className="space-y-4">
-                {/* Header con loading */}
-                <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">Catálogo</h3>
-                    <div className="flex items-center gap-2 text-zinc-400">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Cargando datos...</span>
-                    </div>
-                </div>
-
-                <AcordeonSkeleton />
-            </div>
-        );
+        return <CatalogoTabSkeleton />;
     }
 
     return (
         <div className="space-y-4">
             {/* Header con botón de crear sección */}
             <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">Catálogo</h3>
+                <h3 className="text-lg font-semibold text-white">Diseña la estructura de tu catálogo comercial</h3>
                 <ZenButton
                     onClick={handleCreateSeccion}
                     variant="outline"

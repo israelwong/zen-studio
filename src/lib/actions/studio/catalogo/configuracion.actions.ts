@@ -182,7 +182,7 @@ export async function actualizarConfiguracionPaquetes(
             vistaEnPantalla: configuracion.vistaEnPantalla === 'reticula' ? 'reticula' : 'lista'
         };
 
-        revalidatePath(`/${slug}/studio/commercial/paquetes`);
+        revalidatePath(`/${slug}/studio/commercial/catalogo`);
 
         return {
             success: true,

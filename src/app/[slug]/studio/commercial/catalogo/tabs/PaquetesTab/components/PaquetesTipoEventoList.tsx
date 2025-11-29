@@ -688,13 +688,13 @@ export function PaquetesTipoEventoList({
 
     // Handlers para paquetes - usar navegación en lugar de modal
     const handleEditPaquete = (paquete: PaqueteFromDB) => {
-        router.push(`/${studioSlug}/studio/commercial/paquetes/${paquete.id}/editar`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo/tabs/PaquetesTab/${paquete.id}/editar`);
     };
 
     const handleCrearPaquete = (eventTypeId?: string) => {
         const url = eventTypeId
-            ? `/${studioSlug}/studio/commercial/paquetes/nuevo?eventTypeId=${eventTypeId}`
-            : `/${studioSlug}/studio/commercial/paquetes/nuevo`;
+            ? `/${studioSlug}/studio/commercial/catalogo/tabs/PaquetesTab/nuevo?eventTypeId=${eventTypeId}`
+            : `/${studioSlug}/studio/commercial/catalogo/tabs/PaquetesTab/nuevo`;
         router.push(url);
     };
 
@@ -1589,7 +1589,7 @@ export function PaquetesTipoEventoList({
             <div className="space-y-4">
                 {/* Header con loading */}
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">Paquetes</h3>
+                    <h3 className="text-lg font-semibold text-white">Crea y organiza tus paquetes de servicios</h3>
                     <div className="flex items-center gap-2 text-zinc-400">
                         <Loader2 className="w-4 h-4 animate-spin" />
                         <span className="text-sm">Cargando datos...</span>
@@ -1612,41 +1612,16 @@ export function PaquetesTipoEventoList({
             <div className="space-y-4">
                 {/* Header con botón de crear */}
                 <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">Paquetes</h3>
-                    <ZenDropdownMenu>
-                        <ZenDropdownMenuTrigger asChild>
-                            <ZenButton
-                                variant="outline"
-                                size="sm"
-                                className="flex items-center gap-2"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Crear nuevo
-                            </ZenButton>
-                        </ZenDropdownMenuTrigger>
-                        <ZenDropdownMenuContent align="end" className="w-56">
-                            <ZenDropdownMenuItem onClick={handleCreateTipoEvento}>
-                                <Plus className="h-4 w-4 mr-2" />
-                                Nuevo tipo de evento
-                            </ZenDropdownMenuItem>
-                            {tiposEvento.length > 0 && (
-                                <>
-                                    <ZenDropdownMenuSeparator />
-                                    {tiposEvento
-                                        .sort((a, b) => (a.orden || 0) - (b.orden || 0))
-                                        .map((tipo) => (
-                                            <ZenDropdownMenuItem
-                                                key={tipo.id}
-                                                onClick={() => handleCrearPaquete(tipo.id)}
-                                            >
-                                                <Plus className="h-4 w-4 mr-2" />
-                                                Paquete de {tipo.nombre}
-                                            </ZenDropdownMenuItem>
-                                        ))}
-                                </>
-                            )}
-                        </ZenDropdownMenuContent>
-                    </ZenDropdownMenu>
+                    <h3 className="text-lg font-semibold text-white">Crea y organiza tus paquetes de servicios</h3>
+                    <ZenButton
+                        variant="outline"
+                        size="sm"
+                        onClick={handleCreateTipoEvento}
+                        className="flex items-center gap-2"
+                    >
+                        <Plus className="w-4 h-4" />
+                        Nuevo tipo de evento
+                    </ZenButton>
                 </div>
 
                 {/* Lista de tipos de evento con drag & drop */}
