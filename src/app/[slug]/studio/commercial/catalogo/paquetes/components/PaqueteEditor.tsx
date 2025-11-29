@@ -27,16 +27,16 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }:
     }, [paquete?.status, paquete]);
 
     const handleBack = () => {
-        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
     };
 
     const handleSave = (savedPaquete: PaqueteFromDB) => {
-        // Redirigir a la página principal - PaquetesWrapper detectará el cambio y recargará datos
-        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
+        // Redirigir a la página de paquetes
+        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
     };
 
     const handleCancel = () => {
-        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=paquetes`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
     };
 
     const handleFeaturedClick = () => {

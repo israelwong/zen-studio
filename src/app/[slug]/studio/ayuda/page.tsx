@@ -1,6 +1,6 @@
 'use client';
 
-import { GuiaDeUso } from '@/app/[slug]/studio/commercial/catalogo/guia';
+import { GuiaDeUso } from './GuiaDeUso';
 
 export default function AyudaPage() {
     return (
