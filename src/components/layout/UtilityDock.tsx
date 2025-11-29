@@ -40,12 +40,6 @@ export function UtilityDock({
       action: onContactsClick,
     },
     {
-      id: 'catalog',
-      icon: ShoppingBag,
-      label: 'Catálogo',
-      href: `/${studioSlug}/studio/commercial/catalogo`,
-    },
-    {
       id: 'personal',
       icon: Users,
       label: 'Personal',

@@ -126,11 +126,6 @@ export function CommandMenu({
           href: `/${studioSlug}/studio/commercial/promises`,
         },
         {
-          label: 'Catálogo',
-          icon: ShoppingBag,
-          href: `/${studioSlug}/studio/commercial/catalogo`,
-        },
-        {
           label: 'Paquetes',
           icon: Users,
           href: `/${studioSlug}/studio/commercial/paquetes`,
