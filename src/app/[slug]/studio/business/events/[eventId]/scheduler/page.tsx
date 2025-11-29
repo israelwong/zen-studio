@@ -23,13 +23,18 @@ export default function EventSchedulerPage() {
   // Calcular progreso y estadísticas de tareas
   const taskStats = useMemo(() => {
     if (!eventData?.cotizaciones || !dateRange) {
-      return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0 };
+      return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0, withoutCrew: 0 };
     }
 
     const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const total = allItems.length;
     const itemsWithTasks = allItems.filter(item => item.gantt_task);
-    const unassigned = total - itemsWithTasks.length;
+    const unassigned = total - itemsWithTasks.length; // Items sin tarea asignada
+
+    // Items con tarea pero sin crew member asignado
+    const withoutCrew = itemsWithTasks.filter(item =>
+      !item.gantt_task?.completed_at && !item.assigned_to_crew_member_id
+    ).length;
 
     const completed = itemsWithTasks.filter(item => item.gantt_task?.completed_at).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -59,7 +64,7 @@ export default function EventSchedulerPage() {
       }
     });
 
-    return { completed, total, percentage, delayed, inProcess, pending, unassigned };
+    return { completed, total, percentage, delayed, inProcess, pending, unassigned, withoutCrew };
   }, [eventData, dateRange]);
 
   const loadEvent = useCallback(async () => {
@@ -308,13 +313,24 @@ export default function EventSchedulerPage() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-zinc-500 font-medium">Tareas:</span>
                   <div className="flex items-center gap-2">
-                    {/* Sin asignar */}
+                    {/* Sin slot asignado */}
                     {taskStats.unassigned > 0 && (
                       <ZenBadge
                         variant="outline"
                         className="gap-1.5 px-2 py-1 bg-zinc-900 text-zinc-500 border-zinc-800"
                       >
-                        <span className="text-xs font-medium">{taskStats.unassigned} Sin asignar</span>
+                        <span className="text-xs font-medium">{taskStats.unassigned} Sin slot</span>
+                      </ZenBadge>
+                    )}
+
+                    {/* Sin crew member asignado */}
+                    {taskStats.withoutCrew > 0 && (
+                      <ZenBadge
+                        variant="outline"
+                        className="gap-1.5 px-2 py-1 bg-amber-950/30 text-amber-400 border-amber-800/50"
+                      >
+                        <Users className="h-3 w-3" />
+                        <span className="text-xs font-medium">{taskStats.withoutCrew} Sin personal</span>
                       </ZenBadge>
                     )}
 

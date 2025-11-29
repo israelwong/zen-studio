@@ -66,19 +66,29 @@ export function EventScheduler({
 
   // Callback para actualizar un item específico en localEventData
   const handleItemUpdate = useCallback((updatedItem: CotizacionItem) => {
-    setLocalEventData(prev => ({
-      ...prev,
-      cotizaciones: prev.cotizaciones?.map(cotizacion => ({
-        ...cotizacion,
-        cotizacion_items: cotizacion.cotizacion_items?.map(item => {
-          if (item.id === updatedItem.id) {
-            return updatedItem;
-          }
-          return item;
-        }),
-      })),
-    }));
-  }, []);
+    let updatedData: EventoDetalle;
+    setLocalEventData(prev => {
+      const newData = {
+        ...prev,
+        cotizaciones: prev.cotizaciones?.map(cotizacion => ({
+          ...cotizacion,
+          cotizacion_items: cotizacion.cotizacion_items?.map(item => {
+            if (item.id === updatedItem.id) {
+              return updatedItem;
+            }
+            return item;
+          }),
+        })),
+      };
+      updatedData = newData;
+      return newData;
+    });
+
+    // Notificar al padre para actualizar stats
+    if (updatedData! && onDataChange) {
+      onDataChange(updatedData);
+    }
+  }, [onDataChange]);
 
   // Construir map de items desde cotizaciones aprobadas
   // Usar localEventData para reflejar cambios inmediatamente
@@ -160,7 +170,6 @@ export function EventScheduler({
         }
 
         toast.success('Tarea actualizada correctamente');
-        router.refresh();
       } catch (error) {
         console.error('Error updating task:', error);
         throw error;
@@ -231,7 +240,6 @@ export function EventScheduler({
         }
 
         toast.success('Slot asignado correctamente');
-        router.refresh();
       } catch (error) {
         console.error('Error creating task:', error);
         toast.error('Error al asignar el slot');
@@ -280,7 +288,6 @@ export function EventScheduler({
         }
 
         toast.success('Slot vaciado correctamente');
-        router.refresh();
       } catch (error) {
         console.error('Error deleting task:', error);
         toast.error('Error al vaciar el slot');
@@ -305,27 +312,36 @@ export function EventScheduler({
           }
 
           // Actualización optimista
-          setLocalEventData(prev => ({
-            ...prev,
-            cotizaciones: prev.cotizaciones?.map(cotizacion => ({
-              ...cotizacion,
-              cotizacion_items: cotizacion.cotizacion_items?.map(item => {
-                if (item.gantt_task?.id === taskId) {
-                  return {
-                    ...item,
-                    gantt_task: item.gantt_task ? {
-                      ...item.gantt_task,
-                      completed_at: null,
-                    } : null,
-                  };
-                }
-                return item;
-              }),
-            })),
-          }));
+          let updatedDataUncomplete: EventoDetalle;
+          setLocalEventData(prev => {
+            const newData = {
+              ...prev,
+              cotizaciones: prev.cotizaciones?.map(cotizacion => ({
+                ...cotizacion,
+                cotizacion_items: cotizacion.cotizacion_items?.map(item => {
+                  if (item.gantt_task?.id === taskId) {
+                    return {
+                      ...item,
+                      gantt_task: item.gantt_task ? {
+                        ...item.gantt_task,
+                        completed_at: null,
+                      } : null,
+                    };
+                  }
+                  return item;
+                }),
+              })),
+            };
+            updatedDataUncomplete = newData;
+            return newData;
+          });
+
+          // Notificar al padre para actualizar stats
+          if (updatedDataUncomplete! && onDataChange) {
+            onDataChange(updatedDataUncomplete);
+          }
 
           toast.success('Tarea marcada como pendiente');
-          router.refresh();
         } catch (error) {
           console.error('Error toggling complete:', error);
           toast.error('Error al actualizar el estado');
@@ -376,28 +392,33 @@ export function EventScheduler({
         }
 
         // Actualización optimista
-        setLocalEventData(prev => ({
-          ...prev,
-          cotizaciones: prev.cotizaciones?.map(cotizacion => ({
-            ...cotizacion,
-            cotizacion_items: cotizacion.cotizacion_items?.map(item => {
-              if (item.gantt_task?.id === taskId) {
-                return {
-                  ...item,
-                  gantt_task: item.gantt_task ? {
-                    ...item.gantt_task,
-                    completed_at: new Date(),
-                  } : null,
-                };
-              }
-              return item;
-            }),
-          })),
-        }));
+        let updatedData: EventoDetalle;
+        setLocalEventData(prev => {
+          const newData = {
+            ...prev,
+            cotizaciones: prev.cotizaciones?.map(cotizacion => ({
+              ...cotizacion,
+              cotizacion_items: cotizacion.cotizacion_items?.map(item => {
+                if (item.gantt_task?.id === taskId) {
+                  return {
+                    ...item,
+                    gantt_task: item.gantt_task ? {
+                      ...item.gantt_task,
+                      completed_at: isCompleted ? new Date().toISOString() : null,
+                    } : null,
+                  };
+                }
+                return item;
+              }),
+            })),
+          };
+          updatedData = newData;
+          return newData;
+        });
 
-        // Notificar al padre
-        if (onDataChange) {
-          onDataChange(localEventData);
+        // Notificar al padre para actualizar stats
+        if (updatedData! && onDataChange) {
+          onDataChange(updatedData);
         }
 
         // Debug: ver qué está recibiendo
@@ -418,7 +439,6 @@ export function EventScheduler({
         } else {
           toast.success('Tarea completada');
         }
-        router.refresh();
       } catch (error) {
         console.error('Error toggling complete:', error);
         toast.error('Error al actualizar el estado');
