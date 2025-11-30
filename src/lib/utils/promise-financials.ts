@@ -8,6 +8,8 @@ export interface PromiseFinancials {
     id: string;
     name: string;
     price: number;
+    discount: number | null;
+    precioFinal: number; // price - discount
     pagado: number;
     pendiente: number;
   }>;
@@ -36,11 +38,14 @@ export async function getPromiseFinancials(
     },
   });
 
-  // 2. Calcular total a pagar (suma de cotizaciones aprobadas)
-  const contractValue = cotizaciones.reduce(
-    (sum, c) => sum + Number(c.price),
-    0
-  );
+  // 2. Calcular total a pagar (suma de cotizaciones aprobadas considerando descuentos)
+  // Precio final = price - discount (si discount existe)
+  const contractValue = cotizaciones.reduce((sum, c) => {
+    const precioBase = Number(c.price);
+    const descuento = c.discount ? Number(c.discount) : 0;
+    const precioFinal = precioBase - descuento;
+    return sum + precioFinal;
+  }, 0);
 
   // 3. Calcular total pagado (suma de todos los pagos válidos)
   const paidAmount = cotizaciones.reduce(
@@ -54,13 +59,18 @@ export async function getPromiseFinancials(
 
   // 5. Detalle por cotización
   const cotizacionesDetalle = cotizaciones.map((c) => {
+    const precioBase = Number(c.price);
+    const descuento = c.discount ? Number(c.discount) : 0;
+    const precioFinal = precioBase - descuento;
     const pagado = c.pagos.reduce((sum, p) => sum + Number(p.amount), 0);
     return {
       id: c.id,
       name: c.name,
-      price: Number(c.price),
+      price: precioBase,
+      discount: c.discount,
+      precioFinal,
       pagado,
-      pendiente: Number(c.price) - pagado,
+      pendiente: precioFinal - pagado,
     };
   });
 
@@ -89,6 +99,7 @@ export async function getPromisePaidAmount(promiseId: string): Promise<number> {
 
 /**
  * Calcula el contract value de una promesa desde cotizaciones aprobadas
+ * Considera descuentos aplicados a las cotizaciones
  */
 export async function getPromiseContractValue(
   promiseId: string
@@ -98,9 +109,13 @@ export async function getPromiseContractValue(
       promise_id: promiseId,
       status: { in: ['aprobada', 'autorizada', 'approved'] },
     },
-    select: { price: true },
+    select: { price: true, discount: true },
   });
 
-  return cotizaciones.reduce((sum, c) => sum + Number(c.price), 0);
+  return cotizaciones.reduce((sum, c) => {
+    const precioBase = Number(c.price);
+    const descuento = c.discount ? Number(c.discount) : 0;
+    return sum + (precioBase - descuento);
+  }, 0);
 }
 

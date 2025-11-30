@@ -89,6 +89,14 @@ export function EventDetail({
 
         {/* Columna 3: Agenda + Pagos */}
         <div className="lg:col-span-1 space-y-6">
+
+          <EventAgendamiento
+            studioSlug={studioSlug}
+            eventId={eventId}
+            eventDate={eventData.promise?.event_date || eventData.event_date}
+            onAgendaUpdated={onEventUpdated}
+          />
+
           <EventPaymentsCard
             studioSlug={studioSlug}
             cotizacionId={eventData.cotizacion?.id}
@@ -105,12 +113,7 @@ export function EventDetail({
             onPaymentAdded={onEventUpdated}
           />
 
-          <EventAgendamiento
-            studioSlug={studioSlug}
-            eventId={eventId}
-            eventDate={eventData.promise?.event_date || eventData.event_date}
-            onAgendaUpdated={onEventUpdated}
-          />
+
         </div>
       </div>
     </div>

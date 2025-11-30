@@ -334,8 +334,24 @@ export function PaymentReceipt({
                   <h3 className="text-sm font-semibold text-zinc-200">Balance</h3>
                 </div>
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-zinc-400">Total</span>
+                  {data.balance.price !== undefined && data.balance.discount && data.balance.discount > 0 && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-400">Precio Base</span>
+                        <span className="text-xs font-medium text-zinc-300">
+                          {formatAmount(data.balance.price)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-400">Descuento</span>
+                        <span className="text-xs font-medium text-red-400">
+                          -{formatAmount(data.balance.discount)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-700/30">
+                    <span className="text-xs text-zinc-400">Total a Pagar</span>
                     <span className="text-sm font-semibold text-zinc-200">
                       {formatAmount(data.balance.total)}
                     </span>
@@ -690,12 +706,38 @@ export function PaymentReceipt({
                   borderRadius: '8px',
                   border: '1px solid #f3f4f6'
                 }}>
+                  {data.balance.price !== undefined && data.balance.discount && data.balance.discount > 0 && (
+                    <>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '14px',
+                        marginBottom: '8px',
+                        gap: '16px'
+                      }}>
+                        <span style={{ color: '#6b7280', margin: 0 }}>Precio Base:</span>
+                        <span style={{ fontWeight: '500', color: '#4b5563', margin: 0, textAlign: 'right' }}>{formatAmount(data.balance.price)}</span>
+                      </div>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        fontSize: '14px',
+                        marginBottom: '12px',
+                        gap: '16px'
+                      }}>
+                        <span style={{ color: '#6b7280', margin: 0 }}>Descuento:</span>
+                        <span style={{ fontWeight: '500', color: '#dc2626', margin: 0, textAlign: 'right' }}>-{formatAmount(data.balance.discount)}</span>
+                      </div>
+                    </>
+                  )}
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     fontSize: '14px',
                     marginBottom: '12px',
-                    gap: '16px'
+                    gap: '16px',
+                    borderTop: data.balance.price !== undefined && data.balance.discount && data.balance.discount > 0 ? '1px solid #e5e7eb' : 'none',
+                    paddingTop: data.balance.price !== undefined && data.balance.discount && data.balance.discount > 0 ? '12px' : '0'
                   }}>
                     <span style={{ color: '#4b5563', margin: 0 }}>Total a Pagar:</span>
                     <span style={{ fontWeight: '600', color: '#111827', margin: 0, textAlign: 'right' }}>{formatAmount(data.balance.total)}</span>

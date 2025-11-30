@@ -1073,6 +1073,7 @@ export async function obtenerEventoDetalle(
       cotizaciones: evento.cotizaciones.map(cot => ({
         ...cot,
         price: Number(cot.price),
+        discount: cot.discount ? Number(cot.discount) : null,
         cotizacion_items: cot.cotizacion_items.map(item => ({
           ...item,
           unit_price: item.unit_price ? Number(item.unit_price) : 0,

@@ -32,6 +32,8 @@ export interface ReceiptData {
     total: number;
     paid: number;
     pending: number;
+    price?: number; // Precio base de la cotización
+    discount?: number | null; // Descuento aplicado
   };
   event?: {
     name: string | null;
@@ -83,7 +85,12 @@ export async function obtenerDatosComprobante(
       },
       include: {
         cotizaciones: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            discount: true,
+            status: true,
             contact: {
               select: {
                 id: true,
@@ -127,8 +134,10 @@ export async function obtenerDatosComprobante(
       return { success: false, error: 'Cotización no encontrada' };
     }
 
-    // Calcular balance
-    const total = Number(cotizacion.price);
+    // Calcular balance considerando descuentos
+    const precioBase = Number(cotizacion.price);
+    const descuento = cotizacion.discount ? Number(cotizacion.discount) : 0;
+    const total = precioBase - descuento; // Precio final a pagar
     const pagos = cotizacion.pagos.map(p => Number(p.amount));
     const paid = pagos.reduce((sum, amount) => sum + amount, 0);
     const pending = total - paid;
@@ -177,6 +186,8 @@ export async function obtenerDatosComprobante(
           total,
           paid,
           pending,
+          price: precioBase,
+          discount: cotizacion.discount ? Number(cotizacion.discount) : null,
         },
         event: eventData,
       },
