@@ -6,10 +6,14 @@ import {
   createCotizacionSchema,
   updateCotizacionSchema,
   autorizarCotizacionSchema,
+  crearRevisionCotizacionSchema,
+  autorizarRevisionCotizacionSchema,
   type CreateCotizacionData,
   type UpdateCotizacionData,
   type CotizacionResponse,
   type AutorizarCotizacionData,
+  type CrearRevisionCotizacionData,
+  type AutorizarRevisionCotizacionData,
 } from '@/lib/actions/schemas/cotizaciones-schemas';
 import { guardarEstructuraCotizacionAutorizada } from './cotizacion-pricing';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';

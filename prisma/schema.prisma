@@ -1853,6 +1853,10 @@ model studio_cotizaciones {
   tyc_accepted_at                        DateTime?
   payment_promise_date                   DateTime?
   payment_registered                     Boolean                                      @default(false)
+  // Campos para sistema de revisiones
+  revision_of_id                         String?
+  revision_number                        Int                                          @default(1)
+  revision_status                        String?                                      // 'active', 'replaced', 'superseded', 'pending_revision'
   cotizacion_costos                      studio_cotizacion_costos[]
   cotizacion_items                       studio_cotizacion_items[]
   cotizacion_visitas                     studio_cotizacion_visitas[]
@@ -1876,6 +1880,8 @@ model studio_cotizaciones {
   @@index([selected_at])
   @@index([paquete_id])
   @@index([payment_registered])
+  @@index([revision_of_id])
+  @@index([revision_status])
 }
 
 model studio_cotizacion_items {
