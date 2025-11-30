@@ -713,8 +713,35 @@ export function EventCotizacionesCard({
         />
       )}
 
+      {/* Modal informativo antes de crear revisión */}
+      {cotizacionParaRevision && (
+        <InfoCrearRevisionModal
+          isOpen={showInfoCrearRevisionModal}
+          onClose={() => {
+            setShowInfoCrearRevisionModal(false);
+            setCotizacionParaRevision(null);
+          }}
+          onConfirm={handleConfirmarCrearRevision}
+          cotizacion={cotizacionParaRevision}
+        />
+      )}
+
+      {/* Modal para crear revisión */}
+      {cotizacionParaRevision && (
+        <CrearRevisionCotizacionModal
+          isOpen={showCrearRevisionModal}
+          onClose={() => {
+            setShowCrearRevisionModal(false);
+            setCotizacionParaRevision(null);
+          }}
+          studioSlug={studioSlug}
+          cotizacionOriginal={cotizacionParaRevision}
+          onSuccess={handleRevisionCreada}
+        />
+      )}
+
       {/* Modal para autorizar revisión */}
-      {revisionParaAutorizar && (
+      {revisionParaAutorizar && promiseId && (
         <AutorizarRevisionModal
           isOpen={showAutorizarRevisionModal}
           onClose={() => {
@@ -723,7 +750,7 @@ export function EventCotizacionesCard({
           }}
           studioSlug={studioSlug}
           revision={revisionParaAutorizar}
-          promiseId={promiseId || undefined}
+          promiseId={promiseId}
           onSuccess={handleRevisionAutorizada}
         />
       )}
