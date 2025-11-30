@@ -102,25 +102,33 @@ export function PromiseQuotesPanelCard({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const getStatusVariant = (status: string): 'default' | 'destructive' | 'secondary' | 'success' => {
-    if (status === 'autorizada') {
+  const getStatusVariant = (status: string, revisionStatus?: string | null): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info' => {
+    // Si es revisión (pendiente o activa), usar ámbar
+    if (revisionStatus === 'pending_revision' || revisionStatus === 'active') {
+      return 'warning';
+    }
+    // Si está aprobada y NO es revisión, usar verde
+    if (status === 'aprobada' || status === 'approved') {
       return 'success';
     }
-    if (status === 'aprobada' || status === 'approved') {
-      return 'default';
-    }
+    // Rechazada/Cancelada
     if (status === 'rechazada' || status === 'rejected' || status === 'cancelada') {
       return 'destructive';
     }
+    // Pendiente y otros estados: zinc
     return 'secondary';
   };
 
-  const getStatusLabel = (status: string): string => {
+  const getStatusLabel = (status: string, revisionStatus?: string | null): string => {
+    // Si es revisión, mostrar "Revisión" independiente del status
+    if (revisionStatus === 'pending_revision') {
+      return 'Revisión';
+    }
+    if (revisionStatus === 'active') {
+      return 'Revisión Activa';
+    }
     if (status === 'aprobada' || status === 'approved') {
       return 'Aprobada';
-    }
-    if (status === 'autorizada') {
-      return 'Autorizada';
     }
     if (status === 'rechazada' || status === 'rejected') {
       return 'Rechazada';
@@ -143,6 +151,13 @@ export function PromiseQuotesPanelCard({
       toast.error('No se puede editar la cotización sin una promesa asociada');
       return;
     }
+
+    // Si es revisión pendiente, redirigir a página de edición de revisión
+    if (cotizacion.revision_of_id && cotizacion.revision_status === 'pending_revision') {
+      router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/revision`);
+      return;
+    }
+
     const params = new URLSearchParams();
     if (contactId) {
       params.set('contactId', contactId);
@@ -458,10 +473,17 @@ export function PromiseQuotesPanelCard({
                 </ZenButton>
               </div>
             ) : (
-              <h4 className={`text-sm font-medium truncate mb-1 ${cotizacion.archived ? 'text-zinc-500' : 'text-zinc-200'
-                }`}>
-                {cotizacion.name}
-              </h4>
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className={`text-sm font-medium truncate ${cotizacion.archived ? 'text-zinc-500' : 'text-zinc-200'
+                  }`}>
+                  {cotizacion.name}
+                </h4>
+                {cotizacion.revision_of_id && cotizacion.revision_status === 'pending_revision' && (
+                  <span className="text-[10px] text-blue-400 bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-700/30">
+                    Revisión
+                  </span>
+                )}
+              </div>
             )}
             {cotizacion.description && (
               <p className={`text-xs line-clamp-1 mb-2 ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-400'
@@ -476,10 +498,13 @@ export function PromiseQuotesPanelCard({
                   ${cotizacion.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 </span>
                 <ZenBadge
-                  variant={getStatusVariant(cotizacion.status)}
+                  variant={getStatusVariant(cotizacion.status, cotizacion.revision_status)}
                   className="text-[10px] px-1.5 py-0.5 rounded-full"
                 >
-                  {getStatusLabel(cotizacion.status)}
+                  {getStatusLabel(cotizacion.status, cotizacion.revision_status)}
+                  {cotizacion.revision_number && cotizacion.revision_status === 'pending_revision' && (
+                    <span className="ml-1">#{cotizacion.revision_number}</span>
+                  )}
                 </ZenBadge>
               </div>
               <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-500'}`}>

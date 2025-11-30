@@ -4,7 +4,7 @@ import { ZEN_COLORS } from '../tokens/colors';
 import { ZEN_SPACING } from '../tokens/spacing';
 
 export interface ZenBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning';
+  variant?: 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
 }
@@ -15,7 +15,8 @@ const badgeVariants = {
   destructive: 'bg-red-900/20 text-red-400 border-red-800/30',
   outline: 'border-zinc-600 text-zinc-300 bg-transparent',
   success: 'bg-green-900/20 text-green-400 border-green-800/30',
-  warning: 'bg-yellow-900/20 text-yellow-400 border-yellow-800/30'
+  warning: 'bg-yellow-900/20 text-yellow-400 border-yellow-800/30',
+  info: 'bg-blue-900/30 text-blue-400 border-blue-700/50'
 };
 
 const badgeSizes = {
