@@ -24,6 +24,7 @@ interface CotizacionFormProps {
   redirectOnSuccess?: string;
   onLoadingChange?: (loading: boolean) => void;
   hideActionButtons?: boolean;
+  onAfterSave?: () => void;
 }
 
 export function CotizacionForm({
@@ -35,6 +36,7 @@ export function CotizacionForm({
   redirectOnSuccess,
   onLoadingChange,
   hideActionButtons = false,
+  onAfterSave,
   onCreateAsRevision,
   revisionOriginalId,
 }: CotizacionFormProps & {
@@ -587,6 +589,12 @@ export function CotizacionForm({
 
         toast.success('Cotización actualizada exitosamente');
         setLoading(false);
+
+        // Ejecutar callback si existe
+        if (onAfterSave) {
+          onAfterSave();
+          return;
+        }
 
         if (redirectOnSuccess) {
           router.push(redirectOnSuccess);

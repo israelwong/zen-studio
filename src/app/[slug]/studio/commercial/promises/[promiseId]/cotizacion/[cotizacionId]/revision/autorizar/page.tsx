@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { getCotizacionById } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { getPromiseById } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 import { toast } from 'sonner';
 import { ResumenCotizacion } from '../../autorizar/components/ResumenCotizacion';
+import { DatosContratante } from '../../autorizar/components/DatosContratante';
 import { CondicionesComercialesSelector } from '../../autorizar/components/CondicionesComercialesSelector';
 import { autorizarRevisionCotizacion } from '@/lib/actions/studio/commercial/promises/cotizaciones-revision.actions';
 
@@ -36,6 +37,14 @@ export default function AutorizarRevisionPage() {
     id: string;
     name: string;
   } | null>(null);
+  const [promise, setPromise] = useState<{
+    contact_name: string;
+    contact_phone: string;
+    contact_email: string | null;
+    event_type_name: string | null;
+    interested_dates: string[] | null;
+    defined_date: Date | null;
+  } | null>(null);
 
   // Estados del formulario
   const [condicionComercialId, setCondicionComercialId] = useState<string | null>(null);
@@ -48,7 +57,10 @@ export default function AutorizarRevisionPage() {
     const loadData = async () => {
       try {
         setLoading(true);
-        const cotizacionResult = await getCotizacionById(cotizacionId, studioSlug);
+        const [cotizacionResult, promiseResult] = await Promise.all([
+          getCotizacionById(cotizacionId, studioSlug),
+          getPromiseById(promiseId),
+        ]);
 
         if (cotizacionResult.success && cotizacionResult.data) {
           setCotizacion({
@@ -76,6 +88,8 @@ export default function AutorizarRevisionPage() {
                 setCotizacion({
                   ...cotizacionResult.data,
                   evento_id: originalResult.data.evento_id,
+                  revision_of_id: cotizacionResult.data.revision_of_id || null,
+                  revision_number: cotizacionResult.data.revision_number || null,
                 });
               }
             }
@@ -84,6 +98,19 @@ export default function AutorizarRevisionPage() {
           toast.error(cotizacionResult.error || 'Revisión no encontrada');
           router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
           return;
+        }
+
+        if (promiseResult.success && promiseResult.data) {
+          setPromise({
+            contact_name: promiseResult.data.contact_name,
+            contact_phone: promiseResult.data.contact_phone,
+            contact_email: promiseResult.data.contact_email,
+            event_type_name: promiseResult.data.event_type_name,
+            interested_dates: promiseResult.data.interested_dates,
+            defined_date: promiseResult.data.defined_date,
+          });
+        } else {
+          toast.error(promiseResult.error || 'Error al cargar datos de la promesa');
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -189,7 +216,7 @@ export default function AutorizarRevisionPage() {
               <ZenCardDescription>
                 {cotizacionOriginal && (
                   <span className="text-zinc-400">
-                    Esta revisión reemplazará la cotización "{cotizacionOriginal.name}" una vez autorizada.
+                    Esta revisión reemplazará la cotización &ldquo;{cotizacionOriginal.name}&rdquo; una vez autorizada.
                   </span>
                 )}
               </ZenCardDescription>
@@ -201,11 +228,14 @@ export default function AutorizarRevisionPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Columna 1: Resumen de Cotización */}
             <div className="space-y-6">
-              <ResumenCotizacion cotizacion={cotizacion} />
+              <ResumenCotizacion cotizacion={cotizacion} isRevision={true} />
             </div>
 
             {/* Columna 2: Formulario de Autorización */}
             <div className="space-y-6">
+              {/* Datos del Contratante */}
+              {promise && <DatosContratante promise={promise} />}
+
               {/* Condiciones Comerciales */}
               <CondicionesComercialesSelector
                 studioSlug={studioSlug}
@@ -258,7 +288,7 @@ export default function AutorizarRevisionPage() {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
                 <ZenButton
                   variant="ghost"
-                  onClick={() => router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacionId}/revision`)}
+                  onClick={() => router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`)}
                   disabled={isSubmitting || isRedirecting}
                 >
                   Cancelar

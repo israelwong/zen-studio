@@ -340,7 +340,12 @@ export function PromiseQuotesPanelCard({
       return;
     }
 
-    router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/autorizar`);
+    // Redirigir según tipo: revisión → /revision/autorizar, normal → /autorizar
+    const authorizePath = isRevision
+      ? `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/revision/autorizar`
+      : `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/autorizar`;
+
+    router.push(authorizePath);
   };
 
   const handleCancelOnly = async () => {

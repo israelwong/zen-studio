@@ -21,6 +21,7 @@ interface ResumenCotizacionProps {
   studioSlug?: string;
   promiseId?: string;
   onEditar?: () => void;
+  isRevision?: boolean;
 }
 
 /**
@@ -30,7 +31,7 @@ interface ResumenCotizacionProps {
  * la función `autorizarCotizacion` automáticamente archiva todas las otras
  * cotizaciones asociadas a la misma promesa para mantener solo una cotización activa.
  */
-export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, promiseId: propPromiseId, onEditar: propOnEditar }: ResumenCotizacionProps) {
+export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, promiseId: propPromiseId, onEditar: propOnEditar, isRevision = false }: ResumenCotizacionProps) {
   const params = useParams();
   const router = useRouter();
   const studioSlug = propStudioSlug || (params.slug as string);
@@ -99,7 +100,11 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
     if (propOnEditar) {
       propOnEditar();
     } else {
-      router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}`);
+      // Redirigir según contexto: revisión → /revision, normal → edición normal
+      const editPath = isRevision
+        ? `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/revision`
+        : `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}`;
+      router.push(editPath);
     }
   };
 

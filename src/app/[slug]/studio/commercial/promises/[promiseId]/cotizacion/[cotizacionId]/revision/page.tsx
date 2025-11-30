@@ -213,24 +213,33 @@ export default function EditarRevisionPage() {
   };
 
   const handleAutorizarRevision = async () => {
-    if (isNewRevision) {
-      // Si es nueva revisión, establecer acción pendiente usando ref para acceso inmediato
-      pendingActionRef.current = 'autorizar';
-      setPendingAction('autorizar');
-      const form = document.querySelector('form') as HTMLFormElement;
-      if (form && typeof form.requestSubmit === 'function') {
-        form.requestSubmit();
-      } else if (form) {
-        // Fallback para navegadores que no soportan requestSubmit
-        const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
-        form.dispatchEvent(submitEvent);
-      }
-    } else {
-      // Si ya existe la revisión, redirigir directamente a autorizar
-      router.push(
-        `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacionId}/revision/autorizar`
-      );
+    // Establecer acción pendiente para guardar antes de autorizar
+    pendingActionRef.current = 'autorizar';
+    setPendingAction('autorizar');
+
+    // Disparar submit del formulario para guardar cambios
+    const form = document.querySelector('form') as HTMLFormElement;
+    if (form && typeof form.requestSubmit === 'function') {
+      form.requestSubmit();
+    } else if (form) {
+      // Fallback para navegadores que no soportan requestSubmit
+      const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+      form.dispatchEvent(submitEvent);
     }
+  };
+
+  const handleAfterSave = () => {
+    // Redirigir según la acción pendiente
+    const action = pendingActionRef.current;
+    if (action === 'autorizar') {
+      router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacionId}/revision/autorizar`);
+    } else {
+      router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+      router.refresh();
+    }
+    // Limpiar acción pendiente
+    pendingActionRef.current = null;
+    setPendingAction(null);
   };
 
   if (loading) {
@@ -310,10 +319,10 @@ export default function EditarRevisionPage() {
             studioSlug={studioSlug}
             promiseId={promiseId}
             cotizacionId={isNewRevision ? undefined : cotizacionId}
-            redirectOnSuccess={`/${studioSlug}/studio/commercial/promises/${promiseId}`}
             hideActionButtons={true}
             revisionOriginalId={originalId || cotizacion?.revision_of_id || null}
             onCreateAsRevision={isNewRevision ? handleCreateRevision : undefined}
+            onAfterSave={!isNewRevision ? handleAfterSave : undefined}
           />
 
           {/* Botones de acción personalizados */}
@@ -337,7 +346,7 @@ export default function EditarRevisionPage() {
               className="bg-emerald-600 hover:bg-emerald-700 text-white focus-visible:ring-emerald-500/50"
               loading={isCreatingRevision}
             >
-              Autorizar Revisión
+              Pasar a Autorización
             </ZenButton>
           </div>
         </ZenCardContent>
