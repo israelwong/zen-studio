@@ -105,6 +105,7 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
 
     const handleMemberSelect = async (memberId: string | null) => {
         const selectedMember = memberId ? members.find(m => m.id === memberId) : null;
+        let payrollNotified = false;
 
         await updateCrewMember(
             memberId,
@@ -118,10 +119,23 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                 if (!result.success) {
                     throw new Error(result.error || 'Error al asignar personal');
                 }
+
+                // Si se asignó personal y la tarea está completada, mostrar notificación de nómina
+                if (memberId && isTaskCompleted && result.payrollResult) {
+                    payrollNotified = true;
+                    if (result.payrollResult.success && result.payrollResult.personalNombre) {
+                        toast.success(`Personal asignado. Se generó pago de nómina para ${result.payrollResult.personalNombre}`);
+                    } else {
+                        toast.warning(`Personal asignado. No se generó pago de nómina: ${result.payrollResult.error || 'Error desconocido'}`);
+                    }
+                }
             }
         );
 
-        toast.success('Personal asignado correctamente');
+        // Solo mostrar toast genérico si no se mostró el de nómina
+        if (!payrollNotified) {
+            toast.success('Personal asignado correctamente');
+        }
         setSearchTerm('');
     };
 
@@ -327,19 +341,14 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                                     <label className="text-sm font-medium text-zinc-400">
                                         Programación:
                                     </label>
-                                    <div className="text-xs text-zinc-500 space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span>Inicio:</span>
+                                    <div className="text-xs text-zinc-500">
+                                        {taskStartDate && taskEndDate ? (
                                             <span className="text-zinc-300">
-                                                {taskStartDate ? format(taskStartDate, "d 'de' MMMM", { locale: es }) : '—'}
+                                                {format(taskStartDate, "d MMM", { locale: es })} - {format(taskEndDate, "d MMM", { locale: es })}
                                             </span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <span>Fin:</span>
-                                            <span className="text-zinc-300">
-                                                {taskEndDate ? format(taskEndDate, "d 'de' MMMM", { locale: es }) : '—'}
-                                            </span>
-                                        </div>
+                                        ) : (
+                                            <span className="text-zinc-400">—</span>
+                                        )}
                                     </div>
 
                                     {/* Checkbox de completado */}
@@ -413,15 +422,17 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                                     Asignar personal:
                                 </label>
 
-                                {/* Input de búsqueda */}
-                                <ZenInput
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Buscar personal..."
-                                    className="w-full"
-                                />
+                                {/* Mostrar input solo si hay 5 o más miembros */}
+                                {members.length >= 5 && (
+                                    <ZenInput
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        placeholder="Buscar personal..."
+                                        className="w-full"
+                                    />
+                                )}
 
-                                {/* Lista de coincidencias o botón crear */}
+                                {/* Lista de sugerencias o botón crear */}
                                 {loadingMembers ? (
                                     <div className="text-xs text-zinc-500 py-2">Cargando...</div>
                                 ) : searchTerm.trim() && filteredMembers.length === 0 ? (
@@ -434,43 +445,50 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                                         Registrar personal
                                     </ZenButton>
                                 ) : (
-                                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
-                                        {/* Lista de miembros filtrados */}
-                                        {(searchTerm.trim() ? filteredMembers : members).slice(0, 5).map((member) => (
-                                            <button
-                                                key={member.id}
-                                                onClick={() => {
-                                                    handleMemberSelect(member.id);
-                                                    setSearchTerm('');
-                                                }}
-                                                className={cn(
-                                                    'w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs hover:bg-zinc-800 rounded transition-colors',
-                                                    selectedMemberId === member.id && 'bg-zinc-800'
-                                                )}
-                                            >
-                                                {/* Avatar */}
-                                                <ZenAvatar className="h-6 w-6 flex-shrink-0">
-                                                    <ZenAvatarFallback className="bg-blue-600/20 text-blue-400 text-[10px]">
-                                                        {getInitials(member.name)}
-                                                    </ZenAvatarFallback>
-                                                </ZenAvatar>
-
-                                                {/* Check indicator */}
-                                                <div className="h-3 w-3 flex items-center justify-center flex-shrink-0">
-                                                    {selectedMemberId === member.id && (
-                                                        <Check className="h-3 w-3 text-emerald-400" />
+                                    <div className={cn(
+                                        "space-y-1",
+                                        members.length >= 5 && "max-h-[160px] overflow-y-auto"
+                                    )}>
+                                        {/* Lista de miembros */}
+                                        {/* Si hay menos de 5: mostrar todos sin scroll */}
+                                        {/* Si hay 5 o más: mostrar máximo 4 con scroll */}
+                                        {(searchTerm.trim() ? filteredMembers : members)
+                                            .slice(0, members.length >= 5 ? 4 : undefined)
+                                            .map((member) => (
+                                                <button
+                                                    key={member.id}
+                                                    onClick={() => {
+                                                        handleMemberSelect(member.id);
+                                                        setSearchTerm('');
+                                                    }}
+                                                    className={cn(
+                                                        'w-full flex items-center gap-1.5 px-2 py-1.5 text-left text-xs hover:bg-zinc-800 rounded transition-colors',
+                                                        selectedMemberId === member.id && 'bg-zinc-800'
                                                     )}
-                                                </div>
+                                                >
+                                                    {/* Avatar */}
+                                                    <ZenAvatar className="h-6 w-6 flex-shrink-0">
+                                                        <ZenAvatarFallback className="bg-blue-600/20 text-blue-400 text-[10px]">
+                                                            {getInitials(member.name)}
+                                                        </ZenAvatarFallback>
+                                                    </ZenAvatar>
 
-                                                {/* Información */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-zinc-300 truncate">{member.name}</div>
-                                                    <div className="text-[10px] text-zinc-500 truncate">
-                                                        {member.tipo}
+                                                    {/* Check indicator */}
+                                                    <div className="h-3 w-3 flex items-center justify-center flex-shrink-0">
+                                                        {selectedMemberId === member.id && (
+                                                            <Check className="h-3 w-3 text-emerald-400" />
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </button>
-                                        ))}
+
+                                                    {/* Información */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-zinc-300 truncate">{member.name}</div>
+                                                        <div className="text-[10px] text-zinc-500 truncate">
+                                                            {member.tipo}
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            ))}
 
                                         {/* Botón crear si hay búsqueda y no hay coincidencias */}
                                         {searchTerm.trim() && filteredMembers.length === 0 && (

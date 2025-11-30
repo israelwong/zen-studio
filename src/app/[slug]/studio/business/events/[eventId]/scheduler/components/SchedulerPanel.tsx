@@ -63,7 +63,6 @@ export const SchedulerPanel = React.memo(({
       try {
         await onTaskUpdate(taskId, startDate, endDate);
       } catch (error) {
-        console.error('Error updating task:', error);
         throw error;
       }
     },

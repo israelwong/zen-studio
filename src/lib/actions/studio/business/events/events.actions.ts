@@ -1921,11 +1921,97 @@ export async function asignarCrewAItem(
     // Obtener eventId desde evento_id de la cotización
     const eventId = item.cotizaciones?.evento_id;
 
+    // Si se asignó personal, verificar si la tarea está completada para crear/actualizar nómina
+    let payrollResult: { success: boolean; personalNombre?: string; error?: string } | null = null;
+    if (crewMemberId && eventId) {
+      // Buscar la tarea asociada al item
+      const task = await prisma.studio_gantt_event_tasks.findFirst({
+        where: {
+          cotizacion_item_id: itemId,
+          gantt_instance: {
+            event_id: eventId,
+          },
+        },
+        select: {
+          id: true,
+          completed_at: true,
+          status: true,
+        },
+      });
+
+      // Si la tarea está completada, crear/actualizar nómina
+      if (task && task.completed_at && task.status === 'COMPLETED') {
+        console.log('[EVENTOS] ✅ Tarea completada detectada, creando/actualizando nómina...');
+        try {
+          // Importar dinámicamente para evitar dependencias circulares
+          const { crearNominaDesdeTareaCompletada } = await import('./payroll-actions');
+
+          // Obtener datos del item para la nómina
+          const itemData = await prisma.studio_cotizacion_items.findUnique({
+            where: { id: itemId },
+            select: {
+              cost: true,
+              cost_snapshot: true,
+              quantity: true,
+              name: true,
+              name_snapshot: true,
+            },
+          });
+
+          const costo = itemData?.cost ?? itemData?.cost_snapshot ?? 0;
+          const cantidad = itemData?.quantity ?? 1;
+          const itemName = itemData?.name || itemData?.name_snapshot || 'Servicio sin nombre';
+
+          const result = await crearNominaDesdeTareaCompletada(
+            studioSlug,
+            eventId,
+            task.id,
+            {
+              itemId,
+              personalId: crewMemberId,
+              costo,
+              cantidad,
+              itemName,
+            }
+          );
+
+          if (result.success && result.data) {
+            console.log('[EVENTOS] ✅ Nómina creada/actualizada automáticamente:', result.data.nominaId);
+            // Obtener nombre del personal
+            const crewMember = await prisma.studio_crew_members.findUnique({
+              where: { id: crewMemberId },
+              select: { name: true },
+            });
+            payrollResult = {
+              success: true,
+              personalNombre: crewMember?.name || result.data.personalNombre,
+            };
+          } else {
+            console.warn('[EVENTOS] ⚠️ No se pudo crear/actualizar nómina automática:', result.error);
+            payrollResult = {
+              success: false,
+              error: result.error,
+            };
+          }
+        } catch (error) {
+          console.error('[EVENTOS] ❌ Error creando/actualizando nómina automática (no crítico):', error);
+          payrollResult = {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+          };
+        }
+      }
+    }
+
     revalidatePath(`/${studioSlug}/studio/business/events`);
     if (eventId) {
       revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
+      revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
     }
-    return { success: true };
+    return {
+      success: true,
+      payrollResult: payrollResult || undefined,
+    };
   } catch (error) {
     console.error('[EVENTOS] Error asignando crew a item:', error);
     return {
@@ -2322,6 +2408,7 @@ export async function actualizarGanttTask(
 
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
 
     return {
       success: true,

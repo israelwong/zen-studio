@@ -70,7 +70,7 @@ export function AssignCrewBeforeCompleteModal({
         setMembers(result.data);
       }
     } catch (error) {
-      console.error('Error loading members:', error);
+      // Error silencioso al cargar miembros
     } finally {
       setLoadingMembers(false);
     }
@@ -100,7 +100,6 @@ export function AssignCrewBeforeCompleteModal({
       await onAssignAndComplete(selectedMemberId);
       onClose();
     } catch (error) {
-      console.error('Error assigning and completing:', error);
       toast.error('Error al asignar y completar');
     } finally {
       setIsAssigning(false);

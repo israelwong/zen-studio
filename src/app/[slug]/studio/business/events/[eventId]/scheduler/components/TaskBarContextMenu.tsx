@@ -40,7 +40,7 @@ export function TaskBarContextMenu({
     try {
       await onDelete(taskId);
     } catch (error) {
-      console.error('Error deleting task:', error);
+      // Error silencioso al eliminar tarea
     } finally {
       setIsDeleting(false);
     }
@@ -51,7 +51,7 @@ export function TaskBarContextMenu({
     try {
       await onToggleComplete(taskId, !isCompleted);
     } catch (error) {
-      console.error('Error toggling complete:', error);
+      // Error silencioso al cambiar estado
     } finally {
       setIsTogglingComplete(false);
     }

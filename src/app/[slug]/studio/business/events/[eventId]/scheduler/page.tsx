@@ -92,7 +92,6 @@ export default function EventSchedulerPage() {
         router.push(`/${studioSlug}/studio/business/events/${eventId}`);
       }
     } catch (error) {
-      console.error('Error loading event:', error);
       toast.error('Error al cargar el evento');
       router.push(`/${studioSlug}/studio/business/events/${eventId}`);
     } finally {
@@ -277,7 +276,7 @@ export default function EventSchedulerPage() {
                         }
                       }
                     } catch (error) {
-                      console.error('Error reloading event:', error);
+                      // Error silencioso al recargar evento
                     }
                   };
                   loadEvent();

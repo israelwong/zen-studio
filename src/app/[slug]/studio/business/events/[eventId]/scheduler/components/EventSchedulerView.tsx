@@ -35,11 +35,9 @@ export function EventSchedulerView({
         const result = await obtenerCatalogo(studioSlug, true);
         if (result.success && result.data) {
           setSecciones(result.data);
-        } else {
-          console.error('Error al cargar las secciones:', result.error);
         }
       } catch (error) {
-        console.error('Error loading secciones:', error);
+        // Error silencioso al cargar secciones
       } finally {
         setLoadingSecciones(false);
       }

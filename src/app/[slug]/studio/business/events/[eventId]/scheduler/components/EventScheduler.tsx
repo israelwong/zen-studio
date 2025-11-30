@@ -195,7 +195,6 @@ export function EventScheduler({
 
         toast.success('Tarea actualizada correctamente');
       } catch (error) {
-        console.error('Error updating task:', error);
         throw error;
       }
     },
@@ -265,7 +264,6 @@ export function EventScheduler({
 
         toast.success('Slot asignado correctamente');
       } catch (error) {
-        console.error('Error creating task:', error);
         toast.error('Error al asignar el slot');
       }
     },
@@ -313,7 +311,6 @@ export function EventScheduler({
 
         toast.success('Slot vaciado correctamente');
       } catch (error) {
-        console.error('Error deleting task:', error);
         toast.error('Error al vaciar el slot');
       }
     },
@@ -367,7 +364,6 @@ export function EventScheduler({
 
           toast.success('Tarea marcada como pendiente');
         } catch (error) {
-          console.error('Error toggling complete:', error);
           toast.error('Error al actualizar el estado');
         }
         return;
@@ -447,12 +443,6 @@ export function EventScheduler({
           onDataChange(updatedData);
         }
 
-        // Debug: ver qué está recibiendo
-        console.log('[EVENT_SCHEDULER] Resultado de actualizarGanttTask:', {
-          success: result.success,
-          payrollResult: result.payrollResult,
-        });
-
         // Mostrar toast según resultado de nómina
         if (result.payrollResult) {
           if (result.payrollResult.success && result.payrollResult.personalNombre) {
@@ -466,7 +456,6 @@ export function EventScheduler({
           toast.success('Tarea completada');
         }
       } catch (error) {
-        console.error('Error toggling complete:', error);
         toast.error('Error al actualizar el estado');
       }
     },
@@ -572,7 +561,6 @@ export function EventScheduler({
         setAssignCrewModalOpen(false);
         setPendingTaskCompletion(null);
       } catch (error) {
-        console.error('Error assigning and completing:', error);
         toast.error('Error al asignar y completar');
       }
     },
@@ -629,7 +617,6 @@ export function EventScheduler({
       setAssignCrewModalOpen(false);
       setPendingTaskCompletion(null);
     } catch (error) {
-      console.error('Error completing without payment:', error);
       toast.error('Error al completar la tarea');
     }
   }, [studioSlug, eventId, router, onDataChange, pendingTaskCompletion]);

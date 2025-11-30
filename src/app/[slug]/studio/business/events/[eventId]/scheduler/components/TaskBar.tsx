@@ -47,7 +47,7 @@ export const TaskBar = React.memo(({
   const [isUpdating, setIsUpdating] = useState(false);
   const [localStartDate, setLocalStartDate] = useState(startDate);
   const [localEndDate, setLocalEndDate] = useState(endDate);
-  
+
   // Track movimiento real para prevenir context menu durante drag/resize
   const dragStartPosRef = React.useRef({ x: 0, width: 0 });
 
@@ -77,13 +77,13 @@ export const TaskBar = React.memo(({
     async (_e: RndDragEvent, d: { x: number; y: number }) => {
       // Detectar si hubo movimiento real (threshold de 5px)
       const hasMoved = Math.abs(d.x - dragStartPosRef.current.x) > 5;
-      
+
       if (!hasMoved) {
         return; // No hubo movimiento, ignorar
       }
 
       const newStartDate = getDateFromPosition(d.x, dateRange);
-      
+
       // Validar que esté dentro del rango
       if (!isDateInRange(newStartDate, dateRange)) {
         return;
@@ -104,7 +104,6 @@ export const TaskBar = React.memo(({
         setLocalEndDate(newEndDate);
         await onUpdate(taskId, newStartDate, newEndDate);
       } catch (error) {
-        console.error('Error updating task position:', error);
         setLocalStartDate(startDate);
         setLocalEndDate(endDate);
       } finally {
@@ -129,16 +128,16 @@ export const TaskBar = React.memo(({
       position: { x: number; y: number }
     ) => {
       const newWidth = _ref.offsetWidth;
-      
+
       // Detectar si hubo cambio real (threshold de 10px = grid snap)
       const hasResized = Math.abs(newWidth - dragStartPosRef.current.width) > 10;
-      
+
       if (!hasResized) {
         return; // No hubo resize, ignorar
       }
 
       const newStartDate = getDateFromPosition(position.x, dateRange);
-      
+
       // Convertir ancho a duración en días
       const newDurationDays = Math.max(1, Math.round(newWidth / 60));
       const newEndDate = new Date(newStartDate);
@@ -155,7 +154,6 @@ export const TaskBar = React.memo(({
         setLocalEndDate(newEndDate);
         await onUpdate(taskId, newStartDate, newEndDate);
       } catch (error) {
-        console.error('Error updating task duration:', error);
         setLocalStartDate(startDate);
         setLocalEndDate(endDate);
       } finally {
