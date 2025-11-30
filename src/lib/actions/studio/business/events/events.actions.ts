@@ -2092,13 +2092,13 @@ export async function crearSchedulerTask(
       return { success: false, error: 'Item no encontrado' };
     }
 
-    // Obtener o crear instancia de Gantt
-    const instanceResult = await obtenerOCrearGanttInstance(studioSlug, eventId);
+    // Obtener o crear instancia de Scheduler
+    const instanceResult = await obtenerOCrearSchedulerInstance(studioSlug, eventId);
     if (!instanceResult.success || !instanceResult.data) {
       return instanceResult;
     }
 
-    const ganttInstanceId = instanceResult.data.id;
+    const schedulerInstanceId = instanceResult.data.id;
 
     // Verificar que no existe ya una tarea para este item
     const existingTask = await prisma.studio_scheduler_event_tasks.findUnique({
@@ -2190,7 +2190,7 @@ export async function actualizarSchedulerTask(
     }
 
     // Verificar que la tarea existe y pertenece al evento
-    const task = await prisma.studio_gantt_event_tasks.findFirst({
+    const task = await prisma.studio_scheduler_event_tasks.findFirst({
       where: {
         id: taskId,
         scheduler_instance: {
@@ -2419,7 +2419,7 @@ export async function obtenerSchedulerTask(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    const task = await prisma.studio_gantt_event_tasks.findFirst({
+    const task = await prisma.studio_scheduler_event_tasks.findFirst({
       where: {
         id: taskId,
         scheduler_instance: {
@@ -2473,7 +2473,7 @@ export async function eliminarSchedulerTask(
     }
 
     // Verificar que la tarea existe y pertenece al evento
-    const task = await prisma.studio_gantt_event_tasks.findFirst({
+    const task = await prisma.studio_scheduler_event_tasks.findFirst({
       where: {
         id: taskId,
         scheduler_instance: {
