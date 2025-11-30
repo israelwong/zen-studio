@@ -131,6 +131,106 @@ export function CrearRevisionCotizacionModal({
     return map;
   }, [catalogo]);
 
+  // Filtrar catálogo basado en el filtro de texto
+  const catalogoFiltrado = useMemo(() => {
+    if (!filtroServicio.trim()) return catalogo;
+
+    const filtro = filtroServicio.toLowerCase();
+
+    return catalogo.map(seccion => {
+      const categoriasFiltradas = seccion.categorias.map(categoria => {
+        const serviciosFiltrados = categoria.servicios.filter(servicio => {
+          const servicioData = servicioMap.get(servicio.id);
+          if (!servicioData) return false;
+
+          return (
+            servicio.nombre.toLowerCase().includes(filtro) ||
+            categoria.nombre.toLowerCase().includes(filtro) ||
+            seccion.nombre.toLowerCase().includes(filtro) ||
+            (servicio.tipo_utilidad === 'service' ? 'servicio' : 'producto').toLowerCase().includes(filtro)
+          );
+        });
+
+        return {
+          ...categoria,
+          servicios: serviciosFiltrados
+        };
+      }).filter(categoria => categoria.servicios.length > 0);
+
+      return {
+        ...seccion,
+        categorias: categoriasFiltradas
+      };
+    }).filter(seccion => seccion.categorias.length > 0);
+  }, [catalogo, filtroServicio, servicioMap]);
+
+  // Calcular servicios seleccionados por sección y categoría
+  const serviciosSeleccionados = useMemo(() => {
+    const resumen: {
+      secciones: { [seccionId: string]: { total: number; categorias: { [categoriaId: string]: number } } }
+    } = { secciones: {} };
+
+    catalogoFiltrado.forEach(seccion => {
+      let totalSeccion = 0;
+      const categorias: { [categoriaId: string]: number } = {};
+
+      seccion.categorias.forEach(categoria => {
+        let totalCategoria = 0;
+        categoria.servicios.forEach(servicio => {
+          const cantidad = items[servicio.id] || 0;
+          if (cantidad > 0) {
+            totalCategoria += cantidad;
+            totalSeccion += cantidad;
+          }
+        });
+        if (totalCategoria > 0) {
+          categorias[categoria.id] = totalCategoria;
+        }
+      });
+
+      if (totalSeccion > 0) {
+        resumen.secciones[seccion.id] = {
+          total: totalSeccion,
+          categorias
+        };
+      }
+    });
+
+    return resumen;
+  }, [catalogoFiltrado, items]);
+
+  // Handlers para expandir/colapsar
+  const toggleSeccion = (seccionId: string) => {
+    setSeccionesExpandidas(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(seccionId)) {
+        nuevo.delete(seccionId);
+      } else {
+        nuevo.add(seccionId);
+      }
+      return nuevo;
+    });
+  };
+
+  const toggleCategoria = (categoriaId: string) => {
+    setCategoriasExpandidas(prev => {
+      const nuevo = new Set(prev);
+      if (nuevo.has(categoriaId)) {
+        nuevo.delete(categoriaId);
+      } else {
+        nuevo.add(categoriaId);
+      }
+      return nuevo;
+    });
+  };
+
+  const updateQuantity = (servicioId: string, cantidad: number) => {
+    setItems(prev => ({
+      ...prev,
+      [servicioId]: Math.max(0, cantidad)
+    }));
+  };
+
   // Calcular precio total
   const calculoPrecio = useMemo(() => {
     if (!configuracionPrecios || !catalogo.length) {
@@ -284,20 +384,28 @@ export function CrearRevisionCotizacionModal({
             <label className="block text-sm font-medium text-zinc-300 mb-2">
               Servicios
             </label>
+            <ZenInput
+              type="text"
+              placeholder="Buscar servicios..."
+              value={filtroServicio}
+              onChange={(e) => setFiltroServicio(e.target.value)}
+              className="mb-3"
+            />
             <div className="border border-zinc-800 rounded-lg p-4 bg-zinc-900/30 max-h-96 overflow-y-auto">
               {cargandoCatalogo ? (
                 <p className="text-sm text-zinc-400">Cargando catálogo...</p>
               ) : (
                 <CatalogoServiciosTree
-                  catalogo={catalogo}
-                  items={items}
-                  onItemsChange={setItems}
+                  catalogoFiltrado={catalogoFiltrado}
                   filtroServicio={filtroServicio}
-                  onFiltroChange={setFiltroServicio}
                   seccionesExpandidas={seccionesExpandidas}
-                  onSeccionesExpandidasChange={setSeccionesExpandidas}
                   categoriasExpandidas={categoriasExpandidas}
-                  onCategoriasExpandidasChange={setCategoriasExpandidas}
+                  items={items}
+                  onToggleSeccion={toggleSeccion}
+                  onToggleCategoria={toggleCategoria}
+                  onUpdateQuantity={updateQuantity}
+                  serviciosSeleccionados={serviciosSeleccionados}
+                  configuracionPrecios={configuracionPrecios}
                 />
               )}
             </div>
