@@ -904,6 +904,9 @@ export async function updateCotizacion(
         updated_at: true,
         order: true,
         archived: true,
+        revision_of_id: true,
+        revision_number: true,
+        revision_status: true,
       },
     });
 
