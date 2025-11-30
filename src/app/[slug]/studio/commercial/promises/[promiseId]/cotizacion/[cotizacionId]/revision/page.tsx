@@ -136,12 +136,8 @@ export default function EditarRevisionPage() {
   }, [cotizacionId, studioSlug, promiseId, router, isNewRevision, originalId]);
 
   const handleCancel = () => {
-    // Regresar a página de evento detalle si existe evento_id
-    if (eventoId) {
-      router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
-    } else {
-      router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
-    }
+    // Regresar a la página anterior (history back)
+    router.back();
   };
 
   const handleCreateRevision = async (data: {
