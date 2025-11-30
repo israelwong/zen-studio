@@ -13,4 +13,5 @@ export { EventPanel } from './EventPanel';
 export { ResumenCotizacionAutorizada } from './ResumenCotizacionAutorizada';
 export { CrearRevisionCotizacionModal } from './CrearRevisionCotizacionModal';
 export { AutorizarRevisionModal } from './AutorizarRevisionModal';
+export { InfoCrearRevisionModal } from './InfoCrearRevisionModal';
 
