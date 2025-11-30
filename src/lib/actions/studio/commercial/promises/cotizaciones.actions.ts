@@ -207,6 +207,9 @@ export async function getCotizacionesByPromiseId(
         updated_at: true,
         order: true,
         archived: true,
+        revision_of_id: true,
+        revision_number: true,
+        revision_status: true,
       },
       orderBy: [
         { archived: 'asc' }, // No archivadas primero
@@ -642,6 +645,9 @@ export async function duplicateCotizacion(
         updated_at: true,
         order: true,
         archived: true,
+        revision_of_id: true,
+        revision_number: true,
+        revision_status: true,
       },
     });
 
