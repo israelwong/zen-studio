@@ -63,16 +63,23 @@ export default function AutorizarRevisionPage() {
         ]);
 
         if (cotizacionResult.success && cotizacionResult.data) {
+          // Validar que sea una revisión
+          if (!cotizacionResult.data.revision_of_id) {
+            toast.error('Esta cotización no es una revisión');
+            router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+            return;
+          }
+
           setCotizacion({
             ...cotizacionResult.data,
             evento_id: cotizacionResult.data.evento_id || null,
-            revision_of_id: null,
-            revision_number: null,
+            revision_of_id: cotizacionResult.data.revision_of_id || null,
+            revision_number: cotizacionResult.data.revision_number || null,
           });
           // Inicializar monto con el precio de la cotización
           setMonto(cotizacionResult.data.price.toString());
 
-          // Si es revisión, cargar cotización original
+          // Cargar cotización original
           if (cotizacionResult.data.revision_of_id) {
             const originalResult = await getCotizacionById(
               cotizacionResult.data.revision_of_id,
@@ -168,18 +175,134 @@ export default function AutorizarRevisionPage() {
     return (
       <div className="w-full max-w-7xl mx-auto">
         <ZenCard variant="default" padding="none">
+          {/* Header Skeleton */}
           <ZenCardHeader className="border-b border-zinc-800">
             <div className="flex items-center gap-3">
               <div className="h-8 w-8 bg-zinc-800 rounded animate-pulse" />
+              <div className="h-5 w-5 bg-zinc-800 rounded-lg animate-pulse" />
               <div className="flex-1 space-y-2">
                 <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
                 <div className="h-4 w-96 bg-zinc-800 rounded animate-pulse" />
               </div>
             </div>
           </ZenCardHeader>
+
           <ZenCardContent className="p-6">
-            <div className="text-center py-12 text-zinc-400">
-              Cargando revisión...
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Columna 1: Resumen de Cotización Skeleton */}
+              <div className="space-y-6">
+                <ZenCard variant="outlined" className="h-full">
+                  <ZenCardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="h-5 w-32 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-8 w-8 bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  </ZenCardHeader>
+                  <ZenCardContent className="space-y-4 flex-1">
+                    {/* Descripción skeleton */}
+                    <div className="pb-4 border-b border-zinc-700">
+                      <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse mb-2" />
+                      <div className="h-16 w-full bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                    {/* Items skeleton */}
+                    <div className="space-y-3 flex-1">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <div key={i} className="space-y-2">
+                          <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse" />
+                          <div className="pl-4 space-y-1">
+                            <div className="h-3 w-24 bg-zinc-800/70 rounded animate-pulse" />
+                            <div className="pl-4 space-y-1">
+                              {[1, 2, 3].map((j) => (
+                                <div key={j} className="grid grid-cols-[1fr_60px_100px] gap-2">
+                                  <div className="h-4 w-full bg-zinc-800/70 rounded animate-pulse" />
+                                  <div className="h-4 w-12 bg-zinc-800/70 rounded animate-pulse ml-auto" />
+                                  <div className="h-4 w-16 bg-zinc-800/70 rounded animate-pulse ml-auto" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </ZenCardContent>
+                </ZenCard>
+              </div>
+
+              {/* Columna 2: Formulario de Autorización Skeleton */}
+              <div className="space-y-6">
+                {/* Datos del Contratante Skeleton */}
+                <ZenCard variant="outlined">
+                  <ZenCardHeader>
+                    <div className="flex items-center gap-3">
+                      <div className="h-5 w-5 bg-zinc-800 rounded-lg animate-pulse" />
+                      <div className="h-5 w-40 bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  </ZenCardHeader>
+                  <ZenCardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-5 w-full bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-20 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-5 w-full bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-5 w-full bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  </ZenCardContent>
+                </ZenCard>
+
+                {/* Condiciones Comerciales Skeleton */}
+                <ZenCard variant="outlined">
+                  <ZenCardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-5 w-5 bg-zinc-800 rounded-lg animate-pulse" />
+                        <div className="h-5 w-48 bg-zinc-800 rounded animate-pulse" />
+                      </div>
+                      <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  </ZenCardHeader>
+                  <ZenCardContent className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="p-4 border border-zinc-700 rounded-lg bg-zinc-800/30 animate-pulse">
+                        <div className="flex items-start gap-3">
+                          <div className="h-4 w-4 bg-zinc-700 rounded-full mt-1" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-5 w-32 bg-zinc-700 rounded" />
+                            <div className="h-4 w-full bg-zinc-700 rounded" />
+                            <div className="flex gap-4 mt-2">
+                              <div className="h-4 w-24 bg-zinc-700 rounded" />
+                              <div className="h-4 w-24 bg-zinc-700 rounded" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </ZenCardContent>
+                </ZenCard>
+
+                {/* Monto Total Skeleton */}
+                <ZenCard variant="outlined">
+                  <ZenCardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <div className="h-6 w-32 bg-zinc-800 rounded animate-pulse" />
+                        <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
+                      </div>
+                      <div className="h-8 w-32 bg-zinc-800 rounded animate-pulse" />
+                    </div>
+                  </ZenCardContent>
+                </ZenCard>
+
+                {/* Botones de Acción Skeleton */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                  <div className="h-10 w-24 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-10 w-40 bg-zinc-800 rounded animate-pulse" />
+                </div>
+              </div>
             </div>
           </ZenCardContent>
         </ZenCard>

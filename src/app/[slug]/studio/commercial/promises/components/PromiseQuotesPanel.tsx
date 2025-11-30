@@ -392,6 +392,14 @@ export function PromiseQuotesPanel({
                       });
                     });
                   }}
+                  onUpdate={(cotizacionId) => {
+                    // Actualización optimista: marcar como cancelada
+                    setCotizaciones((prev) =>
+                      prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
+                    );
+                    // Refrescar desde servidor para sincronizar
+                    router.refresh();
+                  }}
                   onUnarchive={(id) => {
                     // Actualización local: marcar como desarchivada y reordenar
                     setCotizaciones((prev) => {
@@ -455,6 +463,14 @@ export function PromiseQuotesPanel({
                             return orderA - orderB;
                           });
                         });
+                      }}
+                      onUpdate={(cotizacionId) => {
+                        // Actualización optimista: marcar como cancelada
+                        setCotizaciones((prev) =>
+                          prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
+                        );
+                        // Refrescar desde servidor para sincronizar
+                        router.refresh();
                       }}
                       onUnarchive={(id) => {
                         // Actualización local: marcar como desarchivada y reordenar

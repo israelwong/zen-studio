@@ -35,7 +35,7 @@ interface PromiseQuotesPanelCardProps {
   studioSlug: string;
   promiseId?: string | null;
   contactId?: string | null;
-  onUpdate?: () => void;
+  onUpdate?: (cotizacionId: string) => void;
   isDuplicating?: boolean;
   onDuplicateStart?: (id: string) => void;
   onDuplicateComplete?: (newCotizacion: CotizacionListItem) => void;
@@ -103,11 +103,11 @@ export function PromiseQuotesPanelCard({
   };
 
   const getStatusVariant = (status: string, revisionStatus?: string | null): 'default' | 'destructive' | 'secondary' | 'success' | 'warning' | 'info' => {
-    // Si es revisión (pendiente o activa), usar ámbar
-    if (revisionStatus === 'pending_revision' || revisionStatus === 'active') {
+    // Si es revisión pendiente, usar ámbar
+    if (revisionStatus === 'pending_revision') {
       return 'warning';
     }
-    // Si está aprobada y NO es revisión, usar verde
+    // Si está aprobada (incluso si es revisión activa), usar verde
     if (status === 'aprobada' || status === 'approved') {
       return 'success';
     }
@@ -120,13 +120,11 @@ export function PromiseQuotesPanelCard({
   };
 
   const getStatusLabel = (status: string, revisionStatus?: string | null): string => {
-    // Si es revisión, mostrar "Revisión" independiente del status
+    // Si es revisión pendiente (no autorizada aún)
     if (revisionStatus === 'pending_revision') {
       return 'Revisión';
     }
-    if (revisionStatus === 'active') {
-      return 'Revisión Activa';
-    }
+    // Si está aprobada, mostrar "Aprobada" (independiente si es revisión activa o no)
     if (status === 'aprobada' || status === 'approved') {
       return 'Aprobada';
     }
@@ -356,7 +354,7 @@ export function PromiseQuotesPanelCard({
       if (result.success) {
         toast.success('Cotización cancelada exitosamente');
         setShowCancelModal(false);
-        onUpdate?.();
+        onUpdate?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al cancelar cotización');
         setShowCancelModal(false);
@@ -378,7 +376,7 @@ export function PromiseQuotesPanelCard({
       if (result.success) {
         toast.success('Cotización y evento cancelados exitosamente');
         setShowCancelModal(false);
-        onUpdate?.();
+        onUpdate?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al cancelar cotización y evento');
         setShowCancelModal(false);

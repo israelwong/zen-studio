@@ -13,8 +13,8 @@ import { guardarEstructuraCotizacionAutorizada } from './cotizacion-pricing';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 
 /**
- * Crear revisión de cotización autorizada
- * Crea una nueva cotización basada en una autorizada, permitiendo modificaciones
+ * Crear revisi?n de cotizaci?n autorizada
+ * Crea una nueva cotizaci?n basada en una autorizada, permitiendo modificaciones
  */
 export async function crearRevisionCotizacion(
   data: CrearRevisionCotizacionData
@@ -32,7 +32,7 @@ export async function crearRevisionCotizacion(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Obtener cotización original
+    // Obtener cotizaci?n original
     const cotizacionOriginal = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: validatedData.cotizacion_original_id,
@@ -56,10 +56,10 @@ export async function crearRevisionCotizacion(
     });
 
     if (!cotizacionOriginal) {
-      return { success: false, error: 'Cotización original no encontrada' };
+      return { success: false, error: 'Cotizaci?n original no encontrada' };
     }
 
-    // Validar que la cotización original esté autorizada/aprobada
+    // Validar que la cotizaci?n original est? autorizada/aprobada
     if (cotizacionOriginal.status !== 'aprobada' && cotizacionOriginal.status !== 'autorizada') {
       return {
         success: false,
@@ -67,7 +67,7 @@ export async function crearRevisionCotizacion(
       };
     }
 
-    // Calcular número de revisión
+    // Calcular n?mero de revisi?n
     const revisionesExistentes = await prisma.studio_cotizaciones.count({
       where: {
         revision_of_id: validatedData.cotizacion_original_id,
@@ -76,9 +76,9 @@ export async function crearRevisionCotizacion(
 
     const revisionNumber = revisionesExistentes + 1;
 
-    // Transacción para crear revisión
+    // Transacci?n para crear revisi?n
     const nuevaRevision = await prisma.$transaction(async (tx) => {
-      // 1. Crear nueva cotización como revisión
+      // 1. Crear nueva cotizaci?n como revisi?n
       const revision = await tx.studio_cotizaciones.create({
         data: {
           studio_id: studio.id,
@@ -95,7 +95,7 @@ export async function crearRevisionCotizacion(
         },
       });
 
-      // 2. Crear items de la revisión desde catálogo (no snapshots)
+      // 2. Crear items de la revisi?n desde cat?logo (no snapshots)
       const itemsToCreate = Object.entries(validatedData.items)
         .filter(([, quantity]) => quantity > 0)
         .map(([itemId, quantity], index) => ({
@@ -143,17 +143,17 @@ export async function crearRevisionCotizacion(
       },
     };
   } catch (error) {
-    console.error('[COTIZACIONES] Error creando revisión:', error);
+    console.error('[COTIZACIONES] Error creando revisi?n:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al crear revisión de cotización',
+      error: error instanceof Error ? error.message : 'Error al crear revisi?n de cotizaci?n',
     };
   }
 }
 
 /**
- * Autorizar revisión de cotización con migración de dependencias
- * Migra scheduler tasks y crew assignments de la cotización original a la revisión
+ * Autorizar revisi?n de cotizaci?n con migraci?n de dependencias
+ * Migra scheduler tasks y crew assignments de la cotizaci?n original a la revisi?n
  */
 export async function autorizarRevisionCotizacion(
   data: AutorizarRevisionCotizacionData
@@ -171,7 +171,7 @@ export async function autorizarRevisionCotizacion(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Obtener revisión y original
+    // Obtener revisi?n con sus items
     const revision = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: validatedData.revision_id,
@@ -185,30 +185,38 @@ export async function autorizarRevisionCotizacion(
             quantity: true,
           },
         },
-        revision_of: {
-          include: {
-            cotizacion_items: {
-              select: {
-                id: true,
-                item_id: true,
-                scheduler_task_id: true,
-                assigned_to_crew_member_id: true,
-              },
-            },
+      },
+    });
+
+    if (!revision || !revision.revision_of_id) {
+      return { success: false, error: 'Revisi?n o cotizaci?n original no encontrada' };
+    }
+
+    // Obtener cotizaci?n original con sus items (separado porque no hay relaci?n en Prisma)
+    const original = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: revision.revision_of_id,
+        studio_id: studio.id,
+      },
+      include: {
+        cotizacion_items: {
+          select: {
+            id: true,
+            item_id: true,
+            scheduler_task_id: true,
+            assigned_to_crew_member_id: true,
           },
         },
       },
     });
 
-    if (!revision || !revision.revision_of) {
-      return { success: false, error: 'Revisión o cotización original no encontrada' };
+    if (!original) {
+      return { success: false, error: 'Cotizaci?n original no encontrada' };
     }
 
-    const original = revision.revision_of;
-
-    // Validar que la revisión esté pendiente
+    // Validar que la revisi?n est? pendiente
     if (revision.status !== 'pendiente') {
-      return { success: false, error: 'La revisión ya fue procesada' };
+      return { success: false, error: 'La revisi?n ya fue procesada' };
     }
 
     // Obtener evento asociado a la original
@@ -224,10 +232,10 @@ export async function autorizarRevisionCotizacion(
     });
 
     if (!eventoOriginal) {
-      return { success: false, error: 'No se encontró evento asociado a la cotización original' };
+      return { success: false, error: 'No se encontr? evento asociado a la cotizaci?n original' };
     }
 
-    // Obtener configuración de precios
+    // Obtener configuraci?n de precios
     const configResult = await obtenerConfiguracionPrecios(validatedData.studio_slug);
     const configPrecios = {
       utilidad_servicio: Number(configResult?.utilidad_servicio) || 0,
@@ -239,9 +247,9 @@ export async function autorizarRevisionCotizacion(
     // Calcular descuento
     const descuento = revision.price > validatedData.monto ? revision.price - validatedData.monto : 0;
 
-    // Transacción para autorizar revisión y migrar dependencias
+    // Transacci?n para autorizar revisi?n y migrar dependencias
     await prisma.$transaction(async (tx) => {
-      // 1. Guardar snapshots de la revisión
+      // 1. Guardar snapshots de la revisi?n
       await guardarEstructuraCotizacionAutorizada(
         tx,
         validatedData.revision_id,
@@ -253,7 +261,7 @@ export async function autorizarRevisionCotizacion(
       await tx.studio_cotizaciones.update({
         where: { id: validatedData.revision_id },
         data: {
-          status: 'aprobada' as const,
+          status: 'aprobada',
           condiciones_comerciales_id: validatedData.condiciones_comerciales_id,
           evento_id: eventoOriginal.id,
           updated_at: new Date(),
@@ -264,18 +272,19 @@ export async function autorizarRevisionCotizacion(
         },
       });
 
-      // 3. Archivar y marcar original como "replaced"
+      // 3. Archivar, cancelar y marcar original como "replaced"
       await tx.studio_cotizaciones.update({
         where: { id: original.id },
         data: {
           archived: true,
+          status: 'cancelada',
           revision_status: 'replaced',
         },
       });
 
       // 4. Migrar dependencias si se solicita
       if (validatedData.migrar_dependencias) {
-        // Crear mapa de item_id original → item_id revisión
+        // Crear mapa de item_id original ? item_id revisi?n
         const itemsOriginalMap = new Map(
           original.cotizacion_items.map((item) => [item.item_id || '', item.id])
         );
@@ -288,7 +297,7 @@ export async function autorizarRevisionCotizacion(
           if (!itemOriginal.item_id || !itemOriginal.scheduler_task_id) continue;
 
           const itemRevisionId = itemsRevisionMap.get(itemOriginal.item_id);
-          if (!itemRevisionId) continue; // Item no existe en revisión
+          if (!itemRevisionId) continue; // Item no existe en revisi?n
 
           // Actualizar scheduler task para apuntar al nuevo item
           await tx.studio_scheduler_event_tasks.update({
@@ -323,7 +332,7 @@ export async function autorizarRevisionCotizacion(
         }
       }
 
-      // 5. Actualizar evento para usar la revisión como cotización activa
+      // 5. Actualizar evento para usar la revisi?n como cotizaci?n activa
       await tx.studio_events.update({
         where: { id: eventoOriginal.id },
         data: {
@@ -344,10 +353,10 @@ export async function autorizarRevisionCotizacion(
       },
     };
   } catch (error) {
-    console.error('[COTIZACIONES] Error autorizando revisión:', error);
+    console.error('[COTIZACIONES] Error autorizando revisi?n:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al autorizar revisión de cotización',
+      error: error instanceof Error ? error.message : 'Error al autorizar revisi?n de cotizaci?n',
     };
   }
 }
