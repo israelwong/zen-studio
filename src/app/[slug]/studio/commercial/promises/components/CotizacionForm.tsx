@@ -23,6 +23,7 @@ interface CotizacionFormProps {
   contactId?: string | null;
   redirectOnSuccess?: string;
   onLoadingChange?: (loading: boolean) => void;
+  hideActionButtons?: boolean;
 }
 
 export function CotizacionForm({
@@ -33,7 +34,18 @@ export function CotizacionForm({
   contactId,
   redirectOnSuccess,
   onLoadingChange,
-}: CotizacionFormProps) {
+  hideActionButtons = false,
+  onCreateAsRevision,
+  revisionOriginalId,
+}: CotizacionFormProps & {
+  onCreateAsRevision?: (data: {
+    nombre: string;
+    descripcion?: string;
+    precio: number;
+    items: { [key: string]: number };
+  }) => Promise<{ success: boolean; revisionId?: string; error?: string }>;
+  revisionOriginalId?: string | null;
+}) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const isEditMode = !!cotizacionId;
@@ -58,10 +70,12 @@ export function CotizacionForm({
         setCargandoCatalogo(true);
 
         // Si está en modo edición, cargar y validar la cotización en paralelo con catálogo
-        const [catalogoResult, configResult, cotizacionResult] = await Promise.all([
+        // Si está creando revisión, también cargar datos de la original para pre-poblar
+        const [catalogoResult, configResult, cotizacionResult, originalResult] = await Promise.all([
           obtenerCatalogo(studioSlug),
           obtenerConfiguracionPrecios(studioSlug),
-          cotizacionId ? getCotizacionById(cotizacionId, studioSlug) : Promise.resolve({ success: true as const, data: null })
+          cotizacionId ? getCotizacionById(cotizacionId, studioSlug) : Promise.resolve({ success: true as const, data: null }),
+          revisionOriginalId && !cotizacionId ? getCotizacionById(revisionOriginalId, studioSlug) : Promise.resolve({ success: true as const, data: null })
         ]);
 
         // Validar cotización si está en modo edición
@@ -70,6 +84,7 @@ export function CotizacionForm({
         if (cotizacionId) {
           if (!cotizacionResult.success || !cotizacionResult.data) {
             toast.error('error' in cotizacionResult ? cotizacionResult.error : 'Cotización no encontrada');
+            setCargandoCatalogo(false);
             if (promiseId) {
               router.replace(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
             } else {
@@ -80,9 +95,11 @@ export function CotizacionForm({
 
           cotizacionData = cotizacionResult.data;
 
-          // Validar que tiene promiseId o contactId
-          if (!cotizacionData.promise_id && !contactId) {
+          // Validar que tiene promiseId (de props o de datos) o contactId
+          // Si promiseId viene como prop, es válido aunque cotizacionData.promise_id sea null
+          if (!promiseId && !cotizacionData.promise_id && !contactId) {
             toast.error('La cotización no tiene los datos necesarios para editar');
+            setCargandoCatalogo(false);
             if (promiseId) {
               router.replace(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
             } else {
@@ -92,71 +109,98 @@ export function CotizacionForm({
           }
         }
 
-        if (catalogoResult.success && catalogoResult.data) {
-          setCatalogo(catalogoResult.data);
+        if (!catalogoResult.success || !catalogoResult.data) {
+          toast.error('Error al cargar el catálogo');
+          setCargandoCatalogo(false);
+          return;
+        }
 
-          // Expandir todas las secciones al iniciar
-          const todasLasSecciones = new Set(catalogoResult.data.map(seccion => seccion.id));
-          setSeccionesExpandidas(todasLasSecciones);
-          // Las categorías permanecen colapsadas (Set vacío)
+        setCatalogo(catalogoResult.data);
 
-          // Inicializar items vacíos
-          const initialItems: { [id: string]: number } = {};
-          catalogoResult.data.forEach(seccion => {
-            seccion.categorias.forEach(categoria => {
-              categoria.servicios.forEach(servicio => {
-                initialItems[servicio.id] = 0;
-              });
+        // Expandir todas las secciones al iniciar
+        const todasLasSecciones = new Set(catalogoResult.data.map(seccion => seccion.id));
+        setSeccionesExpandidas(todasLasSecciones);
+        // Las categorías permanecen colapsadas (Set vacío)
+
+        // Inicializar items vacíos
+        const initialItems: { [id: string]: number } = {};
+        catalogoResult.data.forEach(seccion => {
+          seccion.categorias.forEach(categoria => {
+            categoria.servicios.forEach(servicio => {
+              initialItems[servicio.id] = 0;
             });
           });
+        });
 
-          // Si hay packageId, cargar datos del paquete
-          if (packageId) {
-            const paqueteResult = await obtenerPaquetePorId(packageId);
-            if (paqueteResult.success && paqueteResult.data) {
-              const paquete = paqueteResult.data;
-              setNombre(paquete.name || '');
-              setDescripcion((paquete as { description?: string }).description || '');
-              setPrecioPersonalizado(paquete.precio || '');
+        // Si hay packageId, cargar datos del paquete
+        if (packageId) {
+          const paqueteResult = await obtenerPaquetePorId(packageId);
+          if (paqueteResult.success && paqueteResult.data) {
+            const paquete = paqueteResult.data;
+            setNombre(paquete.name || '');
+            setDescripcion((paquete as { description?: string }).description || '');
+            setPrecioPersonalizado(paquete.precio || '');
 
-              // Cargar items del paquete
-              if (paquete.paquete_items && paquete.paquete_items.length > 0) {
-                const paqueteItems: { [id: string]: number } = {};
-                paquete.paquete_items.forEach(item => {
-                  if (item.item_id) {
-                    paqueteItems[item.item_id] = item.quantity;
-                  }
-                });
-                setItems(paqueteItems);
-              } else {
-                setItems(initialItems);
-              }
+            // Cargar items del paquete
+            if (paquete.paquete_items && paquete.paquete_items.length > 0) {
+              const paqueteItems: { [id: string]: number } = {};
+              paquete.paquete_items.forEach(item => {
+                if (item.item_id) {
+                  paqueteItems[item.item_id] = item.quantity;
+                }
+              });
+              setItems(paqueteItems);
             } else {
-              toast.error('Error al cargar el paquete');
               setItems(initialItems);
             }
-          } else if (cotizacionId && cotizacionData) {
-            // Cargar datos de la cotización existente (ya validada y cargada arriba)
-            setNombre(cotizacionData.name);
-            setDescripcion(cotizacionData.description || '');
-            setPrecioPersonalizado(cotizacionData.price);
-
-            // Cargar items de la cotización
-            const cotizacionItems: { [id: string]: number } = {};
-            cotizacionData.items.forEach((item: { item_id: string; quantity: number }) => {
-              cotizacionItems[item.item_id] = item.quantity;
-            });
-
-            // Combinar con initialItems para asegurar que todos los servicios estén inicializados
-            const combinedItems = { ...initialItems, ...cotizacionItems };
-            setItems(combinedItems);
           } else {
-            // Nueva cotización personalizada - campos vacíos
+            toast.error('Error al cargar el paquete');
             setItems(initialItems);
-            setNombre('');
-            setDescripcion('');
-            setPrecioPersonalizado('');
           }
+        } else if (cotizacionId && cotizacionData) {
+          // Cargar datos de la cotización existente (ya validada y cargada arriba)
+          setNombre(cotizacionData.name);
+          setDescripcion(cotizacionData.description || '');
+          setPrecioPersonalizado(cotizacionData.price);
+
+          // Cargar items de la cotización (filtrar items sin item_id válido)
+          const cotizacionItems: { [id: string]: number } = {};
+          if (cotizacionData.items && Array.isArray(cotizacionData.items)) {
+            cotizacionData.items.forEach((item: { item_id: string | null; quantity: number }) => {
+              if (item.item_id && item.quantity > 0) {
+                cotizacionItems[item.item_id] = item.quantity;
+              }
+            });
+          }
+
+          // Combinar con initialItems para asegurar que todos los servicios estén inicializados
+          const combinedItems = { ...initialItems, ...cotizacionItems };
+          setItems(combinedItems);
+        } else if (revisionOriginalId && originalResult.success && originalResult.data) {
+          // Si estamos creando una revisión, pre-poblar con datos de la original
+          const originalData = originalResult.data;
+          setNombre(`${originalData.name} - Revisión`);
+          setDescripcion(originalData.description || '');
+          setPrecioPersonalizado(originalData.price);
+
+          // Pre-poblar items desde la original, combinando con initialItems
+          const revisionItems: { [id: string]: number } = {};
+          if (originalData.items) {
+            originalData.items.forEach((item: { item_id: string; quantity: number }) => {
+              if (item.item_id) {
+                revisionItems[item.item_id] = item.quantity;
+              }
+            });
+          }
+          // Combinar con initialItems para asegurar que todos los servicios estén inicializados
+          const combinedItems = { ...initialItems, ...revisionItems };
+          setItems(combinedItems);
+        } else {
+          // Nueva cotización personalizada - campos vacíos
+          setItems(initialItems);
+          setNombre('');
+          setDescripcion('');
+          setPrecioPersonalizado('');
         }
 
         if (configResult) {
@@ -168,15 +212,22 @@ export function CotizacionForm({
           });
         }
       } catch (error) {
-        console.error('Error cargando datos:', error);
+        console.error('[CotizacionForm] Error cargando datos:', error);
         toast.error('Error al cargar los datos');
+        // Asegurar que el estado de carga se actualice incluso en caso de error
+        setCargandoCatalogo(false);
       } finally {
         setCargandoCatalogo(false);
       }
     };
 
-    cargarDatos();
-  }, [studioSlug, packageId, cotizacionId, promiseId, contactId, router]);
+    if (studioSlug) {
+      cargarDatos();
+    } else {
+      console.warn('[CotizacionForm] studioSlug no disponible, no se pueden cargar datos');
+      setCargandoCatalogo(false);
+    }
+  }, [studioSlug, packageId, cotizacionId, promiseId, contactId, revisionOriginalId, router]);
 
   // Notificar cambios en el estado de carga
   useEffect(() => {
@@ -530,11 +581,51 @@ export function CotizacionForm({
 
         if (!result.success) {
           toast.error(result.error || 'Error al actualizar cotización');
+          setLoading(false);
           return;
         }
 
         toast.success('Cotización actualizada exitosamente');
+        setLoading(false);
 
+        if (redirectOnSuccess) {
+          router.push(redirectOnSuccess);
+          router.refresh(); // Forzar recarga de datos del servidor
+        } else if (promiseId) {
+          router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+          router.refresh();
+        } else {
+          router.back();
+          router.refresh();
+        }
+        return;
+      }
+
+      // Si se especifica crear como revisión, usar esa función
+      if (onCreateAsRevision && revisionOriginalId) {
+        const revisionResult = await onCreateAsRevision({
+          nombre: nombre.trim(),
+          descripcion: descripcion.trim() || undefined,
+          precio: precioFinal,
+          items: Object.fromEntries(
+            itemsSeleccionados.map(([itemId, cantidad]) => [itemId, cantidad])
+          ),
+        });
+
+        if (!revisionResult.success) {
+          toast.error(revisionResult.error || 'Error al crear revisión');
+          return;
+        }
+
+        toast.success('Revisión creada exitosamente');
+
+        // Si se creó la revisión y hay revisionId, el callback ya manejó la redirección
+        // Solo retornar, no hacer nada más aquí
+        if (revisionResult.revisionId) {
+          return;
+        }
+
+        // Si no se obtuvo revisionId, redirigir normalmente
         if (redirectOnSuccess) {
           router.push(redirectOnSuccess);
         } else if (promiseId) {
@@ -545,7 +636,7 @@ export function CotizacionForm({
         return;
       }
 
-      // Crear cotización
+      // Crear cotización normal
       const result = await createCotizacion({
         studio_slug: studioSlug,
         promise_id: promiseId || null,
@@ -913,29 +1004,31 @@ export function CotizacionForm({
               </div>
 
               {/* Botones */}
-              <div className="border-t border-zinc-700 pt-3">
-                <div className="flex gap-2">
-                  <ZenButton
-                    type="button"
-                    variant="secondary"
-                    onClick={handleCancelClick}
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    Cancelar
-                  </ZenButton>
-                  <ZenButton
-                    type="submit"
-                    variant="primary"
-                    loading={loading}
-                    loadingText="Guardando..."
-                    disabled={loading}
-                    className="flex-1"
-                  >
-                    {isEditMode ? 'Actualizar' : 'Crear'} Cotización
-                  </ZenButton>
+              {!hideActionButtons && (
+                <div className="border-t border-zinc-700 pt-3">
+                  <div className="flex gap-2">
+                    <ZenButton
+                      type="button"
+                      variant="secondary"
+                      onClick={handleCancelClick}
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      Cancelar
+                    </ZenButton>
+                    <ZenButton
+                      type="submit"
+                      variant="primary"
+                      loading={loading}
+                      loadingText="Guardando..."
+                      disabled={loading}
+                      className="flex-1"
+                    >
+                      {isEditMode ? 'Actualizar' : 'Crear'} Cotización
+                    </ZenButton>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </form>

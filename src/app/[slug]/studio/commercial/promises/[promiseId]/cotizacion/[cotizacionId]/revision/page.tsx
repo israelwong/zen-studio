@@ -177,8 +177,9 @@ export default function EditarRevisionPage() {
         if (action === 'autorizar') {
           router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${result.data.id}/revision/autorizar`);
         } else if (action === 'guardar') {
-          // Guardar borrador: redirigir a promiseId
+          // Guardar borrador: redirigir a promiseId y refrescar para ver cambios
           router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+          router.refresh(); // Forzar recarga de datos del servidor
         } else {
           // Por defecto, redirigir a la página de edición de la revisión creada
           router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${result.data.id}/revision`);
