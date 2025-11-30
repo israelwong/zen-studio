@@ -28,6 +28,9 @@ export interface CotizacionListItem {
   updated_at: Date;
   order: number | null;
   archived: boolean;
+  revision_of_id?: string | null;
+  revision_number?: number | null;
+  revision_status?: string | null;
 }
 
 export interface CotizacionesListResponse {
@@ -224,6 +227,9 @@ export async function getCotizacionesByPromiseId(
         updated_at: cot.updated_at,
         order: cot.order,
         archived: cot.archived,
+        revision_of_id: cot.revision_of_id,
+        revision_number: cot.revision_number,
+        revision_status: cot.revision_status,
       })),
     };
   } catch (error) {
@@ -252,6 +258,9 @@ export async function getCotizacionById(
     promise_id: string | null;
     contact_id: string | null;
     evento_id: string | null;
+    revision_of_id?: string | null;
+    revision_number?: number | null;
+    revision_status?: string | null;
     items: Array<{
       item_id: string;
       quantity: number;
@@ -299,10 +308,15 @@ export async function getCotizacionById(
         promise_id: cotizacion.promise_id,
         contact_id: cotizacion.contact_id,
         evento_id: cotizacion.evento_id,
-        items: cotizacion.cotizacion_items.map((item) => ({
-          item_id: item.item_id,
-          quantity: item.quantity,
-        })),
+        revision_of_id: cotizacion.revision_of_id,
+        revision_number: cotizacion.revision_number,
+        revision_status: cotizacion.revision_status,
+        items: cotizacion.cotizacion_items
+          .filter((item) => item.item_id !== null)
+          .map((item) => ({
+            item_id: item.item_id!,
+            quantity: item.quantity,
+          })),
       },
     };
   } catch (error) {
@@ -913,6 +927,10 @@ export async function updateCotizacion(
     revalidatePath(`/${validatedData.studio_slug}/studio/commercial/promises`);
     if (cotizacion.promise_id) {
       revalidatePath(`/${validatedData.studio_slug}/studio/commercial/promises/${cotizacion.promise_id}`);
+      // Revalidar ruta de revisión si es una revisión
+      if (cotizacion.revision_of_id) {
+        revalidatePath(`/${validatedData.studio_slug}/studio/commercial/promises/${cotizacion.promise_id}/cotizacion/${validatedData.cotizacion_id}/revision`);
+      }
     }
 
     return {
