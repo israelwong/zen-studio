@@ -37,7 +37,7 @@ export function ContractPreview({
             prose-em:text-zinc-500 prose-em:italic"
           dangerouslySetInnerHTML={{ __html: displayContent }}
         />
-        
+
         {showVariables && (
           <div className="mt-6 p-4 bg-blue-950/20 border border-blue-800/30 rounded-lg">
             <p className="text-sm text-blue-400">
@@ -49,7 +49,7 @@ export function ContractPreview({
             </p>
           </div>
         )}
-        
+
         {eventData && !showVariables && (
           <div className="mt-8 pt-6 border-t border-zinc-800">
             <p className="text-xs text-zinc-600 text-center">

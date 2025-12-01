@@ -33,7 +33,7 @@ export function ContractEditor({
           placeholder={placeholder}
           className="min-h-[600px] font-mono text-sm border-0 rounded-none focus-visible:ring-0"
         />
-        
+
         {!readonly && (
           <div className="px-4 py-3 bg-zinc-900/50 border-t border-zinc-800">
             <div className="flex items-center justify-between text-xs text-zinc-600">

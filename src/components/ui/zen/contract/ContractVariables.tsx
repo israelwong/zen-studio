@@ -18,7 +18,7 @@ export function ContractVariables({ onVariableClick, className = "" }: ContractV
     navigator.clipboard.writeText(variable);
     setCopiedVariable(variable);
     toast.success("Variable copiada al portapapeles");
-    
+
     setTimeout(() => {
       setCopiedVariable(null);
     }, 2000);
@@ -155,11 +155,10 @@ function VariableItem({ variable, isCopied, onClick, isBlock = false }: Variable
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <code
-            className={`text-xs font-mono ${
-              isBlock
+            className={`text-xs font-mono ${isBlock
                 ? "text-purple-400 bg-purple-950/30"
                 : "text-emerald-400 bg-emerald-950/30"
-            } px-1.5 py-0.5 rounded`}
+              } px-1.5 py-0.5 rounded`}
           >
             {variable.key}
           </code>

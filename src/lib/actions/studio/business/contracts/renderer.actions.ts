@@ -65,11 +65,11 @@ export async function getEventContractData(
     // Formatear fecha
     const fechaEvento = event.event_date
       ? new Date(event.event_date).toLocaleDateString("es-ES", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
       : "Fecha por definir";
 
     // Agrupar servicios por categoría
@@ -178,12 +178,12 @@ function renderServiciosBlock(servicios: ServiceCategory[]): string {
     `;
 
     categoria.servicios.forEach((servicio) => {
-      const precio = servicio.precio > 0 
+      const precio = servicio.precio > 0
         ? ` - ${new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(servicio.precio)}`
         : "";
-      
+
       html += `<li>${servicio.nombre}${precio}</li>`;
-      
+
       if (servicio.descripcion) {
         html += `<p class="text-sm text-zinc-500 ml-6">${servicio.descripcion}</p>`;
       }
