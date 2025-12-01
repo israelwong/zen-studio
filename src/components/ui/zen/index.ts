@@ -79,6 +79,14 @@ export {
 } from './overlays/ZenDropdownMenu';
 
 // =============================================================================
+// CONTRACT COMPONENTS (DISPONIBLES)
+// =============================================================================
+export { ContractEditor, ContractEditorToolbar } from './contract/ContractEditor';
+export { ContractPreview } from './contract/ContractPreview';
+export { ContractVariables } from './contract/ContractVariables';
+export { ContractTemplateCard } from './contract/ContractTemplate';
+
+// =============================================================================
 // DESIGN TOKENS
 // =============================================================================
 export { ZEN_COLORS } from './tokens/colors';
@@ -105,6 +113,14 @@ export type { SeparadorZenProps } from './SeparadorZen';
 // =============================================================================
 export type { ZenTagModalProps } from './modals/ZenTagModal';
 export type { ZenDialogProps } from './modals/ZenDialog';
+
+// =============================================================================
+// CONTRACT TYPES (DISPONIBLES)
+// =============================================================================
+export type { ContractEditorProps } from './contract/ContractEditor';
+export type { ContractPreviewProps } from './contract/ContractPreview';
+export type { ContractVariablesProps } from './contract/ContractVariables';
+export type { ContractTemplateProps } from './contract/ContractTemplate';
 
 // =============================================================================
 // COMPONENTES PENDIENTES (comentados hasta implementación)
