@@ -155,9 +155,7 @@ export default function EventDetailPage() {
   };
 
   const handleContratos = () => {
-    toast.info('Gestión de contratos próximamente disponible', {
-      description: 'Esta funcionalidad estará disponible en una próxima actualización.',
-    });
+    router.push(`/${studioSlug}/studio/business/events/${eventId}/contrato`);
   };
 
   const contactPhone = eventData?.promise?.contact?.phone;
