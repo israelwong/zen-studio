@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MoreVertical, Loader2, Phone, MessageCircle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Loader2, Phone, MessageCircle, MessageSquare, FileText } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
 import { obtenerEventoDetalle, cancelarEvento, getEventPipelineStages, moveEvent, obtenerCotizacionesAutorizadasCount, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import type { EventPipelineStage } from '@/lib/actions/schemas/events-schemas';
@@ -154,6 +154,12 @@ export default function EventDetailPage() {
     window.location.href = `tel:+${phoneWithCountry}`;
   };
 
+  const handleContratos = () => {
+    toast.info('Gestión de contratos próximamente disponible', {
+      description: 'Esta funcionalidad estará disponible en una próxima actualización.',
+    });
+  };
+
   const contactPhone = eventData?.promise?.contact?.phone;
   const hasContactPhone = !!contactPhone;
 
@@ -253,38 +259,50 @@ export default function EventDetailPage() {
               )}
 
               {pipelineStages.length > 0 && currentPipelineStageId && (
-                <div className="relative flex items-center">
-                  <select
-                    value={currentPipelineStageId}
-                    onChange={(e) => handlePipelineStageChange(e.target.value)}
-                    disabled={isChangingStage || loading}
-                    className={`pl-3 pr-8 py-1.5 text-sm bg-zinc-900 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed appearance-none ${isChangingStage
-                      ? "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
-                      : isArchived
-                        ? "border-amber-500 focus:ring-amber-500/50 focus:border-amber-500"
-                        : "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
-                      }`}
-                  >
+                <>
+                  <div className="relative flex items-center">
+                    <select
+                      value={currentPipelineStageId}
+                      onChange={(e) => handlePipelineStageChange(e.target.value)}
+                      disabled={isChangingStage || loading}
+                      className={`pl-3 pr-8 py-1.5 text-sm bg-zinc-900 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed appearance-none ${isChangingStage
+                        ? "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
+                        : isArchived
+                          ? "border-amber-500 focus:ring-amber-500/50 focus:border-amber-500"
+                          : "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
+                        }`}
+                    >
+                      {isChangingStage ? (
+                        <option value={currentPipelineStageId}>Actualizando estado...</option>
+                      ) : (
+                        pipelineStages.map((stage) => (
+                          <option key={stage.id} value={stage.id}>
+                            {stage.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
                     {isChangingStage ? (
-                      <option value={currentPipelineStageId}>Actualizando estado...</option>
+                      <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-zinc-400 pointer-events-none" />
                     ) : (
-                      pipelineStages.map((stage) => (
-                        <option key={stage.id} value={stage.id}>
-                          {stage.name}
-                        </option>
-                      ))
+                      <div className="absolute right-2 pointer-events-none">
+                        <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     )}
-                  </select>
-                  {isChangingStage ? (
-                    <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-zinc-400 pointer-events-none" />
-                  ) : (
-                    <div className="absolute right-2 pointer-events-none">
-                      <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                  <div className="h-6 w-px bg-zinc-700 mx-1" />
+                  <ZenButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleContratos}
+                    className="gap-2 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-950/50 px-3"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span className="text-xs font-medium">Contratos</span>
+                  </ZenButton>
+                </>
               )}
               <ZenDropdownMenu>
                 <ZenDropdownMenuTrigger asChild>

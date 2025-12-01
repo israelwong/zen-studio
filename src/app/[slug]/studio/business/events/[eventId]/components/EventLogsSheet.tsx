@@ -15,6 +15,7 @@ import { createPromiseLog, deletePromiseLog } from '@/lib/actions/studio/commerc
 import { formatDateTime } from '@/lib/actions/utils/formatting';
 import { usePromiseLogs } from '@/hooks/usePromiseLogs';
 import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
+import { cn } from '@/lib/utils';
 
 interface EventLogsSheetProps {
   open: boolean;
@@ -115,46 +116,75 @@ export function EventLogsSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full sm:max-w-md bg-zinc-900 border-zinc-800 flex flex-col p-0">
-          <SheetHeader className="px-4 py-3 border-b border-zinc-800">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-blue-400" />
-              <SheetTitle className="text-zinc-200">Bitácora</SheetTitle>
+        <SheetContent side="right" className="w-full sm:max-w-md bg-zinc-900 border-l border-zinc-800 flex flex-col p-0">
+          <SheetHeader className="border-b border-zinc-800 pb-4 px-6 pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600/20 rounded-lg">
+                <MessageSquare className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <SheetTitle className="text-xl font-semibold text-white">
+                  Bitácora
+                </SheetTitle>
+                <SheetDescription className="text-zinc-400">
+                  Historial de comentarios y notas
+                </SheetDescription>
+              </div>
             </div>
-            <SheetDescription className="text-zinc-400">
-              Historial de comentarios y notas del evento
-            </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3 min-h-0">
             {isInitialLoading ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="space-y-2">
-                    <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
-                    <div className="h-16 w-full bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-3 w-20 bg-zinc-800 rounded animate-pulse" />
+                    <div className="h-12 w-full bg-zinc-800 rounded animate-pulse" />
                   </div>
                 ))}
               </div>
             ) : logs.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-zinc-500 text-center">
-                  No hay notas aún. Escribe algo para comenzar.
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <MessageSquare className="h-12 w-12 text-zinc-700 mb-3" />
+                <p className="text-sm text-zinc-500">
+                  No hay notas aún
+                </p>
+                <p className="text-xs text-zinc-600 mt-1">
+                  Escribe algo para comenzar
                 </p>
               </div>
             ) : (
               <>
                 {logs.map((log) => {
                   const canDelete = isUserNote(log);
-                  const authorLabel = log.user?.full_name || (canDelete ? 'Usuario' : 'Sistema');
+                  const authorLabel = log.user?.full_name || (canDelete ? 'Tú' : 'Sistema');
+                  const isSystem = !canDelete;
 
                   return (
-                    <div key={log.id} className="space-y-1 group">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-xs text-zinc-500">
-                          <span className="font-medium text-zinc-400">{authorLabel}</span>
-                          <span>•</span>
-                          <span>{formatDateTime(log.created_at)}</span>
+                    <div
+                      key={log.id}
+                      className={cn(
+                        "group relative rounded-lg p-3 transition-colors",
+                        isSystem ? "bg-zinc-800/30" : "bg-zinc-800/50 hover:bg-zinc-800/60"
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className={cn(
+                              "text-xs font-medium",
+                              isSystem ? "text-zinc-500" : "text-zinc-300"
+                            )}>
+                              {authorLabel}
+                            </span>
+                            <span className="text-zinc-600">•</span>
+                            <span className="text-xs text-zinc-600">
+                              {formatDateTime(log.created_at)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap break-words">
+                            {log.content}
+                          </p>
                         </div>
                         {canDelete && (
                           <ZenButton
@@ -165,15 +195,12 @@ export function EventLogsSheet({
                               setDeletingLogId(log.id);
                               setShowDeleteModal(true);
                             }}
-                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-400"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-400 hover:text-red-400 flex-shrink-0"
                             disabled={deletingLogId === log.id}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </ZenButton>
                         )}
-                      </div>
-                      <div className="bg-zinc-800/50 rounded-lg p-3 text-sm text-zinc-200">
-                        {log.content}
                       </div>
                     </div>
                   );
@@ -183,8 +210,8 @@ export function EventLogsSheet({
             )}
           </div>
 
-          {/* Input fijo en la parte inferior */}
-          <div className="px-4 py-3 border-t border-zinc-800 bg-zinc-900">
+          {/* Input fijo */}
+          <div className="px-6 py-4 border-t border-zinc-800 bg-zinc-900">
             <form onSubmit={handleSubmit} className="flex gap-2">
               <ZenInput
                 value={message}
@@ -192,6 +219,7 @@ export function EventLogsSheet({
                 placeholder="Escribe una nota..."
                 disabled={sending || !promiseId}
                 className="flex-1"
+                size="sm"
               />
               <ZenButton
                 type="submit"
