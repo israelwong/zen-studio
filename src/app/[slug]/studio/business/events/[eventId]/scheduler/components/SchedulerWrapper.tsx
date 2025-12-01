@@ -15,6 +15,7 @@ interface SchedulerWrapperProps {
   eventData: EventoDetalle;
   initialDateRange?: DateRange;
   onDataChange?: (data: EventoDetalle) => void;
+  cotizacionId?: string;
 }
 
 /**
@@ -26,20 +27,37 @@ export function SchedulerWrapper({
   eventData,
   initialDateRange,
   onDataChange,
+  cotizacionId,
 }: SchedulerWrapperProps) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>(initialDateRange);
   const [conflictModalOpen, setConflictModalOpen] = useState(false);
   const [conflictCount, setConflictCount] = useState(0);
   const [proposedRange, setProposedRange] = useState<{ from: Date; to: Date } | null>(null);
 
+  // Filtrar cotizaciones según cotizacionId si está especificado
+  const filteredCotizaciones = useMemo(() => {
+    if (!cotizacionId || !eventData.cotizaciones) {
+      return eventData.cotizaciones;
+    }
+    return eventData.cotizaciones.filter(cot => cot.id === cotizacionId);
+  }, [eventData.cotizaciones, cotizacionId]);
+
+  // Crear eventData filtrado para pasar al scheduler
+  const filteredEventData = useMemo(() => {
+    return {
+      ...eventData,
+      cotizaciones: filteredCotizaciones,
+    };
+  }, [eventData, filteredCotizaciones]);
+
   // Validar si hay tareas fuera del nuevo rango
   const validateDateRangeChange = useCallback((newRange: DateRange | undefined): boolean => {
-    if (!newRange?.from || !newRange?.to || !eventData?.cotizaciones) {
+    if (!newRange?.from || !newRange?.to || !filteredCotizaciones) {
       return true; // Sin restricciones si no hay rango o datos
     }
 
-    // Buscar todas las tareas con scheduler_task asignado
-    const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
+    // Buscar todas las tareas con scheduler_task asignado (solo de la cotización filtrada)
+    const allItems = filteredCotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const itemsWithTasks = allItems.filter(item => item.scheduler_task);
 
     if (itemsWithTasks.length === 0) {
@@ -88,11 +106,11 @@ export function SchedulerWrapper({
 
   // Calcular progreso y estadísticas de tareas
   const taskStats = useMemo(() => {
-    if (!eventData?.cotizaciones || !dateRange) {
+    if (!filteredCotizaciones || !dateRange) {
       return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0, withoutCrew: 0 };
     }
 
-    const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
+    const allItems = filteredCotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const total = allItems.length;
     const itemsWithTasks = allItems.filter(item => item.scheduler_task);
     const unassigned = total - itemsWithTasks.length;
@@ -131,7 +149,7 @@ export function SchedulerWrapper({
     });
 
     return { completed, total, percentage, delayed, inProcess, pending, unassigned, withoutCrew };
-  }, [eventData, dateRange]);
+  }, [filteredCotizaciones, dateRange]);
 
   return (
     <>
@@ -214,7 +232,7 @@ export function SchedulerWrapper({
         key={dateRange ? `${dateRange.from?.getTime()}-${dateRange.to?.getTime()}` : 'no-range'}
         studioSlug={studioSlug}
         eventId={eventId}
-        eventData={eventData}
+        eventData={filteredEventData}
         schedulerInstance={eventData.scheduler || undefined}
         dateRange={dateRange}
         onDataChange={onDataChange}

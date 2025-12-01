@@ -192,8 +192,12 @@ export function EventCotizacionesCard({
     router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
   };
 
-  const handleGestionarScheduler = () => {
-    router.push(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
+  const handleGestionarScheduler = (cotizacionId?: string) => {
+    if (cotizacionId) {
+      router.push(`/${studioSlug}/studio/business/events/${eventId}/scheduler?cotizacion=${cotizacionId}`);
+    } else {
+      router.push(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
+    }
   };
 
   const handleVer = (cotizacion: CotizacionAprobada) => {
@@ -323,15 +327,6 @@ export function EventCotizacionesCard({
                 Anexar
               </ZenButton>
             )}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={handleGestionarScheduler}
-              className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20"
-            >
-              <Calendar className="h-3 w-3 mr-1" />
-              Scheduler
-            </ZenButton>
           </div>
         </div>
       </ZenCardHeader>
@@ -427,6 +422,22 @@ export function EventCotizacionesCard({
                         <p className="text-xs text-zinc-500 mt-2">
                           Autorizada: {formatDate(cotizacion.updated_at)}
                         </p>
+
+                        {/* Botón Scheduler por cotización */}
+                        {stats.totalTasks > 0 && (
+                          <div className="mt-3 pt-2 border-t border-zinc-800">
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleGestionarScheduler(cotizacion.id)}
+                              className="h-7 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 w-full justify-start"
+                            >
+                              <Calendar className="h-3 w-3 mr-1.5" />
+                              Gestionar cronograma
+                            </ZenButton>
+                          </div>
+                        )}
+
                         {/* Spinner de carga */}
                         {isLoading && (
                           <div className="absolute inset-0 bg-zinc-900/90 rounded flex items-center justify-center gap-2 z-10">

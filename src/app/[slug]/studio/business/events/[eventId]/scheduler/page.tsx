@@ -1,77 +1,26 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Users, CheckCircle2, AlertCircle, Clock } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenBadge } from '@/components/ui/zen';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Users } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { obtenerEventoDetalle, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import { toast } from 'sonner';
-import { EventSchedulerView, SchedulerDateRangeConfig } from './index';
+import { SchedulerWrapper } from './components/SchedulerWrapper';
 import { CrewMembersManager } from '@/components/shared/crew-members/CrewMembersManager';
 import { type DateRange } from 'react-day-picker';
 
 export default function EventSchedulerPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const studioSlug = params.slug as string;
   const eventId = params.eventId as string;
+  const cotizacionId = searchParams.get('cotizacion');
   const [loading, setLoading] = useState(true);
   const [eventData, setEventData] = useState<EventoDetalle | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [crewManagerOpen, setCrewManagerOpen] = useState(false);
-
-  // Calcular progreso y estadísticas de tareas
-  const taskStats = useMemo(() => {
-    if (!eventData?.cotizaciones || !dateRange) {
-      return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0, withoutCrew: 0 };
-    }
-
-    const allItems = eventData.cotizaciones.flatMap(cot => cot.cotizacion_items || []);
-    const total = allItems.length;
-    const itemsWithTasks = allItems.filter(item => item.scheduler_task);
-    const unassigned = total - itemsWithTasks.length; // Items sin tarea asignada
-
-    // Items con tarea pero sin crew member asignado
-    const withoutCrew = itemsWithTasks.filter(item => {
-      const hasCompleted = !!item.scheduler_task?.completed_at;
-      const hasCrew = !!item.assigned_to_crew_member_id;
-      return !hasCompleted && !hasCrew;
-    }).length;
-
-    // Items completados (completed_at puede ser Date o string ISO)
-    const completed = itemsWithTasks.filter(item => {
-      const completedAt = item.scheduler_task?.completed_at;
-      return !!completedAt; // Funciona tanto para Date como para string ISO
-    }).length;
-    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    // Calcular estados basados en fechas
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    let delayed = 0;
-    let inProcess = 0;
-    let pending = 0;
-
-    itemsWithTasks.forEach(item => {
-      if (item.scheduler_task?.completed_at) return; // Ya completadas no cuentan
-
-      const startDate = new Date(item.scheduler_task!.start_date);
-      const endDate = new Date(item.scheduler_task!.end_date);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(0, 0, 0, 0);
-
-      if (today > endDate) {
-        delayed++;
-      } else if (today >= startDate && today <= endDate) {
-        inProcess++;
-      } else if (today < startDate) {
-        pending++;
-      }
-    });
-
-    return { completed, total, percentage, delayed, inProcess, pending, unassigned, withoutCrew };
-  }, [eventData, dateRange]);
 
   const loadEvent = useCallback(async () => {
     try {
@@ -119,34 +68,42 @@ export default function EventSchedulerPage() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-8 w-32 bg-zinc-800 rounded animate-pulse" />
-                <div className="h-6 w-px bg-zinc-700 mx-1" />
-                <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
-                <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
-                <div className="h-6 w-px bg-zinc-700 mx-1" />
                 <div className="h-8 w-24 bg-zinc-800 rounded animate-pulse" />
               </div>
             </div>
           </ZenCardHeader>
-          <ZenCardContent className="p-0">
-            {/* Stats Bar Skeleton */}
-            <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 px-6 py-3">
-              <div className="flex items-center justify-between">
+          <ZenCardContent className="p-6">
+            {/* Barra unificada Skeleton: Progreso + Tareas + Rango */}
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 mb-4">
+              <div className="flex items-center justify-between gap-6">
+                {/* Progreso Skeleton */}
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-6 w-32 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-7 w-28 bg-zinc-800 rounded animate-pulse" />
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Separador */}
+                <div className="h-6 w-px bg-zinc-700" />
+
+                {/* Tareas Skeleton */}
+                <div className="flex items-center gap-2 flex-1">
                   <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-6 w-28 bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-6 w-28 bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-6 w-28 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-6 w-20 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-6 w-16 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-6 w-20 bg-zinc-800 rounded animate-pulse" />
+                  <div className="h-6 w-16 bg-zinc-800 rounded animate-pulse" />
                 </div>
+
+                {/* Separador */}
+                <div className="h-6 w-px bg-zinc-700" />
+
+                {/* Rango de fechas Skeleton */}
+                <div className="h-8 w-40 bg-zinc-800 rounded animate-pulse" />
               </div>
             </div>
 
             {/* Scheduler Skeleton */}
-            <div className="p-6">
+            <div>
               <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
                 <div className="flex">
                   {/* Sidebar Skeleton */}
@@ -248,41 +205,17 @@ export default function EventSchedulerPage() {
                 <ArrowLeft className="h-4 w-4" />
               </ZenButton>
               <div>
-                <ZenCardTitle>{eventData.promise?.name || eventData.name || 'Evento sin nombre'}</ZenCardTitle>
+                <ZenCardTitle>
+                  {cotizacionId
+                    ? eventData.cotizaciones?.find(c => c.id === cotizacionId)?.name || 'Cronograma'
+                    : eventData.promise?.name || eventData.name || 'Evento sin nombre'}
+                </ZenCardTitle>
                 <ZenCardDescription>
-                  Cronograma
+                  {cotizacionId ? 'Cronograma de cotización' : 'Cronograma'}
                 </ZenCardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <SchedulerDateRangeConfig
-                dateRange={dateRange}
-                onDateRangeChange={setDateRange}
-                studioSlug={studioSlug}
-                eventId={eventId}
-                onSave={() => {
-                  // Recargar datos del evento para obtener el nuevo rango
-                  const loadEvent = async () => {
-                    try {
-                      const result = await obtenerEventoDetalle(studioSlug, eventId);
-                      if (result.success && result.data) {
-                        setEventData(result.data);
-                        // Actualizar dateRange desde schedulerInstance si existe
-                        if (result.data.scheduler) {
-                          setDateRange({
-                            from: result.data.scheduler.start_date,
-                            to: result.data.scheduler.end_date,
-                          });
-                        }
-                      }
-                    } catch (error) {
-                      // Error silencioso al recargar evento
-                    }
-                  };
-                  loadEvent();
-                }}
-              />
-              <div className="h-6 w-px bg-zinc-700 mx-1" />
               <ZenButton
                 variant="ghost"
                 size="sm"
@@ -295,109 +228,16 @@ export default function EventSchedulerPage() {
             </div>
           </div>
         </ZenCardHeader>
-        <ZenCardContent className="p-0">
-          {/* Stats Bar - Sticky */}
-          {taskStats.total > 0 && (
-            <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-sm border-b border-zinc-800 px-6 py-3">
-              <div className="flex items-center justify-between gap-6">
-                {/* Columna 1: Progreso */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-500 font-medium">Progreso:</span>
-                  <ZenBadge
-                    variant="outline"
-                    className="gap-1.5 px-3 py-1.5 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    <span className="text-xs font-medium">
-                      {taskStats.completed} de {taskStats.total} ({taskStats.percentage}%)
-                    </span>
-                  </ZenBadge>
-                </div>
-
-                {/* Columna 2: Tareas por estado */}
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-500 font-medium">Tareas:</span>
-                  <div className="flex items-center gap-2">
-                    {/* Sin slot asignado */}
-                    {taskStats.unassigned > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-zinc-900 text-zinc-500 border-zinc-800"
-                      >
-                        <span className="text-xs font-medium">{taskStats.unassigned} Sin slot</span>
-                      </ZenBadge>
-                    )}
-
-                    {/* Sin crew member asignado */}
-                    {taskStats.withoutCrew > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-amber-950/30 text-amber-400 border-amber-800/50"
-                      >
-                        <Users className="h-3 w-3" />
-                        <span className="text-xs font-medium">{taskStats.withoutCrew} Sin personal</span>
-                      </ZenBadge>
-                    )}
-
-                    {/* Pendientes */}
-                    {taskStats.pending > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-zinc-800 text-zinc-400 border-zinc-700"
-                      >
-                        <span className="text-xs font-medium">{taskStats.pending} Pendientes</span>
-                      </ZenBadge>
-                    )}
-
-                    {/* En proceso */}
-                    {taskStats.inProcess > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-blue-950/30 text-blue-400 border-blue-800/50"
-                      >
-                        <Clock className="h-3 w-3" />
-                        <span className="text-xs font-medium">{taskStats.inProcess} En proceso</span>
-                      </ZenBadge>
-                    )}
-
-                    {/* Completadas */}
-                    {taskStats.completed > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span className="text-xs font-medium">{taskStats.completed} Completadas</span>
-                      </ZenBadge>
-                    )}
-
-                    {/* Atrasadas */}
-                    {taskStats.delayed > 0 && (
-                      <ZenBadge
-                        variant="outline"
-                        className="gap-1.5 px-2 py-1 bg-red-950/30 text-red-400 border-red-800/50"
-                      >
-                        <AlertCircle className="h-3 w-3" />
-                        <span className="text-xs font-medium">{taskStats.delayed} Atrasadas</span>
-                      </ZenBadge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Scheduler */}
-          <div className="p-6">
-            <EventSchedulerView
-              studioSlug={studioSlug}
-              eventId={eventId}
-              eventData={eventData}
-              schedulerInstance={eventData.scheduler || undefined}
-              dateRange={dateRange}
-              onDataChange={setEventData}
-            />
-          </div>
+        <ZenCardContent className="p-6">
+          {/* Scheduler con Stats integrados */}
+          <SchedulerWrapper
+            studioSlug={studioSlug}
+            eventId={eventId}
+            eventData={eventData}
+            initialDateRange={dateRange}
+            onDataChange={setEventData}
+            cotizacionId={cotizacionId || undefined}
+          />
         </ZenCardContent>
       </ZenCard>
 
