@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, ContactRound, ShoppingBag, Sparkles, BarChart3, Users, HelpCircle } from 'lucide-react';
+import { Calendar, ContactRound, ShoppingBag, Sparkles, BarChart3, Users, HelpCircle, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { ZenButton } from '@/components/ui/zen';
 
@@ -44,6 +44,12 @@ export function UtilityDock({
       icon: Users,
       label: 'Personal',
       href: `/${studioSlug}/studio/business/personal`,
+    },
+    {
+      id: 'contratos',
+      icon: FileText,
+      label: 'Contratos',
+      href: `/${studioSlug}/studio/contratos`,
     },
     {
       id: 'magic',

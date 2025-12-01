@@ -136,6 +136,11 @@ export function CommandMenu({
           href: `/${studioSlug}/studio/business/personal`,
         },
         {
+          label: 'Contratos',
+          icon: FileText,
+          href: `/${studioSlug}/studio/contratos`,
+        },
+        {
           label: 'Finanzas',
           icon: DollarSign,
           href: `/${studioSlug}/studio/business/finanzas`,
