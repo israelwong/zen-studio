@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, FileText, Plus, Edit, Save, RefreshCw, Loader2, Eye, Code } from 'lucide-react';
+import { ArrowLeft, FileText, Plus, Edit, Save, RefreshCw, Loader2, Eye, Code, Download } from 'lucide-react';
 import {
   ZenCard,
   ZenCardContent,
@@ -24,6 +24,7 @@ import {
 } from '@/lib/actions/studio/business/contracts';
 import type { EventContract, EventContractData } from '@/types/contracts';
 import { toast } from 'sonner';
+import { generatePDF, generateContractFilename } from '@/lib/utils/pdf-generator';
 
 export default function EventoContratoPage() {
   const params = useParams();
@@ -43,6 +44,7 @@ export default function EventoContratoPage() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [showUpdateTemplateModal, setShowUpdateTemplateModal] = useState(false);
   const [updateTemplate, setUpdateTemplate] = useState(false);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   useEffect(() => {
     loadContract();
@@ -162,6 +164,33 @@ export default function EventoContratoPage() {
       toast.error('Error al regenerar contrato');
     } finally {
       setIsRegenerating(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!eventData) {
+      toast.error('No hay datos del evento disponibles');
+      return;
+    }
+
+    setIsExportingPDF(true);
+    try {
+      const filename = generateContractFilename(
+        eventData.nombre_evento,
+        eventData.nombre_cliente
+      );
+
+      await generatePDF(renderedContent, {
+        filename,
+        margin: 0.75,
+      });
+
+      toast.success('Contrato exportado a PDF correctamente');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      toast.error('Error al exportar PDF');
+    } finally {
+      setIsExportingPDF(false);
     }
   };
 
@@ -285,6 +314,19 @@ export default function EventoContratoPage() {
                   >
                     {showPreview ? <Code className="h-4 w-4 mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
                     {showPreview ? 'Ver Código' : 'Vista Previa'}
+                  </ZenButton>
+                  <ZenButton
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportPDF}
+                    disabled={isExportingPDF}
+                  >
+                    {isExportingPDF ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Descargar PDF
                   </ZenButton>
                   <ZenButton
                     variant="outline"
