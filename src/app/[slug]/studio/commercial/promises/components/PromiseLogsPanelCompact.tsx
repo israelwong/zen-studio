@@ -5,7 +5,7 @@ import { MessageSquare, ChevronRight } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton } from '@/components/ui/zen';
 import { formatDateTime } from '@/lib/actions/utils/formatting';
 import { usePromiseLogs } from '@/hooks/usePromiseLogs';
-import { PromiseLogsModal } from './PromiseLogsModal';
+import { BitacoraSheet } from '@/components/shared/bitacora';
 
 interface PromiseLogsPanelCompactProps {
   studioSlug: string;
@@ -21,7 +21,7 @@ export function PromiseLogsPanelCompact({
   isSaved,
 }: PromiseLogsPanelCompactProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { logsRecentFirst, loading, addLog, removeLog, refetch } = usePromiseLogs({
+  const { logsRecentFirst, loading, addLog, removeLog } = usePromiseLogs({
     promiseId: isSaved && promiseId ? promiseId : null,
     enabled: isSaved,
   });
@@ -84,7 +84,7 @@ export function PromiseLogsPanelCompact({
               {lastTwoLogs.map((log) => {
                 const isUserNote = log.log_type === 'user_note';
                 const authorLabel = isUserNote ? 'Usuario' : 'Sistema';
-                
+
                 return (
                   <div
                     key={log.id}
@@ -118,17 +118,15 @@ export function PromiseLogsPanelCompact({
         </ZenCardContent>
       </ZenCard>
 
-      <PromiseLogsModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+      <BitacoraSheet
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
         studioSlug={studioSlug}
         promiseId={promiseId}
         contactId={contactId}
         onLogAdded={(newLog) => {
           if (newLog) {
             addLog(newLog);
-          } else {
-            refetch();
           }
         }}
         onLogDeleted={(logId) => {

@@ -31,6 +31,7 @@ export function AgendaUnifiedSheet({
   const [agendamientos, setAgendamientos] = useState<AgendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   const loadAgendamientos = useCallback(async () => {
     setLoading(true);
@@ -84,6 +85,36 @@ export function AgendaUnifiedSheet({
     // toast.info('Para crear un agendamiento, hazlo desde la promesa o evento correspondiente');
   };
 
+  const handleNavigate = (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => {
+    const newDate = new Date(currentDate);
+
+    if (action === 'PREV') {
+      if (calendarView === 'month') {
+        newDate.setMonth(newDate.getMonth() - 1);
+      } else if (calendarView === 'week') {
+        newDate.setDate(newDate.getDate() - 7);
+      } else if (calendarView === 'day') {
+        newDate.setDate(newDate.getDate() - 1);
+      }
+    } else if (action === 'NEXT') {
+      if (calendarView === 'month') {
+        newDate.setMonth(newDate.getMonth() + 1);
+      } else if (calendarView === 'week') {
+        newDate.setDate(newDate.getDate() + 7);
+      } else if (calendarView === 'day') {
+        newDate.setDate(newDate.getDate() + 1);
+      }
+    } else if (action === 'TODAY') {
+      setCurrentDate(new Date());
+      return;
+    } else if (action instanceof Date) {
+      setCurrentDate(action);
+      return;
+    }
+
+    setCurrentDate(newDate);
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
@@ -99,7 +130,7 @@ export function AgendaUnifiedSheet({
                 </div>
                 <div>
                   <SheetTitle className="text-xl font-semibold text-white">
-                    Agenda Unificada
+                    Agenda
                   </SheetTitle>
                   <SheetDescription className="text-zinc-400">
                     Visualiza y gestiona todos tus agendamientos
@@ -162,7 +193,9 @@ export function AgendaUnifiedSheet({
                     onSelectSlot={handleSelectSlot}
                     onViewPromise={handleViewPromise}
                     onViewEvento={handleViewEvento}
-                    defaultDate={new Date()}
+                    defaultDate={currentDate}
+                    date={currentDate}
+                    onNavigate={handleNavigate}
                     defaultView="month"
                     view={calendarView}
                     onViewChange={handleViewChange}

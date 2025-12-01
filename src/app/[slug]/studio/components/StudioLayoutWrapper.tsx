@@ -71,7 +71,7 @@ export function StudioLayoutWrapper({
       {/* ZEN Magic Chat (siempre al final) */}
       <ZenMagicChatWrapper studioSlug={studioSlug} />
 
-      {/* Sheet de Agenda Unificada */}
+      {/* Sheet de Agenda */}
       <AgendaUnifiedSheet
         open={agendaOpen}
         onOpenChange={setAgendaOpen}

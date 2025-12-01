@@ -4,6 +4,7 @@ import React, { useMemo } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { AgendaItemHoverCard } from './AgendaItemHoverCard';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -21,6 +22,8 @@ interface AgendaCalendarProps {
   onViewPromise?: (promiseId: string) => void;
   onViewEvento?: (eventoId: string) => void;
   defaultDate?: Date;
+  date?: Date;
+  onNavigate?: (date: Date | 'PREV' | 'NEXT' | 'TODAY') => void;
   defaultView?: View;
   view?: View;
   onViewChange?: (view: View) => void;
@@ -280,11 +283,14 @@ export function AgendaCalendar({
   onViewPromise,
   onViewEvento,
   defaultDate = new Date(),
+  date,
+  onNavigate,
   defaultView = 'month',
   view,
   onViewChange,
   className,
 }: AgendaCalendarProps) {
+  const currentDate = date || defaultDate;
   const calendarEvents = useMemo(() => {
     return events.map(agendaItemToEvent);
   }, [events]);
@@ -321,15 +327,19 @@ export function AgendaCalendar({
     weekdayFormat: (date: Date) => moment(date).format('dddd'),
   };
 
-  // Toolbar personalizado: solo botones de vista, sin navegación
+  // Toolbar personalizado con navegación entre meses
   const CustomToolbar = ({
     view,
     onView,
     label,
+    onNavigate,
+    date,
   }: {
     view: string;
     onView: (view: string) => void;
     label: string;
+    onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => void;
+    date: Date;
   }) => {
     const views: Array<'month' | 'week' | 'day' | 'agenda'> = ['month', 'week', 'day', 'agenda'];
     const viewLabels: Record<string, string> = {
@@ -339,9 +349,67 @@ export function AgendaCalendar({
       agenda: 'Agenda',
     };
 
+    const handlePrevious = () => {
+      if (view === 'month') {
+        onNavigate('PREV');
+      } else if (view === 'week') {
+        const newDate = new Date(date);
+        newDate.setDate(newDate.getDate() - 7);
+        onNavigate(newDate);
+      } else if (view === 'day') {
+        const newDate = new Date(date);
+        newDate.setDate(newDate.getDate() - 1);
+        onNavigate(newDate);
+      }
+    };
+
+    const handleNext = () => {
+      if (view === 'month') {
+        onNavigate('NEXT');
+      } else if (view === 'week') {
+        const newDate = new Date(date);
+        newDate.setDate(newDate.getDate() + 7);
+        onNavigate(newDate);
+      } else if (view === 'day') {
+        const newDate = new Date(date);
+        newDate.setDate(newDate.getDate() + 1);
+        onNavigate(newDate);
+      }
+    };
+
+    const handleToday = () => {
+      onNavigate('TODAY');
+    };
+
     return (
       <div className="rbc-toolbar flex items-center justify-between pb-4">
-        <div className="rbc-toolbar-label text-left flex-shrink-0">{label}</div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handlePrevious}
+            className="rbc-toolbar-button flex items-center justify-center p-2"
+            aria-label="Mes anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleToday}
+            className="rbc-toolbar-button"
+            aria-label="Hoy"
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            onClick={handleNext}
+            className="rbc-toolbar-button flex items-center justify-center p-2"
+            aria-label="Mes siguiente"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="rbc-toolbar-label text-center flex-1 font-semibold">{label}</div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {views.map((v) => (
             <button
@@ -595,10 +663,16 @@ export function AgendaCalendar({
           startAccessor="start"
           endAccessor="end"
           style={{ height: '100%' }}
+          date={currentDate}
           defaultDate={defaultDate}
           defaultView={defaultView}
           view={view}
           onView={onViewChange}
+          onNavigate={(newDate: Date) => {
+            if (onNavigate) {
+              onNavigate(newDate);
+            }
+          }}
           onSelectEvent={onSelectEvent ? (event) => onSelectEvent(event.resource) : undefined}
           onSelectSlot={onSelectSlot}
           selectable={!!onSelectSlot}
@@ -617,13 +691,24 @@ export function AgendaCalendar({
               view: string;
               onView: (view: string) => void;
               label: string;
-            }) => (
-              <CustomToolbar
-                view={props.view}
-                onView={props.onView}
-                label={props.label}
-              />
-            ),
+              onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => void;
+              date: Date;
+            }) => {
+              const handleToolbarNavigate = (action: 'PREV' | 'NEXT' | 'TODAY' | Date) => {
+                if (!onNavigate) return;
+                onNavigate(action);
+              };
+
+              return (
+                <CustomToolbar
+                  view={props.view}
+                  onView={props.onView}
+                  label={props.label}
+                  onNavigate={handleToolbarNavigate}
+                  date={props.date}
+                />
+              );
+            },
           }}
           messages={{
             next: 'Siguiente',

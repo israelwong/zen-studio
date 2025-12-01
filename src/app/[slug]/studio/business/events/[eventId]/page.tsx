@@ -7,7 +7,7 @@ import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescriptio
 import { obtenerEventoDetalle, cancelarEvento, getEventPipelineStages, moveEvent, obtenerCotizacionesAutorizadasCount, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import type { EventPipelineStage } from '@/lib/actions/schemas/events-schemas';
 import { EventPanel } from '../components/EventPanel';
-import { EventLogsSheet } from './components/EventLogsSheet';
+import { BitacoraSheet } from '@/components/shared/bitacora';
 import { toast } from 'sonner';
 
 export default function EventDetailPage() {
@@ -366,7 +366,7 @@ export default function EventDetailPage() {
 
       {/* Sheet de bitácora */}
       {eventData?.promise?.id && (
-        <EventLogsSheet
+        <BitacoraSheet
           open={logsSheetOpen}
           onOpenChange={setLogsSheetOpen}
           studioSlug={studioSlug}

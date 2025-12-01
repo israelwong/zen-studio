@@ -17,19 +17,25 @@ import { usePromiseLogs } from '@/hooks/usePromiseLogs';
 import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 import { cn } from '@/lib/utils';
 
-interface EventLogsSheetProps {
+interface BitacoraSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   studioSlug: string;
   promiseId: string | null;
+  contactId?: string | null;
+  onLogAdded?: (newLog?: PromiseLog) => void;
+  onLogDeleted?: (logId: string) => void;
 }
 
-export function EventLogsSheet({
+export function BitacoraSheet({
   open,
   onOpenChange,
   studioSlug,
   promiseId,
-}: EventLogsSheetProps) {
+  contactId,
+  onLogAdded,
+  onLogDeleted,
+}: BitacoraSheetProps) {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
   const [deletingLogId, setDeletingLogId] = useState<string | null>(null);
@@ -75,6 +81,7 @@ export function EventLogsSheet({
       if (result.success && result.data) {
         addLog(result.data);
         toast.success('Nota agregada');
+        onLogAdded?.(result.data);
         setTimeout(() => scrollToBottom(), 100);
       } else {
         toast.error(result.error || 'Error al agregar nota');
@@ -96,6 +103,7 @@ export function EventLogsSheet({
       if (result.success) {
         removeLog(logId);
         toast.success('Nota eliminada');
+        onLogDeleted?.(logId);
       } else {
         toast.error(result.error || 'Error al eliminar nota');
       }
@@ -212,21 +220,23 @@ export function EventLogsSheet({
 
           {/* Input fijo */}
           <div className="px-6 py-4 border-t border-zinc-800 bg-zinc-900">
-            <form onSubmit={handleSubmit} className="flex gap-2">
-              <ZenInput
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Escribe una nota..."
-                disabled={sending || !promiseId}
-                className="flex-1"
-                size="sm"
-              />
+            <form onSubmit={handleSubmit} className="flex gap-2 items-center w-full">
+              <div className="flex-1 min-w-0">
+                <ZenInput
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Escribe una nota..."
+                  disabled={sending || !promiseId}
+                  className="h-9 w-full"
+                  size="sm"
+                />
+              </div>
               <ZenButton
                 type="submit"
                 disabled={!message.trim() || sending || !promiseId}
                 loading={sending}
                 size="sm"
-                className="flex-shrink-0"
+                className="flex-shrink-0 h-9"
               >
                 <Send className="h-4 w-4" />
               </ZenButton>
