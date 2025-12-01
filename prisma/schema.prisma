@@ -720,6 +720,7 @@ model studios {
   longitude                  Float?
   maps_url                   String?
   place_id                   String?
+  has_crew                   Boolean?
   manager_pipeline_stages    studio_manager_pipeline_stages[]
   marketing_leads            marketing_leads[]
   marketing_pipeline_stages  marketing_pipeline_stages[]

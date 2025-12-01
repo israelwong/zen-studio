@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { type DateRange } from 'react-day-picker';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
@@ -44,7 +44,7 @@ interface EventSchedulerProps {
   onDataChange?: (data: EventoDetalle) => void;
 }
 
-export function EventScheduler({
+export const EventScheduler = React.memo(function EventScheduler({
   studioSlug,
   eventId,
   eventData,
@@ -57,12 +57,35 @@ export function EventScheduler({
   // Estado local para actualizaciones optimistas
   const [localEventData, setLocalEventData] = useState(eventData);
   const [assignCrewModalOpen, setAssignCrewModalOpen] = useState(false);
+  const [hasCrewPreference, setHasCrewPreference] = useState<boolean | null>(null);
   const [pendingTaskCompletion, setPendingTaskCompletion] = useState<{
     taskId: string;
     itemId: string;
     itemName: string;
     costoTotal: number;
   } | null>(null);
+
+  // Sincronizar localEventData solo cuando eventData cambia desde el padre
+  // No sincronizar en cada re-render
+  useEffect(() => {
+    setLocalEventData(eventData);
+  }, [eventData]);
+
+  // Cargar preferencia de crew al montar
+  useEffect(() => {
+    const loadCrewPreference = async () => {
+      try {
+        const { obtenerPreferenciaCrew } = await import('@/lib/actions/studio/crew/crew.actions');
+        const result = await obtenerPreferenciaCrew(studioSlug);
+        if (result.success) {
+          setHasCrewPreference(result.has_crew);
+        }
+      } catch (error) {
+        // Error silencioso
+      }
+    };
+    loadCrewPreference();
+  }, [studioSlug]);
 
   // Callback para actualizar un item específico en localEventData
   const handleItemUpdate = useCallback((updatedItem: CotizacionItem) => {
@@ -209,7 +232,7 @@ export function EventScheduler({
         const endDate = new Date(startDate);
         endDate.setDate(endDate.getDate()); // Mismo día inicialmente
 
-        const result = await crearGanttTask(studioSlug, eventId, {
+        const result = await crearSchedulerTask(studioSlug, eventId, {
           itemId,
           name: itemName,
           startDate,
@@ -274,7 +297,7 @@ export function EventScheduler({
   const handleTaskDelete = useCallback(
     async (taskId: string) => {
       try {
-        const result = await eliminarGanttTask(studioSlug, eventId, taskId);
+        const result = await eliminarSchedulerTask(studioSlug, eventId, taskId);
 
         if (!result.success) {
           toast.error(result.error || 'Error al eliminar la tarea');
@@ -388,8 +411,61 @@ export function EventScheduler({
       const costoTotal = costoUnitario * (itemFound.quantity || 1);
       const itemName = itemFound.name || itemFound.name_snapshot || 'Tarea sin nombre';
 
-      // Si no hay personal asignado y tiene costo, mostrar modal
+      // Si no hay personal asignado y tiene costo
       if (!itemFound.assigned_to_crew_member_id && costoTotal > 0) {
+        // Si has_crew === false, completar directamente sin mostrar modal
+        if (hasCrewPreference === false) {
+          // Completar sin pago directamente
+          try {
+            const result = await actualizarSchedulerTask(studioSlug, eventId, taskId, {
+              isCompleted: true,
+            });
+
+            if (!result.success) {
+              toast.error(result.error || 'Error al actualizar el estado');
+              return;
+            }
+
+            // Actualización optimista
+            let updatedData: EventoDetalle;
+            setLocalEventData(prev => {
+              const newData = {
+                ...prev,
+                cotizaciones: prev.cotizaciones?.map(cotizacion => ({
+                  ...cotizacion,
+                  cotizacion_items: cotizacion.cotizacion_items?.map(item => {
+                    if (item.scheduler_task?.id === taskId) {
+                      return {
+                        ...item,
+                        scheduler_task: item.scheduler_task ? {
+                          ...item.scheduler_task,
+                          completed_at: new Date().toISOString(),
+                          status: 'COMPLETED',
+                          progress_percent: 100,
+                        } : null,
+                      };
+                    }
+                    return item;
+                  }),
+                })),
+              };
+              updatedData = newData;
+              return newData;
+            });
+
+            if (updatedData! && onDataChange) {
+              onDataChange(updatedData);
+            }
+
+            toast.success('Tarea completada');
+            return;
+          } catch (error) {
+            toast.error('Error al completar la tarea');
+            return;
+          }
+        }
+
+        // Si has_crew es null o true, mostrar modal
         setPendingTaskCompletion({
           taskId,
           itemId: itemFound.id,
@@ -402,7 +478,7 @@ export function EventScheduler({
 
       // Si hay personal o no tiene costo, proceder normalmente
       try {
-        const result = await actualizarGanttTask(studioSlug, eventId, taskId, {
+        const result = await actualizarSchedulerTask(studioSlug, eventId, taskId, {
           isCompleted: true,
         });
 
@@ -511,7 +587,7 @@ export function EventScheduler({
         }));
 
         // Completar la tarea (esto creará la nómina automáticamente)
-        const result = await actualizarGanttTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
+        const result = await actualizarSchedulerTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
           isCompleted: true,
         });
 
@@ -560,6 +636,9 @@ export function EventScheduler({
         }
         setAssignCrewModalOpen(false);
         setPendingTaskCompletion(null);
+
+        // Actualizar preferencia a true cuando se asigna personal
+        setHasCrewPreference(true);
       } catch (error) {
         toast.error('Error al asignar y completar');
       }
@@ -572,7 +651,7 @@ export function EventScheduler({
     if (!pendingTaskCompletion) return;
 
     try {
-      const result = await actualizarGanttTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
+      const result = await actualizarSchedulerTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
         isCompleted: true,
       });
 
@@ -616,6 +695,13 @@ export function EventScheduler({
       toast.warning('Tarea completada. No se generó pago porque no hay personal asignado.');
       setAssignCrewModalOpen(false);
       setPendingTaskCompletion(null);
+
+      // Recargar preferencia de crew por si cambió
+      const { obtenerPreferenciaCrew } = await import('@/lib/actions/studio/crew/crew.actions');
+      const prefResult = await obtenerPreferenciaCrew(studioSlug);
+      if (prefResult.success) {
+        setHasCrewPreference(prefResult.has_crew);
+      }
     } catch (error) {
       toast.error('Error al completar la tarea');
     }
@@ -696,5 +782,17 @@ export function EventScheduler({
       )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Comparación personalizada: solo re-renderizar si cambian datos relevantes
+  const prevFrom = prevProps.dateRange?.from?.getTime();
+  const prevTo = prevProps.dateRange?.to?.getTime();
+  const nextFrom = nextProps.dateRange?.from?.getTime();
+  const nextTo = nextProps.dateRange?.to?.getTime();
+
+  const datesEqual = prevFrom === nextFrom && prevTo === nextTo;
+  const eventDataEqual = prevProps.eventData === nextProps.eventData;
+  const seccionesEqual = prevProps.secciones === nextProps.secciones;
+
+  return datesEqual && eventDataEqual && seccionesEqual;
+});
 

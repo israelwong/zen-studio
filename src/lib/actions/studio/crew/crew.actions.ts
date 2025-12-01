@@ -64,10 +64,10 @@ export async function obtenerCrewMembers(studioSlug: string) {
         })),
         account: member.account
           ? {
-              id: member.account.id,
-              email: member.account.email,
-              is_active: member.account.is_active,
-            }
+            id: member.account.id,
+            email: member.account.email,
+            is_active: member.account.is_active,
+          }
           : null,
       })),
     };
@@ -439,6 +439,138 @@ export async function eliminarCrewMember(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al eliminar crew member',
+    };
+  }
+}
+
+/**
+ * Crear crew member rápido (solo nombre y tipo) - para uso desde modal rápido
+ */
+export async function crearCrewMemberRapido(
+  studioSlug: string,
+  data: { name: string; tipo: 'OPERATIVO' | 'ADMINISTRATIVO' | 'PROVEEDOR' }
+) {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Validar datos mínimos
+    if (!data.name || data.name.trim().length < 2) {
+      return { success: false, error: 'El nombre debe tener al menos 2 caracteres' };
+    }
+
+    // Crear crew member con datos mínimos
+    const crew = await prisma.studio_crew_members.create({
+      data: {
+        studio_id: studio.id,
+        name: data.name.trim(),
+        tipo: data.tipo,
+        status: 'activo',
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        tipo: true,
+        status: true,
+        fixed_salary: true,
+        variable_salary: true,
+      },
+    });
+
+    // Actualizar has_crew a true si estaba en null o false
+    await prisma.studios.update({
+      where: { id: studio.id },
+      data: { has_crew: true },
+    });
+
+    revalidatePath(`/${studioSlug}/studio/business/events`);
+    revalidatePath(`/${studioSlug}/studio/configuracion`);
+
+    return {
+      success: true,
+      data: {
+        id: crew.id,
+        name: crew.name,
+        email: crew.email,
+        phone: crew.phone,
+        tipo: crew.tipo,
+        status: crew.status,
+        fixed_salary: crew.fixed_salary ? Number(crew.fixed_salary) : null,
+        variable_salary: crew.variable_salary ? Number(crew.variable_salary) : null,
+      },
+    };
+  } catch (error) {
+    console.error('[CREW] Error creando crew member rápido:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al crear personal',
+    };
+  }
+}
+
+/**
+ * Obtener preferencia de crew del studio
+ */
+export async function obtenerPreferenciaCrew(studioSlug: string) {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { has_crew: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    return { success: true, has_crew: studio.has_crew };
+  } catch (error) {
+    console.error('[CREW] Error obteniendo preferencia crew:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener preferencia',
+    };
+  }
+}
+
+/**
+ * Actualizar preferencia de crew del studio
+ */
+export async function actualizarPreferenciaCrew(
+  studioSlug: string,
+  hasCrew: boolean | null
+) {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    await prisma.studios.update({
+      where: { id: studio.id },
+      data: { has_crew: hasCrew },
+    });
+
+    revalidatePath(`/${studioSlug}/studio/business/events`);
+    revalidatePath(`/${studioSlug}/studio/configuracion`);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[CREW] Error actualizando preferencia crew:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al actualizar preferencia',
     };
   }
 }
