@@ -1,7 +1,5 @@
 "use client";
 
-import html2pdf from "html2pdf.js";
-
 export interface PDFOptions {
   filename?: string;
   margin?: number;
@@ -27,32 +25,60 @@ export async function generatePDF(
   htmlContent: string,
   options: PDFOptions = {}
 ): Promise<void> {
+  if (typeof window === "undefined") {
+    throw new Error("generatePDF solo puede ejecutarse en el cliente");
+  }
+
   const finalOptions = { ...DEFAULT_OPTIONS, ...options };
 
   // Crear un contenedor temporal
   const container = document.createElement("div");
   container.innerHTML = htmlContent;
-  
-  // Aplicar estilos para el PDF
-  container.style.width = "8.5in";
-  container.style.padding = "0.5in";
-  container.style.backgroundColor = "white";
-  container.style.color = "black";
-  container.style.fontFamily = "Arial, sans-serif";
-  container.style.fontSize = "12pt";
-  container.style.lineHeight = "1.6";
-  
-  // Agregar al DOM temporalmente (necesario para html2canvas)
-  container.style.position = "absolute";
-  container.style.left = "-9999px";
-  document.body.appendChild(container);
+
+  // Remover todas las clases de Tailwind (incompatible con oklch en html2canvas)
+  const allElements = container.querySelectorAll("*");
+  allElements.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    htmlEl.removeAttribute("class");
+    htmlEl.removeAttribute("data-tailwind");
+  });
+
+  // Crear iframe aislado sin stylesheets para evitar oklch
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "absolute";
+  iframe.style.left = "-9999px";
+  iframe.style.width = "8.5in";
+  iframe.style.height = "11in";
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) throw new Error("Cannot access iframe document");
+
+  // Escribir HTML mínimo sin stylesheets
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+    </head>
+    <body style="margin: 0; padding: 0.5in; width: 8.5in; min-height: 11in; background: white; color: black; font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6;">
+      ${container.innerHTML}
+    </body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  // Esperar a que el iframe se renderice
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   try {
-    // Generar PDF
-    await html2pdf().set(finalOptions).from(container).save();
+    // Importación dinámica solo en el cliente
+    const html2pdf = (await import("html2pdf.js")).default;
+    await html2pdf().set(finalOptions).from(iframeDoc.body).save();
   } finally {
-    // Limpiar contenedor temporal
-    document.body.removeChild(container);
+    // Limpiar iframe
+    document.body.removeChild(iframe);
   }
 }
 
@@ -65,26 +91,59 @@ export async function generatePDFFromElement(
   element: HTMLElement,
   options: PDFOptions = {}
 ): Promise<void> {
+  if (typeof window === "undefined") {
+    throw new Error("generatePDFFromElement solo puede ejecutarse en el cliente");
+  }
+
   const finalOptions = { ...DEFAULT_OPTIONS, ...options };
-  
+
   // Clonar el elemento para no afectar el original
   const clone = element.cloneNode(true) as HTMLElement;
-  
-  // Aplicar estilos para el PDF
-  clone.style.backgroundColor = "white";
-  clone.style.color = "black";
-  clone.style.width = "8.5in";
-  clone.style.padding = "0.5in";
-  
-  // Agregar al DOM temporalmente
-  clone.style.position = "absolute";
-  clone.style.left = "-9999px";
-  document.body.appendChild(clone);
+
+  // Remover todas las clases de Tailwind (incompatible con oklch en html2canvas)
+  const allElements = clone.querySelectorAll("*");
+  allElements.forEach((el) => {
+    const htmlEl = el as HTMLElement;
+    htmlEl.removeAttribute("class");
+    htmlEl.removeAttribute("data-tailwind");
+  });
+
+  // Crear iframe aislado sin stylesheets para evitar oklch
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "absolute";
+  iframe.style.left = "-9999px";
+  iframe.style.width = "8.5in";
+  iframe.style.height = "11in";
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!iframeDoc) throw new Error("Cannot access iframe document");
+
+  // Escribir HTML mínimo sin stylesheets
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+    </head>
+    <body style="margin: 0; padding: 0.5in; width: 8.5in; min-height: 11in; background: white; color: black; font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6;">
+      ${clone.innerHTML}
+    </body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  // Esperar a que el iframe se renderice
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
   try {
-    await html2pdf().set(finalOptions).from(clone).save();
+    // Importación dinámica solo en el cliente
+    const html2pdf = (await import("html2pdf.js")).default;
+    await html2pdf().set(finalOptions).from(iframeDoc.body).save();
   } finally {
-    document.body.removeChild(clone);
+    // Limpiar iframe
+    document.body.removeChild(iframe);
   }
 }
 

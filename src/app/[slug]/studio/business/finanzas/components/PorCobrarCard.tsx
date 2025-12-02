@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { Wallet } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { PorCobrarItemCard } from './PorCobrarItemCard';
 
 interface PendingItem {
@@ -36,7 +36,7 @@ export function PorCobrarCard({
     onPagoRegistrado,
 }: PorCobrarCardProps) {
     return (
-        <ZenCard variant="default" padding="none" className="h-full max-h-full flex flex-col overflow-hidden">
+        <ZenCard variant="default" padding="none" className="h-full flex flex-col">
             <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0 px-4 py-3">
                 <div className="flex items-center gap-3">
                     <div className="p-1.5 bg-emerald-500/10 rounded-lg">

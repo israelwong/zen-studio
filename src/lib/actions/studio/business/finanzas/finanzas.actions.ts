@@ -22,7 +22,7 @@ type FinanceKPIsResult =
     | { success: true; data: FinanceKPIs; debug?: FinanceKPIsDebug }
     | { success: false; error: string };
 
-interface Transaction {
+export interface Transaction {
     id: string;
     fecha: Date;
     fuente: 'evento' | 'staff' | 'operativo';
@@ -348,6 +348,192 @@ export async function obtenerKPIsFinancieros(
         return result;
     } catch (error) {
         console.error('Error obteniendo KPIs financieros:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido',
+        };
+    }
+}
+
+/**
+ * Obtener movimientos unificados (pagos, nóminas, gastos) por rango de fechas
+ */
+export async function obtenerMovimientosPorRango(
+    studioSlug: string,
+    startDate: Date,
+    endDate: Date
+): Promise<{ success: boolean; data?: Transaction[]; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Ajustar endDate para incluir todo el día
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+
+        // Obtener pagos (ingresos)
+        const pagos = await prisma.studio_pagos.findMany({
+            where: {
+                AND: [
+                    {
+                        OR: [
+                            { studio_users: { studio_id: studioId } },
+                            { promise: { studio_id: studioId } },
+                            { cotizaciones: { studio_id: studioId } },
+                        ],
+                    },
+                    {
+                        status: { in: ['paid', 'completed'] },
+                    },
+                    {
+                        OR: [
+                            {
+                                payment_date: {
+                                    gte: startDate,
+                                    lte: end,
+                                },
+                            },
+                            {
+                                AND: [
+                                    { payment_date: null },
+                                    {
+                                        created_at: {
+                                            gte: startDate,
+                                            lte: end,
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                payment_date: true,
+                created_at: true,
+                concept: true,
+                amount: true,
+                transaction_category: true,
+                promise: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+            orderBy: [
+                { payment_date: 'desc' },
+                { created_at: 'desc' },
+            ],
+        });
+
+        // Obtener nóminas pagadas (egresos)
+        const nominas = await prisma.studio_nominas.findMany({
+            where: {
+                studio_id: studioId,
+                status: 'pagado',
+                OR: [
+                    {
+                        payment_date: {
+                            gte: startDate,
+                            lte: end,
+                        },
+                    },
+                    {
+                        AND: [
+                            { payment_date: null },
+                            {
+                                updated_at: {
+                                    gte: startDate,
+                                    lte: end,
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                id: true,
+                payment_date: true,
+                updated_at: true,
+                concept: true,
+                net_amount: true,
+                personal: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+            orderBy: [
+                { payment_date: 'desc' },
+                { updated_at: 'desc' },
+            ],
+        });
+
+        // Obtener gastos (egresos)
+        const gastos = await prisma.studio_gastos.findMany({
+            where: {
+                studio_id: studioId,
+                date: {
+                    gte: startDate,
+                    lte: end,
+                },
+            },
+            select: {
+                id: true,
+                date: true,
+                concept: true,
+                amount: true,
+                category: true,
+            },
+            orderBy: {
+                date: 'desc',
+            },
+        });
+
+        // Transformar y unificar
+        const transactions: Transaction[] = [
+            ...pagos.map((pago) => ({
+                id: pago.id,
+                fecha: pago.payment_date ?? new Date(pago.created_at),
+                fuente: 'evento' as const,
+                concepto: pago.concept || pago.promise?.name || 'Ingreso',
+                categoria: pago.transaction_category || 'Ingreso',
+                monto: pago.amount,
+                isGastoOperativo: pago.transaction_category === 'manual',
+            })),
+            ...nominas.map((nomina) => ({
+                id: nomina.id,
+                fecha: nomina.payment_date ?? nomina.updated_at ?? new Date(),
+                fuente: 'staff' as const,
+                concepto: nomina.concept || `Nómina - ${nomina.personal?.name || 'Personal'}`,
+                categoria: 'Nómina',
+                monto: -nomina.net_amount,
+                nominaId: nomina.id,
+                isGastoOperativo: false,
+            })),
+            ...gastos.map((gasto) => ({
+                id: gasto.id,
+                fecha: gasto.date,
+                fuente: 'operativo' as const,
+                concepto: gasto.concept,
+                categoria: gasto.category,
+                monto: -gasto.amount,
+                isGastoOperativo: gasto.category === 'Operativo' || gasto.category === 'Recurrente',
+            })),
+        ];
+
+        // Ordenar por fecha descendente
+        transactions.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
+
+        return {
+            success: true,
+            data: transactions,
+        };
+    } catch (error) {
+        console.error('Error obteniendo movimientos por rango:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error desconocido',
@@ -1505,6 +1691,512 @@ export async function actualizarGastoOperativo(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al actualizar gasto operativo',
+        };
+    }
+}
+
+/**
+ * Obtener gasto recurrente por ID
+ */
+export async function obtenerGastoRecurrente(
+    studioSlug: string,
+    expenseId: string
+): Promise<{ success: boolean; data?: { id: string; name: string; amount: number; description: string | null; frequency: string; category: string; charge_day: number; is_active: boolean }; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar si es crew member
+        const isCrewMember = expenseId.startsWith('crew-');
+        if (isCrewMember) {
+            const crewMemberId = expenseId.replace('crew-', '');
+            const crewMember = await prisma.studio_crew_members.findFirst({
+                where: {
+                    id: crewMemberId,
+                    studio_id: studioId,
+                    fixed_salary: { not: null },
+                },
+                select: {
+                    id: true,
+                    name: true,
+                    fixed_salary: true,
+                    salary_frequency: true,
+                },
+            });
+
+            if (!crewMember) {
+                return { success: false, error: 'Crew member no encontrado' };
+            }
+
+            return {
+                success: true,
+                data: {
+                    id: expenseId,
+                    name: crewMember.name,
+                    amount: crewMember.fixed_salary ? Number(crewMember.fixed_salary) : 0,
+                    description: `Salario fijo de ${crewMember.name}`,
+                    frequency: crewMember.salary_frequency || 'monthly',
+                    category: 'Crew',
+                    charge_day: 1,
+                    is_active: true,
+                },
+            };
+        }
+
+        const gasto = await prisma.studio_recurring_expenses.findFirst({
+            where: {
+                id: expenseId,
+                studio_id: studioId,
+            },
+            select: {
+                id: true,
+                name: true,
+                amount: true,
+                description: true,
+                frequency: true,
+                category: true,
+                charge_day: true,
+                is_active: true,
+            },
+        });
+
+        if (!gasto) {
+            return { success: false, error: 'Gasto recurrente no encontrado' };
+        }
+
+        return {
+            success: true,
+            data: gasto,
+        };
+    } catch (error) {
+        console.error('Error obteniendo gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al obtener gasto recurrente',
+        };
+    }
+}
+
+/**
+ * Actualizar gasto recurrente
+ */
+export async function actualizarGastoRecurrente(
+    studioSlug: string,
+    expenseId: string,
+    data: {
+        name: string;
+        description?: string | null;
+        amount: number;
+        frequency: string;
+        category?: string;
+        chargeDay?: number;
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar si es crew member
+        const isCrewMember = expenseId.startsWith('crew-');
+        if (isCrewMember) {
+            const crewMemberId = expenseId.replace('crew-', '');
+            const crewMember = await prisma.studio_crew_members.findFirst({
+                where: {
+                    id: crewMemberId,
+                    studio_id: studioId,
+                },
+            });
+
+            if (!crewMember) {
+                return { success: false, error: 'Crew member no encontrado' };
+            }
+
+            // Actualizar crew member
+            await prisma.studio_crew_members.update({
+                where: { id: crewMemberId },
+                data: {
+                    fixed_salary: data.amount,
+                    salary_frequency: data.frequency as 'weekly' | 'biweekly' | 'monthly' | null,
+                },
+            });
+
+            revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+            return { success: true };
+        }
+
+        // Validar descripción
+        if (data.description && data.description.length > 100) {
+            return { success: false, error: 'La descripción no puede exceder 100 caracteres' };
+        }
+
+        await prisma.studio_recurring_expenses.update({
+            where: {
+                id: expenseId,
+            },
+            data: {
+                name: data.name.trim(),
+                description: data.description?.trim() || null,
+                amount: data.amount,
+                frequency: data.frequency,
+                category: data.category || 'fijo',
+                charge_day: data.chargeDay || 1,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error actualizando gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al actualizar gasto recurrente',
+        };
+    }
+}
+
+/**
+ * Cancelar pago de gasto recurrente (eliminar solo el último pago, mantener gasto activo)
+ */
+export async function cancelarPagoGastoRecurrente(
+    studioSlug: string,
+    expenseId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar si es crew member
+        const isCrewMember = expenseId.startsWith('crew-');
+        let gastoName: string;
+
+        if (isCrewMember) {
+            const crewMemberId = expenseId.replace('crew-', '');
+            const crewMember = await prisma.studio_crew_members.findFirst({
+                where: {
+                    id: crewMemberId,
+                    studio_id: studioId,
+                },
+                select: {
+                    name: true,
+                },
+            });
+
+            if (!crewMember) {
+                return { success: false, error: 'Crew member no encontrado' };
+            }
+
+            // Para crew members, el concepto puede ser el nombre o "Salario fijo de [nombre]"
+            gastoName = crewMember.name;
+        } else {
+            const gastoRecurrente = await prisma.studio_recurring_expenses.findFirst({
+                where: {
+                    id: expenseId,
+                    studio_id: studioId,
+                },
+                select: {
+                    name: true,
+                },
+            });
+
+            if (!gastoRecurrente) {
+                return { success: false, error: 'Gasto recurrente no encontrado' };
+            }
+
+            gastoName = gastoRecurrente.name;
+        }
+
+        // Buscar el último pago (el más reciente) de este gasto recurrente
+        // Para crew members, el concepto puede ser el nombre o "Salario fijo de [nombre]"
+        const posiblesConceptos = isCrewMember
+            ? [gastoName.trim(), `Salario fijo de ${gastoName.trim()}`]
+            : [gastoName.trim()];
+
+        let ultimoPago = null;
+
+        // Intentar buscar con cada posible concepto
+        for (const concepto of posiblesConceptos) {
+            ultimoPago = await prisma.studio_gastos.findFirst({
+                where: {
+                    studio_id: studioId,
+                    category: 'Recurrente',
+                    concept: concepto,
+                },
+                orderBy: [
+                    { date: 'desc' },
+                    { created_at: 'desc' },
+                ],
+                select: {
+                    id: true,
+                    concept: true,
+                    date: true,
+                    created_at: true,
+                },
+            });
+
+            if (ultimoPago) break;
+        }
+
+        // Si no se encuentra con búsqueda exacta, intentar búsqueda flexible (contains)
+        if (!ultimoPago) {
+            ultimoPago = await prisma.studio_gastos.findFirst({
+                where: {
+                    studio_id: studioId,
+                    category: 'Recurrente',
+                    OR: [
+                        { concept: { contains: gastoName.trim() } },
+                        ...(isCrewMember ? [{ concept: { contains: `Salario fijo de ${gastoName.trim()}` } }] : []),
+                    ],
+                },
+                orderBy: [
+                    { date: 'desc' },
+                    { created_at: 'desc' },
+                ],
+                select: {
+                    id: true,
+                    concept: true,
+                    date: true,
+                    created_at: true,
+                },
+            });
+        }
+
+        // Si aún no se encuentra, buscar todos los gastos recurrentes para debug
+        if (!ultimoPago) {
+            const todosLosGastos = await prisma.studio_gastos.findMany({
+                where: {
+                    studio_id: studioId,
+                    category: 'Recurrente',
+                },
+                select: {
+                    id: true,
+                    concept: true,
+                    date: true,
+                },
+                take: 10,
+            });
+
+            console.log('Gastos recurrentes encontrados:', todosLosGastos);
+            console.log('Buscando gasto con nombre:', gastoName);
+
+            return { success: false, error: 'No se encontró ningún pago para cancelar' };
+        }
+
+        // Eliminar solo el último pago
+        await prisma.studio_gastos.delete({
+            where: {
+                id: ultimoPago.id,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error cancelando pago de gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al cancelar pago de gasto recurrente',
+        };
+    }
+}
+
+/**
+ * Cancelar gasto recurrente (desactivar pero mantener histórico)
+ */
+export async function cancelarGastoRecurrente(
+    studioSlug: string,
+    expenseId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar si es crew member
+        const isCrewMember = expenseId.startsWith('crew-');
+        if (isCrewMember) {
+            // Para crew members, solo desactivamos el salario fijo
+            const crewMemberId = expenseId.replace('crew-', '');
+            await prisma.studio_crew_members.update({
+                where: { id: crewMemberId },
+                data: {
+                    fixed_salary: null,
+                    salary_frequency: null,
+                },
+            });
+
+            revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+            return { success: true };
+        }
+
+        // Desactivar gasto recurrente
+        await prisma.studio_recurring_expenses.update({
+            where: {
+                id: expenseId,
+                studio_id: studioId,
+            },
+            data: {
+                is_active: false,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error cancelando gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al cancelar gasto recurrente',
+        };
+    }
+}
+
+/**
+ * Eliminar gasto recurrente con opciones
+ */
+export async function eliminarGastoRecurrente(
+    studioSlug: string,
+    expenseId: string,
+    options: {
+        deleteType: 'single' | 'all' | 'future'; // single: solo programado, all: histórico y futuro, future: solo futuro
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar si es crew member
+        const isCrewMember = expenseId.startsWith('crew-');
+        if (isCrewMember) {
+            const crewMemberId = expenseId.replace('crew-', '');
+            const crewMember = await prisma.studio_crew_members.findFirst({
+                where: {
+                    id: crewMemberId,
+                    studio_id: studioId,
+                },
+                select: {
+                    name: true,
+                    fixed_salary: true,
+                },
+            });
+
+            if (!crewMember) {
+                return { success: false, error: 'Crew member no encontrado' };
+            }
+
+            const gastoName = crewMember.name;
+
+            if (options.deleteType === 'all') {
+                // Eliminar salario fijo y todos los gastos históricos relacionados
+                await prisma.studio_crew_members.update({
+                    where: { id: crewMemberId },
+                    data: {
+                        fixed_salary: null,
+                        salary_frequency: null,
+                    },
+                });
+
+                // Eliminar todos los gastos relacionados con este crew member
+                await prisma.studio_gastos.deleteMany({
+                    where: {
+                        studio_id: studioId,
+                        category: 'Recurrente',
+                        concept: gastoName,
+                    },
+                });
+            } else if (options.deleteType === 'future') {
+                // Solo eliminar salario fijo (los gastos históricos se mantienen)
+                await prisma.studio_crew_members.update({
+                    where: { id: crewMemberId },
+                    data: {
+                        fixed_salary: null,
+                        salary_frequency: null,
+                    },
+                });
+            } else {
+                // Solo eliminar salario fijo
+                await prisma.studio_crew_members.update({
+                    where: { id: crewMemberId },
+                    data: {
+                        fixed_salary: null,
+                        salary_frequency: null,
+                    },
+                });
+            }
+
+            revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+            return { success: true };
+        }
+
+        // Obtener datos del gasto recurrente antes de eliminarlo
+        const gastoRecurrente = await prisma.studio_recurring_expenses.findFirst({
+            where: {
+                id: expenseId,
+                studio_id: studioId,
+            },
+            select: {
+                id: true,
+                name: true,
+            },
+        });
+
+        if (!gastoRecurrente) {
+            return { success: false, error: 'Gasto recurrente no encontrado' };
+        }
+
+        if (options.deleteType === 'all') {
+            // Eliminar gasto recurrente y todos los gastos históricos relacionados
+            await prisma.studio_recurring_expenses.delete({
+                where: { id: expenseId },
+            });
+
+            // Eliminar todos los gastos relacionados con este concepto
+            await prisma.studio_gastos.deleteMany({
+                where: {
+                    studio_id: studioId,
+                    category: 'Recurrente',
+                    concept: gastoRecurrente.name,
+                },
+            });
+        } else if (options.deleteType === 'future') {
+            // Solo eliminar el gasto recurrente (los gastos históricos se mantienen)
+            await prisma.studio_recurring_expenses.delete({
+                where: { id: expenseId },
+            });
+        } else {
+            // Solo eliminar el gasto recurrente programado
+            await prisma.studio_recurring_expenses.delete({
+                where: { id: expenseId },
+            });
+        }
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error eliminando gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al eliminar gasto recurrente',
         };
     }
 }
