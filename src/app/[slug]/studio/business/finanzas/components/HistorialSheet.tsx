@@ -343,7 +343,7 @@ export function HistorialSheet({ open, onOpenChange, studioSlug }: HistorialShee
                                             <ZenCalendar
                                                 mode="range"
                                                 defaultMonth={tempRange?.from || dateRange?.from}
-                                                numberOfMonths={3}
+                                                numberOfMonths={2}
                                                 locale={es}
                                                 className="rounded-lg border shadow-sm"
                                                 {...(tempRange && { selected: tempRange })}

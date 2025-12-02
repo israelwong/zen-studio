@@ -18,13 +18,14 @@ interface ZenConfirmModalProps {
     onClose: () => void;
     onConfirm: () => void;
     title: string;
-    description: string;
+    description: string | React.ReactNode;
     confirmText?: string;
     cancelText?: string;
     variant?: 'default' | 'destructive';
     loading?: boolean;
     loadingText?: string;
     disabled?: boolean;
+    hideConfirmButton?: boolean;
 }
 
 export function ZenConfirmModal({
@@ -38,7 +39,8 @@ export function ZenConfirmModal({
     variant = 'destructive',
     loading = false,
     loadingText = 'Procesando...',
-    disabled = false
+    disabled = false,
+    hideConfirmButton = false
 }: ZenConfirmModalProps) {
     const handleConfirm = () => {
         onConfirm();
@@ -54,7 +56,7 @@ export function ZenConfirmModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent 
+            <DialogContent
                 className="sm:max-w-md bg-zinc-900 border-zinc-700 !z-[10055]"
                 style={{ zIndex: 10055 }}
                 overlayZIndex={10054}
@@ -88,20 +90,22 @@ export function ZenConfirmModal({
                     >
                         {cancelText}
                     </ZenButton>
-                    <ZenButton
-                        variant={variant === 'destructive' ? 'destructive' : 'primary'}
-                        onClick={handleConfirm}
-                        loading={loading}
-                        loadingText={loadingText}
-                        fullWidth
-                        className={`sm:w-auto ${variant === 'destructive'
-                            ? 'bg-red-600 hover:bg-red-700 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                            }`}
-                        disabled={disabled}
-                    >
-                        {confirmText}
-                    </ZenButton>
+                    {!hideConfirmButton && (
+                        <ZenButton
+                            variant={variant === 'destructive' ? 'destructive' : 'primary'}
+                            onClick={handleConfirm}
+                            loading={loading}
+                            loadingText={loadingText}
+                            fullWidth
+                            className={`sm:w-auto ${variant === 'destructive'
+                                ? 'bg-red-600 hover:bg-red-700 text-white'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                }`}
+                            disabled={disabled}
+                        >
+                            {confirmText}
+                        </ZenButton>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>

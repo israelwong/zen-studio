@@ -79,6 +79,11 @@ export function MovimientoItemCard({
     // Ingresos manuales son aquellos que no tienen cotización asociada (transaction_category === 'manual')
     const isIngresoPersonalizado = isIngreso && transaction.categoria === 'manual';
 
+    // Determinar tipo de badge
+    const isManual = transaction.categoria === 'manual' || isIngresoPersonalizado || (isGastoPersonalizado && transaction.categoria !== 'Recurrente');
+    const isNomina = transaction.categoria === 'Nómina' || isNominaPagada;
+    const isRecurrente = transaction.categoria === 'Recurrente';
+
     const handleViewReceipt = () => {
         setIsReceiptModalOpen(true);
     };
@@ -160,9 +165,26 @@ export function MovimientoItemCard({
                 <ZenCardContent className="p-0">
                     <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-zinc-200 truncate mb-0.5">
-                                {transaction.concepto}
-                            </p>
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                <p className="text-sm font-medium text-zinc-200 truncate">
+                                    {transaction.concepto}
+                                </p>
+                                {isManual && (
+                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-zinc-800/50 text-zinc-400 border border-zinc-700/50">
+                                        Manual
+                                    </span>
+                                )}
+                                {isNomina && (
+                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-900/20 text-blue-400 border border-blue-800/30">
+                                        Nómina
+                                    </span>
+                                )}
+                                {isRecurrente && (
+                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-yellow-900/20 text-yellow-400 border border-yellow-800/30">
+                                        Recurrente
+                                    </span>
+                                )}
+                            </div>
                             <div className="flex items-center gap-3 flex-wrap">
                                 <p className="text-xs text-zinc-500">
                                     {formatDate(transaction.fecha)}

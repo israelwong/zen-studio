@@ -269,9 +269,9 @@ export default function FinanzasPage() {
                             </div>
 
                             {/* Grid de 3 columnas Skeleton */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 overflow-hidden">
                                 {/* Columna 1: Movimientos */}
-                                <div className="lg:col-span-1 h-full flex flex-col">
+                                <div className="lg:col-span-1 flex flex-col min-h-0">
                                     <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg h-full flex flex-col">
                                         <div className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
                                             <div className="h-4 bg-zinc-700/50 rounded w-32 animate-pulse" />
@@ -292,9 +292,9 @@ export default function FinanzasPage() {
                                 </div>
 
                                 {/* Columna 2: Por Cobrar y Por Pagar */}
-                                <div className="lg:col-span-1 h-full flex flex-col gap-6">
+                                <div className="lg:col-span-1 flex flex-col gap-6 min-h-0 overflow-hidden">
                                     {/* Por Cobrar Skeleton */}
-                                    <div className="flex-1 min-h-0 flex flex-col">
+                                    <div className="flex-1 min-h-0">
                                         <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg h-full flex flex-col">
                                             <div className="border-b border-zinc-800 px-4 py-3">
                                                 <div className="h-4 bg-zinc-700/50 rounded w-28 animate-pulse" />
@@ -311,7 +311,7 @@ export default function FinanzasPage() {
                                         </div>
                                     </div>
                                     {/* Por Pagar Skeleton */}
-                                    <div className="flex-1 min-h-0 flex flex-col">
+                                    <div className="flex-1 min-h-0">
                                         <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg h-full flex flex-col">
                                             <div className="border-b border-zinc-800 px-4 py-3">
                                                 <div className="h-4 bg-zinc-700/50 rounded w-24 animate-pulse" />
@@ -330,7 +330,7 @@ export default function FinanzasPage() {
                                 </div>
 
                                 {/* Columna 3: Gastos Recurrentes */}
-                                <div className="lg:col-span-1 h-full flex flex-col">
+                                <div className="lg:col-span-1 flex flex-col min-h-0">
                                     <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg h-full flex flex-col">
                                         <div className="border-b border-zinc-800 px-4 py-3 flex items-center justify-between">
                                             <div className="h-4 bg-zinc-700/50 rounded w-36 animate-pulse" />
@@ -364,9 +364,9 @@ export default function FinanzasPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0 overflow-hidden">
                                 {/* Columna 1: Movimientos */}
-                                <div className="lg:col-span-1 h-full flex flex-col">
+                                <div className="lg:col-span-1 flex flex-col min-h-0">
                                     <MovimientosCard
                                         transactions={transactions}
                                         studioSlug={studioSlug}
@@ -477,8 +477,8 @@ export default function FinanzasPage() {
                                 </div>
 
                                 {/* Columna 2: Por Cobrar y Por Pagar */}
-                                <div className="lg:col-span-1 h-full flex flex-col gap-6 overflow-hidden">
-                                    <div className="flex-1 min-h-0 flex flex-col">
+                                <div className="lg:col-span-1 flex flex-col gap-6 min-h-0 overflow-hidden">
+                                    <div className="flex-1 min-h-0">
                                         <PorCobrarCard
                                             porCobrar={porCobrar}
                                             studioSlug={studioSlug}
@@ -506,7 +506,7 @@ export default function FinanzasPage() {
                                             }}
                                         />
                                     </div>
-                                    <div className="flex-1 min-h-0 flex flex-col">
+                                    <div className="flex-1 min-h-0">
                                         <PorPagarCard
                                             porPagar={porPagar}
                                             studioSlug={studioSlug}
@@ -537,7 +537,7 @@ export default function FinanzasPage() {
                                 </div>
 
                                 {/* Columna 3: Gastos Recurrentes */}
-                                <div className="lg:col-span-1 h-full flex flex-col">
+                                <div className="lg:col-span-1 flex flex-col min-h-0">
                                     <GastosRecurrentesCard
                                         expenses={recurringExpenses}
                                         studioSlug={studioSlug}

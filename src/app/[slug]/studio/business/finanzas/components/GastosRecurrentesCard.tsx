@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
+import { ZenButton } from '@/components/ui/zen';
 import { Plus, DollarSign } from 'lucide-react';
 import { GastoRecurrenteItemCard } from './GastoRecurrenteItemCard';
 import { RegistrarGastoRecurrenteModal } from './RegistrarGastoRecurrenteModal';
@@ -60,16 +60,16 @@ export function GastosRecurrentesCard({
 
     return (
         <>
-            <ZenCard variant="default" padding="none" className="h-full flex flex-col">
-                <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0 px-4 py-3">
+            <div className="h-full flex flex-col overflow-hidden bg-zinc-800/30 border border-zinc-700/50 rounded-lg">
+                <div className="border-b border-zinc-800 flex-shrink-0 px-4 py-3">
                     <div className="flex items-center justify-between">
-                        <ZenCardTitle className="text-base">Gastos Recurrentes</ZenCardTitle>
+                        <h3 className="text-base font-semibold text-zinc-200">Gastos recurrentes del mes</h3>
                         <ZenButton variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleAddClick}>
                             <Plus className="h-4 w-4" />
                         </ZenButton>
                     </div>
-                </ZenCardHeader>
-                <ZenCardContent className="p-4 flex-1 overflow-auto">
+                </div>
+                <div className="flex-1 min-h-0 overflow-y-auto p-4">
                     {expenses.length === 0 ? (
                         <div className="text-center py-12 border border-dashed border-zinc-800 rounded-lg">
                             <DollarSign className="h-12 w-12 mx-auto mb-4 text-zinc-600" />
@@ -80,19 +80,35 @@ export function GastosRecurrentesCard({
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {expenses.map((expense) => (
-                                <GastoRecurrenteItemCard
-                                    key={expense.id}
-                                    expense={expense}
-                                    studioSlug={studioSlug}
-                                    onPagar={handlePagar}
-                                    onPagoConfirmado={onGastoPagado}
-                                />
-                            ))}
+                            {expenses
+                                .filter((expense) => {
+                                    // Solo mostrar gastos que aún tienen pagos pendientes del mes
+                                    const pagosMesActual = expense.pagosMesActual || 0;
+                                    const totalPagosEsperados = expense.totalPagosEsperados || 1;
+                                    return pagosMesActual < totalPagosEsperados;
+                                })
+                                .map((expense) => (
+                                    <GastoRecurrenteItemCard
+                                        key={expense.id}
+                                        expense={expense}
+                                        studioSlug={studioSlug}
+                                        onPagar={handlePagar}
+                                        onPagoConfirmado={onGastoPagado}
+                                        onEditado={async () => {
+                                            await onGastoRegistrado?.();
+                                        }}
+                                        onCancelado={async () => {
+                                            await onGastoRegistrado?.();
+                                        }}
+                                        onEliminado={async () => {
+                                            await onGastoRegistrado?.();
+                                        }}
+                                    />
+                                ))}
                         </div>
                     )}
-                </ZenCardContent>
-            </ZenCard>
+                </div>
+            </div>
 
             <RegistrarGastoRecurrenteModal
                 isOpen={showModal}
