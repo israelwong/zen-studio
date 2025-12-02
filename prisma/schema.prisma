@@ -721,6 +721,9 @@ model studios {
   maps_url                   String?
   place_id                   String?
   has_crew                   Boolean?
+  gtm_id                     String?
+  facebook_pixel_id          String?
+  zen_pixel_id               String?
   manager_pipeline_stages    studio_manager_pipeline_stages[]
   marketing_leads            marketing_leads[]
   marketing_pipeline_stages  marketing_pipeline_stages[]
@@ -773,6 +776,7 @@ model studios {
   zonas_trabajo              studio_zonas_trabajo[]
   contract_templates         studio_contract_templates[]
   event_contracts            studio_event_contracts[]
+  offers                     studio_offers[]
   plan                       platform_plans?                  @relation(fields: [plan_id], references: [id])
   subscriptions              subscriptions[]
   usage_tracking             usage_tracking[]
@@ -1216,6 +1220,7 @@ model studio_contacts {
   pagos                  studio_pagos[]
   events                 studio_events[]
   notifications          studio_notifications[]
+  studioOfferSubmissions studio_offer_submissions[]
 
   @@unique([studio_id, phone])
   @@index([studio_id, email])
@@ -2155,7 +2160,7 @@ model studio_recurring_expenses {
   description String?
 
   // Configuración de Recurrencia
-  frequency  String @default("monthly") // monthly, yearly, weekly
+  frequency  String @default("monthly") // weekly, biweekly, monthly
   charge_day Int    @default(1) // Día del mes que se debe generar (1-31)
 
   // Control
@@ -2674,6 +2679,99 @@ model studio_lead_forms {
 
   @@unique([studio_id, form_slug])
   @@index([studio_id, is_active])
+}
+
+//! OFFERS
+model studio_offers {
+  id           String                      @id @default(cuid())
+  studio_id    String
+  name         String
+  description  String?
+  objective    String // 'presencial' | 'virtual'
+  slug         String
+  is_active    Boolean                     @default(true)
+  created_at   DateTime                    @default(now())
+  updated_at   DateTime                    @updatedAt
+  studio       studios                     @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  landing_page studio_offer_landing_pages?
+  leadform     studio_offer_leadforms?
+  visits       studio_offer_visits[]
+  submissions  studio_offer_submissions[]
+
+  @@unique([studio_id, slug])
+  @@index([studio_id, is_active])
+  @@index([studio_id, slug])
+}
+
+model studio_offer_landing_pages {
+  id             String        @id @default(cuid())
+  offer_id       String        @unique
+  content_blocks Json
+  cta_config     Json
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  offer          studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@index([offer_id])
+}
+
+model studio_offer_leadforms {
+  id                   String        @id @default(cuid())
+  offer_id             String        @unique
+  title                String?
+  description          String?
+  success_message      String        @default("¡Gracias! Nos pondremos en contacto pronto.")
+  success_redirect_url String?
+  fields_config        Json
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+  offer                studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+
+  @@index([offer_id])
+}
+
+model studio_offer_visits {
+  id           String                     @id @default(cuid())
+  offer_id     String
+  visit_type   String // 'landing' | 'leadform'
+  ip_address   String?
+  user_agent   String?
+  referrer     String?
+  utm_source   String?
+  utm_medium   String?
+  utm_campaign String?
+  utm_term     String?
+  utm_content  String?
+  session_id   String?
+  created_at   DateTime                   @default(now())
+  offer        studio_offers              @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+  submissions  studio_offer_submissions[]
+
+  @@index([offer_id, visit_type, created_at])
+  @@index([session_id])
+  @@index([created_at])
+}
+
+model studio_offer_submissions {
+  id               String               @id @default(cuid())
+  offer_id         String
+  contact_id       String?
+  visit_id         String?
+  form_data        Json
+  ip_address       String?
+  user_agent       String?
+  utm_source       String?
+  utm_medium       String?
+  utm_campaign     String?
+  conversion_value Decimal?
+  created_at       DateTime             @default(now())
+  offer            studio_offers        @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+  contact          studio_contacts?     @relation(fields: [contact_id], references: [id])
+  visit            studio_offer_visits? @relation(fields: [visit_id], references: [id])
+
+  @@index([offer_id, created_at])
+  @@index([contact_id])
+  @@index([visit_id])
 }
 
 model studio_client_portal_access {

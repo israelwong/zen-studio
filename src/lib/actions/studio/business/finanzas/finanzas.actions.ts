@@ -58,6 +58,10 @@ interface RecurringExpense {
     category: string;
     chargeDay: number;
     isActive: boolean;
+    frequency?: string;
+    description?: string | null;
+    pagosMesActual?: number;
+    totalPagosEsperados?: number;
 }
 
 /**
@@ -760,16 +764,34 @@ export async function obtenerPorPagar(
 }
 
 /**
- * Obtener gastos recurrentes
+ * Calcular número de semanas en un mes
+ */
+function getWeeksInMonth(year: number, month: number): number {
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const firstDayOfWeek = firstDay.getDay();
+
+    // Calcular cuántas semanas completas hay
+    const weeks = Math.ceil((daysInMonth + firstDayOfWeek) / 7);
+    return weeks;
+}
+
+/**
+ * Obtener gastos recurrentes con conteo de pagos del mes actual
  */
 export async function obtenerGastosRecurrentes(
-    studioSlug: string
+    studioSlug: string,
+    month?: Date
 ): Promise<{ success: boolean; data?: RecurringExpense[]; error?: string }> {
     try {
         const studioId = await getStudioId(studioSlug);
         if (!studioId) {
             return { success: false, error: 'Studio no encontrado' };
         }
+
+        const currentMonth = month || new Date();
+        const { start, end } = getMonthRange(currentMonth);
 
         const gastos = await prisma.studio_recurring_expenses.findMany({
             where: {
@@ -782,20 +804,54 @@ export async function obtenerGastosRecurrentes(
                 category: true,
                 charge_day: true,
                 is_active: true,
+                frequency: true,
+                description: true,
             },
             orderBy: {
                 created_at: 'desc',
             },
         });
 
-        const expenses: RecurringExpense[] = gastos.map((gasto) => ({
-            id: gasto.id,
-            name: gasto.name,
-            amount: gasto.amount,
-            category: gasto.category,
-            chargeDay: gasto.charge_day,
-            isActive: gasto.is_active,
-        }));
+        // Para cada gasto recurrente, contar cuántos pagos se han hecho este mes
+        const expenses: RecurringExpense[] = await Promise.all(
+            gastos.map(async (gasto) => {
+                // Contar pagos del mes actual para este gasto recurrente
+                const pagosCount = await prisma.studio_gastos.count({
+                    where: {
+                        studio_id: studioId,
+                        concept: gasto.name,
+                        category: 'Recurrente',
+                        date: {
+                            gte: start,
+                            lte: end,
+                        },
+                    },
+                });
+
+                // Calcular total de pagos según frecuencia
+                let totalPagosEsperados = 1;
+                if (gasto.frequency === 'weekly') {
+                    totalPagosEsperados = getWeeksInMonth(currentMonth.getFullYear(), currentMonth.getMonth());
+                } else if (gasto.frequency === 'biweekly') {
+                    totalPagosEsperados = 2;
+                } else if (gasto.frequency === 'monthly') {
+                    totalPagosEsperados = 1;
+                }
+
+                return {
+                    id: gasto.id,
+                    name: gasto.name,
+                    amount: gasto.amount,
+                    category: gasto.category,
+                    chargeDay: gasto.charge_day,
+                    isActive: gasto.is_active,
+                    frequency: gasto.frequency,
+                    description: gasto.description,
+                    pagosMesActual: pagosCount,
+                    totalPagosEsperados: totalPagosEsperados,
+                };
+            })
+        );
 
         return {
             success: true,
@@ -1063,6 +1119,174 @@ export async function eliminarGastoOperativo(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al eliminar gasto operativo',
+        };
+    }
+}
+
+/**
+ * Crear gasto recurrente
+ */
+export async function crearGastoRecurrente(
+    studioSlug: string,
+    data: {
+        name: string;
+        description?: string | null;
+        amount: number;
+        frequency: string;
+        category: string;
+        chargeDay: number;
+    }
+): Promise<{ success: boolean; error?: string; data?: { id: string } }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Validar descripción
+        if (data.description && data.description.length > 100) {
+            return { success: false, error: 'La descripción no puede exceder 100 caracteres' };
+        }
+
+        const gasto = await prisma.studio_recurring_expenses.create({
+            data: {
+                studio_id: studioId,
+                name: data.name.trim(),
+                description: data.description?.trim() || null,
+                amount: data.amount,
+                frequency: data.frequency,
+                category: data.category,
+                charge_day: data.chargeDay,
+                is_active: true,
+                auto_generate: false,
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+            data: { id: gasto.id },
+        };
+    } catch (error) {
+        console.error('Error creando gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al crear gasto recurrente',
+        };
+    }
+}
+
+/**
+ * Pagar gasto recurrente (registrar como egreso en movimientos)
+ */
+export async function pagarGastoRecurrente(
+    studioSlug: string,
+    expenseId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Obtener el gasto recurrente
+        const gastoRecurrente = await prisma.studio_recurring_expenses.findFirst({
+            where: {
+                id: expenseId,
+                studio_id: studioId,
+            },
+            select: {
+                id: true,
+                name: true,
+                amount: true,
+                description: true,
+            },
+        });
+
+        if (!gastoRecurrente) {
+            return { success: false, error: 'Gasto recurrente no encontrado' };
+        }
+
+        // Obtener usuario actual para asociar el gasto
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = await createClient();
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+
+        if (!authUser?.id) {
+            return { success: false, error: 'Usuario no autenticado' };
+        }
+
+        // Buscar studio_user_profiles del suscriptor autenticado
+        const studioUserProfile = await prisma.studio_user_profiles.findFirst({
+            where: {
+                supabase_id: authUser.id,
+                studio_id: studioId,
+                is_active: true,
+            },
+            select: { id: true, email: true, full_name: true },
+        });
+
+        if (!studioUserProfile) {
+            return { success: false, error: 'Usuario no encontrado en el studio' };
+        }
+
+        // Buscar o crear studio_users para este suscriptor
+        let studioUser = await prisma.studio_users.findFirst({
+            where: {
+                studio_id: studioId,
+                full_name: studioUserProfile.full_name,
+                is_active: true,
+            },
+            select: { id: true },
+        });
+
+        if (!studioUser) {
+            studioUser = await prisma.studio_users.create({
+                data: {
+                    studio_id: studioId,
+                    full_name: studioUserProfile.full_name,
+                    phone: null,
+                    type: 'EMPLEADO',
+                    role: 'owner',
+                    status: 'active',
+                    is_active: true,
+                    platform_user_id: null,
+                },
+                select: { id: true },
+            });
+        }
+
+        // Crear el gasto operativo asociado al gasto recurrente
+        const gasto = await prisma.studio_gastos.create({
+            data: {
+                studio_id: studioId,
+                user_id: studioUser.id,
+                concept: gastoRecurrente.name,
+                amount: gastoRecurrente.amount,
+                category: 'Recurrente',
+                date: new Date(),
+                description: gastoRecurrente.description || null,
+                status: 'activo',
+            },
+            select: {
+                id: true,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error pagando gasto recurrente:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al pagar gasto recurrente',
         };
     }
 }

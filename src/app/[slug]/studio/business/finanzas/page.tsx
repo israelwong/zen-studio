@@ -69,6 +69,8 @@ export default function FinanzasPage() {
         category: string;
         chargeDay: number;
         isActive: boolean;
+        frequency?: string;
+        description?: string | null;
     }>>([]);
 
     useEffect(() => {
@@ -88,7 +90,7 @@ export default function FinanzasPage() {
                         obtenerMovimientos(studioSlug, currentMonth),
                         obtenerPorCobrar(studioSlug),
                         obtenerPorPagar(studioSlug),
-                        obtenerGastosRecurrentes(studioSlug),
+                        obtenerGastosRecurrentes(studioSlug, currentMonth),
                     ]);
 
                 if (kpisResult.success) {
@@ -387,8 +389,41 @@ export default function FinanzasPage() {
                                     <div className="lg:col-span-1 h-full">
                                         <GastosRecurrentesCard
                                             expenses={recurringExpenses}
+                                            studioSlug={studioSlug}
                                             onAddExpense={handleAddExpense}
                                             onEditExpense={handleEditExpense}
+                                            onGastoRegistrado={async () => {
+                                                // Recargar gastos recurrentes después de registrar
+                                                try {
+                                                    const expensesResult = await obtenerGastosRecurrentes(studioSlug, currentMonth);
+                                                    if (expensesResult.success && expensesResult.data) {
+                                                        setRecurringExpenses(expensesResult.data);
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error recargando gastos recurrentes:', error);
+                                                }
+                                            }}
+                                            onGastoPagado={async () => {
+                                                // Recargar datos después de pagar gasto recurrente
+                                                try {
+                                                    const [kpisResult, transactionsResult, expensesResult] = await Promise.all([
+                                                        obtenerKPIsFinancieros(studioSlug, currentMonth!),
+                                                        obtenerMovimientos(studioSlug, currentMonth!),
+                                                        obtenerGastosRecurrentes(studioSlug, currentMonth),
+                                                    ]);
+                                                    if (kpisResult.success) {
+                                                        setKpis(kpisResult.data);
+                                                    }
+                                                    if (transactionsResult.success && transactionsResult.data) {
+                                                        setTransactions(transactionsResult.data);
+                                                    }
+                                                    if (expensesResult.success && expensesResult.data) {
+                                                        setRecurringExpenses(expensesResult.data);
+                                                    }
+                                                } catch (error) {
+                                                    console.error('Error recargando datos:', error);
+                                                }
+                                            }}
                                         />
                                     </div>
                                 </div>
