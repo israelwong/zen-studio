@@ -16,6 +16,8 @@ export interface StudioOffer {
   description: string | null;
   objective: OfferObjective;
   slug: string;
+  cover_media_url?: string | null;
+  cover_media_type?: string | null;
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
@@ -40,6 +42,9 @@ export interface StudioOfferLeadform {
   success_message: string;
   success_redirect_url: string | null;
   fields_config: LeadFormFieldsConfig;
+  subject_options?: unknown;
+  enable_interest_date?: unknown;
+  validate_with_calendar?: unknown;
   created_at: Date;
   updated_at: Date;
 }

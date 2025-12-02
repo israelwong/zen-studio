@@ -93,6 +93,8 @@ export async function createOffer(
           description: validatedData.description || null,
           objective: validatedData.objective,
           slug: validatedData.slug,
+          cover_media_url: validatedData.cover_media_url || null,
+          cover_media_type: validatedData.cover_media_type || null,
           is_active: validatedData.is_active,
           landing_page: {
             create: {
@@ -107,6 +109,9 @@ export async function createOffer(
               success_message: validatedData.leadform.success_message,
               success_redirect_url: validatedData.leadform.success_redirect_url || null,
               fields_config: validatedData.leadform.fields_config,
+              subject_options: validatedData.leadform.subject_options || null,
+              enable_interest_date: validatedData.leadform.enable_interest_date,
+              validate_with_calendar: validatedData.leadform.validate_with_calendar,
             },
           },
         },
@@ -235,6 +240,8 @@ export async function updateOffer(
         description?: string | null;
         objective?: string;
         slug?: string;
+        cover_media_url?: string | null;
+        cover_media_type?: string | null;
         is_active?: boolean;
         landing_page?: {
           update: {
@@ -249,6 +256,9 @@ export async function updateOffer(
             success_message?: string;
             success_redirect_url?: string | null;
             fields_config?: unknown;
+            subject_options?: unknown;
+            enable_interest_date?: boolean;
+            validate_with_calendar?: boolean;
           };
         };
       } = {};
@@ -259,6 +269,10 @@ export async function updateOffer(
       if (validatedData.objective !== undefined)
         updateData.objective = validatedData.objective;
       if (validatedData.slug !== undefined) updateData.slug = validatedData.slug;
+      if (validatedData.cover_media_url !== undefined)
+        updateData.cover_media_url = validatedData.cover_media_url || null;
+      if (validatedData.cover_media_type !== undefined)
+        updateData.cover_media_type = validatedData.cover_media_type || null;
       if (validatedData.is_active !== undefined)
         updateData.is_active = validatedData.is_active;
 
@@ -279,6 +293,9 @@ export async function updateOffer(
             success_message: validatedData.leadform.success_message,
             success_redirect_url: validatedData.leadform.success_redirect_url || null,
             fields_config: validatedData.leadform.fields_config,
+            subject_options: validatedData.leadform.subject_options || null,
+            enable_interest_date: validatedData.leadform.enable_interest_date,
+            validate_with_calendar: validatedData.leadform.validate_with_calendar,
           },
         };
       }
@@ -700,5 +717,159 @@ export async function deleteOffer(
       return { success: false, error: error.message };
     }
     return { success: false, error: "Error al eliminar la oferta" };
+  }
+}
+
+/**
+ * Duplicar oferta
+ */
+export async function duplicateOffer(
+  offerId: string,
+  studioSlug: string
+): Promise<OfferResponse> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      // Obtener oferta original con sus relaciones
+      const original = await prisma.studio_offers.findFirst({
+        where: {
+          id: offerId,
+          studio_id: studio.id,
+        },
+        include: {
+          landing_page: true,
+          leadform: true,
+        },
+      });
+
+      if (!original) {
+        return { success: false, error: "Oferta no encontrada" };
+      }
+
+      // Generar slug único para la oferta duplicada
+      let newSlug = `${original.slug}-copia`;
+      let counter = 1;
+
+      while (true) {
+        const existing = await prisma.studio_offers.findUnique({
+          where: {
+            studio_id_slug: {
+              studio_id: studio.id,
+              slug: newSlug,
+            },
+          },
+        });
+
+        if (!existing) {
+          break;
+        }
+
+        counter++;
+        newSlug = `${original.slug}-copia-${counter}`;
+      }
+
+      // Crear oferta duplicada
+      const duplicatedOffer = await prisma.studio_offers.create({
+        data: {
+          studio_id: original.studio_id,
+          name: `${original.name} (Copia)`,
+          description: original.description,
+          objective: original.objective,
+          slug: newSlug,
+          is_active: false, // Duplicada inactiva por defecto
+          landing_page: original.landing_page
+            ? {
+              create: {
+                content_blocks: original.landing_page.content_blocks,
+                cta_config: original.landing_page.cta_config,
+              },
+            }
+            : undefined,
+          leadform: original.leadform
+            ? {
+              create: {
+                title: original.leadform.title,
+                description: original.leadform.description,
+                success_message: original.leadform.success_message,
+                success_redirect_url: original.leadform.success_redirect_url,
+                fields_config: original.leadform.fields_config,
+              },
+            }
+            : undefined,
+        },
+        include: {
+          landing_page: true,
+          leadform: true,
+        },
+      });
+
+      const mappedOffer: StudioOffer = {
+        id: duplicatedOffer.id,
+        studio_id: duplicatedOffer.studio_id,
+        name: duplicatedOffer.name,
+        description: duplicatedOffer.description,
+        objective: duplicatedOffer.objective as "presencial" | "virtual",
+        slug: duplicatedOffer.slug,
+        is_active: duplicatedOffer.is_active,
+        created_at: duplicatedOffer.created_at,
+        updated_at: duplicatedOffer.updated_at,
+        landing_page: duplicatedOffer.landing_page
+          ? {
+            id: duplicatedOffer.landing_page.id,
+            offer_id: duplicatedOffer.landing_page.offer_id,
+            content_blocks: duplicatedOffer.landing_page.content_blocks as unknown[],
+            cta_config: duplicatedOffer.landing_page.cta_config as {
+              buttons: Array<{
+                id: string;
+                text: string;
+                variant: "primary" | "secondary" | "outline";
+                position: "top" | "middle" | "bottom" | "floating";
+                href?: string;
+              }>;
+            },
+            created_at: duplicatedOffer.landing_page.created_at,
+            updated_at: duplicatedOffer.landing_page.updated_at,
+          }
+          : undefined,
+        leadform: duplicatedOffer.leadform
+          ? {
+            id: duplicatedOffer.leadform.id,
+            offer_id: duplicatedOffer.leadform.offer_id,
+            title: duplicatedOffer.leadform.title,
+            description: duplicatedOffer.leadform.description,
+            success_message: duplicatedOffer.leadform.success_message,
+            success_redirect_url: duplicatedOffer.leadform.success_redirect_url,
+            fields_config: duplicatedOffer.leadform.fields_config as {
+              fields: Array<{
+                id: string;
+                type: string;
+                label: string;
+                required: boolean;
+                placeholder?: string;
+                options?: string[];
+              }>;
+            },
+            created_at: duplicatedOffer.leadform.created_at,
+            updated_at: duplicatedOffer.leadform.updated_at,
+          }
+          : undefined,
+      };
+
+      return { success: true, data: mappedOffer };
+    });
+  } catch (error) {
+    console.error("[duplicateOffer] Error:", error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Error al duplicar la oferta" };
   }
 }

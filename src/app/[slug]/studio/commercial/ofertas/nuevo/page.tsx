@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation';
-import { OfferEditor } from '@/components/offers/OfferEditor';
+import { OfferEditor } from '../components/OfferEditor';
 
 export default function NuevaOfertaPage() {
   const params = useParams();

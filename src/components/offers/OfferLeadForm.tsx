@@ -26,6 +26,9 @@ interface OfferLeadFormProps {
   successMessage: string;
   successRedirectUrl?: string | null;
   fieldsConfig: LeadFormFieldsConfig;
+  subjectOptions?: string[];
+  enableInterestDate?: boolean;
+  isPreview?: boolean;
 }
 
 /**
@@ -40,6 +43,9 @@ export function OfferLeadForm({
   successMessage,
   successRedirectUrl,
   fieldsConfig,
+  subjectOptions,
+  enableInterestDate,
+  isPreview = false,
 }: OfferLeadFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -130,6 +136,29 @@ export function OfferLeadForm({
     },
   ];
 
+  // Agregar campo de asunto si hay opciones
+  if (subjectOptions && subjectOptions.length > 0) {
+    basicFields.push({
+      id: "subject",
+      type: "select",
+      label: "Asunto",
+      required: true,
+      placeholder: "Selecciona un asunto",
+      options: subjectOptions,
+    });
+  }
+
+  // Agregar campo de fecha de interés si está habilitado
+  if (enableInterestDate) {
+    basicFields.push({
+      id: "interest_date",
+      type: "date",
+      label: "Fecha de interés",
+      required: false,
+      placeholder: "Selecciona una fecha",
+    });
+  }
+
   // Combinar campos básicos con personalizados
   const allFields = [...basicFields, ...(fieldsConfig.fields || [])];
 
@@ -180,6 +209,12 @@ export function OfferLeadForm({
 
     if (!validateForm()) {
       toast.error("Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    // Si es preview, no enviar
+    if (isPreview) {
+      toast.success("Preview: Formulario validado correctamente");
       return;
     }
 

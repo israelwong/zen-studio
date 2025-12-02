@@ -2684,20 +2684,22 @@ model studio_lead_forms {
 
 //! OFFERS
 model studio_offers {
-  id           String                      @id @default(cuid())
-  studio_id    String
-  name         String
-  description  String?
-  objective    String // 'presencial' | 'virtual'
-  slug         String
-  is_active    Boolean                     @default(true)
-  created_at   DateTime                    @default(now())
-  updated_at   DateTime                    @updatedAt
-  studio       studios                     @relation(fields: [studio_id], references: [id], onDelete: Cascade)
-  landing_page studio_offer_landing_pages?
-  leadform     studio_offer_leadforms?
-  visits       studio_offer_visits[]
-  submissions  studio_offer_submissions[]
+  id                String                      @id @default(cuid())
+  studio_id         String
+  name              String
+  description       String?
+  objective         String // 'presencial' | 'virtual'
+  slug              String
+  cover_media_url   String?
+  cover_media_type  String? // 'image' | 'video'
+  is_active         Boolean                     @default(true)
+  created_at        DateTime                    @default(now())
+  updated_at        DateTime                    @updatedAt
+  studio            studios                     @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  landing_page      studio_offer_landing_pages?
+  leadform          studio_offer_leadforms?
+  visits            studio_offer_visits[]
+  submissions       studio_offer_submissions[]
 
   @@unique([studio_id, slug])
   @@index([studio_id, is_active])
@@ -2717,16 +2719,19 @@ model studio_offer_landing_pages {
 }
 
 model studio_offer_leadforms {
-  id                   String        @id @default(cuid())
-  offer_id             String        @unique
-  title                String?
-  description          String?
-  success_message      String        @default("¡Gracias! Nos pondremos en contacto pronto.")
-  success_redirect_url String?
-  fields_config        Json
-  created_at           DateTime      @default(now())
-  updated_at           DateTime      @updatedAt
-  offer                studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+  id                      String        @id @default(cuid())
+  offer_id                String        @unique
+  title                   String?
+  description             String?
+  success_message         String        @default("¡Gracias! Nos pondremos en contacto pronto.")
+  success_redirect_url    String?
+  fields_config           Json
+  subject_options         Json? // Lista de opciones de asunto personalizable
+  enable_interest_date    Boolean       @default(false)
+  validate_with_calendar  Boolean       @default(false)
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+  offer                   studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@index([offer_id])
 }

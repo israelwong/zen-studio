@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { OfferEditor } from '@/components/offers/OfferEditor';
+import { OfferEditor } from '../../components/OfferEditor';
 import { getOffer } from '@/lib/actions/studio/offers/offers.actions';
 import type { StudioOffer } from '@/types/offers';
 import { toast } from 'sonner';
