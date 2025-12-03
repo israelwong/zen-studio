@@ -8,11 +8,15 @@ import {
   ZenButton,
 } from "@/components/ui/zen";
 import { useOfferEditor } from "../OfferEditorContext";
+import { EventTypesManager } from "@/components/shared/tipos-evento";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useParams } from "next/navigation";
 
 export function LeadFormEditor() {
   const { leadformData, updateLeadformData } = useOfferEditor();
+  const params = useParams();
+  const studioSlug = params.slug as string;
 
   const [newSubject, setNewSubject] = useState("");
   const [showSubjectForm, setShowSubjectForm] = useState(false);
@@ -105,15 +109,15 @@ export function LeadFormEditor() {
         />
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-zinc-300">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-sm font-medium text-zinc-300">
               Descripción
-            </label>
+            </span>
             <span className="text-xs text-zinc-500">
               {leadformData.description?.length || 0}/120
             </span>
           </div>
-          <ZenTextarea
+          <textarea
             value={leadformData.description}
             onChange={(e) => {
               const value = e.target.value;
@@ -123,6 +127,7 @@ export function LeadFormEditor() {
             }}
             placeholder="Completa el formulario para obtener más información"
             rows={2}
+            className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 transition-all duration-200 outline-none focus:ring-[3px] focus:border-zinc-600 focus:ring-zinc-500/20 resize-none"
           />
         </div>
       </div>
@@ -146,115 +151,171 @@ export function LeadFormEditor() {
             />
           </div>
 
-          {/* Asunto personalizable */}
+          {/* Asunto: Tipos de Evento o Personalizado */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-            <div className="mb-3">
-              <h3 className="text-sm font-medium text-zinc-300">
-                Opciones de Asunto
-              </h3>
-              <p className="text-xs text-zinc-500 mt-1">
-                El usuario podrá seleccionar el motivo de su consulta
-              </p>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-medium text-zinc-300">
+                  Asunto / Motivo de Consulta
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  {leadformData.use_event_types
+                    ? "El usuario seleccionará el tipo de evento que le interesa"
+                    : "El usuario seleccionará una opción personalizada"}
+                </p>
+              </div>
+
+              <ZenSwitch
+                checked={leadformData.use_event_types}
+                onCheckedChange={(checked) => updateLeadformData({ use_event_types: checked })}
+                label="Usar tipos de evento"
+              />
             </div>
 
-            {leadformData.subject_options && leadformData.subject_options.length > 0 && (
-              <div className="space-y-2 mb-3">
-                {leadformData.subject_options.map((subject, index) => (
-                  <div
-                    key={index}
-                    className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex items-center gap-2"
-                  >
-                    {editingSubjectIndex === index ? (
-                      <>
-                        <input
-                          type="text"
-                          value={editingSubjectValue}
-                          onChange={(e) => setEditingSubjectValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveEditSubject(index);
-                            } else if (e.key === "Escape") {
-                              handleCancelEditSubject();
-                            }
-                          }}
-                          className="flex-1 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                          autoFocus
-                        />
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleSaveEditSubject(index)}
-                          className="text-emerald-400 hover:text-emerald-300"
-                        >
-                          Guardar
-                        </ZenButton>
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleCancelEditSubject}
-                          className="text-zinc-400 hover:text-zinc-300"
-                        >
-                          Cancelar
-                        </ZenButton>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 text-sm text-zinc-300">{subject}</span>
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleStartEditSubject(index, subject)}
-                          className="text-zinc-400 hover:text-zinc-300"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </ZenButton>
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveSubject(subject)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </ZenButton>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {!showSubjectForm ? (
-              <ZenButton
-                variant="outline"
-                size="sm"
-                onClick={() => setShowSubjectForm(true)}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Agregar Opción
-              </ZenButton>
+            {leadformData.use_event_types ? (
+              // NUEVO: Gestor de tipos de evento
+              <EventTypesManager
+                studioSlug={studioSlug}
+                selectedTypes={leadformData.selected_event_type_ids || []}
+                onChange={(types) => updateLeadformData({ selected_event_type_ids: types })}
+              />
             ) : (
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-3">
-                <ZenInput
-                  label="Opción de asunto"
-                  value={newSubject}
-                  onChange={(e) => setNewSubject(e.target.value)}
-                  placeholder="Ej: Cotización de sesión"
-                />
-                <div className="flex gap-2">
-                  <ZenButton onClick={handleAddSubject} size="sm">
-                    Agregar
-                  </ZenButton>
+              // ACTUAL: Asuntos personalizados
+              <div>
+
+                {leadformData.subject_options && leadformData.subject_options.length > 0 && (
+                  <div className="space-y-2 mb-3">
+                    {leadformData.subject_options.map((subject, index) => (
+                      <div
+                        key={index}
+                        className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex items-center gap-2"
+                      >
+                        {editingSubjectIndex === index ? (
+                          <>
+                            <input
+                              type="text"
+                              value={editingSubjectValue}
+                              onChange={(e) => setEditingSubjectValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  handleSaveEditSubject(index);
+                                } else if (e.key === "Escape") {
+                                  handleCancelEditSubject();
+                                }
+                              }}
+                              className="flex-1 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-sm text-zinc-300 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              autoFocus
+                            />
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSaveEditSubject(index)}
+                              className="text-emerald-400 hover:text-emerald-300"
+                            >
+                              Guardar
+                            </ZenButton>
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleCancelEditSubject}
+                              className="text-zinc-400 hover:text-zinc-300"
+                            >
+                              Cancelar
+                            </ZenButton>
+                          </>
+                        ) : (
+                          <>
+                            <span className="flex-1 text-sm text-zinc-300">{subject}</span>
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleStartEditSubject(index, subject)}
+                              className="text-zinc-400 hover:text-zinc-300"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </ZenButton>
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveSubject(subject)}
+                              className="text-red-400 hover:text-red-300"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </ZenButton>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {!showSubjectForm ? (
                   <ZenButton
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setShowSubjectForm(false);
-                      setNewSubject("");
-                    }}
+                    onClick={() => setShowSubjectForm(true)}
                   >
-                    Cancelar
+                    <Plus className="h-4 w-4 mr-1" />
+                    Agregar Opción
                   </ZenButton>
-                </div>
+                ) : (
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4 space-y-3">
+                    <ZenInput
+                      label="Opción de asunto"
+                      value={newSubject}
+                      onChange={(e) => setNewSubject(e.target.value)}
+                      placeholder="Ej: Cotización de sesión"
+                    />
+                    <div className="flex gap-2">
+                      <ZenButton onClick={handleAddSubject} size="sm">
+                        Agregar
+                      </ZenButton>
+                      <ZenButton
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowSubjectForm(false);
+                          setNewSubject("");
+                        }}
+                      >
+                        Cancelar
+                      </ZenButton>
+                    </div>
+                  </div>
+                )}
+
+                {/* Feature: Mostrar paquetes después de registro */}
+                {leadformData.use_event_types &&
+                  leadformData.selected_event_type_ids &&
+                  leadformData.selected_event_type_ids.length > 0 && (
+                    <div className="border-t border-zinc-800 pt-4 mt-4">
+                      <div className="mb-3">
+                        <h4 className="text-sm font-medium text-zinc-300">
+                          Después de registrarse
+                        </h4>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          Opcional: Mostrar paquetes del tipo de evento seleccionado
+                        </p>
+                      </div>
+
+                      <ZenSwitch
+                        checked={leadformData.show_packages_after_submit || false}
+                        onCheckedChange={(checked) =>
+                          updateLeadformData({ show_packages_after_submit: checked })
+                        }
+                        label="Mostrar paquetes relacionados"
+                      />
+
+                      {leadformData.show_packages_after_submit && (
+                        <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
+                          <p className="text-xs text-blue-300">
+                            ℹ️ El prospecto verá los paquetes disponibles según el tipo de evento seleccionado.
+                            Si el tipo no tiene paquetes, se mostrará un mensaje indicándolo.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
               </div>
             )}
           </div>

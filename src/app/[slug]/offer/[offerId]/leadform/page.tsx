@@ -86,10 +86,11 @@ export default async function PublicOfferLeadFormPage({
           successRedirectUrl={offer.leadform.success_redirect_url || undefined}
           fieldsConfig={offer.leadform.fields_config}
           subjectOptions={offer.leadform.subject_options}
+          useEventTypes={offer.leadform.use_event_types}
+          selectedEventTypeIds={offer.leadform.selected_event_type_ids}
           enableInterestDate={offer.leadform.enable_interest_date}
           validateWithCalendar={offer.leadform.validate_with_calendar}
           emailRequired={offer.leadform.email_required}
-          enableAttachments={offer.leadform.enable_attachments}
           coverUrl={offer.cover_media_url}
           coverType={offer.cover_media_type}
         />

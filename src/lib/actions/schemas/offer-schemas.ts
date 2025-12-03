@@ -52,11 +52,14 @@ export const CreateOfferSchema = z.object({
   }),
   leadform: z.object({
     title: z.string().max(200, 'El título es demasiado largo').optional().or(z.literal('')),
-    description: z.string().max(1000, 'La descripción es demasiado larga').optional().or(z.literal('')),
+    description: z.string().max(120, 'La descripción es demasiado larga (máx 120 caracteres)').optional().or(z.literal('')),
     success_message: z.string().max(500, 'El mensaje es demasiado largo').default('¡Gracias! Nos pondremos en contacto pronto.'),
     success_redirect_url: z.string().url('URL inválida').optional().or(z.literal('')),
     fields_config: LeadFormFieldsConfigSchema,
-    subject_options: z.array(z.string()).optional().default([]),
+    subject_options: z.array(z.string()).optional().default([]), // LEGACY: si use_event_types = false
+    use_event_types: z.boolean().default(false), // Si true: usar studio_event_types
+    selected_event_type_ids: z.array(z.string()).optional().default([]), // IDs seleccionados
+    show_packages_after_submit: z.boolean().default(false), // Mostrar paquetes post-registro
     email_required: z.boolean().default(false),
     enable_interest_date: z.boolean().default(false),
     validate_with_calendar: z.boolean().default(false),
@@ -74,6 +77,9 @@ export const SubmitLeadFormSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido').max(100, 'El nombre es demasiado largo'),
   phone: z.string().min(10, 'El teléfono debe tener al menos 10 dígitos'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
+  // Asunto / Tipo de evento
+  event_type_id: z.string().optional(), // Si useEventTypes = true
+  subject: z.string().optional(), // LEGACY: si useEventTypes = false
   // Campos personalizados adicionales
   custom_fields: z.record(z.any()).optional(),
   // UTM parameters

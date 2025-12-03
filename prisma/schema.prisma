@@ -190,6 +190,8 @@ model platform_leads {
   studio_id                     String?                         @unique
   studio_name                   String?
   studio_slug                   String?
+  event_type_id                 String? // Tipo de evento seleccionado en leadform (si use_event_types = true)
+  subject                       String? // LEGACY: asunto personalizado (si use_event_types = false)
   updated_at                    DateTime                        @updatedAt
   platform_activities           platform_activities[]
   agent_discount_codes          platform_agent_discount_codes[]
@@ -2567,7 +2569,7 @@ model studio_offers {
   is_active        Boolean                       @default(true)
   created_at       DateTime                      @default(now())
   updated_at       DateTime                      @updatedAt
-  order            Int?                           @default(0)
+  order            Int?                          @default(0)
   studio           studios                       @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   landing_page     studio_offer_landing_pages?
   leadform         studio_offer_leadforms?
@@ -2593,19 +2595,23 @@ model studio_offer_landing_pages {
 }
 
 model studio_offer_leadforms {
-  id                     String        @id @default(cuid())
-  offer_id               String        @unique
-  title                  String?
-  description            String?
-  success_message        String        @default("¡Gracias! Nos pondremos en contacto pronto.")
-  success_redirect_url   String?
-  fields_config          Json
-  subject_options        Json? // Lista de opciones de asunto personalizable
-  enable_interest_date   Boolean       @default(false)
-  validate_with_calendar Boolean       @default(false)
-  created_at             DateTime      @default(now())
-  updated_at             DateTime      @updatedAt
-  offer                  studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
+  id                         String        @id @default(cuid())
+  offer_id                   String        @unique
+  title                      String?
+  description                String?
+  success_message            String        @default("¡Gracias! Nos pondremos en contacto pronto.")
+  success_redirect_url       String?
+  fields_config              Json
+  subject_options            Json? // LEGACY: opciones personalizadas (usar si use_event_types = false)
+  use_event_types            Boolean       @default(false) // Si true: usar studio_event_types, si false: usar subject_options
+  selected_event_type_ids    Json? // Array de IDs de studio_event_types seleccionados
+  show_packages_after_submit Boolean       @default(false) // Mostrar paquetes después de registro
+  email_required             Boolean       @default(false)
+  enable_interest_date       Boolean       @default(false)
+  validate_with_calendar     Boolean       @default(false)
+  created_at                 DateTime      @default(now())
+  updated_at                 DateTime      @updatedAt
+  offer                      studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@index([offer_id])
 }

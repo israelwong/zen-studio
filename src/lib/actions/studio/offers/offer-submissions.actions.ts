@@ -160,6 +160,7 @@ export async function submitOfferLeadform(
           contact_id: contact.id,
           pipeline_stage_id: nuevoStage?.id || null,
           status: "pending",
+          event_type_id: validatedData.event_type_id || null, // ✅ NUEVO: captura tipo de evento
         },
       });
 
@@ -168,6 +169,8 @@ export async function submitOfferLeadform(
         name: validatedData.name,
         phone: validatedData.phone,
         email: validatedData.email || null,
+        event_type_id: validatedData.event_type_id || null, // ✅ NUEVO
+        subject: validatedData.subject || null, // ✅ LEGACY
         ...(validatedData.custom_fields || {}),
       };
 

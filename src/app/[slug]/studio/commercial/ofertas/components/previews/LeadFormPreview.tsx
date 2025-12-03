@@ -32,10 +32,11 @@ export function LeadFormPreview({ studioSlug, studioId }: LeadFormPreviewProps) 
       successRedirectUrl={leadformData.success_redirect_url}
       fieldsConfig={leadformData.fields_config}
       subjectOptions={leadformData.subject_options}
+      useEventTypes={leadformData.use_event_types}
+      selectedEventTypeIds={leadformData.selected_event_type_ids}
       enableInterestDate={leadformData.enable_interest_date}
       validateWithCalendar={leadformData.validate_with_calendar}
       emailRequired={leadformData.email_required}
-      enableAttachments={leadformData.enable_attachments}
       coverUrl={formData.cover_media_url}
       coverType={formData.cover_media_type}
       isPreview={true}

@@ -225,10 +225,28 @@ export async function eliminarTipoEvento(
             where: { event_type_id: tipoId },
         });
 
-        if (paquetesAsociados > 0) {
+        // ✅ NUEVO: Verificar promesas asociadas
+        const promesasAsociadas = await prisma.studio_promises.count({
+            where: { event_type_id: tipoId },
+        });
+
+        // ✅ NUEVO: Verificar leads activos (no convertidos)
+        const leadsActivos = await prisma.platform_leads.count({
+            where: {
+                event_type_id: tipoId,
+                conversion_date: null,
+            },
+        });
+
+        if (paquetesAsociados > 0 || promesasAsociadas > 0 || leadsActivos > 0) {
+            const mensajes: string[] = [];
+            if (paquetesAsociados > 0) mensajes.push(`${paquetesAsociados} paquete(s)`);
+            if (promesasAsociadas > 0) mensajes.push(`${promesasAsociadas} promesa(s)`);
+            if (leadsActivos > 0) mensajes.push(`${leadsActivos} lead(s) activo(s)`);
+
             return {
                 success: false,
-                error: `No se puede eliminar el tipo de evento porque tiene ${paquetesAsociados} paquete(s) asociado(s)`,
+                error: `No se puede eliminar. Tiene:\n- ${mensajes.join('\n- ')}`,
             };
         }
 

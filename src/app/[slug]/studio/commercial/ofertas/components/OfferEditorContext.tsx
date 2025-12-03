@@ -23,7 +23,10 @@ interface LeadFormData {
   description: string;
   success_message: string;
   success_redirect_url: string;
-  subject_options: string[];
+  subject_options: string[]; // LEGACY: si use_event_types = false
+  use_event_types: boolean; // Si true: usar studio_event_types
+  selected_event_type_ids: string[]; // IDs de tipos seleccionados
+  show_packages_after_submit: boolean; // Mostrar paquetes post-registro
   email_required: boolean;
   enable_interest_date: boolean;
   validate_with_calendar: boolean;
@@ -91,6 +94,9 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     success_message: initialOffer?.leadform?.success_message || "¡Gracias! Nos pondremos en contacto pronto.",
     success_redirect_url: initialOffer?.leadform?.success_redirect_url || "",
     subject_options: (initialOffer?.leadform?.subject_options as string[]) || [],
+    use_event_types: initialOffer?.leadform?.use_event_types || false,
+    selected_event_type_ids: (initialOffer?.leadform?.selected_event_type_ids as string[]) || [],
+    show_packages_after_submit: initialOffer?.leadform?.show_packages_after_submit || false,
     email_required: (initialOffer?.leadform?.email_required as boolean) || false,
     enable_interest_date: (initialOffer?.leadform?.enable_interest_date as boolean) || false,
     validate_with_calendar: (initialOffer?.leadform?.validate_with_calendar as boolean) || false,

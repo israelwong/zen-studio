@@ -42,7 +42,10 @@ export interface StudioOfferLeadform {
   success_message: string;
   success_redirect_url: string | null;
   fields_config: LeadFormFieldsConfig;
-  subject_options?: string[];
+  subject_options?: string[]; // LEGACY: si use_event_types = false
+  use_event_types?: boolean; // Si true: usar studio_event_types
+  selected_event_type_ids?: string[]; // IDs de tipos de evento seleccionados
+  show_packages_after_submit?: boolean; // Mostrar paquetes post-registro
   email_required?: boolean;
   enable_interest_date?: boolean;
   validate_with_calendar?: boolean;
