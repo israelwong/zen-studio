@@ -1189,3 +1189,171 @@ export async function deletePromise(
   }
 }
 
+/**
+ * Eliminar todas las promesas de prueba y sus datos relacionados
+ */
+export async function deleteTestPromises(
+  studioSlug: string
+): Promise<{ success: boolean; error?: string; deleted?: number }> {
+  try {
+    // Obtener studio por slug
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Usar transacción para garantizar atomicidad
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Obtener promesas de prueba con sus relaciones
+      const testPromises = await tx.studio_promises.findMany({
+        where: {
+          studio_id: studio.id,
+          is_test: true,
+        },
+        include: {
+          contact: {
+            include: {
+              promises: true, // Para verificar si tiene promesas reales
+            },
+          },
+          event: true,
+        },
+      });
+
+      if (testPromises.length === 0) {
+        return { count: 0 };
+      }
+
+      // 2. Eliminar cada promesa y sus relaciones
+      for (const promise of testPromises) {
+        // Eliminar evento si existe (cascada automática eliminará: agenda, gastos, nominas)
+        if (promise.event) {
+          await tx.studio_events.delete({
+            where: { id: promise.event.id },
+          });
+        }
+
+        // Eliminar relaciones de la promesa
+        await tx.studio_cotizaciones.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        await tx.studio_promise_logs.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        await tx.studio_promises_tags.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        await tx.studio_notifications.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        await tx.studio_agenda.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        await tx.studio_pagos.deleteMany({
+          where: { promise_id: promise.id },
+        });
+
+        // Eliminar promesa
+        await tx.studio_promises.delete({
+          where: { id: promise.id },
+        });
+
+        // 3. Verificar si el contacto solo tenía promesas de prueba
+        const realPromises = promise.contact.promises.filter(
+          (p) => p.id !== promise.id && !p.is_test
+        );
+
+        if (realPromises.length === 0 && promise.contact.is_test) {
+          // Eliminar relaciones del contacto
+          await tx.studio_offer_submissions.deleteMany({
+            where: { contact_id: promise.contact.id },
+          });
+
+          await tx.studio_contact_logs.deleteMany({
+            where: { contact_id: promise.contact.id },
+          });
+
+          // Eliminar contacto
+          await tx.studio_contacts.delete({
+            where: { id: promise.contact.id },
+          });
+        }
+      }
+
+      // 4. Eliminar leads de prueba huérfanos (sin contacto asociado directo)
+      await tx.platform_leads.deleteMany({
+        where: {
+          studio_id: studio.id,
+          is_test: true,
+        },
+      });
+
+      return { count: testPromises.length };
+    });
+
+    // Revalidar rutas
+    revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    revalidatePath(`/${studioSlug}/studio/commercial/crm`);
+    revalidatePath(`/${studioSlug}/studio/dashboard/agenda`);
+
+    return {
+      success: true,
+      deleted: result.count,
+    };
+  } catch (error) {
+    console.error('[PROMISES] Error eliminando promesas de prueba:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Error al eliminar promesas de prueba',
+    };
+  }
+}
+
+/**
+ * Obtener cantidad de promesas de prueba
+ */
+export async function getTestPromisesCount(
+  studioSlug: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const count = await prisma.studio_promises.count({
+      where: {
+        studio_id: studio.id,
+        is_test: true,
+      },
+    });
+
+    return { success: true, count };
+  } catch (error) {
+    console.error('[PROMISES] Error obteniendo conteo de pruebas:', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Error al obtener conteo',
+    };
+  }
+}
+

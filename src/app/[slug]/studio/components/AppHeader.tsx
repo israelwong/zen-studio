@@ -30,13 +30,7 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                 <BreadcrumbHeader studioSlug={studioSlug} />
             </div>
             <div className="flex items-center gap-2 lg:gap-4">
-                {/* Botón de Catálogo */}
-                {/* <Link href={`/${studioSlug}/studio/commercial/catalogo`}>
-                    <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-full border border-zinc-700/50 transition-all cursor-pointer">
-                        <ShoppingBag className="h-4 w-4 text-zinc-400 hover:text-zinc-200" />
-                        <span className="text-xs text-zinc-400 hover:text-zinc-200 hidden lg:inline">Catálogo</span>
-                    </div>
-                </Link> */}
+
 
                 {/* Badge de Almacenamiento */}
                 <StorageBadge studioSlug={studioSlug} />
@@ -49,11 +43,12 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                     <ZenButton
                         variant="ghost"
                         size="sm"
-                        className="rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 hidden md:flex gap-2"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 hidden md:flex gap-2 px-4 border border-zinc-700"
                         onClick={onCommandOpen}
                     >
                         <Search className="h-4 w-4" />
-                        <span className="text-xs">{isMac ? '⌘' : 'Ctrl'}+K</span>
+                        <span className="text-sm text-zinc-600">Buscar...</span>
+                        <span className="text-xs ml-auto">{isMac ? '⌘' : 'Ctrl'}+K</span>
                     </ZenButton>
                 )}
 

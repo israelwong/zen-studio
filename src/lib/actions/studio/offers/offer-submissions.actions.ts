@@ -30,6 +30,24 @@ export async function submitOfferLeadform(
         return { success: false, error: "Estudio no encontrado" };
       }
 
+      // ✅ Verificar límite de promesas de prueba (máximo 2)
+      const isTest = validatedData.is_test ?? false;
+      if (isTest) {
+        const testCount = await prisma.studio_promises.count({
+          where: {
+            studio_id: studio.id,
+            is_test: true,
+          },
+        });
+
+        if (testCount >= 2) {
+          return {
+            success: false,
+            error: "Límite de pruebas alcanzado. Elimina las promesas de prueba existentes desde el CRM antes de crear nuevas.",
+          };
+        }
+      }
+
       // Verificar que la oferta existe y está activa
       const offer = await prisma.studio_offers.findFirst({
         where: {
@@ -119,6 +137,9 @@ export async function submitOfferLeadform(
         const channelId = newChannel.id;
       }
 
+      // Timestamp para datos de prueba
+      const testTimestamp = isTest ? new Date() : null;
+
       // Crear o actualizar contacto
       const contact = await prisma.studio_contacts.upsert({
         where: {
@@ -132,6 +153,11 @@ export async function submitOfferLeadform(
           email: validatedData.email || null,
           status: "prospecto",
           acquisition_channel_id: leadformChannel?.id || null,
+          // ✅ Actualizar flags de prueba solo si es prueba
+          ...(isTest && {
+            is_test: true,
+            test_created_at: testTimestamp,
+          }),
         },
         create: {
           studio_id: studio.id,
@@ -140,6 +166,9 @@ export async function submitOfferLeadform(
           email: validatedData.email || null,
           status: "prospecto",
           acquisition_channel_id: leadformChannel?.id || null,
+          // ✅ Marcar como prueba si aplica
+          is_test: isTest,
+          test_created_at: testTimestamp,
         },
       });
 
@@ -160,7 +189,10 @@ export async function submitOfferLeadform(
           contact_id: contact.id,
           pipeline_stage_id: nuevoStage?.id || null,
           status: "pending",
-          event_type_id: validatedData.event_type_id || null, // ✅ NUEVO: captura tipo de evento
+          event_type_id: validatedData.event_type_id || null,
+          // ✅ Marcar como prueba si aplica
+          is_test: isTest,
+          test_created_at: testTimestamp,
         },
       });
 

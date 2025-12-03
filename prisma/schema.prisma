@@ -192,6 +192,8 @@ model platform_leads {
   studio_slug                   String?
   event_type_id                 String? // Tipo de evento seleccionado en leadform (si use_event_types = true)
   subject                       String? // LEGACY: asunto personalizado (si use_event_types = false)
+  is_test                       Boolean                         @default(false) // Marca leads de prueba
+  test_created_at               DateTime? // Timestamp de creación para tracking
   updated_at                    DateTime                        @updatedAt
   platform_activities           platform_activities[]
   agent_discount_codes          platform_agent_discount_codes[]
@@ -1204,6 +1206,8 @@ model studio_contacts {
   referrer_contact_id    String?
   referrer_name          String?
   notes                  String?
+  is_test                Boolean                        @default(false) // Marca contactos de prueba
+  test_created_at        DateTime? // Timestamp de creación para tracking
   created_at             DateTime                       @default(now())
   updated_at             DateTime                       @updatedAt
   studio                 studios                        @relation(fields: [studio_id], references: [id], onDelete: Cascade)
@@ -1223,6 +1227,7 @@ model studio_contacts {
   @@index([studio_id, email])
   @@index([studio_id, phone])
   @@index([studio_id, status])
+  @@index([studio_id, is_test])
   @@index([acquisition_channel_id])
   @@index([social_network_id])
   @@index([referrer_contact_id])
@@ -1258,6 +1263,8 @@ model studio_promises {
   status            String                          @default("pending")
   defined_date      DateTime? // Mantener para compatibilidad con fechas tentativas
   tentative_dates   Json?
+  is_test           Boolean                         @default(false) // Marca promesas de prueba del preview
+  test_created_at   DateTime? // Timestamp de creación para tracking
   created_at        DateTime                        @default(now())
   updated_at        DateTime                        @updatedAt
   studio            studios                         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
@@ -1274,6 +1281,7 @@ model studio_promises {
 
   @@index([studio_id, contact_id])
   @@index([studio_id, status])
+  @@index([studio_id, is_test])
   @@index([pipeline_stage_id])
   @@index([event_date])
 }

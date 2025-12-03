@@ -90,6 +90,8 @@ export const SubmitLeadFormSchema = z.object({
   utm_content: z.string().optional(),
   // Session tracking
   session_id: z.string().optional(),
+  // Test flag
+  is_test: z.boolean().optional().default(false), // Marca si es lead de prueba del preview
 });
 
 // Schema para registrar visita

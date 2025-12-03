@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ShoppingBag, Package, DollarSign, ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Eye, EyeOff, HardDrive } from 'lucide-react';
+import { ShoppingBag, Package, DollarSign, ChevronDown, ChevronRight, Plus, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Eye, EyeOff, HardDrive, Percent } from 'lucide-react';
 import Image from 'next/image';
 import { ZenCard, ZenCardContent, ZenButton, ZenDialog, ZenBadge } from '@/components/ui/zen';
 import {
@@ -1518,8 +1518,8 @@ export default function OfertaComercialPage() {
                             onClick={() => setIsUtilidadModalOpen(true)}
                             className="flex items-center gap-2"
                         >
-                            <DollarSign className="h-4 w-4" />
-                            Márgenes
+                            <Percent className="h-4 w-4" />
+                            Margen de utilidad
                         </ZenButton>
                     </div>
                 </div>
@@ -1561,8 +1561,8 @@ export default function OfertaComercialPage() {
                         onClick={() => setIsUtilidadModalOpen(true)}
                         className="flex items-center gap-2"
                     >
-                        <DollarSign className="h-4 w-4" />
-                        Márgenes
+                        <Percent className="h-4 w-4" />
+                        Margen de utilidad
                     </ZenButton>
                 </div>
             </div>
