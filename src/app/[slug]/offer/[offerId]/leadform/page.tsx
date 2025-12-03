@@ -77,6 +77,7 @@ export default async function PublicOfferLeadFormPage({
         {/* Leadform */}
         <OfferLeadForm
           studioSlug={slug}
+          studioId={offer.studio_id}
           offerId={offer.id}
           offerSlug={offer.slug}
           title={offer.leadform.title}
@@ -84,6 +85,13 @@ export default async function PublicOfferLeadFormPage({
           successMessage={offer.leadform.success_message}
           successRedirectUrl={offer.leadform.success_redirect_url || undefined}
           fieldsConfig={offer.leadform.fields_config}
+          subjectOptions={offer.leadform.subject_options}
+          enableInterestDate={offer.leadform.enable_interest_date}
+          validateWithCalendar={offer.leadform.validate_with_calendar}
+          emailRequired={offer.leadform.email_required}
+          enableAttachments={offer.leadform.enable_attachments}
+          coverUrl={offer.cover_media_url}
+          coverType={offer.cover_media_type}
         />
       </>
     );

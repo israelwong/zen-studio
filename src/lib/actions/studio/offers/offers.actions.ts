@@ -111,8 +111,10 @@ export async function createOffer(
               success_redirect_url: validatedData.leadform.success_redirect_url || null,
               fields_config: validatedData.leadform.fields_config,
               subject_options: validatedData.leadform.subject_options || null,
+              email_required: validatedData.leadform.email_required,
               enable_interest_date: validatedData.leadform.enable_interest_date,
               validate_with_calendar: validatedData.leadform.validate_with_calendar,
+              enable_attachments: validatedData.leadform.enable_attachments,
             },
           },
         },
@@ -182,6 +184,11 @@ export async function createOffer(
                 options?: string[];
               }>;
             },
+            subject_options: offer.leadform.subject_options as string[] | undefined,
+            email_required: (offer.leadform as any).email_required as boolean | undefined,
+            enable_interest_date: offer.leadform.enable_interest_date,
+            validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_attachments: (offer.leadform as any).enable_attachments as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -309,8 +316,10 @@ export async function updateOffer(
             success_redirect_url: validatedData.leadform.success_redirect_url || null,
             fields_config: validatedData.leadform.fields_config,
             subject_options: validatedData.leadform.subject_options || null,
+            email_required: validatedData.leadform.email_required,
             enable_interest_date: validatedData.leadform.enable_interest_date,
             validate_with_calendar: validatedData.leadform.validate_with_calendar,
+            enable_attachments: validatedData.leadform.enable_attachments,
           },
         };
       }
@@ -388,6 +397,11 @@ export async function updateOffer(
                 options?: string[];
               }>;
             },
+            subject_options: offer.leadform.subject_options as string[] | undefined,
+            email_required: (offer.leadform as any).email_required as boolean | undefined,
+            enable_interest_date: offer.leadform.enable_interest_date,
+            validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_attachments: (offer.leadform as any).enable_attachments as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -490,6 +504,11 @@ export async function getOffer(
                 options?: string[];
               }>;
             },
+            subject_options: offer.leadform.subject_options as string[] | undefined,
+            email_required: (offer.leadform as any).email_required as boolean | undefined,
+            enable_interest_date: offer.leadform.enable_interest_date,
+            validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_attachments: (offer.leadform as any).enable_attachments as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -597,7 +616,6 @@ export async function getPublicOffer(
             offer_id: offer.leadform.offer_id,
             title: offer.leadform.title,
             description: offer.leadform.description,
-            success_message,
             success_message: offer.leadform.success_message,
             success_redirect_url: offer.leadform.success_redirect_url,
             fields_config: offer.leadform.fields_config as {
@@ -610,6 +628,11 @@ export async function getPublicOffer(
                 options?: string[];
               }>;
             },
+            subject_options: offer.leadform.subject_options as string[] | undefined,
+            email_required: (offer.leadform as any).email_required as boolean | undefined,
+            enable_interest_date: offer.leadform.enable_interest_date,
+            validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_attachments: (offer.leadform as any).enable_attachments as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }

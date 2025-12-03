@@ -21,22 +21,24 @@ export function LeadFormPreview({ studioSlug, studioId }: LeadFormPreviewProps) 
   const { formData, leadformData } = useOfferEditor();
 
   return (
-    <div className="bg-zinc-950 min-h-screen p-4">
-      <OfferLeadForm
-        studioSlug={studioSlug}
-        studioId={studioId}
-        offerId="preview"
-        offerSlug={formData.slug || "preview"}
-        title={leadformData.title}
-        description={leadformData.description}
-        successMessage={leadformData.success_message}
-        successRedirectUrl={leadformData.success_redirect_url}
-        fieldsConfig={leadformData.fields_config}
-        subjectOptions={leadformData.subject_options}
-        enableInterestDate={leadformData.enable_interest_date}
-        validateWithCalendar={leadformData.validate_with_calendar}
-        isPreview={true}
-      />
-    </div>
+    <OfferLeadForm
+      studioSlug={studioSlug}
+      studioId={studioId}
+      offerId="preview"
+      offerSlug={formData.slug || "preview"}
+      title={leadformData.title}
+      description={leadformData.description}
+      successMessage={leadformData.success_message}
+      successRedirectUrl={leadformData.success_redirect_url}
+      fieldsConfig={leadformData.fields_config}
+      subjectOptions={leadformData.subject_options}
+      enableInterestDate={leadformData.enable_interest_date}
+      validateWithCalendar={leadformData.validate_with_calendar}
+      emailRequired={leadformData.email_required}
+      enableAttachments={leadformData.enable_attachments}
+      coverUrl={formData.cover_media_url}
+      coverType={formData.cover_media_type}
+      isPreview={true}
+    />
   );
 }

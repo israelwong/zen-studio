@@ -43,8 +43,10 @@ export interface StudioOfferLeadform {
   success_redirect_url: string | null;
   fields_config: LeadFormFieldsConfig;
   subject_options?: string[];
+  email_required?: boolean;
   enable_interest_date?: boolean;
   validate_with_calendar?: boolean;
+  enable_attachments?: boolean;
   created_at: Date;
   updated_at: Date;
 }

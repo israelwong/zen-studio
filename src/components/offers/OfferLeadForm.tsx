@@ -14,14 +14,25 @@
  */
 
 import { useEffect, useState } from "react";
-import { ZenButton, ZenInput, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenBadge } from "@/components/ui/zen";
+import Image from "next/image";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { ZenButton, ZenInput, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenBadge, ZenCalendar, type ZenCalendarProps } from "@/components/ui/zen";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/popover";
 import { submitOfferLeadform } from "@/lib/actions/studio/offers/offer-submissions.actions";
 import { trackOfferVisit } from "@/lib/actions/studio/offers/offer-visits.actions";
 import { checkDateAvailability } from "@/lib/actions/studio/offers/offer-availability.actions";
 import { LeadFormFieldsConfig, LeadFormField } from "@/lib/actions/schemas/offer-schemas";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, CalendarIcon } from "lucide-react";
+
+// Tipo específico para ZenCalendar con mode="single"
+type ZenCalendarSingleProps = Omit<ZenCalendarProps, 'mode' | 'selected' | 'onSelect'> & {
+  mode: 'single';
+  selected?: Date;
+  onSelect?: (date: Date | undefined) => void;
+};
 
 // Tipos para objetos globales de tracking
 interface WindowWithDataLayer extends Window {
@@ -45,6 +56,10 @@ interface OfferLeadFormProps {
   subjectOptions?: string[];
   enableInterestDate?: boolean;
   validateWithCalendar?: boolean;
+  emailRequired?: boolean;
+  // enableAttachments?: boolean; // Feature pendiente
+  coverUrl?: string | null;
+  coverType?: string | null;
   isPreview?: boolean;
 }
 
@@ -64,6 +79,10 @@ export function OfferLeadForm({
   subjectOptions,
   enableInterestDate,
   validateWithCalendar = false,
+  emailRequired = false,
+  // enableAttachments = false, // Feature pendiente
+  coverUrl,
+  coverType,
   isPreview = false,
 }: OfferLeadFormProps) {
   const router = useRouter();
@@ -154,7 +173,7 @@ export function OfferLeadForm({
       id: "email",
       type: "email",
       label: "Email",
-      required: false,
+      required: emailRequired,
       placeholder: "tu@email.com",
     },
   ];
@@ -166,7 +185,7 @@ export function OfferLeadForm({
       type: "select",
       label: "Asunto",
       required: true,
-      placeholder: "Selecciona un asunto",
+      placeholder: "",
       options: subjectOptions,
     });
   }
@@ -182,8 +201,8 @@ export function OfferLeadForm({
     });
   }
 
-  // Combinar campos básicos con personalizados
-  const allFields = [...basicFields, ...(fieldsConfig.fields || [])];
+  // Solo campos básicos (custom fields omitidos para max conversión)
+  const allFields = basicFields;
 
   const handleInputChange = async (fieldId: string, value: string) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
@@ -376,106 +395,195 @@ export function OfferLeadForm({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-      <ZenCard className="max-w-lg w-full">
-        <ZenCardHeader>
-          <ZenCardTitle>{title || "Solicita información"}</ZenCardTitle>
-          {description && (
-            <p className="text-sm text-zinc-400 mt-2">{description}</p>
+    <div className="relative  bg-zinc-950">
+      {/* Hero Cover */}
+      {coverUrl && (
+        <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[45vh] overflow-hidden rounded-b-3xl">
+          {coverType === 'video' ? (
+            <video
+              src={coverUrl}
+              className="w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+          ) : (
+            <Image
+              src={coverUrl}
+              alt="Cover"
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
           )}
-        </ZenCardHeader>
-        <ZenCardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {allFields.map((field) => (
-              <div key={field.id}>
-                <ZenInput
-                  label={field.label}
-                  name={field.id}
-                  type={
-                    field.type === "phone"
-                      ? "tel"
-                      : field.type === "email"
-                        ? "email"
-                        : field.type === "date"
-                          ? "date"
-                          : "text"
-                  }
-                  value={formData[field.id] || ""}
-                  onChange={(e) => handleInputChange(field.id, e.target.value)}
-                  placeholder={field.placeholder}
-                  required={field.required}
-                  error={errors[field.id]}
-                />
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/50 via-zinc-950/40 to-zinc-950" />
+        </div>
+      )}
 
-                {/* Badge de disponibilidad para fecha de interés */}
-                {field.id === "interest_date" &&
-                  formData[field.id] &&
-                  validateWithCalendar &&
-                  !isPreview && (
-                    <div className="mt-2">
-                      {dateAvailability.checking ? (
-                        <ZenBadge variant="secondary" size="sm">
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                          Verificando...
-                        </ZenBadge>
-                      ) : dateAvailability.available === true ? (
-                        <ZenBadge variant="success" size="sm">
-                          ✓ Fecha disponible
-                        </ZenBadge>
-                      ) : dateAvailability.available === false ? (
-                        <ZenBadge variant="destructive" size="sm">
-                          ✗ Fecha no disponible
-                        </ZenBadge>
-                      ) : null}
+      {/* Formulario superpuesto */}
+      <div className={`relative z-10 flex items-start justify-center p-4 pb-12 ${coverUrl ? 'pt-[20vh] md:pt-[15vh]' : 'min-h-screen items-center'}`}>
+        <ZenCard className="max-w-lg w-full bg-zinc-900/50 backdrop-blur-md shadow-2xl border-zinc-800/50">
+          <ZenCardHeader>
+            <ZenCardTitle>{title || "Solicita información"}</ZenCardTitle>
+            {description && (
+              <p className="text-sm text-zinc-400 mt-2">{description}</p>
+            )}
+          </ZenCardHeader>
+          <ZenCardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {allFields.map((field) => (
+                <div key={field.id}>
+                  {/* Campo de fecha con ZenCalendar */}
+                  {field.type === "date" ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-300 block mb-2">
+                        {field.label}
+                        {field.required && <span className="text-red-400 ml-1">*</span>}
+                      </label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <ZenButton
+                            variant="outline"
+                            className={`w-full justify-start text-left font-normal ${!formData[field.id] && "text-zinc-500"
+                              } ${errors[field.id] && "border-red-500"}`}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData[field.id]
+                              ? format(new Date(formData[field.id]), "PPP", { locale: es })
+                              : field.placeholder || "Selecciona una fecha"}
+                          </ZenButton>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <ZenCalendar
+                            {...({
+                              mode: 'single' as const,
+                              selected: formData[field.id] ? new Date(formData[field.id]) : undefined,
+                              onSelect: (date: Date | undefined) => {
+                                if (date) {
+                                  const dateString = format(date, "yyyy-MM-dd");
+                                  handleInputChange(field.id, dateString);
+                                }
+                              },
+                              initialFocus: true,
+                            } as ZenCalendarSingleProps)}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      {errors[field.id] && (
+                        <p className="text-xs text-red-400 mt-1">{errors[field.id]}</p>
+                      )}
                     </div>
+                  ) : field.type === "select" && field.options ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-300 block">
+                        {field.label}
+                        {field.required && <span className="text-red-400 ml-1">*</span>}
+                      </label>
+                      <select
+                        className={`w-full px-3 py-2 bg-zinc-900 border rounded-lg text-sm text-zinc-300 transition-all duration-200 outline-none focus:ring-[3px] focus:border-zinc-600 focus:ring-zinc-500/20 ${errors[field.id] ? "border-red-500" : "border-zinc-700"
+                          }`}
+                        value={formData[field.id] || ""}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        required={field.required}
+                      >
+                        {field.placeholder ? (
+                          <option value="">{field.placeholder}</option>
+                        ) : null}
+                        {field.options.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {errors[field.id] && (
+                        <p className="text-xs text-red-400 mt-1">{errors[field.id]}</p>
+                      )}
+                    </div>
+                  ) : field.type === "textarea" ? (
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-zinc-300 block">
+                        {field.label}
+                        {field.required && <span className="text-red-400 ml-1">*</span>}
+                      </label>
+                      <textarea
+                        className={`w-full px-3 py-2 bg-zinc-900 border rounded-lg text-sm text-zinc-300 transition-all duration-200 outline-none focus:ring-[3px] focus:border-zinc-600 focus:ring-zinc-500/20 ${errors[field.id] ? "border-red-500" : "border-zinc-700"
+                          }`}
+                        value={formData[field.id] || ""}
+                        onChange={(e) => handleInputChange(field.id, e.target.value)}
+                        placeholder={field.placeholder}
+                        required={field.required}
+                        rows={4}
+                      />
+                      {errors[field.id] && (
+                        <p className="text-xs text-red-400 mt-1">{errors[field.id]}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <ZenInput
+                      label={field.label}
+                      name={field.id}
+                      type={
+                        field.type === "phone"
+                          ? "tel"
+                          : field.type === "email"
+                            ? "email"
+                            : "text"
+                      }
+                      value={formData[field.id] || ""}
+                      onChange={(e) => handleInputChange(field.id, e.target.value)}
+                      placeholder={field.placeholder}
+                      required={field.required}
+                      error={errors[field.id]}
+                    />
                   )}
 
-                {field.type === "select" && field.options && (
-                  <select
-                    className="mt-2 w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300"
-                    value={formData[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                    required={field.required}
-                  >
-                    <option value="">Selecciona una opción</option>
-                    {field.options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {field.type === "textarea" && (
-                  <textarea
-                    className="mt-2 w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300"
-                    value={formData[field.id] || ""}
-                    onChange={(e) => handleInputChange(field.id, e.target.value)}
-                    placeholder={field.placeholder}
-                    required={field.required}
-                    rows={4}
-                  />
-                )}
-              </div>
-            ))}
+                  {/* Badge de disponibilidad para fecha de interés */}
+                  {field.id === "interest_date" &&
+                    formData[field.id] &&
+                    validateWithCalendar &&
+                    !isPreview && (
+                      <div className="mt-2">
+                        {dateAvailability.checking ? (
+                          <ZenBadge variant="secondary" size="sm">
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            Verificando...
+                          </ZenBadge>
+                        ) : dateAvailability.available === true ? (
+                          <ZenBadge variant="success" size="sm">
+                            ✓ Fecha disponible
+                          </ZenBadge>
+                        ) : dateAvailability.available === false ? (
+                          <ZenBadge variant="destructive" size="sm">
+                            ✗ Fecha no disponible
+                          </ZenBadge>
+                        ) : null}
+                      </div>
+                    )}
+                </div>
+              ))}
 
-            <ZenButton
-              type="submit"
-              className="w-full"
-              loading={isSubmitting}
-              disabled={
-                isSubmitting ||
-                dateAvailability.checking ||
-                (validateWithCalendar &&
-                  enableInterestDate &&
-                  formData.interest_date &&
-                  dateAvailability.available === false)
-              }
-            >
-              Enviar solicitud
-            </ZenButton>
-          </form>
-        </ZenCardContent>
-      </ZenCard>
+              <ZenButton
+                type="submit"
+                className="w-full"
+                loading={!!isSubmitting}
+                disabled={
+                  !!isSubmitting ||
+                  !!dateAvailability.checking ||
+                  !!(validateWithCalendar &&
+                    enableInterestDate &&
+                    formData.interest_date &&
+                    dateAvailability.available === false)
+                }
+              >
+                Enviar solicitud
+              </ZenButton>
+            </form>
+          </ZenCardContent>
+        </ZenCard>
+      </div>
     </div>
   );
 }

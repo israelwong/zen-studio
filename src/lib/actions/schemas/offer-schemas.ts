@@ -31,6 +31,8 @@ export const CTAConfigSchema = z.object({
 });
 
 // Schema para configuración de campos del leadform
+// NOTA: Custom fields (fields array) temporalmente omitidos del UI para maximizar conversión
+// Ver CustomFieldsManager en /src/components/shared/forms para uso futuro
 export const LeadFormFieldsConfigSchema = z.object({
   fields: z.array(LeadFormFieldSchema).default([]),
 });
@@ -55,8 +57,10 @@ export const CreateOfferSchema = z.object({
     success_redirect_url: z.string().url('URL inválida').optional().or(z.literal('')),
     fields_config: LeadFormFieldsConfigSchema,
     subject_options: z.array(z.string()).optional().default([]),
+    email_required: z.boolean().default(false),
     enable_interest_date: z.boolean().default(false),
     validate_with_calendar: z.boolean().default(false),
+    enable_attachments: z.boolean().default(false),
   }),
 });
 
