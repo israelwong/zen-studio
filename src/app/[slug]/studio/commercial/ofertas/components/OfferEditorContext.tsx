@@ -34,7 +34,6 @@ interface LeadFormData {
   email_required: boolean;
   enable_interest_date: boolean;
   validate_with_calendar: boolean;
-  enable_attachments: boolean;
   fields_config: {
     fields: LeadFormField[];
   };
@@ -108,7 +107,6 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     email_required: (initialOffer?.leadform?.email_required as boolean) || false,
     enable_interest_date: (initialOffer?.leadform?.enable_interest_date as boolean) || false,
     validate_with_calendar: (initialOffer?.leadform?.validate_with_calendar as boolean) || false,
-    enable_attachments: (initialOffer?.leadform?.enable_attachments as boolean) || false,
     fields_config: {
       fields: (initialOffer?.leadform?.fields_config?.fields || []) as LeadFormField[],
     },
@@ -175,7 +173,6 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
         email_required: leadformData.email_required,
         enable_interest_date: leadformData.enable_interest_date,
         validate_with_calendar: leadformData.validate_with_calendar,
-        enable_attachments: leadformData.enable_attachments,
       },
     };
 

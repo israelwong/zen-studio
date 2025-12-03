@@ -67,7 +67,6 @@ export const CreateOfferSchema = z.object({
     email_required: z.boolean().default(false),
     enable_interest_date: z.boolean().default(false),
     validate_with_calendar: z.boolean().default(false),
-    enable_attachments: z.boolean().default(false),
   }),
 });
 

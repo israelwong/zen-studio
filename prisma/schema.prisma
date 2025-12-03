@@ -724,7 +724,6 @@ model studios {
   has_crew                   Boolean?
   gtm_id                     String?
   facebook_pixel_id          String?
-  zen_pixel_id               String?
   manager_pipeline_stages    studio_manager_pipeline_stages[]
   platform_campaigns         platform_campaigns[]
   platform_leads             platform_leads?

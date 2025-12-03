@@ -53,7 +53,6 @@ export interface StudioOfferLeadform {
   email_required?: boolean;
   enable_interest_date?: boolean;
   validate_with_calendar?: boolean;
-  enable_attachments?: boolean;
   created_at: Date;
   updated_at: Date;
 }

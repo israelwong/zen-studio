@@ -1,15 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ZenInput, ZenTextarea, ZenSwitch, ZenCalendar } from "@/components/ui/zen";
+import { ZenInput, ZenTextarea, ZenSwitch, ZenCalendar, ZenButton } from "@/components/ui/zen";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/popover";
 import { useOfferEditor } from "../OfferEditorContext";
 import { ObjectiveRadio } from "./ObjectiveRadio";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calendar } from "lucide-react";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { useStorageRefresh } from "@/hooks/useStorageRefresh";
 import { toast } from "sonner";
 import { CoverDropzone } from "@/components/shared/CoverDropzone";
 import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 
 interface BasicInfoEditorProps {
   studioSlug: string;
@@ -51,6 +54,8 @@ export function BasicInfoEditor({
     }
     return undefined;
   });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [tempDateRange, setTempDateRange] = useState<DateRange | undefined>(dateRange);
 
   // Auto-generar slug cuando cambia el nombre
   useEffect(() => {
@@ -277,38 +282,84 @@ export function BasicInfoEditor({
 
             {/* Calendario de Rango */}
             {formData.has_date_range && (
-              <div className="bg-zinc-900 rounded-lg p-4">
-                <label className="block text-sm font-medium text-zinc-300 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Período de Disponibilidad <span className="text-red-400">*</span>
                 </label>
-                <ZenCalendar
-                  {...{
-                    mode: "range" as const,
-                    selected: dateRange,
-                    onSelect: (range: DateRange | undefined) => {
-                      setDateRange(range);
-                      updateFormData({
-                        start_date: range?.from || null,
-                        end_date: range?.to || null,
-                      });
-                    },
-                    numberOfMonths: 2,
-                    disabled: (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))
+                <Popover
+                  open={isCalendarOpen}
+                  onOpenChange={(open) => {
+                    setIsCalendarOpen(open);
+                    if (open) {
+                      // Al abrir, guardar el rango actual como temporal
+                      setTempDateRange(dateRange);
+                    }
                   }}
-                />
-                {dateRange?.from && dateRange?.to && (
-                  <p className="text-xs text-zinc-400 mt-3">
-                    Del {dateRange.from.toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })} al {dateRange.to.toLocaleDateString('es-MX', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
-                  </p>
-                )}
+                >
+                  <PopoverTrigger asChild>
+                    <ZenButton
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {dateRange?.from ? (
+                        dateRange.to ? (
+                          <>
+                            {format(dateRange.from, "dd 'de' MMMM, yyyy", { locale: es })} - {format(dateRange.to, "dd 'de' MMMM, yyyy", { locale: es })}
+                          </>
+                        ) : (
+                          format(dateRange.from, "dd 'de' MMMM, yyyy", { locale: es })
+                        )
+                      ) : (
+                        <span className="text-zinc-500">Seleccionar rango de fechas</span>
+                      )}
+                    </ZenButton>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-zinc-900 border-zinc-800" align="start">
+                    <div className="p-3">
+                      <ZenCalendar
+                        {...{
+                          mode: "range" as const,
+                          selected: tempDateRange,
+                          onSelect: (range: DateRange | undefined) => {
+                            setTempDateRange(range);
+                          },
+                          numberOfMonths: 2,
+                          disabled: (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))
+                        }}
+                      />
+                      <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800 mt-3">
+                        <ZenButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setTempDateRange(dateRange);
+                            setIsCalendarOpen(false);
+                          }}
+                        >
+                          Cancelar
+                        </ZenButton>
+                        <ZenButton
+                          variant="primary"
+                          size="sm"
+                          disabled={!tempDateRange?.from || !tempDateRange?.to}
+                          onClick={() => {
+                            if (tempDateRange?.from && tempDateRange?.to) {
+                              setDateRange(tempDateRange);
+                              updateFormData({
+                                start_date: tempDateRange.from,
+                                end_date: tempDateRange.to,
+                              });
+                              setIsCalendarOpen(false);
+                            }
+                          }}
+                        >
+                          Confirmar
+                        </ZenButton>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             )}
           </div>
