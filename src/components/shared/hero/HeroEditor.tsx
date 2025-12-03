@@ -58,12 +58,12 @@ export default function HeroEditor({
         setLocalConfig(config);
         let buttons = config.buttons || [];
 
-        // Si es contexto de oferta y hay botones sin href, inicializarlos automáticamente
+        // Si es contexto de oferta, forzar href del leadform solo en el PRIMER botón (índice 0)
         if (effectiveContext === 'offer' && offerSlug) {
             const leadformUrl = `/${studioSlug}/offer/${offerSlug}/leadform`;
-            buttons = buttons.map(btn => {
-                // Si el botón no tiene href o está vacío, inicializarlo con la ruta del leadform
-                if (!btn.href || btn.href === '') {
+            buttons = buttons.map((btn, idx) => {
+                // Solo el primer botón (índice 0) debe estar forzado al leadform
+                if (idx === 0) {
                     return {
                         ...btn,
                         href: leadformUrl,
@@ -71,13 +71,7 @@ export default function HeroEditor({
                         internalLinkType: 'offer-leadform'
                     };
                 }
-                // Si ya tiene href pero es de tipo offer-leadform, asegurar que sea correcto
-                if (btn.internalLinkType === 'offer-leadform' && btn.href !== leadformUrl) {
-                    return {
-                        ...btn,
-                        href: leadformUrl
-                    };
-                }
+                // Los demás botones se mantienen editables (preservar su href si existe, o dejarlo vacío)
                 return btn;
             });
         }
@@ -149,11 +143,12 @@ export default function HeroEditor({
     const addButton = () => {
         if (localButtons.length >= 2) return;
 
-        // Configurar botón según contexto (usar effectiveContext que incluye fallback)
+        // Configurar botón según contexto y posición
         let newButton: ButtonConfig;
 
-        if (effectiveContext === 'offer' && offerSlug) {
-            // Para ofertas: botón con ruta fija al leadform
+        // Solo el primer botón (cuando localButtons.length === 0) en contexto de oferta tiene leadform forzado
+        if (effectiveContext === 'offer' && offerSlug && localButtons.length === 0) {
+            // Primer botón en ofertas: ruta fija al leadform
             newButton = {
                 text: '',
                 href: `/${studioSlug}/offer/${offerSlug}/leadform`,
@@ -163,10 +158,10 @@ export default function HeroEditor({
                 pulse: false
             };
         } else {
-            // Para portfolios o sin contexto: botón con enlace personalizable
+            // Segundo botón o cualquier botón en otros contextos: enlace personalizable (href limpio)
             newButton = {
                 text: '',
-                href: '',
+                href: '', // Asegurar que esté vacío para que el usuario pueda ingresar su URL
                 variant: 'primary',
                 linkType: 'internal',
                 internalLinkType: 'custom',
@@ -217,15 +212,13 @@ export default function HeroEditor({
 
             const updatedBtn = { ...btn, ...updates };
 
-            // Si es contexto de oferta, asegurar href correcto siempre
-            if (effectiveContext === 'offer' && offerSlug) {
+            // Si es contexto de oferta, asegurar href correcto solo en el PRIMER botón (índice 0)
+            if (effectiveContext === 'offer' && offerSlug && index === 0) {
                 const leadformUrl = `/${studioSlug}/offer/${offerSlug}/leadform`;
-                // Si el botón no tiene internalLinkType o es offer-leadform, forzar la ruta del leadform
-                if (!updatedBtn.internalLinkType || updatedBtn.internalLinkType === 'offer-leadform') {
-                    updatedBtn.href = leadformUrl;
-                    updatedBtn.linkType = 'internal';
-                    updatedBtn.internalLinkType = 'offer-leadform';
-                }
+                // Forzar la ruta del leadform solo para el primer botón
+                updatedBtn.href = leadformUrl;
+                updatedBtn.linkType = 'internal';
+                updatedBtn.internalLinkType = 'offer-leadform';
             } else {
                 // Si cambia internalLinkType y no es 'custom', construir href automáticamente
                 if (updates.internalLinkType && updates.internalLinkType !== 'custom') {
@@ -873,8 +866,8 @@ export default function HeroEditor({
                                         )}
                                     </div>
 
-                                    {/* Si es contexto de oferta: solo mostrar input deshabilitado con ruta del leadform */}
-                                    {effectiveContext === 'offer' ? (
+                                    {/* Si es contexto de oferta: solo el PRIMER botón muestra input deshabilitado */}
+                                    {effectiveContext === 'offer' && index === 0 ? (
                                         <ZenInput
                                             label="Enlace al formulario de contacto"
                                             value={offerSlug ? `/${studioSlug}/offer/${offerSlug}/leadform` : (button.href || '')}

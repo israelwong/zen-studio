@@ -90,6 +90,12 @@ interface ContentBlocksEditorProps {
     onAddComponentClick?: () => void;
     hideHeader?: boolean;
     onDragStateChange?: (isDragging: boolean) => void;
+    // Props para contexto del Hero (ofertas, portfolios, etc.)
+    heroContext?: 'portfolio' | 'offer';
+    heroContextData?: {
+        offerSlug?: string;
+        offerId?: string;
+    };
 }
 
 // Componentes esenciales - Simplificados
@@ -195,7 +201,9 @@ export function ContentBlocksEditor({
     customSelector,
     onAddComponentClick,
     hideHeader = false,
-    onDragStateChange
+    onDragStateChange,
+    heroContext,
+    heroContextData
 }: ContentBlocksEditorProps) {
     const [activeBlock, setActiveBlock] = useState<ContentBlock | null>(null);
     const [showComponentSelector, setShowComponentSelector] = useState(false);
@@ -342,7 +350,10 @@ export function ContentBlocksEditor({
                 descripcion: 'Nos emociona saber que nos estás considerando para cubrir tu evento. Especialistas en bodas, XV años y eventos corporativos.',
                 gradientFrom: 'from-purple-600',
                 gradientTo: 'to-blue-600',
-                showScrollIndicator: true
+                showScrollIndicator: true,
+                // Almacenar contexto para persistencia en re-renders
+                _context: heroContext,
+                _contextData: heroContextData
             };
         } else if (component.type === 'hero-image') {
             config = {
@@ -364,7 +375,10 @@ export function ContentBlocksEditor({
                 overlay: true,
                 overlayOpacity: 50,
                 textAlignment: 'center',
-                imagePosition: 'center'
+                imagePosition: 'center',
+                // Almacenar contexto para persistencia en re-renders
+                _context: heroContext,
+                _contextData: heroContextData
             };
         } else if (component.type === 'hero-video') {
             config = {
@@ -388,7 +402,10 @@ export function ContentBlocksEditor({
                 textAlignment: 'center',
                 autoPlay: true,
                 muted: true,
-                loop: true
+                loop: true,
+                // Almacenar contexto para persistencia en re-renders
+                _context: heroContext,
+                _contextData: heroContextData
             };
         } else if (component.type === 'hero-text') {
             config = {
@@ -411,7 +428,23 @@ export function ContentBlocksEditor({
                 backgroundGradient: 'from-zinc-900 via-zinc-800 to-zinc-900',
                 textAlignment: 'center',
                 pattern: 'dots',
-                textColor: 'text-white'
+                textColor: 'text-white',
+                // Almacenar contexto para persistencia en re-renders
+                _context: heroContext,
+                _contextData: heroContextData
+            };
+        } else if (component.type === 'hero') {
+            config = {
+                title: 'Tu Título Aquí',
+                subtitle: 'Subtítulo Impactante',
+                description: 'Descripción que cautive a tus prospectos',
+                textAlignment: 'center',
+                verticalAlignment: 'center',
+                backgroundType: 'image',
+                containerStyle: 'fullscreen',
+                // Almacenar contexto para persistencia en re-renders
+                _context: heroContext,
+                _contextData: heroContextData
             };
         } else if (component.type === 'text') {
             config = {
@@ -449,7 +482,7 @@ export function ContentBlocksEditor({
                 });
             }
         }, 100);
-    }, [blocks, onBlocksChange]);
+    }, [blocks, onBlocksChange, heroContext, heroContextData]);
 
 
     // Duplicar componente
@@ -638,69 +671,28 @@ export function ContentBlocksEditor({
 
     // Función para solicitar eliminación con confirmación
     const requestDeleteBlock = useCallback((block: ContentBlock) => {
-        console.log('🟠 [requestDeleteBlock] Iniciando eliminación:', {
-            blockId: block.id,
-            blockType: block.type,
-            blockOrder: block.order,
-            hasMedia: block.media && block.media.length > 0,
-            mediaCount: block.media?.length || 0,
-            currentBlocksCount: blocks.length,
-            currentBlocksIds: blocks.map(b => ({ id: b.id, order: b.order })),
-            timestamp: new Date().toISOString()
-        });
-
         // Componentes de texto que requieren confirmación si tienen contenido
         const isTextComponent = block.type === 'text';
         const hasTextContent = block.config?.text && String(block.config.text).trim().length > 0;
 
         // Si tiene media asociada o es componente de texto con contenido, mostrar modal de confirmación
         if ((block.media && block.media.length > 0) || (isTextComponent && hasTextContent)) {
-            console.log('🟠 [requestDeleteBlock] Bloque requiere confirmación (media o texto con contenido), mostrando modal');
             setBlockToDelete(block);
             setShowDeleteModal(true);
         } else {
-            console.log('🟠 [requestDeleteBlock] Bloque sin media, eliminando directamente');
             // Si no tiene media, eliminar con animación
             setDeletingBlocks(prev => new Set(prev).add(block.id));
 
             // Esperar a que termine la animación antes de eliminar del estado
             setTimeout(() => {
-                console.log('🟠 [requestDeleteBlock] Ejecutando eliminación después de timeout:', {
-                    blockIdToDelete: block.id,
-                    timestamp: new Date().toISOString()
-                });
-
                 // Eliminar el botón asociado a este componente ANTES de eliminar el componente
                 const buttonToRemove = document.querySelector(`[data-injected-add-button="${block.id}"]`);
                 if (buttonToRemove) {
-                    console.log('🟠 [requestDeleteBlock] Eliminando botón asociado al componente:', block.id);
                     buttonToRemove.remove();
                 }
 
                 onBlocksChange((prevBlocks: ContentBlock[]) => {
-                    console.log('🟠 [requestDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
-                        prevBlocksCount: prevBlocks.length,
-                        prevBlocksIds: prevBlocks.map(b => ({ id: b.id, order: b.order })),
-                        blockIdToDelete: block.id
-                    });
-
-                    const filteredBlocks = prevBlocks.filter((b: ContentBlock) => {
-                        const shouldKeep = b.id !== block.id;
-                        if (!shouldKeep) {
-                            console.log('🟠 [requestDeleteBlock] FILTRANDO BLOQUE:', {
-                                removedId: b.id,
-                                removedOrder: b.order,
-                                removedType: b.type
-                            });
-                        }
-                        return shouldKeep;
-                    });
-
-                    console.log('🟠 [requestDeleteBlock] onBlocksChange - Estado después de filtrar:', {
-                        filteredBlocksCount: filteredBlocks.length,
-                        filteredBlocksIds: filteredBlocks.map(b => ({ id: b.id, order: b.order })),
-                        removedCount: prevBlocks.length - filteredBlocks.length
-                    });
+                    const filteredBlocks = prevBlocks.filter((b: ContentBlock) => b.id !== block.id);
 
                     return filteredBlocks;
                 });
@@ -719,55 +711,19 @@ export function ContentBlocksEditor({
     const confirmDeleteBlock = useCallback(() => {
         if (blockToDelete) {
             const blockIdToDelete = blockToDelete.id;
-            console.log('🟡 [confirmDeleteBlock] Iniciando eliminación confirmada:', {
-                blockId: blockIdToDelete,
-                blockType: blockToDelete.type,
-                blockOrder: blockToDelete.order,
-                currentBlocksCount: blocks.length,
-                currentBlocksIds: blocks.map(b => ({ id: b.id, order: b.order })),
-                timestamp: new Date().toISOString()
-            });
 
             setDeletingBlocks(prev => new Set(prev).add(blockIdToDelete));
 
             // Esperar a que termine la animación antes de eliminar del estado
             setTimeout(() => {
-                console.log('🟡 [confirmDeleteBlock] Ejecutando eliminación después de timeout:', {
-                    blockIdToDelete,
-                    timestamp: new Date().toISOString()
-                });
-
                 // Eliminar el botón asociado a este componente ANTES de eliminar el componente
                 const buttonToRemove = document.querySelector(`[data-injected-add-button="${blockIdToDelete}"]`);
                 if (buttonToRemove) {
-                    console.log('🟡 [confirmDeleteBlock] Eliminando botón asociado al componente:', blockIdToDelete);
                     buttonToRemove.remove();
                 }
 
                 onBlocksChange((prevBlocks: ContentBlock[]) => {
-                    console.log('🟡 [confirmDeleteBlock] onBlocksChange - Estado antes de filtrar:', {
-                        prevBlocksCount: prevBlocks.length,
-                        prevBlocksIds: prevBlocks.map(b => ({ id: b.id, order: b.order })),
-                        blockIdToDelete
-                    });
-
-                    const filteredBlocks = prevBlocks.filter((block: ContentBlock) => {
-                        const shouldKeep = block.id !== blockIdToDelete;
-                        if (!shouldKeep) {
-                            console.log('🟡 [confirmDeleteBlock] FILTRANDO BLOQUE:', {
-                                removedId: block.id,
-                                removedOrder: block.order,
-                                removedType: block.type
-                            });
-                        }
-                        return shouldKeep;
-                    });
-
-                    console.log('🟡 [confirmDeleteBlock] onBlocksChange - Estado después de filtrar:', {
-                        filteredBlocksCount: filteredBlocks.length,
-                        filteredBlocksIds: filteredBlocks.map(b => ({ id: b.id, order: b.order })),
-                        removedCount: prevBlocks.length - filteredBlocks.length
-                    });
+                    const filteredBlocks = prevBlocks.filter((block: ContentBlock) => block.id !== blockIdToDelete);
 
                     return filteredBlocks;
                 });
@@ -779,8 +735,6 @@ export function ContentBlocksEditor({
                 });
                 toast.success('Componente eliminado correctamente');
             }, 300); // Duración de la animación CSS
-        } else {
-            console.log('🟡 [confirmDeleteBlock] ERROR: blockToDelete es null');
         }
         setShowDeleteModal(false);
         setBlockToDelete(null);
@@ -812,12 +766,17 @@ export function ContentBlocksEditor({
                 storage_bytes: file.size
             }));
 
-            // Actualizar el bloque específico con los nuevos media items
-            const block = blocks.find(b => b.id === blockId);
-            if (block) {
-                const updatedMedia = [...(block.media || []), ...mediaItems];
-                handleUpdateBlock(blockId, { media: updatedMedia });
-            }
+            // Actualizar el bloque específico usando onBlocksChange con función para obtener estado más reciente
+            onBlocksChange((prevBlocks: ContentBlock[]) => {
+                const block = prevBlocks.find(b => b.id === blockId);
+                if (block) {
+                    const updatedMedia = [...(block.media || []), ...mediaItems];
+                    return prevBlocks.map(b =>
+                        b.id === blockId ? { ...b, media: updatedMedia } : b
+                    );
+                }
+                return prevBlocks;
+            });
 
             toast.success(`${files.length} archivo(s) subido(s) correctamente`);
         } catch (error) {
@@ -827,7 +786,7 @@ export function ContentBlocksEditor({
             // Desactivar estado de carga
             setBlockUploading(blockId, false);
         }
-    }, [uploadFiles, studioSlug, blocks, handleUpdateBlock, setBlockUploading]);
+    }, [uploadFiles, studioSlug, onBlocksChange, setBlockUploading]);
 
     return (
         <div className={`space-y-4 ${className}`}>
@@ -944,6 +903,8 @@ export function ContentBlocksEditor({
                                 isUploading={uploadingBlocks.has(block.id)}
                                 isDeleting={deletingBlocks.has(block.id)}
                                 onDropFiles={handleDropFiles}
+                                heroContext={heroContext}
+                                heroContextData={heroContextData}
                             />
                         ))}
                     </div>
@@ -971,6 +932,8 @@ export function ContentBlocksEditor({
                                     isUploading={uploadingBlocks.has(block.id)}
                                     isDeleting={deletingBlocks.has(block.id)}
                                     onDropFiles={handleDropFiles}
+                                    heroContext={heroContext}
+                                    heroContextData={heroContextData}
                                 />
                             ))}
                         </div>
@@ -1024,7 +987,9 @@ function SortableBlock({
     studioSlug,
     isUploading,
     isDeleting,
-    onDropFiles
+    onDropFiles,
+    heroContext,
+    heroContextData
 }: {
     block: ContentBlock;
     onUpdate: (blockId: string, updates: Partial<ContentBlock>) => void;
@@ -1034,6 +999,11 @@ function SortableBlock({
     isUploading: boolean;
     isDeleting: boolean;
     onDropFiles: (files: File[], blockId: string) => Promise<void>;
+    heroContext?: 'portfolio' | 'offer';
+    heroContextData?: {
+        offerSlug?: string;
+        offerId?: string;
+    };
 }) {
     const {
         attributes,
@@ -1165,17 +1135,23 @@ function SortableBlock({
                     isEditable={true}
                     lightbox={true}
                     onDrop={(files) => onDropFiles(files, block.id)}
-                    onUploadClick={() => {
+                    onUploadClick={async () => {
                         // Crear input file temporal para trigger upload
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.multiple = true;
                         input.accept = 'image/*,video/*';
-                        input.onchange = (e) => {
+                        input.onchange = async (e) => {
                             const files = Array.from((e.target as HTMLInputElement).files || []);
                             if (files.length > 0) {
-                                onDropFiles(files, block.id);
+                                try {
+                                    await onDropFiles(files, block.id);
+                                } catch (error) {
+                                    console.error('Error uploading files:', error);
+                                }
                             }
+                            // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+                            input.value = '';
                         };
                         input.click();
                     }}
@@ -1200,17 +1176,23 @@ function SortableBlock({
                     isEditable={true}
                     lightbox={true}
                     onDrop={(files) => onDropFiles(files, block.id)}
-                    onUploadClick={() => {
+                    onUploadClick={async () => {
                         // Crear input file temporal para trigger upload
                         const input = document.createElement('input');
                         input.type = 'file';
                         input.multiple = true;
                         input.accept = 'image/*,video/*';
-                        input.onchange = (e) => {
+                        input.onchange = async (e) => {
                             const files = Array.from((e.target as HTMLInputElement).files || []);
                             if (files.length > 0) {
-                                onDropFiles(files, block.id);
+                                try {
+                                    await onDropFiles(files, block.id);
+                                } catch (error) {
+                                    console.error('Error uploading files:', error);
+                                }
                             }
+                            // Limpiar el input para permitir seleccionar el mismo archivo nuevamente
+                            input.value = '';
                         };
                         input.click();
                     }}
@@ -1378,71 +1360,115 @@ function SortableBlock({
     };
 
     const renderHeroContent = () => {
-        // Convertir configuraciones antiguas a HeroConfig unificado
-        let heroConfig: HeroConfig & Record<string, unknown> = {};
+        // Helper para convertir configs antiguos a HeroConfig unificado
+        const convertToHeroConfig = (): HeroConfig & Record<string, unknown> => {
+            const configWithContext = block.config as Record<string, unknown> & {
+                _context?: 'portfolio' | 'offer';
+                _contextData?: { offerSlug?: string; offerId?: string };
+            };
 
-        if (block.type === 'hero-contact') {
-            const oldConfig = block.config as HeroContactConfig;
-            heroConfig = {
-                title: oldConfig.titulo,
-                subtitle: oldConfig.evento,
-                description: oldConfig.descripcion,
+            // Si es tipo 'hero' nuevo, usar directamente
+            if (block.type === 'hero') {
+                return { ...(block.config || {}) } as HeroConfig & Record<string, unknown>;
+            }
+
+            // Convertir tipos antiguos a HeroConfig
+            const baseConfig: HeroConfig & Record<string, unknown> = {
                 textAlignment: 'center',
                 verticalAlignment: 'center',
+                containerStyle: 'fullscreen',
                 backgroundType: 'image',
-                containerStyle: 'fullscreen'
+                _context: configWithContext._context,
+                _contextData: configWithContext._contextData
             };
-        } else if (block.type === 'hero-image') {
-            const oldConfig = block.config as HeroImageConfig;
-            heroConfig = {
-                title: oldConfig.title,
-                subtitle: oldConfig.subtitle,
-                description: oldConfig.description,
-                buttons: oldConfig.buttons,
-                overlay: oldConfig.overlay,
-                overlayOpacity: oldConfig.overlayOpacity,
-                textAlignment: oldConfig.textAlignment || 'center',
-                verticalAlignment: oldConfig.imagePosition === 'top' ? 'top' : oldConfig.imagePosition === 'bottom' ? 'bottom' : 'center',
-                backgroundType: 'image',
-                containerStyle: 'fullscreen'
-            };
-        } else if (block.type === 'hero-video') {
-            const oldConfig = block.config as HeroVideoConfig;
-            heroConfig = {
-                title: oldConfig.title,
-                subtitle: oldConfig.subtitle,
-                description: oldConfig.description,
-                buttons: oldConfig.buttons,
-                overlay: oldConfig.overlay,
-                overlayOpacity: oldConfig.overlayOpacity,
-                textAlignment: oldConfig.textAlignment || 'center',
-                verticalAlignment: 'center',
-                backgroundType: 'video',
-                autoPlay: oldConfig.autoPlay,
-                muted: oldConfig.muted,
-                loop: oldConfig.loop,
-                containerStyle: 'fullscreen'
-            };
-        } else if (block.type === 'hero-text') {
-            const oldConfig = block.config as HeroTextConfig;
-            heroConfig = {
-                title: oldConfig.title,
-                subtitle: oldConfig.subtitle,
-                description: oldConfig.description,
-                buttons: oldConfig.buttons,
-                textAlignment: oldConfig.textAlignment || 'center',
-                verticalAlignment: 'center',
-                backgroundType: 'image',
-                containerStyle: 'fullscreen'
-            };
-        } else {
-            // Caso 'hero' - usar configuración directamente
-            heroConfig = { ...(block.config || {}) } as HeroConfig & Record<string, unknown>;
+
+            switch (block.type) {
+                case 'hero-contact': {
+                    const oldConfig = block.config as HeroContactConfig;
+                    return {
+                        ...baseConfig,
+                        title: oldConfig.titulo,
+                        subtitle: oldConfig.evento,
+                        description: oldConfig.descripcion
+                    };
+                }
+                case 'hero-image': {
+                    const oldConfig = block.config as HeroImageConfig;
+                    return {
+                        ...baseConfig,
+                        title: oldConfig.title,
+                        subtitle: oldConfig.subtitle,
+                        description: oldConfig.description,
+                        buttons: oldConfig.buttons,
+                        overlay: oldConfig.overlay,
+                        overlayOpacity: oldConfig.overlayOpacity,
+                        textAlignment: oldConfig.textAlignment || 'center',
+                        verticalAlignment: oldConfig.imagePosition === 'top' ? 'top' : oldConfig.imagePosition === 'bottom' ? 'bottom' : 'center'
+                    };
+                }
+                case 'hero-video': {
+                    const oldConfig = block.config as HeroVideoConfig;
+                    return {
+                        ...baseConfig,
+                        title: oldConfig.title,
+                        subtitle: oldConfig.subtitle,
+                        description: oldConfig.description,
+                        buttons: oldConfig.buttons,
+                        overlay: oldConfig.overlay,
+                        overlayOpacity: oldConfig.overlayOpacity,
+                        textAlignment: oldConfig.textAlignment || 'center',
+                        backgroundType: 'video',
+                        autoPlay: oldConfig.autoPlay,
+                        muted: oldConfig.muted,
+                        loop: oldConfig.loop
+                    };
+                }
+                case 'hero-text': {
+                    const oldConfig = block.config as HeroTextConfig;
+                    return {
+                        ...baseConfig,
+                        title: oldConfig.title,
+                        subtitle: oldConfig.subtitle,
+                        description: oldConfig.description,
+                        buttons: oldConfig.buttons,
+                        textAlignment: oldConfig.textAlignment || 'center'
+                    };
+                }
+                default:
+                    return baseConfig;
+            }
+        };
+
+        const heroConfig = convertToHeroConfig();
+
+        // Usar contexto de props si está disponible, sino usar el almacenado en config
+        const effectiveContext = heroContext || (heroConfig._context as 'portfolio' | 'offer' | undefined);
+        const effectiveContextData = heroContextData || (heroConfig._contextData as { offerSlug?: string; offerId?: string } | undefined);
+
+        // Asegurar que el contexto esté en el config para futuras referencias
+        // (sin actualizar durante el render, solo para uso local)
+        if (effectiveContext && !heroConfig._context) {
+            heroConfig._context = effectiveContext;
+        }
+        if (effectiveContextData && !heroConfig._contextData) {
+            heroConfig._contextData = effectiveContextData;
         }
 
+
         const handleConfigChange = (newConfig: HeroConfig) => {
+            // Preservar contexto en el config al actualizar
+            // Usar props si están disponibles, sino usar el contexto del config existente
+            const contextToSave = heroContext || effectiveContext || heroConfig._context;
+            const contextDataToSave = heroContextData || effectiveContextData || heroConfig._contextData;
+
+            const configToSave = {
+                ...newConfig,
+                _context: contextToSave,
+                _contextData: contextDataToSave
+            } as Record<string, unknown>;
+
             onUpdate(block.id, {
-                config: newConfig as Record<string, unknown>
+                config: configToSave
             });
         };
 
@@ -1465,6 +1491,8 @@ function SortableBlock({
                 onDropFiles={handleDropFiles}
                 isUploading={isUploading}
                 studioSlug={studioSlug}
+                context={effectiveContext}
+                contextData={effectiveContextData}
             />
         );
     };
@@ -1557,11 +1585,6 @@ function SortableBlock({
                             if (e.nativeEvent) {
                                 e.nativeEvent.stopImmediatePropagation();
                             }
-
-                            console.log('🔴 [SORTABLE_BLOCK] MouseDown en botón eliminar:', {
-                                blockId: block.id,
-                                timestamp: new Date().toISOString()
-                            });
                         }}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -1570,15 +1593,7 @@ function SortableBlock({
                                 e.nativeEvent.stopImmediatePropagation();
                             }
 
-                            console.log('🔴 [SORTABLE_BLOCK] Botón eliminar clickeado:', {
-                                blockId: block.id,
-                                blockType: block.type,
-                                blockOrder: block.order,
-                                timestamp: new Date().toISOString()
-                            });
-
                             // requestDeleteBlock maneja la confirmación automáticamente
-                            console.log('🔴 [SORTABLE_BLOCK] Llamando onDelete:', block.id);
                             onDelete(block);
                         }}
                         className="text-zinc-400 hover:text-red-400 transition-colors relative z-50"
