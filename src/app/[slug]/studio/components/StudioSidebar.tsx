@@ -15,6 +15,7 @@ import {
     UserCog, DollarSign, Megaphone, ShoppingBagIcon, Plug, Settings,
     Home,
     CreditCard,
+    Inbox,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -35,6 +36,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             icon: Briefcase,
             items: [
                 { id: 'dashboard', name: 'Dashboard', href: `/commercial/dashboard`, icon: Home },
+                { id: 'inbox', name: 'Inbox', href: `/commercial/inbox`, icon: Inbox },
+
                 { id: 'ofertas', name: 'Offers', href: `/commercial/ofertas`, icon: Megaphone },
                 { id: 'promises', name: 'Promises', href: `/commercial/promises`, icon: File },
                 { id: 'events', name: 'Events', href: `/business/events`, icon: FileText },

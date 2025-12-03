@@ -49,23 +49,11 @@ export function UtilityDock({
       action: onPersonalClick,
     },
     {
-      id: 'contratos',
-      icon: FileText,
-      label: 'Contratos',
-      href: `/${studioSlug}/studio/contratos`,
-    },
-    {
       id: 'magic',
       icon: Sparkles,
       label: 'ZEN Magic',
       action: onMagicClick,
     },
-    // {
-    //   id: 'analytics',
-    //   icon: BarChart3,
-    //   label: 'Analytics',
-    //   href: `/${studioSlug}/studio/dashboard/finanzas`,
-    // },
     {
       id: 'help',
       icon: HelpCircle,
