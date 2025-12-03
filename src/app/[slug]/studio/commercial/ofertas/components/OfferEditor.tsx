@@ -239,6 +239,18 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   ];
 
   const handleSave = async () => {
+    // Validar disponibilidad
+    if (!formData.is_permanent && !formData.has_date_range) {
+      toast.error("Debes seleccionar disponibilidad: Permanente o definir rango de fechas");
+      return;
+    }
+
+    // Si tiene rango de fechas, validar que estén definidas
+    if (formData.has_date_range && (!formData.start_date || !formData.end_date)) {
+      toast.error("Debes seleccionar el rango de fechas completo");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const offerData = getOfferData();

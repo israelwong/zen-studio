@@ -98,6 +98,10 @@ export async function createOffer(
           cover_media_url: validatedData.cover_media_url || null,
           cover_media_type: validatedData.cover_media_type || null,
           is_active: validatedData.is_active,
+          is_permanent: validatedData.is_permanent,
+          has_date_range: validatedData.has_date_range,
+          start_date: validatedData.start_date || null,
+          end_date: validatedData.end_date || null,
           landing_page: {
             create: {
               cta_config: validatedData.landing_page.cta_config,
@@ -146,6 +150,10 @@ export async function createOffer(
         cover_media_url: offer.cover_media_url,
         cover_media_type: offer.cover_media_type as "image" | "video" | null,
         is_active: offer.is_active,
+        is_permanent: offer.is_permanent,
+        has_date_range: offer.has_date_range,
+        start_date: offer.start_date,
+        end_date: offer.end_date,
         created_at: offer.created_at,
         updated_at: offer.updated_at,
         landing_page: offer.landing_page
@@ -265,6 +273,10 @@ export async function updateOffer(
         cover_media_url?: string | null;
         cover_media_type?: string | null;
         is_active?: boolean;
+        is_permanent?: boolean;
+        has_date_range?: boolean;
+        start_date?: Date | null;
+        end_date?: Date | null;
         landing_page?: {
           update: {
             content_blocks?: unknown;
@@ -298,6 +310,14 @@ export async function updateOffer(
         updateData.cover_media_type = validatedData.cover_media_type ?? null;
       if (validatedData.is_active !== undefined)
         updateData.is_active = validatedData.is_active;
+      if (validatedData.is_permanent !== undefined)
+        updateData.is_permanent = validatedData.is_permanent;
+      if (validatedData.has_date_range !== undefined)
+        updateData.has_date_range = validatedData.has_date_range;
+      if ('start_date' in validatedData)
+        updateData.start_date = validatedData.start_date ?? null;
+      if ('end_date' in validatedData)
+        updateData.end_date = validatedData.end_date ?? null;
 
       if (validatedData.landing_page) {
         updateData.landing_page = {
@@ -359,6 +379,10 @@ export async function updateOffer(
         cover_media_url: offer.cover_media_url,
         cover_media_type: offer.cover_media_type as "image" | "video" | null,
         is_active: offer.is_active,
+        is_permanent: offer.is_permanent,
+        has_date_range: offer.has_date_range,
+        start_date: offer.start_date,
+        end_date: offer.end_date,
         created_at: offer.created_at,
         updated_at: offer.updated_at,
         landing_page: offer.landing_page
@@ -590,6 +614,10 @@ export async function getPublicOffer(
         cover_media_url: offer.cover_media_url,
         cover_media_type: offer.cover_media_type as "image" | "video" | null,
         is_active: offer.is_active,
+        is_permanent: offer.is_permanent,
+        has_date_range: offer.has_date_range,
+        start_date: offer.start_date,
+        end_date: offer.end_date,
         created_at: offer.created_at,
         updated_at: offer.updated_at,
         landing_page: offer.landing_page
@@ -699,6 +727,10 @@ export async function listOffers(
             cover_media_url: offer.cover_media_url,
             cover_media_type: offer.cover_media_type as "image" | "video" | null,
             is_active: offer.is_active,
+            is_permanent: offer.is_permanent,
+            has_date_range: offer.has_date_range,
+            start_date: offer.start_date,
+            end_date: offer.end_date,
             created_at: offer.created_at,
             updated_at: offer.updated_at,
             landing_page: offer.landing_page
@@ -979,6 +1011,10 @@ export async function duplicateOffer(
         cover_media_url: duplicatedOffer.cover_media_url,
         cover_media_type: duplicatedOffer.cover_media_type as "image" | "video" | null,
         is_active: duplicatedOffer.is_active,
+        is_permanent: duplicatedOffer.is_permanent,
+        has_date_range: duplicatedOffer.has_date_range,
+        start_date: duplicatedOffer.start_date,
+        end_date: duplicatedOffer.end_date,
         created_at: duplicatedOffer.created_at,
         updated_at: duplicatedOffer.updated_at,
         landing_page: duplicatedOffer.landing_page

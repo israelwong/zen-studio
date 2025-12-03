@@ -3,7 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Megaphone, Plus, Copy, Trash2, GripVertical, MoreVertical, Edit } from 'lucide-react';
+import { Megaphone, Plus, Copy, Trash2, GripVertical, MoreVertical, Edit, Calendar, Infinity } from 'lucide-react';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import {
     ZenCard,
     ZenCardContent,
@@ -153,6 +155,23 @@ function SortableOfferRow({
             </TableCell>
             <TableCell className="text-center text-zinc-300">
                 {stats.total_submissions}
+            </TableCell>
+            <TableCell className="text-zinc-300">
+                {offer.is_permanent ? (
+                    <div className="flex items-center gap-2">
+                        <Infinity className="h-4 w-4 text-emerald-400" />
+                        <span className="text-sm">Permanente</span>
+                    </div>
+                ) : offer.has_date_range && offer.start_date && offer.end_date ? (
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm">
+                            {format(new Date(offer.start_date), 'dd MMM', { locale: es })} - {format(new Date(offer.end_date), 'dd MMM yyyy', { locale: es })}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-sm text-zinc-500">Sin definir</span>
+                )}
             </TableCell>
             <TableCell className="text-center">
                 <ZenBadge
@@ -432,6 +451,7 @@ export default function OfertasPage() {
                                             <TableHead className="text-zinc-400 font-medium text-center">Visitas</TableHead>
                                             <TableHead className="text-zinc-400 font-medium text-center">No convertidos</TableHead>
                                             <TableHead className="text-zinc-400 font-medium text-center">Conversiones</TableHead>
+                                            <TableHead className="text-zinc-400 font-medium">Disponibilidad</TableHead>
                                             <TableHead className="text-zinc-400 font-medium text-center">Estatus</TableHead>
                                             <TableHead className="text-zinc-400 font-medium text-center w-12"></TableHead>
                                         </TableRow>

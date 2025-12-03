@@ -26,6 +26,7 @@ interface PaymentFormData {
 
 interface PaymentFormProps {
   studioSlug: string;
+  montoPendiente?: number;
   initialData?: {
     id: string;
     amount: number;
@@ -41,6 +42,7 @@ interface PaymentFormProps {
 
 export function PaymentForm({
   studioSlug,
+  montoPendiente,
   initialData,
   onSubmit,
   onCancel,
@@ -97,6 +99,17 @@ export function PaymentForm({
       newErrors.amount = 'El monto debe ser mayor a 0';
     }
 
+    // Validar contra monto pendiente si se proporciona
+    if (montoPendiente !== undefined && parseFloat(amount) > montoPendiente) {
+      const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('es-MX', {
+          style: 'currency',
+          currency: 'MXN',
+        }).format(value);
+      };
+      newErrors.amount = `El monto no puede ser mayor a ${formatCurrency(montoPendiente)}`;
+    }
+
     if (!metodoPago) {
       newErrors.metodoPago = 'Selecciona un método de pago';
     }
@@ -129,14 +142,25 @@ export function PaymentForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Monto */}
       <div className="space-y-2">
-        <label className="text-sm font-medium text-zinc-300 flex items-center gap-2">
-          <DollarSign className="h-4 w-4" />
-          Monto *
+        <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4" />
+            Monto *
+          </span>
+          {montoPendiente !== undefined && (
+            <span className="text-xs text-zinc-400">
+              Pendiente: {new Intl.NumberFormat('es-MX', {
+                style: 'currency',
+                currency: 'MXN',
+              }).format(montoPendiente)}
+            </span>
+          )}
         </label>
         <ZenInput
           type="number"
           step="0.01"
           min="0.01"
+          max={montoPendiente?.toString()}
           value={amount}
           onChange={(e) => {
             setAmount(e.target.value);

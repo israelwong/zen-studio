@@ -46,6 +46,10 @@ export const CreateOfferSchema = z.object({
   cover_media_url: z.string().nullable().optional().or(z.literal('')),
   cover_media_type: z.enum(['image', 'video']).nullable().optional(),
   is_active: z.boolean().default(true),
+  is_permanent: z.boolean().default(false),
+  has_date_range: z.boolean().default(false),
+  start_date: z.date().nullable().optional(),
+  end_date: z.date().nullable().optional(),
   landing_page: z.object({
     content_blocks: z.array(z.any()).default([]), // ContentBlock[] - validación más específica en el componente
     cta_config: CTAConfigSchema,

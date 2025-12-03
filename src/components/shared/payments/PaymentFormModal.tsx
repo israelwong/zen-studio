@@ -16,6 +16,7 @@ interface PaymentFormModalProps {
   studioSlug: string;
   cotizacionId: string;
   promiseId?: string | null;
+  montoPendiente?: number;
   initialData?: PaymentItem | null;
   onSuccess?: (paymentItem?: PaymentItem) => void;
 }
@@ -26,6 +27,7 @@ export function PaymentFormModal({
   studioSlug,
   cotizacionId,
   promiseId,
+  montoPendiente,
   initialData,
   onSuccess,
 }: PaymentFormModalProps) {
@@ -104,6 +106,7 @@ export function PaymentFormModal({
     >
       <PaymentForm
         studioSlug={studioSlug}
+        montoPendiente={montoPendiente}
         initialData={initialData || undefined}
         onSubmit={handleSubmit}
         onCancel={onClose}

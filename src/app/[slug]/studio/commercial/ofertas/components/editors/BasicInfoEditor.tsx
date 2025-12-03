@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ZenInput, ZenTextarea } from "@/components/ui/zen";
+import { ZenInput, ZenTextarea, ZenSwitch, ZenCalendar } from "@/components/ui/zen";
 import { useOfferEditor } from "../OfferEditorContext";
 import { ObjectiveRadio } from "./ObjectiveRadio";
 import { Loader2 } from "lucide-react";
@@ -9,6 +9,7 @@ import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { useStorageRefresh } from "@/hooks/useStorageRefresh";
 import { toast } from "sonner";
 import { CoverDropzone } from "@/components/shared/CoverDropzone";
+import { DateRange } from "react-day-picker";
 
 interface BasicInfoEditorProps {
   studioSlug: string;
@@ -41,6 +42,15 @@ export function BasicInfoEditor({
 
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [coverFileSize, setCoverFileSize] = useState<number | null>(null);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
+    if (formData.start_date && formData.end_date) {
+      return {
+        from: formData.start_date,
+        to: formData.end_date,
+      };
+    }
+    return undefined;
+  });
 
   // Auto-generar slug cuando cambia el nombre
   useEffect(() => {
@@ -201,6 +211,114 @@ export function BasicInfoEditor({
             onChange={(value) => updateFormData({ objective: value })}
           />
         </div>
+      </div>
+
+      {/* Disponibilidad */}
+      <div className="space-y-4 border-t border-zinc-800 pt-4">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-zinc-300">Disponibilidad</h3>
+          <span className="text-red-400">*</span>
+        </div>
+
+        {/* Switch Oferta Permanente */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <label htmlFor="is-permanent" className="text-sm font-medium text-zinc-300">
+              Oferta Permanente
+            </label>
+            <p className="text-xs text-zinc-500">
+              Esta oferta estará disponible indefinidamente
+            </p>
+          </div>
+          <ZenSwitch
+            id="is-permanent"
+            checked={formData.is_permanent}
+            onCheckedChange={(checked) => {
+              updateFormData({
+                is_permanent: checked,
+                has_date_range: checked ? false : formData.has_date_range,
+                start_date: checked ? null : formData.start_date,
+                end_date: checked ? null : formData.end_date,
+              });
+              if (checked) {
+                setDateRange(undefined);
+              }
+            }}
+          />
+        </div>
+
+        {/* Switch Definir Temporalidad */}
+        {!formData.is_permanent && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <label htmlFor="has-date-range" className="text-sm font-medium text-zinc-300">
+                  Definir Temporalidad
+                </label>
+                <p className="text-xs text-zinc-500">
+                  Establece fechas específicas de inicio y fin
+                </p>
+              </div>
+              <ZenSwitch
+                id="has-date-range"
+                checked={formData.has_date_range}
+                onCheckedChange={(checked) => {
+                  updateFormData({
+                    has_date_range: checked,
+                    start_date: checked ? formData.start_date : null,
+                    end_date: checked ? formData.end_date : null,
+                  });
+                  if (!checked) {
+                    setDateRange(undefined);
+                  }
+                }}
+              />
+            </div>
+
+            {/* Calendario de Rango */}
+            {formData.has_date_range && (
+              <div className="bg-zinc-900 rounded-lg p-4">
+                <label className="block text-sm font-medium text-zinc-300 mb-3">
+                  Período de Disponibilidad <span className="text-red-400">*</span>
+                </label>
+                <ZenCalendar
+                  {...{
+                    mode: "range" as const,
+                    selected: dateRange,
+                    onSelect: (range: DateRange | undefined) => {
+                      setDateRange(range);
+                      updateFormData({
+                        start_date: range?.from || null,
+                        end_date: range?.to || null,
+                      });
+                    },
+                    numberOfMonths: 2,
+                    disabled: (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0))
+                  }}
+                />
+                {dateRange?.from && dateRange?.to && (
+                  <p className="text-xs text-zinc-400 mt-3">
+                    Del {dateRange.from.toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })} al {dateRange.to.toLocaleDateString('es-MX', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!formData.is_permanent && !formData.has_date_range && (
+          <p className="text-xs text-amber-400">
+            Debes seleccionar &quot;Oferta Permanente&quot; o &quot;Definir Temporalidad&quot;
+          </p>
+        )}
       </div>
     </div>
   );

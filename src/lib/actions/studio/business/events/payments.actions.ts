@@ -206,11 +206,44 @@ export async function crearPago(
             select: {
                 id: true,
                 promise_id: true,
+                price: true,
+                discount: true,
             },
         });
 
         if (!cotizacion) {
             return { success: false, error: 'Cotización no encontrada' };
+        }
+
+        // Calcular total de la cotización
+        const totalCotizacion = Number(cotizacion.price) - (Number(cotizacion.discount) || 0);
+
+        // Obtener pagos ya realizados (solo completed)
+        const pagosRealizados = await prisma.studio_pagos.aggregate({
+            where: {
+                cotizacion_id: validatedData.cotizacion_id,
+                status: 'completed',
+            },
+            _sum: {
+                amount: true,
+            },
+        });
+
+        const totalPagado = Number(pagosRealizados._sum.amount) || 0;
+        const montoPendiente = totalCotizacion - totalPagado;
+
+        // Validar que el monto a pagar no exceda el monto pendiente
+        if (validatedData.amount > montoPendiente) {
+            const formatCurrency = (amount: number) => {
+                return new Intl.NumberFormat('es-MX', {
+                    style: 'currency',
+                    currency: 'MXN',
+                }).format(amount);
+            };
+            return {
+                success: false,
+                error: `El monto a pagar (${formatCurrency(validatedData.amount)}) excede el monto pendiente (${formatCurrency(montoPendiente)})`,
+            };
         }
 
         // Crear el pago
@@ -290,10 +323,62 @@ export async function actualizarPago(
                     studio_id: studio.id,
                 },
             },
+            select: {
+                id: true,
+                amount: true,
+                cotizacion_id: true,
+                status: true,
+            },
         });
 
         if (!pagoExistente) {
             return { success: false, error: 'Pago no encontrado' };
+        }
+
+        // Si se está actualizando el monto, validar contra el monto pendiente
+        if (validatedData.amount !== undefined && pagoExistente.cotizacion_id) {
+            // Obtener datos de la cotización
+            const cotizacion = await prisma.studio_cotizaciones.findUnique({
+                where: { id: pagoExistente.cotizacion_id },
+                select: {
+                    price: true,
+                    discount: true,
+                },
+            });
+
+            if (cotizacion) {
+                // Calcular total de la cotización
+                const totalCotizacion = Number(cotizacion.price) - (Number(cotizacion.discount) || 0);
+
+                // Obtener pagos ya realizados (excluyendo el pago actual)
+                const pagosRealizados = await prisma.studio_pagos.aggregate({
+                    where: {
+                        cotizacion_id: pagoExistente.cotizacion_id,
+                        status: 'completed',
+                        id: { not: validatedData.id },
+                    },
+                    _sum: {
+                        amount: true,
+                    },
+                });
+
+                const totalPagado = Number(pagosRealizados._sum.amount) || 0;
+                const montoPendiente = totalCotizacion - totalPagado;
+
+                // Validar que el nuevo monto no exceda el monto pendiente
+                if (validatedData.amount > montoPendiente) {
+                    const formatCurrency = (amount: number) => {
+                        return new Intl.NumberFormat('es-MX', {
+                            style: 'currency',
+                            currency: 'MXN',
+                        }).format(amount);
+                    };
+                    return {
+                        success: false,
+                        error: `El monto a pagar (${formatCurrency(validatedData.amount)}) excede el monto pendiente (${formatCurrency(montoPendiente)})`,
+                    };
+                }
+            }
         }
 
         // Actualizar el pago

@@ -16,6 +16,10 @@ interface OfferFormData {
   cover_media_url: string | null;
   cover_media_type: "image" | "video" | null;
   is_active: boolean;
+  is_permanent: boolean;
+  has_date_range: boolean;
+  start_date: Date | null;
+  end_date: Date | null;
 }
 
 interface LeadFormData {
@@ -58,7 +62,7 @@ interface OfferEditorContextType {
   setSavedOfferId: (id: string | null) => void;
 
   // Helpers
-  getOfferData: () => CreateOfferData;
+  getOfferData: () => CreateOfferData | UpdateOfferData;
 }
 
 const OfferEditorContext = createContext<OfferEditorContextType | undefined>(undefined);
@@ -78,6 +82,10 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     cover_media_url: initialOffer?.cover_media_url || null,
     cover_media_type: initialOffer?.cover_media_type as "image" | "video" | null || null,
     is_active: initialOffer?.is_active ?? true,
+    is_permanent: initialOffer?.is_permanent ?? false,
+    has_date_range: initialOffer?.has_date_range ?? false,
+    start_date: initialOffer?.start_date ? new Date(initialOffer.start_date) : null,
+    end_date: initialOffer?.end_date ? new Date(initialOffer.end_date) : null,
   });
 
   // Estado para landing page
@@ -144,6 +152,10 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
       cover_media_url: formData.cover_media_url ?? null,
       cover_media_type: formData.cover_media_type ?? null,
       is_active: formData.is_active,
+      is_permanent: formData.is_permanent,
+      has_date_range: formData.has_date_range,
+      start_date: formData.start_date,
+      end_date: formData.end_date,
       landing_page: {
         content_blocks: contentBlocks,
         cta_config: {

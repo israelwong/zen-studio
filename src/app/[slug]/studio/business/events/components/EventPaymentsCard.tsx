@@ -257,6 +257,7 @@ export function EventPaymentsCard({
           }}
           studioSlug={studioSlug}
           cotizacionId={cotizacionId}
+          montoPendiente={pendingAmount}
           initialData={editingPayment}
           onSuccess={handleSuccess}
         />

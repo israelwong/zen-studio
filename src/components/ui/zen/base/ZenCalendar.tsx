@@ -13,10 +13,9 @@ import { ZenButton } from './ZenButton';
 import { ZEN_COLORS } from '../tokens/colors';
 import { ZEN_SPACING } from '../tokens/spacing';
 
-interface ZenCalendarProps extends Omit<React.ComponentProps<typeof DayPicker>, 'mode'> {
+type ZenCalendarProps = React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof ZenButton>['variant'];
-  mode?: 'single' | 'multiple' | 'range';
-}
+};
 
 function ZenCalendar({
   className,

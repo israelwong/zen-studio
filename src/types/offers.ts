@@ -19,6 +19,10 @@ export interface StudioOffer {
   cover_media_url?: string | null;
   cover_media_type?: string | null;
   is_active: boolean;
+  is_permanent?: boolean;
+  has_date_range?: boolean;
+  start_date?: Date | null;
+  end_date?: Date | null;
   created_at: Date;
   updated_at: Date;
   landing_page?: StudioOfferLandingPage;
