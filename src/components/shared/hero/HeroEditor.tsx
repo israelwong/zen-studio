@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, X, AlignStartVertical, AlignVerticalDistributeCenter, AlignEndVertical, AlignEndHorizontal, AlignStartHorizontal, Square, RectangleVertical, Maximize2, Shrink, AlignVerticalJustifyCenter, Copy, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Layers, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Maximize } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { Plus, X, AlignStartVertical, AlignVerticalDistributeCenter, AlignEndVertical, AlignEndHorizontal, AlignStartHorizontal, Square, RectangleVertical, Maximize2, Shrink, AlignVerticalJustifyCenter, Copy, ChevronUp, ChevronDown, Layers, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Maximize } from 'lucide-react';
 import { ZenInput, ZenTextarea, ZenSelect, ZenButton, ZenCard, ZenCardContent, ZenSwitch } from '@/components/ui/zen';
 import { HeroConfig, ButtonConfig, MediaItem } from '@/types/content-blocks';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,12 @@ interface HeroEditorProps {
     onDropFiles?: (files: File[]) => Promise<void>;
     isUploading?: boolean;
     studioSlug: string;
+    // Props opcionales para contexto (ofertas, portfolios, etc.)
+    context?: 'portfolio' | 'offer';
+    contextData?: {
+        offerSlug?: string;
+        offerId?: string;
+    };
 }
 
 export default function HeroEditor({
@@ -24,82 +30,60 @@ export default function HeroEditor({
     onMediaChange,
     onDropFiles,
     isUploading = false,
-    studioSlug
+    studioSlug,
+    context,
+    contextData
 }: HeroEditorProps) {
     const [localConfig, setLocalConfig] = useState<HeroConfig>(config);
     const [localButtons, setLocalButtons] = useState<ButtonConfig[]>(config.buttons || []);
     const [activeTab, setActiveTab] = useState<'informacion' | 'apariencia' | 'botones' | 'fondo'>('informacion');
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-    const controlsContainerRefs = useRef<Record<number, HTMLDivElement | null>>({});
-    const [showLeftChevron, setShowLeftChevron] = useState<Record<number, boolean>>({});
-    const [showRightChevron, setShowRightChevron] = useState<Record<number, boolean>>({});
+
+    // Extraer contexto del config si las props no están disponibles (fallback)
+    const configContext = (config as HeroConfig & { _context?: 'portfolio' | 'offer'; _contextData?: { offerSlug?: string; offerId?: string } })._context;
+    const configContextData = (config as HeroConfig & { _contextData?: { offerSlug?: string; offerId?: string } })._contextData;
+
+    // Usar props si están disponibles, sino usar el contexto almacenado en config
+    const effectiveContext = context || configContext;
+    const effectiveContextData = contextData || configContextData;
+    const offerSlug = effectiveContextData?.offerSlug;
+
 
     // Sincronizar estado cuando cambia el config externo
+    // Usar JSON.stringify para comparación profunda y evitar bucles infinitos
+    const configString = useMemo(() => JSON.stringify(config), [config]);
+
     useEffect(() => {
         setLocalConfig(config);
-        setLocalButtons(config.buttons || []);
-    }, [config]);
+        let buttons = config.buttons || [];
 
-    // Función para verificar scroll y mostrar/ocultar chevrons
-    const checkScroll = useCallback((index: number) => {
-        const container = controlsContainerRefs.current[index];
-        if (!container) return;
-
-        const { scrollLeft, scrollWidth, clientWidth } = container;
-        const hasOverflow = scrollWidth > clientWidth;
-        const canScrollLeft = scrollLeft > 5; // Margen de 5px para evitar flickering
-        const canScrollRight = scrollLeft < scrollWidth - clientWidth - 5; // Margen de 5px
-
-        setShowLeftChevron(prev => ({ ...prev, [index]: hasOverflow && canScrollLeft }));
-        setShowRightChevron(prev => ({ ...prev, [index]: hasOverflow && canScrollRight }));
-    }, []);
-
-    // Verificar scroll inicial y cuando cambian los botones
-    useEffect(() => {
-        // Usar setTimeout para asegurar que el DOM esté actualizado
-        const timeoutId = setTimeout(() => {
-            localButtons.forEach((_, index) => {
-                const container = controlsContainerRefs.current[index];
-                if (container) {
-                    checkScroll(index);
+        // Si es contexto de oferta y hay botones sin href, inicializarlos automáticamente
+        if (effectiveContext === 'offer' && offerSlug) {
+            const leadformUrl = `/${studioSlug}/offer/${offerSlug}/leadform`;
+            buttons = buttons.map(btn => {
+                // Si el botón no tiene href o está vacío, inicializarlo con la ruta del leadform
+                if (!btn.href || btn.href === '') {
+                    return {
+                        ...btn,
+                        href: leadformUrl,
+                        linkType: 'internal',
+                        internalLinkType: 'offer-leadform'
+                    };
                 }
+                // Si ya tiene href pero es de tipo offer-leadform, asegurar que sea correcto
+                if (btn.internalLinkType === 'offer-leadform' && btn.href !== leadformUrl) {
+                    return {
+                        ...btn,
+                        href: leadformUrl
+                    };
+                }
+                return btn;
             });
-        }, 100);
+        }
 
-        const containers: Array<{ container: HTMLDivElement; handleScroll: () => void; handleResize: () => void; index: number }> = [];
-
-        localButtons.forEach((_, index) => {
-            const container = controlsContainerRefs.current[index];
-            if (container) {
-                const handleScroll = () => checkScroll(index);
-                const handleResize = () => checkScroll(index);
-                container.addEventListener('scroll', handleScroll);
-                window.addEventListener('resize', handleResize);
-                containers.push({ container, handleScroll, handleResize, index });
-            }
-        });
-
-        return () => {
-            clearTimeout(timeoutId);
-            containers.forEach(({ container, handleScroll, handleResize }) => {
-                container.removeEventListener('scroll', handleScroll);
-                window.removeEventListener('resize', handleResize);
-            });
-        };
-    }, [localButtons, checkScroll]);
-
-    // Función para hacer scroll
-    const scrollControls = useCallback((index: number, direction: 'left' | 'right') => {
-        const container = controlsContainerRefs.current[index];
-        if (!container) return;
-
-        const scrollAmount = 200;
-        container.scrollBy({
-            left: direction === 'left' ? -scrollAmount : scrollAmount,
-            behavior: 'smooth'
-        });
-    }, []);
+        setLocalButtons(buttons);
+    }, [configString, effectiveContext, offerSlug, studioSlug]);
 
     const updateConfig = useCallback((updates: Partial<HeroConfig>) => {
         const cleanedUpdates = { ...updates };
@@ -115,10 +99,16 @@ export default function HeroEditor({
             const validValue = cleanedUpdates.aspectRatio as 'square' | 'vertical';
             cleanedUpdates.aspectRatio = validValue;
         }
-        const newConfig = { ...localConfig, ...cleanedUpdates };
+        const newConfig = {
+            ...localConfig,
+            ...cleanedUpdates,
+            // Preservar contexto en el config
+            _context: effectiveContext,
+            _contextData: effectiveContextData
+        } as HeroConfig & { _context?: 'portfolio' | 'offer'; _contextData?: { offerSlug?: string; offerId?: string } };
         setLocalConfig(newConfig);
         onConfigChange(newConfig);
-    }, [localConfig, onConfigChange]);
+    }, [localConfig, onConfigChange, effectiveContext, effectiveContextData]);
 
     const handleInputChange = (field: keyof HeroConfig, value: unknown) => {
         updateConfig({ [field]: value });
@@ -129,15 +119,61 @@ export default function HeroEditor({
         updateConfig({ description: limitedValue });
     };
 
+    // Función helper para construir opciones de enlaces internos según contexto
+    const getInternalLinkOptions = useCallback(() => {
+        if (effectiveContext === 'offer' && offerSlug) {
+            return [
+                {
+                    value: 'offer-leadform',
+                    label: 'Formulario de contacto',
+                    href: `/${studioSlug}/offer/${offerSlug}/leadform`
+                },
+                {
+                    value: 'custom',
+                    label: 'Enlace personalizado',
+                    href: ''
+                }
+            ];
+        }
+
+        // Para portfolios o sin contexto: solo custom
+        return [
+            {
+                value: 'custom',
+                label: 'Enlace personalizado',
+                href: ''
+            }
+        ];
+    }, [effectiveContext, offerSlug, studioSlug]);
+
     const addButton = () => {
         if (localButtons.length >= 2) return;
-        const newButton: ButtonConfig = {
-            text: '',
-            href: '',
-            variant: 'primary',
-            linkType: 'internal',
-            pulse: false
-        };
+
+        // Configurar botón según contexto (usar effectiveContext que incluye fallback)
+        let newButton: ButtonConfig;
+
+        if (effectiveContext === 'offer' && offerSlug) {
+            // Para ofertas: botón con ruta fija al leadform
+            newButton = {
+                text: '',
+                href: `/${studioSlug}/offer/${offerSlug}/leadform`,
+                variant: 'primary',
+                linkType: 'internal',
+                internalLinkType: 'offer-leadform',
+                pulse: false
+            };
+        } else {
+            // Para portfolios o sin contexto: botón con enlace personalizable
+            newButton = {
+                text: '',
+                href: '',
+                variant: 'primary',
+                linkType: 'internal',
+                internalLinkType: 'custom',
+                pulse: false
+            };
+        }
+
         const updatedButtons = [...localButtons, newButton];
         setLocalButtons(updatedButtons);
         updateConfig({ buttons: updatedButtons });
@@ -176,9 +212,32 @@ export default function HeroEditor({
     };
 
     const updateButton = (index: number, updates: Partial<ButtonConfig>) => {
-        const updatedButtons = localButtons.map((btn, i) =>
-            i === index ? { ...btn, ...updates } : btn
-        );
+        const updatedButtons = localButtons.map((btn, i) => {
+            if (i !== index) return btn;
+
+            const updatedBtn = { ...btn, ...updates };
+
+            // Si es contexto de oferta, asegurar href correcto siempre
+            if (effectiveContext === 'offer' && offerSlug) {
+                const leadformUrl = `/${studioSlug}/offer/${offerSlug}/leadform`;
+                // Si el botón no tiene internalLinkType o es offer-leadform, forzar la ruta del leadform
+                if (!updatedBtn.internalLinkType || updatedBtn.internalLinkType === 'offer-leadform') {
+                    updatedBtn.href = leadformUrl;
+                    updatedBtn.linkType = 'internal';
+                    updatedBtn.internalLinkType = 'offer-leadform';
+                }
+            } else {
+                // Si cambia internalLinkType y no es 'custom', construir href automáticamente
+                if (updates.internalLinkType && updates.internalLinkType !== 'custom') {
+                    const option = getInternalLinkOptions().find(opt => opt.value === updates.internalLinkType);
+                    if (option) {
+                        updatedBtn.href = option.href;
+                    }
+                }
+            }
+
+            return updatedBtn;
+        });
         setLocalButtons(updatedButtons);
         updateConfig({ buttons: updatedButtons });
     };
@@ -279,12 +338,6 @@ export default function HeroEditor({
         { value: 'primary', label: 'Sólido' },
         { value: 'outline', label: 'Outline' },
         { value: 'ghost', label: 'Ghost' }
-    ];
-
-
-    const linkTypeOptions = [
-        { value: 'internal', label: 'Interno' },
-        { value: 'external', label: 'Externo' }
     ];
 
     // Iconos SVG para borderRadius de botones
@@ -820,27 +873,74 @@ export default function HeroEditor({
                                         )}
                                     </div>
 
-                                    <ZenInput
-                                        label="Enlace"
-                                        value={button.href || ''}
-                                        onChange={(e) => updateButton(index, { href: e.target.value })}
-                                        placeholder="/ruta-o-url"
-                                    />
+                                    {/* Si es contexto de oferta: solo mostrar input deshabilitado con ruta del leadform */}
+                                    {effectiveContext === 'offer' ? (
+                                        <ZenInput
+                                            label="Enlace al formulario de contacto"
+                                            value={offerSlug ? `/${studioSlug}/offer/${offerSlug}/leadform` : (button.href || '')}
+                                            disabled
+                                            className="opacity-75 cursor-not-allowed"
+                                        />
+                                    ) : (
+                                        <>
+                                            {/* Radio: Tipo de enlace (solo para portfolios) */}
+                                            <div className="space-y-2">
+                                                <label className="block text-xs text-zinc-400">Tipo de enlace</label>
+                                                <div className="flex gap-4">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name={`linkType-${index}`}
+                                                            checked={button.linkType !== 'external'}
+                                                            onChange={() => updateButton(index, {
+                                                                linkType: 'internal',
+                                                                internalLinkType: 'custom',
+                                                                target: '_self'
+                                                            })}
+                                                            className="w-4 h-4 text-emerald-500 border-zinc-600 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                                                        />
+                                                        <span className="text-sm text-zinc-300">Interno</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input
+                                                            type="radio"
+                                                            name={`linkType-${index}`}
+                                                            checked={button.linkType === 'external'}
+                                                            onChange={() => updateButton(index, {
+                                                                linkType: 'external',
+                                                                target: '_blank',
+                                                                internalLinkType: undefined
+                                                            })}
+                                                            className="w-4 h-4 text-emerald-500 border-zinc-600 focus:ring-emerald-500 focus:ring-offset-zinc-900"
+                                                        />
+                                                        <span className="text-sm text-zinc-300">Externo</span>
+                                                    </label>
+                                                </div>
+                                            </div>
 
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div>
-                                            <label className="block text-xs text-zinc-400 mb-1">Enlace</label>
-                                            <ZenSelect
-                                                value={button.linkType || 'internal'}
-                                                onValueChange={(value) => updateButton(index, {
-                                                    linkType: value as 'internal' | 'external',
-                                                    target: value === 'external' ? '_blank' : '_self'
-                                                })}
-                                                options={linkTypeOptions}
-                                                disableSearch
-                                            />
-                                        </div>
+                                            {/* Si es interno (portfolio) */}
+                                            {button.linkType !== 'external' && (
+                                                <ZenInput
+                                                    label="Ruta interna"
+                                                    value={button.href || ''}
+                                                    onChange={(e) => updateButton(index, { href: e.target.value })}
+                                                    placeholder="/tu-ruta"
+                                                />
+                                            )}
 
+                                            {/* Si es externo (portfolio) */}
+                                            {button.linkType === 'external' && (
+                                                <ZenInput
+                                                    label="URL externa"
+                                                    value={button.href || ''}
+                                                    onChange={(e) => updateButton(index, { href: e.target.value })}
+                                                    placeholder="https://ejemplo.com"
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
+                                    <div className="grid grid-cols-2 gap-3">
                                         <div>
                                             <label className="block text-xs text-zinc-400 mb-1">Estilo</label>
                                             <ZenSelect
@@ -878,26 +978,21 @@ export default function HeroEditor({
                                     {/* Controles rápidos: Pulse, Borde, Esquinas, Sombra */}
                                     <div className="p-2 border border-zinc-700 rounded-lg bg-zinc-800/30 relative">
                                         {/* Contenedor con scroll */}
-                                        <div
-                                            ref={(el) => {
-                                                controlsContainerRefs.current[index] = el;
-                                                if (el) {
-                                                    // Verificar desbordamiento después de que el DOM se actualice
-                                                    setTimeout(() => checkScroll(index), 0);
-                                                }
-                                            }}
-                                            className="flex items-start justify-between gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] min-h-[60px]"
-                                            onScroll={() => checkScroll(index)}
-                                        >
+                                        <div className="flex items-start justify-between gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] min-h-[60px]">
                                             {/* Pulse */}
                                             <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 flex-shrink-0">
                                                 <span className="text-xs text-zinc-400 font-medium h-4 flex items-center">Pulse</span>
                                                 <div className="flex items-center justify-center h-8">
-                                                    <ZenSwitch
-                                                        checked={button.pulse || false}
-                                                        onCheckedChange={(checked) => updateButton(index, { pulse: checked })}
-                                                        className="scale-90"
-                                                    />
+                                                    <div
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <ZenSwitch
+                                                            checked={button.pulse || false}
+                                                            onCheckedChange={(checked) => updateButton(index, { pulse: checked })}
+                                                            className="scale-90"
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -910,9 +1005,13 @@ export default function HeroEditor({
                                                 <div className="flex items-center justify-center h-8">
                                                     <button
                                                         type="button"
-                                                        onClick={() => updateButton(index, { withBorder: !button.withBorder })}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            updateButton(index, { withBorder: !button.withBorder });
+                                                        }}
                                                         className={cn(
-                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center",
+                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center relative z-10",
                                                             button.withBorder
                                                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                                 : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
@@ -934,9 +1033,13 @@ export default function HeroEditor({
                                                     {/* Toggle On/Off */}
                                                     <button
                                                         type="button"
-                                                        onClick={() => updateButton(index, { shadow: !button.shadow })}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            updateButton(index, { shadow: !button.shadow });
+                                                        }}
                                                         className={cn(
-                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0",
+                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
                                                             button.shadow
                                                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                                 : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
@@ -959,14 +1062,16 @@ export default function HeroEditor({
                                                                 <button
                                                                     key={option.value}
                                                                     type="button"
-                                                                    onClick={() => {
+                                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
                                                                         if (!isDisabled) {
                                                                             updateButton(index, { shadowPosition: option.value });
                                                                         }
                                                                     }}
                                                                     disabled={isDisabled}
                                                                     className={cn(
-                                                                        "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0",
+                                                                        "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
                                                                         isDisabled && "opacity-40 cursor-not-allowed",
                                                                         !isDisabled && isActive
                                                                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
@@ -996,9 +1101,13 @@ export default function HeroEditor({
                                                             <button
                                                                 key={option.value}
                                                                 type="button"
-                                                                onClick={() => updateButton(index, { borderRadius: option.value })}
+                                                                onMouseDown={(e) => e.stopPropagation()}
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    updateButton(index, { borderRadius: option.value });
+                                                                }}
                                                                 className={cn(
-                                                                    "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0",
+                                                                    "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
                                                                     isActive
                                                                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                                         : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
@@ -1012,36 +1121,6 @@ export default function HeroEditor({
                                                 </div>
                                             </div>
                                         </div>
-
-                                        {/* Chevron izquierdo - superpuesto al borde del contenedor padre */}
-                                        {showLeftChevron[index] && (
-                                            <button
-                                                type="button"
-                                                onClick={() => scrollControls(index, 'left')}
-                                                className="absolute left-1 top-1/2 -translate-y-1/2 z-10 p-1.5 flex items-center justify-center text-zinc-300 hover:text-zinc-100 transition-colors rounded-full"
-                                                style={{
-                                                    background: 'radial-gradient(circle, rgba(39, 39, 42, 0.9) 0%, rgba(39, 39, 42, 0.7) 50%, transparent 100%)'
-                                                }}
-                                                title="Desplazar izquierda"
-                                            >
-                                                <ChevronLeft className="h-3.5 w-3.5" />
-                                            </button>
-                                        )}
-
-                                        {/* Chevron derecho - superpuesto al borde del contenedor padre */}
-                                        {showRightChevron[index] && (
-                                            <button
-                                                type="button"
-                                                onClick={() => scrollControls(index, 'right')}
-                                                className="absolute right-1 top-1/2 -translate-y-1/2 z-10 p-1.5 flex items-center justify-center text-zinc-300 hover:text-zinc-100 transition-colors rounded-full"
-                                                style={{
-                                                    background: 'radial-gradient(circle, rgba(39, 39, 42, 0.9) 0%, rgba(39, 39, 42, 0.7) 50%, transparent 100%)'
-                                                }}
-                                                title="Desplazar derecha"
-                                            >
-                                                <ChevronRight className="h-3.5 w-3.5" />
-                                            </button>
-                                        )}
                                     </div>
 
                                 </div>

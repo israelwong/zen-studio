@@ -174,13 +174,13 @@ export default function HeroComponent({
         // Buscar contenedor con scroll (para mobile preview)
         const findScrollContainer = (element: HTMLElement | null): HTMLElement | Window => {
             if (!element) return window;
-            
+
             let parent = element.parentElement;
             while (parent) {
                 const style = window.getComputedStyle(parent);
                 const overflowY = style.overflowY || style.overflow;
                 const overflowX = style.overflowX || style.overflow;
-                if ((overflowY === 'auto' || overflowY === 'scroll') || 
+                if ((overflowY === 'auto' || overflowY === 'scroll') ||
                     (overflowX === 'auto' || overflowX === 'scroll')) {
                     // Verificar que realmente tenga scroll
                     if (parent.scrollHeight > parent.clientHeight) {
@@ -200,11 +200,11 @@ export default function HeroComponent({
             if (!heroRef.current) return;
 
             const heroRect = heroRef.current.getBoundingClientRect();
-            
+
             // Obtener scroll position del contenedor
             let scrollTop = 0;
             let containerHeight = window.innerHeight;
-            
+
             if (scrollContainer instanceof Window) {
                 scrollTop = window.scrollY || window.pageYOffset || 0;
                 containerHeight = window.innerHeight;
@@ -213,30 +213,30 @@ export default function HeroComponent({
                 const containerRect = scrollContainer.getBoundingClientRect();
                 containerHeight = containerRect.height;
             }
-            
+
             // Calcular posición del hero en el viewport
             // heroRect.top: distancia desde el top del viewport hasta el top del hero
             // Cuando heroRect.top <= 0, el hero ya empezó a salirse del viewport
             const heroTopInViewport = heroRect.top;
             const heroVisibleHeight = Math.max(0, Math.min(heroRect.height, containerHeight - heroTopInViewport));
             const scrollProgress = 1 - (heroVisibleHeight / heroRect.height);
-            
+
             // Parallax: el fondo se mueve más lento que el scroll (50% de velocidad)
             const parallaxFactor = 0.5;
-            
+
             // Calcular offset: cuando scrollProgress = 0 (hero completamente visible arriba), offset = 0
             // Offset inicial centrado: la imagen al 130% necesita estar desplazada 15% hacia abajo para centrarse
             // Si el hero tiene altura h, necesitamos mover (130% - 100%) / 2 = 15% hacia abajo
             const heroHeight = heroRect.height;
             const centeringOffset = parallax ? heroHeight * 0.15 : 0; // 15% de la altura para centrar 130%
-            
+
             // Parallax scroll offset: conforme scrolleas, el fondo se mueve más lento
             const maxOffset = 150; // Máximo desplazamiento en píxeles
             const scrollOffset = -scrollProgress * maxOffset * parallaxFactor;
-            
+
             // Offset total: centrado inicial + movimiento parallax
             const offset = centeringOffset + scrollOffset;
-            
+
             setParallaxOffset(offset);
             ticking = false;
         };
@@ -296,8 +296,8 @@ export default function HeroComponent({
                             left: parallax ? '-15%' : 0,
                             width: parallax ? '130%' : '100%',
                             height: parallax ? '130%' : '100%',
-                            transform: parallax 
-                                ? `translate3d(0, ${parallaxOffset}px, 0)` 
+                            transform: parallax
+                                ? `translate3d(0, ${parallaxOffset}px, 0)`
                                 : undefined,
                             willChange: parallax ? 'transform' : undefined,
                             transition: 'none'
@@ -469,16 +469,16 @@ export default function HeroComponent({
                     {/* Buttons */}
                     {buttons.length > 0 && (
                         <div className={cn(
-                            "flex flex-col sm:flex-row gap-2 sm:gap-3",
+                            "flex flex-wrap gap-3",
                             textAlignment === 'center' ? 'justify-center' : textAlignment === 'right' ? 'justify-end' : 'justify-start',
                             "w-full"
                         )}>
-                            {buttons.slice(0, 2).map((button, index) => {
+                            {buttons.map((button, index) => {
                                 const buttonEffect = (button.buttonEffect || (button.pulse ? 'pulse' : 'none')) as 'none' | 'pulse' | 'border-spin' | 'radial-glow';
 
                                 // Estilos de borderRadius (sobrescriben el rounded-md default)
                                 const borderRadiusClasses = {
-                                    normal: '',
+                                    normal: '!rounded-none',
                                     sm: '!rounded-sm',
                                     full: '!rounded-full'
                                 };
@@ -526,7 +526,7 @@ export default function HeroComponent({
                                         effect={buttonEffect}
                                         className={cn(
                                             "text-xs sm:text-base",
-                                            "w-full sm:w-auto sm:min-w-0",
+                                            "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
                                             "whitespace-normal break-words",
                                             "text-center",
                                             borderRadiusClass,
@@ -539,7 +539,7 @@ export default function HeroComponent({
                                             href={button.href}
                                             target={button.target || (button.linkType === 'external' ? '_blank' : '_self')}
                                             onClick={button.onClick}
-                                            className="block w-full"
+                                            className="block"
                                         >
                                             {button.text}
                                         </Link>
@@ -552,7 +552,7 @@ export default function HeroComponent({
                                         effect={buttonEffect}
                                         className={cn(
                                             "text-xs sm:text-base",
-                                            "w-full sm:w-auto sm:min-w-0",
+                                            "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
                                             "whitespace-normal break-words",
                                             "text-center",
                                             borderRadiusClass,
