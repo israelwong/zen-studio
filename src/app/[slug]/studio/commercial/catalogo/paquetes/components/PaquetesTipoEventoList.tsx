@@ -688,13 +688,13 @@ export function PaquetesTipoEventoList({
 
     // Handlers para paquetes - usar navegación en lugar de modal
     const handleEditPaquete = (paquete: PaqueteFromDB) => {
-        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes/${paquete.id}/editar`);
+        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes/${paquete.id}/editar?returnTab=paquetes`);
     };
 
     const handleCrearPaquete = (eventTypeId?: string) => {
         const url = eventTypeId
-            ? `/${studioSlug}/studio/commercial/catalogo/paquetes/nuevo?eventTypeId=${eventTypeId}`
-            : `/${studioSlug}/studio/commercial/catalogo/paquetes/nuevo`;
+            ? `/${studioSlug}/studio/commercial/catalogo/paquetes/nuevo?eventTypeId=${eventTypeId}&returnTab=paquetes`
+            : `/${studioSlug}/studio/commercial/catalogo/paquetes/nuevo?returnTab=paquetes`;
         router.push(url);
     };
 

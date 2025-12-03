@@ -12,9 +12,10 @@ interface PaqueteEditorProps {
     mode: 'create' | 'edit';
     paquete?: PaqueteFromDB | null;
     initialEventTypeId?: string;
+    returnTab?: string;
 }
 
-export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }: PaqueteEditorProps) {
+export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId, returnTab }: PaqueteEditorProps) {
     const router = useRouter();
     const [isPublished, setIsPublished] = useState(paquete?.status === 'active' || false);
     const [isFeatured, setIsFeatured] = useState((paquete as { is_featured?: boolean })?.is_featured || false);
@@ -26,17 +27,22 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }:
         setIsFeatured((paquete as { is_featured?: boolean })?.is_featured || false);
     }, [paquete?.status, paquete]);
 
+    const getReturnUrl = () => {
+        const baseUrl = `/${studioSlug}/studio/commercial/catalogo`;
+        return returnTab ? `${baseUrl}?tab=${returnTab}` : `${baseUrl}/paquetes`;
+    };
+
     const handleBack = () => {
-        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
+        router.push(getReturnUrl());
     };
 
     const handleSave = (savedPaquete: PaqueteFromDB) => {
         // Redirigir a la página de paquetes
-        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
+        router.push(getReturnUrl());
     };
 
     const handleCancel = () => {
-        router.push(`/${studioSlug}/studio/commercial/catalogo/paquetes`);
+        router.push(getReturnUrl());
     };
 
     const handleFeaturedClick = () => {

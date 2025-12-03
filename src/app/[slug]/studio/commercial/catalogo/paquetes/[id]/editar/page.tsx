@@ -8,10 +8,14 @@ interface EditarPaquetePageProps {
         slug: string;
         id: string;
     }>;
+    searchParams: Promise<{
+        returnTab?: string;
+    }>;
 }
 
-export default async function EditarPaquetePage({ params }: EditarPaquetePageProps) {
+export default async function EditarPaquetePage({ params, searchParams }: EditarPaquetePageProps) {
     const { slug, id } = await params;
+    const { returnTab } = await searchParams;
 
     // Obtener el paquete existente
     const paqueteResult = await obtenerPaquetePorId(id);
@@ -27,6 +31,7 @@ export default async function EditarPaquetePage({ params }: EditarPaquetePagePro
             studioSlug={slug}
             mode="edit"
             paquete={paquete}
+            returnTab={returnTab}
         />
     );
 }

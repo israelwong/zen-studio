@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ShoppingBag, Package, Percent } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenButton, ZenDialog, ZenTabs } from '@/components/ui/zen';
 import { CatalogoTab, UtilidadForm } from './components';
@@ -9,10 +9,22 @@ import { PaquetesTab } from './paquetes/components';
 
 export default function CatalogoPage() {
     const params = useParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const studioSlug = params.slug as string;
 
-    const [activeTab, setActiveTab] = useState('catalogo');
+    // Obtener tab de la URL o usar 'catalogo' por defecto
+    const tabFromUrl = searchParams.get('tab') || 'catalogo';
+    const [activeTab, setActiveTab] = useState(tabFromUrl);
     const [isUtilidadModalOpen, setIsUtilidadModalOpen] = useState(false);
+
+    // Sincronizar con URL cuando cambia el parámetro
+    useEffect(() => {
+        const currentTab = searchParams.get('tab') || 'catalogo';
+        if (currentTab !== activeTab) {
+            setActiveTab(currentTab);
+        }
+    }, [searchParams, activeTab]);
 
     const tabs = [
         {
@@ -26,6 +38,12 @@ export default function CatalogoPage() {
             icon: <Package className="h-4 w-4" />
         }
     ];
+
+    // Manejar cambio de pestaña y actualizar URL
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId);
+        router.push(`/${studioSlug}/studio/commercial/catalogo?tab=${tabId}`, { scroll: false });
+    };
 
     return (
         <div className="space-y-6">
@@ -57,7 +75,7 @@ export default function CatalogoPage() {
                 <ZenTabs
                     tabs={tabs}
                     activeTab={activeTab}
-                    onTabChange={setActiveTab}
+                    onTabChange={handleTabChange}
                     className="px-6 pt-4"
                 />
                 <ZenCardContent className="p-6">
