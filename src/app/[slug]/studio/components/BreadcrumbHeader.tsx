@@ -26,7 +26,7 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
         const breadcrumb: BreadcrumbItem[] = [];
 
         // Rutas contenedoras que no tienen page.tsx (solo agrupan subsecciones)
-        const CONTAINER_ROUTES = ['commercial', 'business', 'content', 'account', 'profile', 'dashboard', 'configuracion'];
+        const CONTAINER_ROUTES = ['commercial', 'business', 'content', 'account', 'profile', 'dashboard', 'configuracion', 'paquetes'];
 
         // Función para detectar si un segmento es un ID (CUID típicamente ~25 caracteres alfanuméricos)
         const isId = (segment: string): boolean => {
@@ -34,7 +34,7 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
             // También detectamos UUIDs (36 caracteres con guiones)
             const cuidPattern = /^[a-z0-9]{20,30}$/i; // 20-30 caracteres alfanuméricos
             const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-            
+
             return cuidPattern.test(segment) || uuidPattern.test(segment);
         };
 

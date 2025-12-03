@@ -19,7 +19,7 @@ export default async function EditarPaquetePage({ params, searchParams }: Editar
 
     // Obtener el paquete existente
     const paqueteResult = await obtenerPaquetePorId(id);
-    
+
     if (!paqueteResult.success || !paqueteResult.data) {
         notFound();
     }
