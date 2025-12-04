@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { BlockRenderer } from "@/components/content-blocks";
+import { BlockRenderer } from "@/components/shared/content-blocks";
 import { ContentBlock } from "@/types/content-blocks";
 import { CTAConfig } from "@/lib/actions/schemas/offer-schemas";
 import { ZenButton } from "@/components/ui/zen";

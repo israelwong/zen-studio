@@ -2,7 +2,7 @@ import React from 'react';
 import Image from 'next/image';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { Eye, Calendar, Star } from 'lucide-react';
-import { ContentBlocksPreview } from '@/components/content-blocks';
+import { ContentBlocksPreview } from '@/components/shared/content-blocks';
 import { ContentBlock } from '@/types/content-blocks';
 
 interface PortfolioMedia {

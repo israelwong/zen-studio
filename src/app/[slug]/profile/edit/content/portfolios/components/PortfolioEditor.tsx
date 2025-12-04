@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { ZenButton, ZenInput, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenConfirmModal, ZenSwitch, ZenBadge, ZenTagModal } from "@/components/ui/zen";
 import { MobilePreviewFull } from "@/components/previews";
-import { ContentBlocksEditor } from "@/components/content-blocks";
+import { ContentBlocksEditor } from "@/components/shared/content-blocks";
 import { ContentBlock } from "@/types/content-blocks";
 import { CategorizedComponentSelector, ComponentOption } from "./CategorizedComponentSelector";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/profile/identidad";
