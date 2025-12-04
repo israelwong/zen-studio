@@ -2,6 +2,7 @@ import { MediaItem } from "@/lib/actions/schemas/post-schemas";
 
 export interface StudioPost {
     id: string;
+    slug: string;
     title: string | null;
     caption: string | null;
     is_featured: boolean;

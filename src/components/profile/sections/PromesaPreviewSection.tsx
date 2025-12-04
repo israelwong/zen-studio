@@ -4,7 +4,7 @@ import React from 'react';
 import { Calendar, User, Phone, Mail, Tag, Share2, MapPin } from 'lucide-react';
 import { formatDate } from '@/lib/actions/utils/formatting';
 
-interface PromisePreviewData {
+interface PromesaPreviewData {
   id: string;
   contactName: string;
   contactPhone: string;
@@ -16,16 +16,16 @@ interface PromisePreviewData {
   referrerName: string | null;
 }
 
-interface PromisePreviewSectionProps {
-  promise: PromisePreviewData;
+interface PromesaPreviewSectionProps {
+  promesa: PromesaPreviewData;
   studioSlug: string;
 }
 
 /**
- * PromisePreviewSection - Vista de preview de promesa para compartir
+ * PromesaPreviewSection - Vista de preview de promesa para compartir
  * Mobile-first, responsiva, optimizada para visualización en móviles
  */
-export function PromisePreviewSection({ promise, studioSlug }: PromisePreviewSectionProps) {
+export function PromesaPreviewSection({ promesa, studioSlug }: PromesaPreviewSectionProps) {
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header con logo/identidad del estudio */}
@@ -58,7 +58,7 @@ export function PromisePreviewSection({ promise, studioSlug }: PromisePreviewSec
           <p className="text-sm text-zinc-400 mb-6">
             Estamos trabajando en la visualización completa de tu promesa de evento.
           </p>
-          
+
           {/* Información básica de la promesa */}
           <div className="mt-6 pt-6 border-t border-zinc-800 space-y-4">
             <div className="text-left space-y-3">
@@ -67,7 +67,7 @@ export function PromisePreviewSection({ promise, studioSlug }: PromisePreviewSec
                 <User className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-zinc-500 mb-1">Contacto</p>
-                  <p className="text-sm font-medium text-white">{promise.contactName}</p>
+                  <p className="text-sm font-medium text-white">{promesa.contactName}</p>
                 </div>
               </div>
 
@@ -76,40 +76,40 @@ export function PromisePreviewSection({ promise, studioSlug }: PromisePreviewSec
                 <Phone className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs text-zinc-500 mb-1">Teléfono</p>
-                  <p className="text-sm font-medium text-white">{promise.contactPhone}</p>
+                  <p className="text-sm font-medium text-white">{promesa.contactPhone}</p>
                 </div>
               </div>
 
               {/* Email */}
-              {promise.contactEmail && (
+              {promesa.contactEmail && (
                 <div className="flex items-start gap-3">
                   <Mail className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-500 mb-1">Email</p>
-                    <p className="text-sm font-medium text-white break-all">{promise.contactEmail}</p>
+                    <p className="text-sm font-medium text-white break-all">{promesa.contactEmail}</p>
                   </div>
                 </div>
               )}
 
               {/* Tipo de evento */}
-              {promise.eventTypeName && (
+              {promesa.eventTypeName && (
                 <div className="flex items-start gap-3">
                   <Tag className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-500 mb-1">Tipo de Evento</p>
-                    <p className="text-sm font-medium text-white">{promise.eventTypeName}</p>
+                    <p className="text-sm font-medium text-white">{promesa.eventTypeName}</p>
                   </div>
                 </div>
               )}
 
               {/* Fechas de interés */}
-              {promise.interestedDates && promise.interestedDates.length > 0 && (
+              {promesa.interestedDates && promesa.interestedDates.length > 0 && (
                 <div className="flex items-start gap-3">
                   <Calendar className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-500 mb-2">Fechas de Interés</p>
                     <div className="flex flex-wrap gap-2">
-                      {promise.interestedDates.map((date, idx) => (
+                      {promesa.interestedDates.map((date, idx) => (
                         <span
                           key={idx}
                           className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-emerald-600/20 text-emerald-300 border border-emerald-600/30"
@@ -123,26 +123,26 @@ export function PromisePreviewSection({ promise, studioSlug }: PromisePreviewSec
               )}
 
               {/* Canal de adquisición */}
-              {promise.acquisitionChannelName && (
+              {promesa.acquisitionChannelName && (
                 <div className="flex items-start gap-3">
                   <MapPin className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-500 mb-1">Canal de Adquisición</p>
-                    <p className="text-sm font-medium text-white">{promise.acquisitionChannelName}</p>
-                    {promise.socialNetworkName && (
-                      <p className="text-xs text-zinc-400 mt-1">{promise.socialNetworkName}</p>
+                    <p className="text-sm font-medium text-white">{promesa.acquisitionChannelName}</p>
+                    {promesa.socialNetworkName && (
+                      <p className="text-xs text-zinc-400 mt-1">{promesa.socialNetworkName}</p>
                     )}
                   </div>
                 </div>
               )}
 
               {/* Referido por */}
-              {promise.referrerName && (
+              {promesa.referrerName && (
                 <div className="flex items-start gap-3">
                   <User className="h-4 w-4 text-zinc-400 mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-zinc-500 mb-1">Referido por</p>
-                    <p className="text-sm font-medium text-white">{promise.referrerName}</p>
+                    <p className="text-sm font-medium text-white">{promesa.referrerName}</p>
                   </div>
                 </div>
               )}

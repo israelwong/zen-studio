@@ -2415,6 +2415,7 @@ model studio_faq {
 model studio_posts {
   id            String              @id @default(cuid())
   studio_id     String
+  slug          String
   title         String?
   caption       String?
   cover_index   Int                 @default(0)
@@ -2430,6 +2431,8 @@ model studio_posts {
   event_type    studio_event_types? @relation(fields: [event_type_id], references: [id])
   studio        studios             @relation(fields: [studio_id], references: [id], onDelete: Cascade)
 
+  @@unique([studio_id, slug])
+  @@index([slug])
   @@index([studio_id, is_published, published_at])
   @@index([studio_id, is_featured])
   @@index([event_type_id])

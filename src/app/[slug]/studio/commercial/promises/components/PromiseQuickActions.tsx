@@ -30,14 +30,14 @@ export function PromiseQuickActions({
   const handleWhatsApp = async () => {
     const message = encodeURIComponent(`Hola ${contactName}, te contacto desde ZEN`);
     const whatsappUrl = `https://wa.me/${phone.replace(/\D/g, '')}?text=${message}`;
-    
+
     // Registrar log si hay promiseId
     if (promiseId) {
       logWhatsAppSent(studioSlug, promiseId, contactName, phone).catch((error) => {
         console.error('Error registrando WhatsApp:', error);
       });
     }
-    
+
     window.open(whatsappUrl, '_blank');
   };
 
@@ -48,20 +48,20 @@ export function PromiseQuickActions({
         console.error('Error registrando llamada:', error);
       });
     }
-    
+
     window.open(`tel:${phone}`, '_self');
   };
 
   const handleShareProfile = async () => {
     const profileUrl = `${window.location.origin}/${studioSlug}/client/profile/${contactId}`;
-    
+
     // Registrar log si hay promiseId
     if (promiseId) {
       logProfileShared(studioSlug, promiseId, contactName, profileUrl).catch((error) => {
         console.error('Error registrando perfil compartido:', error);
       });
     }
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -84,13 +84,13 @@ export function PromiseQuickActions({
       return;
     }
 
-    const previewUrl = `${window.location.origin}/${studioSlug}/preview/${promiseId}`;
-    
+    const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
+
     // Registrar log
     logProfileShared(studioSlug, promiseId, contactName, previewUrl).catch((error) => {
       console.error('Error registrando promesa compartida:', error);
     });
-    
+
     // Abrir en nueva ventana
     window.open(previewUrl, '_blank');
   };
@@ -102,7 +102,7 @@ export function PromiseQuickActions({
         console.error('Error registrando email:', error);
       });
     }
-    
+
     window.open(`mailto:${email}`, '_self');
   };
 

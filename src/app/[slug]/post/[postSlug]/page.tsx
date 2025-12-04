@@ -1,19 +1,19 @@
 import { notFound } from "next/navigation";
-import { getStudioPostById, incrementPostViewCount } from "@/lib/actions/studio/posts";
+import { getStudioPostBySlug, incrementPostViewCount } from "@/lib/actions/studio/posts";
 import { PostRenderer } from "@/components/posts/PostRenderer";
 
 interface PublicPostPageProps {
   params: Promise<{
     slug: string;
-    postId: string;
+    postSlug: string;
   }>;
 }
 
 export default async function PublicPostPage({ params }: PublicPostPageProps) {
-  const { slug, postId } = await params;
+  const { slug, postSlug } = await params;
 
-  // Obtener el post
-  const postResult = await getStudioPostById(postId);
+  // Obtener el post por slug
+  const postResult = await getStudioPostBySlug(slug, postSlug);
 
   if (!postResult.success || !postResult.data) {
     notFound();
@@ -27,7 +27,7 @@ export default async function PublicPostPage({ params }: PublicPostPageProps) {
   }
 
   // Incrementar contador de vistas (no bloquea la renderización)
-  incrementPostViewCount(postId);
+  incrementPostViewCount(postSlug, slug);
 
   // Agregar campos CTA por defecto si no existen
   const postWithCTA = {

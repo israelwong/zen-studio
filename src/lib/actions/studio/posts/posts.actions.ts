@@ -10,6 +10,7 @@ import {
     type MediaItem,
 } from "@/lib/actions/schemas/post-schemas";
 import { StudioPost } from "@/types/studio-posts";
+import { generatePostSlug } from "@/lib/utils/slug-generator";
 
 // Tipo específico para el resultado de posts
 type PostsResult =
@@ -99,6 +100,7 @@ function convertPrismaPostToStudioPost(
 ): StudioPost {
     return {
         id: post.id,
+        slug: post.slug,
         title: post.title,
         caption: post.caption,
         is_featured: post.is_featured,
@@ -123,10 +125,14 @@ export async function createStudioPost(studioId: string, data: PostFormData) {
 
         // Crear post con transacción para manejar media
         const post = await prisma.$transaction(async (tx) => {
-            // Crear post base
+            // Crear post base con ID temporal para generar slug
+            const tempId = crypto.randomUUID();
+            const slug = generatePostSlug(validatedData.title || 'post', tempId);
+
             const newPost = await tx.studio_posts.create({
                 data: {
                     studio_id: studioId,
+                    slug: slug,
                     title: validatedData.title,
                     caption: validatedData.caption,
                     cover_index: validatedData.cover_index,
@@ -167,7 +173,7 @@ export async function createStudioPost(studioId: string, data: PostFormData) {
         revalidatePath(`/${post.studio.slug}/profile/edit/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/posts`);
         if (post.is_published) {
-            revalidatePath(`/${post.studio.slug}/post/${post.id}`);
+            revalidatePath(`/${post.studio.slug}/post/${post.slug}`);
         }
 
         return { success: true, data: convertedPost };
@@ -318,6 +324,77 @@ export async function getStudioPostById(postId: string) {
     }
 }
 
+// READ by slug - Para URLs públicas SEO-friendly
+export async function getStudioPostBySlug(studioSlug: string, postSlug: string) {
+    try {
+        const post = await prisma.studio_posts.findFirst({
+            where: {
+                slug: postSlug,
+                studio: {
+                    slug: studioSlug
+                }
+            },
+            include: {
+                event_type: { select: { id: true, name: true } },
+                studio: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        studio_name: true,
+                        phones: {
+                            where: {
+                                type: 'WHATSAPP',
+                                is_active: true
+                            },
+                            select: {
+                                number: true
+                            },
+                            take: 1
+                        }
+                    },
+                },
+                media: {
+                    select: {
+                        id: true,
+                        file_url: true,
+                        file_type: true,
+                        filename: true,
+                        storage_bytes: true,
+                        mime_type: true,
+                        dimensions: true,
+                        duration_seconds: true,
+                        display_order: true,
+                        alt_text: true,
+                        thumbnail_url: true,
+                        storage_path: true,
+                    },
+                    orderBy: { display_order: 'asc' }
+                },
+            },
+        });
+
+        if (!post) {
+            return { success: false, error: "Post no encontrado" };
+        }
+
+        const convertedPost = {
+            ...convertPrismaPostToStudioPost(post),
+            cta_enabled: false,
+            cta_action: '',
+            cta_text: '',
+            studio: {
+                studio_name: post.studio.studio_name,
+                whatsapp_number: post.studio.phones?.[0]?.number || null,
+            }
+        };
+
+        return { success: true, data: convertedPost };
+    } catch (error) {
+        console.error("Error fetching post by slug:", error);
+        return { success: false, error: "Error al obtener post" };
+    }
+}
+
 // UPDATE
 export async function updateStudioPost(
     postId: string,
@@ -432,7 +509,7 @@ export async function updateStudioPost(
         revalidatePath(`/${post.studio.slug}/profile/edit/content/posts`);
         revalidatePath(`/${post.studio.slug}/studio/posts`);
         if (post.is_published) {
-            revalidatePath(`/${post.studio.slug}/post/${post.id}`);
+            revalidatePath(`/${post.studio.slug}/post/${post.slug}`);
         }
 
         return { success: true, data: convertedPost };
@@ -507,10 +584,13 @@ export async function toggleStudioPostPublish(postId: string) {
         const updatedPost = await prisma.studio_posts.update({
             where: { id: postId },
             data: updateData,
+            include: {
+                studio: { select: { slug: true } }
+            }
         });
 
-        revalidatePath(`/${post.studio.slug}/studio/posts`);
-        revalidatePath(`/${post.studio.slug}/post/${postId}`);
+        revalidatePath(`/${updatedPost.studio.slug}/studio/posts`);
+        revalidatePath(`/${updatedPost.studio.slug}/post/${updatedPost.slug}`);
 
         return { success: true, data: updatedPost };
     } catch (error) {
@@ -519,11 +599,16 @@ export async function toggleStudioPostPublish(postId: string) {
     }
 }
 
-// INCREMENT VIEW COUNT
-export async function incrementPostViewCount(postId: string) {
+// INCREMENT VIEW COUNT (por slug para URLs públicas)
+export async function incrementPostViewCount(postSlug: string, studioSlug: string) {
     try {
-        await prisma.studio_posts.update({
-            where: { id: postId },
+        await prisma.studio_posts.updateMany({
+            where: {
+                slug: postSlug,
+                studio: {
+                    slug: studioSlug
+                }
+            },
             data: {
                 view_count: {
                     increment: 1,

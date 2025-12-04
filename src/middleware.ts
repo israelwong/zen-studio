@@ -228,14 +228,14 @@ export async function middleware(request: NextRequest) {
     // - /[slug]/post (posts públicos)
     // - /[slug]/profile (perfil público)
     // - /[slug]/offer (ofertas públicas)
-    if (!subPath || subPath.startsWith('/studio') || subPath.startsWith('/client') || subPath.startsWith('/preview') || subPath.startsWith('/post') || subPath.startsWith('/profile') || subPath.startsWith('/offer')) {
+    // - /[slug]/promise (promesas públicas)
+    if (!subPath || subPath.startsWith('/studio') || subPath.startsWith('/client') || subPath.startsWith('/preview') || subPath.startsWith('/post') || subPath.startsWith('/profile') || subPath.startsWith('/offer') || subPath.startsWith('/promise')) {
       return NextResponse.next();
     }
 
-    // Solo reescribir si es una subruta que no existe
-    const studioPath = `/${slug}/studio${subPath}`;
-    console.log(`🔄 [ZEN.PRO] Rewriting ${pathname} to ${studioPath}`);
-    return NextResponse.rewrite(new URL(studioPath, request.url));
+    // Si la subruta no es válida, redirigir a la página pública del slug
+    console.log(`⚠️ [ZEN.PRO] Invalid path ${pathname}, redirecting to /${slug}`);
+    return NextResponse.redirect(new URL(`/${slug}`, request.url));
   }
 
   return NextResponse.next();

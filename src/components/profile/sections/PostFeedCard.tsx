@@ -22,6 +22,7 @@ interface PostMedia {
 interface PostFeedCardProps {
     post: {
         id: string;
+        slug: string;
         title?: string | null;
         caption: string | null;
         tags?: string[];
@@ -102,7 +103,7 @@ export function PostFeedCard({ post }: PostFeedCardProps) {
 
     const processedCaption = hasCaption ? prepareCaption(post.caption!) : null;
 
-    const postDetailUrl = studioSlug ? `/${studioSlug}/post/${post.id}` : '#';
+    const postDetailUrl = studioSlug ? `/${studioSlug}/post/${post.slug}` : '#';
 
     return (
         <div className="space-y-3">

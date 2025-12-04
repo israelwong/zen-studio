@@ -7,13 +7,13 @@ import { prisma } from "@/lib/prisma";
  * Valida que la promesa pertenezca al studio del slug
  * Solo expone datos necesarios para la vista pública
  */
-export async function getPublicPromisePreview(
+export async function getPublicPromesaPreview(
   studioSlug: string,
-  promiseId: string
+  promesaId: string
 ): Promise<{
   success: boolean;
   data?: {
-    promise_id: string;
+    promesa_id: string;
     contact_name: string;
     contact_phone: string;
     contact_email: string | null;
@@ -40,9 +40,9 @@ export async function getPublicPromisePreview(
     }
 
     // 2. Obtener la promesa y validar que pertenece al studio
-    const promise = await prisma.studio_promises.findFirst({
+    const promesa = await prisma.studio_promises.findFirst({
       where: {
-        id: promiseId,
+        id: promesaId,
         studio_id: studio.id, // Validación crítica de seguridad
       },
       include: {
@@ -72,7 +72,7 @@ export async function getPublicPromisePreview(
       },
     });
 
-    if (!promise) {
+    if (!promesa) {
       return {
         success: false,
         error: "Promesa no encontrada o no tienes acceso",
@@ -83,21 +83,21 @@ export async function getPublicPromisePreview(
     return {
       success: true,
       data: {
-        promise_id: promise.id,
-        contact_name: promise.contact.name,
-        contact_phone: promise.contact.phone,
-        contact_email: promise.contact.email,
-        event_type_name: promise.event_type?.name || null,
-        interested_dates: promise.tentative_dates
-          ? (promise.tentative_dates as string[])
+        promesa_id: promesa.id,
+        contact_name: promesa.contact.name,
+        contact_phone: promesa.contact.phone,
+        contact_email: promesa.contact.email,
+        event_type_name: promesa.event_type?.name || null,
+        interested_dates: promesa.tentative_dates
+          ? (promesa.tentative_dates as string[])
           : null,
-        acquisition_channel_name: promise.contact.acquisition_channel?.name || null,
-        social_network_name: promise.contact.social_network?.name || null,
-        referrer_name: promise.contact.referrer_name || null,
+        acquisition_channel_name: promesa.contact.acquisition_channel?.name || null,
+        social_network_name: promesa.contact.social_network?.name || null,
+        referrer_name: promesa.contact.referrer_name || null,
       },
     };
   } catch (error) {
-    console.error("[getPublicPromisePreview] Error:", error);
+    console.error("[getPublicPromesaPreview] Error:", error);
     return {
       success: false,
       error: "Error al obtener promesa",
