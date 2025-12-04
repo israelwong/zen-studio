@@ -27,7 +27,6 @@ export async function getStudioProfileBySlug(
         const validatedInput = GetStudioProfileInputSchema.parse(input);
         const { slug } = validatedInput;
 
-        console.log('🔍 [getStudioProfileBySlug] Fetching profile for slug:', slug);
 
         return await retryDatabaseOperation(async () => {
             // Single query to get all profile data
@@ -166,7 +165,6 @@ export async function getStudioProfileBySlug(
             });
 
             if (!studio) {
-                console.log('❌ [getStudioProfileBySlug] Studio not found:', slug);
                 return {
                     success: false,
                     error: 'Studio not found'
@@ -174,14 +172,6 @@ export async function getStudioProfileBySlug(
             }
 
             // Debug: Verificar zonas de trabajo en la query
-            console.log('🔍 getStudioProfileBySlug Debug:');
-            console.log('  - studio.zonas_trabajo from DB:', studio.zonas_trabajo);
-            console.log('  - studio.zonas_trabajo length:', studio.zonas_trabajo?.length);
-            console.log('  - studio.zonas_trabajo type:', typeof studio.zonas_trabajo);
-            console.log('  - studio.zonas_trabajo is array:', Array.isArray(studio.zonas_trabajo));
-            console.log('  - studio.id:', studio.id);
-            console.log('  - studio.studio_name:', studio.studio_name);
-            console.log('  - Full studio object keys:', Object.keys(studio));
 
             // Transform data to match our types
             const studioProfile: PublicStudioProfile = {
@@ -206,11 +196,6 @@ export async function getStudioProfileBySlug(
             }));
 
             // Debug: Verificar business_hours
-            console.log('🔍 [getStudioProfileBySlug] Debug business_hours:');
-            console.log('  - studio.business_hours:', studio.business_hours);
-            console.log('  - studio.business_hours length:', studio.business_hours?.length);
-            console.log('  - studio.business_hours type:', typeof studio.business_hours);
-            console.log('  - studio.business_hours is array:', Array.isArray(studio.business_hours));
 
             const contactInfo: PublicContactInfo = {
                 phones: studio.phones.map(phone => ({
@@ -234,11 +219,6 @@ export async function getStudioProfileBySlug(
             };
 
             // Debug: Verificar horarios mapeados
-            console.log('🔍 [getStudioProfileBySlug] Debug horarios mapeados:');
-            console.log('  - contactInfo.horarios:', contactInfo.horarios);
-            console.log('  - contactInfo.horarios length:', contactInfo.horarios?.length);
-            console.log('  - contactInfo.horarios type:', typeof contactInfo.horarios);
-            console.log('  - contactInfo.horarios is array:', Array.isArray(contactInfo.horarios));
 
             const items = studio.items.map(item => ({
                 id: item.id,
@@ -296,33 +276,7 @@ export async function getStudioProfileBySlug(
                 orderBy: [{ is_featured: "desc" }, { order: "asc" }],
             });
 
-            // Debug: Verificar cover_url en la consulta
-            console.log('🔍 [getStudioProfileBySlug] Paquetes from DB:', paquetes.map(p => ({
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                cover_url: p.cover_url,
-                hasDescription: !!p.description,
-                hasCoverUrl: !!p.cover_url,
-                description_type: typeof p.description,
-                cover_url_type: typeof p.cover_url,
-                event_type_name: p.event_types?.name,
-                event_type_order: p.event_types?.order,
-            })));
-
             const publicPaquetes = paquetes.map(paquete => {
-                // Debug: Verificar cada paquete individual
-                console.log('🔍 [getStudioProfileBySlug] Mapping paquete:', {
-                    id: paquete.id,
-                    name: paquete.name,
-                    description_raw: paquete.description,
-                    cover_url_raw: paquete.cover_url,
-                    cover_url_type: typeof paquete.cover_url,
-                    event_type_name: paquete.event_types?.name,
-                    event_type_order: paquete.event_types?.order,
-                    tipo_evento_order_final: paquete.event_types?.order ?? undefined,
-                });
-
                 // Preservar cover_url y descripcion tal cual vienen de la DB (null se convierte a undefined para Zod)
                 return {
                     id: paquete.id,
@@ -337,25 +291,6 @@ export async function getStudioProfileBySlug(
                     order: paquete.order,
                 };
             });
-
-            // Debug: Verificar tipo_evento_order después del mapeo
-            console.log('🔍 [getStudioProfileBySlug] PublicPaquetes con tipo_evento_order:', publicPaquetes.map(p => ({
-                nombre: p.nombre,
-                tipo_evento: p.tipo_evento,
-                tipo_evento_order: p.tipo_evento_order,
-            })));
-
-            // Debug: Verificar cover_url después del mapeo
-            console.log('🔍 [getStudioProfileBySlug] PublicPaquetes mapped:', publicPaquetes.map(p => ({
-                id: p.id,
-                nombre: p.nombre,
-                descripcion: p.descripcion,
-                cover_url: p.cover_url,
-                hasDescription: !!p.descripcion,
-                hasCoverUrl: !!p.cover_url,
-                descripcion_type: typeof p.descripcion,
-                cover_url_type: typeof p.cover_url,
-            })));
 
             // Mapear posts
             const posts = studio.posts.map(post => ({
@@ -387,39 +322,7 @@ export async function getStudioProfileBySlug(
                 posts,
             };
 
-            // Debug: Verificar datos antes de validar con Zod
-            console.log('🔍 [getStudioProfileBySlug] profileDataRaw.paquetes:', profileDataRaw.paquetes.map(p => ({
-                id: p.id,
-                nombre: p.nombre,
-                cover_url: p.cover_url,
-                hasCoverUrl: !!p.cover_url
-            })));
-
             const profileData = PublicProfileDataSchema.parse(profileDataRaw);
-
-            // Debug: Verificar datos después de validar con Zod
-            const profileDataAny = profileData as unknown as { paquetes?: Array<{ id: string; nombre: string; descripcion?: string | null; cover_url?: string | null }> };
-            console.log('🔍 [getStudioProfileBySlug] profileData.paquetes (after Zod):', profileDataAny.paquetes?.map((p: { id: string; nombre: string; descripcion?: string | null; cover_url?: string | null }) => ({
-                id: p.id,
-                nombre: p.nombre,
-                descripcion: p.descripcion,
-                cover_url: p.cover_url,
-                hasDescription: !!p.descripcion,
-                hasCoverUrl: !!p.cover_url
-            })));
-
-            console.log('✅ [getStudioProfileBySlug] Profile data fetched successfully');
-            console.log('📊 [getStudioProfileBySlug] Data summary:', {
-                studio: studioProfile.studio_name,
-                socialNetworks: socialNetworks.length,
-                phones: contactInfo.phones.length,
-                items: items.length,
-                portfolios: portfolios.length,
-                zonas_trabajo: studioProfile.zonas_trabajo?.length || 0,
-            });
-            console.log('🔍 Final studioProfile.zonas_trabajo:', studioProfile.zonas_trabajo);
-            console.log('🔍 Final studioProfile.zonas_trabajo type:', typeof studioProfile.zonas_trabajo);
-            console.log('🔍 Final studioProfile.zonas_trabajo is array:', Array.isArray(studioProfile.zonas_trabajo));
 
             return {
                 success: true,
