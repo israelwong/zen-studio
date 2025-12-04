@@ -70,24 +70,7 @@ export function ProfilePageClient({ profileData, studioSlug }: ProfilePageClient
                 )}
 
                 {/* Footer */}
-                <ProfileFooter
-                    data={{
-                        pagina_web: studio.website,
-                        palabras_clave: studio.keywords,
-                        redes_sociales: profileData.socialNetworks?.map(network => ({
-                            plataforma: network.platform?.name || '',
-                            url: network.url
-                        })) || [],
-                        email: null, // No hay email en PublicContactInfo
-                        telefonos: profileData.contactInfo?.phones?.map(phone => ({
-                            numero: phone.number,
-                            tipo: phone.type === 'WHATSAPP' ? 'whatsapp' : 'llamadas',
-                            is_active: true
-                        })) || [],
-                        direccion: profileData.contactInfo?.address,
-                        google_maps_url: null // No hay google_maps_url en PublicContactInfo
-                    }}
-                />
+                <ProfileFooter />
             </div>
 
             {/* Desktop Layout (3 columns) */}
@@ -127,24 +110,7 @@ export function ProfilePageClient({ profileData, studioSlug }: ProfilePageClient
                     )}
 
                     {/* Footer */}
-                    <ProfileFooter
-                        data={{
-                            pagina_web: studio.website,
-                            palabras_clave: studio.keywords,
-                            redes_sociales: profileData.socialNetworks?.map(network => ({
-                                plataforma: network.platform?.name || '',
-                                url: network.url
-                            })) || [],
-                            email: null, // No hay email en PublicContactInfo
-                            telefonos: profileData.contactInfo?.phones?.map(phone => ({
-                                numero: phone.number,
-                                tipo: phone.type === 'WHATSAPP' ? 'whatsapp' : 'llamadas',
-                                is_active: true
-                            })) || [],
-                            direccion: profileData.contactInfo?.address,
-                            google_maps_url: null // No hay google_maps_url en PublicContactInfo
-                        }}
-                    />
+                    <ProfileFooter />
                 </div>
 
                 {/* Column 2: Hero CTA (sticky) */}

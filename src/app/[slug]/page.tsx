@@ -34,13 +34,27 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
             items: profileData.items.map(item => ({
                 id: item.id,
                 name: item.name,
-                type: 'SERVICIO' as const, // Default to SERVICIO since type field seems to be missing
-                cost: (item as { price?: number }).price || 0, // Use price field if cost doesn't exist
+                type: 'SERVICIO' as const,
+                cost: (item as { price?: number }).price || 0,
                 order: item.order
             })),
-            // Ensure contactInfo has all required properties
+            paquetes: profileData.paquetes.map(paquete => ({
+                id: paquete.id,
+                nombre: paquete.nombre,
+                precio: paquete.precio,
+                order: paquete.order,
+                descripcion: paquete.descripcion ?? undefined,
+                tipo_evento: paquete.tipo_evento ?? undefined,
+                tipo_evento_order: paquete.tipo_evento_order ?? undefined,
+                cover_url: paquete.cover_url ?? undefined,
+                duracion_horas: paquete.duracion_horas ?? undefined,
+                incluye: paquete.incluye ?? undefined,
+                no_incluye: paquete.no_incluye ?? undefined,
+                condiciones: paquete.condiciones ?? undefined
+            })),
             contactInfo: {
                 ...profileData.contactInfo,
+                email: null,
                 google_maps_url: null,
                 horarios: (profileData as { contactInfo?: { horarios?: import('@/types/public-profile').PublicHorario[] } }).contactInfo?.horarios || []
             }
