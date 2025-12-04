@@ -49,7 +49,7 @@ export default function IdentityPage() {
     }, [studioSlug]);
 
     const handleTabChange = (value: string) => {
-        router.push(`/studio/business/identity?tab=${value}`);
+        router.push(`/${studioSlug}/studio/business/identity?tab=${value}`);
     };
 
     // Preview data para SectionLayout
@@ -88,11 +88,31 @@ export default function IdentityPage() {
                 </ZenCardHeader>
                 <ZenCardContent className="p-6">
                     <Tabs value={currentTab} onValueChange={handleTabChange}>
-                        <TabsList className="grid w-full grid-cols-4 mb-6">
-                            <TabsTrigger value="brand">Marca</TabsTrigger>
-                            <TabsTrigger value="social">Redes Sociales</TabsTrigger>
-                            <TabsTrigger value="contact">Contacto</TabsTrigger>
-                            <TabsTrigger value="zones">Zonas de Trabajo</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-4 mb-6 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
+                            <TabsTrigger 
+                                value="brand"
+                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
+                            >
+                                Marca
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="social"
+                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
+                            >
+                                Redes Sociales
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="contact"
+                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
+                            >
+                                Contacto
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="zones"
+                                className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
+                            >
+                                Zonas de Trabajo
+                            </TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="brand">
