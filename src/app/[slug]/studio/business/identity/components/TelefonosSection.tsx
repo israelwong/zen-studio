@@ -202,7 +202,7 @@ export function TelefonosSection({ telefonos: initialTelefonos = [], onLocalUpda
             await eliminarTelefono(studioSlug, id);
             const updated = telefonos.filter(t => t.id !== id);
             setTelefonos(updated);
-            onLocalUpdate({ telefonos: updated });
+            onLocalUpdate?.({ telefonos: updated });
             toast.success('Teléfono eliminado exitosamente');
             await onDataChange?.();
         } catch (error) {
@@ -245,7 +245,7 @@ export function TelefonosSection({ telefonos: initialTelefonos = [], onLocalUpda
             const reorderedTelefonos = arrayMove(telefonos, oldIndex, newIndex);
 
             setTelefonos(reorderedTelefonos);
-            onLocalUpdate({ telefonos: reorderedTelefonos });
+            onLocalUpdate?.({ telefonos: reorderedTelefonos });
             toast.success('Orden actualizado exitosamente');
             await onDataChange?.();
         } catch (error) {

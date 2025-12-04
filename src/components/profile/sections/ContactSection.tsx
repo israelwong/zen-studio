@@ -45,6 +45,13 @@ interface PhoneOption {
 export function ContactSection({ studio, contactInfo }: InfoViewProps) {
     const [phoneModal, setPhoneModal] = useState<{ open: boolean; phones: PhoneOption[]; action: 'call' | 'whatsapp' } | null>(null);
 
+    // Debug: Log para verificar datos recibidos
+    console.log('🔍 [ContactSection] Datos recibidos:', {
+        phones: contactInfo.phones,
+        phonesLength: contactInfo.phones?.length || 0,
+        phonesActive: contactInfo.phones?.filter(p => p.is_active) || []
+    });
+
     // Función para obtener icono de red social
     const getSocialIcon = (plataforma: string | undefined | null) => {
         if (!plataforma || typeof plataforma !== 'string') {
@@ -200,13 +207,24 @@ export function ContactSection({ studio, contactInfo }: InfoViewProps) {
     // };
 
     // Contar teléfonos disponibles por tipo
-    const callPhonesCount = contactInfo.phones.filter(p =>
+    const callPhones = contactInfo.phones.filter(p =>
         p.is_active && (p.type === 'LLAMADAS' || p.type === 'AMBOS')
-    ).length;
+    );
+    const callPhonesCount = callPhones.length;
 
-    const whatsappPhonesCount = contactInfo.phones.filter(p =>
+    const whatsappPhones = contactInfo.phones.filter(p =>
         p.is_active && (p.type === 'WHATSAPP' || p.type === 'AMBOS')
-    ).length;
+    );
+    const whatsappPhonesCount = whatsappPhones.length;
+
+    // Debug: Log para verificar datos
+    console.log('🔍 [ContactSection] Phones data:', {
+        allPhones: contactInfo.phones,
+        callPhones,
+        whatsappPhones,
+        callPhonesCount,
+        whatsappPhonesCount
+    });
 
     return (
         <div className="px-4 space-y-6">

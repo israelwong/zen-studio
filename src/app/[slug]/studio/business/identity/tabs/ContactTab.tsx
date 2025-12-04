@@ -1,10 +1,8 @@
 'use client';
 
 import React from 'react';
-import { TelefonosSection } from '../components/TelefonosSection';
-import { HorariosSection } from '../components/HorariosSection';
-import { UbicacionSection } from '../components/UbicacionSection';
-import { ZonasTrabajoSection } from '../components/ZonasTrabajoSection';
+import { ContactInfoCard } from '../components/ContactInfoCard';
+import { ScheduleAndZonesCard } from '../components/ScheduleAndZonesCard';
 import { BuilderProfileData } from '@/types/builder-profile';
 
 interface ContactTabProps {
@@ -19,10 +17,8 @@ export function ContactTab({ builderData, loading, studioSlug, onDataChange }: C
     if (loading) {
         return (
             <div className="space-y-6">
-                <div className="h-[300px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
-                <div className="h-[300px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
-                <div className="h-[300px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
-                <div className="h-[300px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
+                <div className="h-[400px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
+                <div className="h-[400px] bg-zinc-800/50 rounded-lg animate-pulse"></div>
             </div>
         );
     }
@@ -33,37 +29,28 @@ export function ContactTab({ builderData, loading, studioSlug, onDataChange }: C
         numero: phone.number,
         tipo: (phone.type === 'WHATSAPP' ? 'whatsapp' :
             phone.type === 'LLAMADAS' ? 'llamadas' : 'ambos') as 'llamadas' | 'whatsapp' | 'ambos',
-        etiqueta: phone.label || undefined,
         is_active: phone.is_active
     })) || [];
 
     return (
         <div className="space-y-6">
-            <TelefonosSection
+            <ContactInfoCard
                 studioSlug={studioSlug}
                 telefonos={telefonosData}
+                email={builderData?.contactInfo?.email || null}
+                website={builderData?.studio?.website || null}
+                direccion={builderData?.studio?.address || null}
+                google_maps_url={builderData?.studio?.maps_url || null}
                 onDataChange={onDataChange}
+                loading={loading}
             />
 
-            <HorariosSection
+            <ScheduleAndZonesCard
                 studioSlug={studioSlug}
                 horarios={builderData?.contactInfo?.horarios || []}
-                onDataChange={onDataChange}
-            />
-
-            <UbicacionSection
-                studioSlug={studioSlug}
-                ubicacion={{
-                    direccion: builderData?.studio?.address || null,
-                    google_maps_url: builderData?.studio?.maps_url || null,
-                }}
-                onDataChange={onDataChange}
-            />
-
-            <ZonasTrabajoSection
-                studioSlug={studioSlug}
                 zonasCobertura={builderData?.studio?.zonas_trabajo || []}
                 onDataChange={onDataChange}
+                loading={loading}
             />
         </div>
     );

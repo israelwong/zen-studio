@@ -11,7 +11,7 @@ export interface ZenSwitchProps {
     description?: string;
     className?: string;
     id?: string;
-    variant?: "default" | "amber"; // Variante de color cuando está activo
+    variant?: "default" | "amber" | "green"; // Variante de color cuando está activo
 }
 
 /**
@@ -37,8 +37,10 @@ export function ZenSwitch({
     const generatedId = useId();
     const switchId = id || `switch-${generatedId}`;
 
-    const checkedColor = variant === "amber" ? "bg-amber-500" : "bg-blue-600";
-    const focusRingColor = variant === "amber" ? "focus:ring-amber-500" : "focus:ring-blue-500";
+    const checkedColor = variant === "amber" ? "bg-amber-500" :
+        variant === "green" ? "bg-green-600" : "bg-blue-600";
+    const focusRingColor = variant === "amber" ? "focus:ring-amber-500" :
+        variant === "green" ? "focus:ring-green-500" : "focus:ring-blue-500";
 
     return (
         <div className={cn("flex items-start space-x-3", className)}>

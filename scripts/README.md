@@ -46,6 +46,26 @@ npm run db:execute-sql prisma/migrations/manual_fix.sql
 
 ---
 
+#### `delete-all-phones.ts`
+**Propósito:** Eliminar todos los teléfonos de contacto de un estudio específico
+
+**Uso:**
+```bash
+npx tsx scripts/delete-all-phones.ts <studio-slug>
+```
+
+**Ejemplo:**
+```bash
+npx tsx scripts/delete-all-phones.ts mi-estudio
+```
+
+**Cuándo ejecutar:**
+- Cuando hay problemas de estado en la base de datos con múltiples teléfonos
+- Para limpiar teléfonos antes de crear uno nuevo desde la interfaz
+- Cuando se necesita resetear la configuración de contacto
+
+---
+
 ### Setup & Validación
 
 #### `01-setup-complete.sh`
@@ -114,6 +134,7 @@ scripts/
 ├── prisma-safe.ts          # Prisma con timeouts
 ├── prisma-with-direct.ts   # Prisma con conexión directa
 ├── execute-sql.ts          # Ejecutor SQL
+├── delete-all-phones.ts    # Eliminar todos los teléfonos de un estudio
 ├── validate-auth-setup.ts  # Validación Auth
 ├── verify-seeds.ts         # Verificación de seeds
 ├── 01-setup-complete.sh    # Setup completo (orden 1)

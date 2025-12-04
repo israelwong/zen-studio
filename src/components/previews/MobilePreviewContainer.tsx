@@ -18,6 +18,8 @@ interface MobilePreviewContainerProps {
     activeTab?: string;
     // Modo de visualización FAQ
     faqViewMode?: 'compact' | 'expanded';
+    // Studio slug para ProfileHeader
+    studioSlug?: string;
 }
 
 /**
@@ -40,7 +42,8 @@ export function MobilePreviewContainer({
     showNavbar = false,
     contentVariant = 'skeleton',
     activeTab,
-    faqViewMode
+    faqViewMode,
+    studioSlug
 }: MobilePreviewContainerProps) {
     // Default: expanded para mobile preview, compact solo si se especifica explícitamente
     const effectiveFaqViewMode = faqViewMode ?? (contentVariant === 'faq' ? 'expanded' : 'compact');
@@ -60,6 +63,7 @@ export function MobilePreviewContainer({
                         <ProfileHeader
                             data={data}
                             loading={loading}
+                            studioSlug={studioSlug}
                         />
                     </div>
                 )}

@@ -39,6 +39,7 @@ interface SocialSectionProps {
     onLocalUpdate?: (data: Partial<IdentidadData>) => void;
     redesSociales?: unknown[];
     loading?: boolean;
+    onDataChange?: () => Promise<void>;
 }
 
 export function SocialSection({ studioSlug, onLocalUpdate, loading: initialLoading = false, onDataChange }: SocialSectionProps) {
@@ -94,8 +95,8 @@ export function SocialSection({ studioSlug, onLocalUpdate, loading: initialLoadi
 
                 // Cargar plataformas disponibles
                 const plataformasResult = await obtenerPlataformasDisponibles();
-                if (Array.isArray(plataformasResult)) {
-                    const plataformasFormateadas = plataformasResult.map((plataforma) => ({
+                if (plataformasResult.success && plataformasResult.data && Array.isArray(plataformasResult.data)) {
+                    const plataformasFormateadas = plataformasResult.data.map((plataforma) => ({
                         id: plataforma.id,
                         name: plataforma.name,
                         slug: plataforma.slug,
@@ -109,6 +110,9 @@ export function SocialSection({ studioSlug, onLocalUpdate, loading: initialLoadi
                         updatedAt: plataforma.updated_at
                     }));
                     setPlataformas(plataformasFormateadas);
+                } else {
+                    console.error('Error al cargar plataformas:', plataformasResult);
+                    toast.error('No se pudieron cargar las plataformas disponibles');
                 }
             } catch (error) {
                 console.error('Error loading redes sociales:', error);

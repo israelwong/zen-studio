@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
-import { ZenCard, ZenCardContent } from '@/components/ui/zen';
+import { ZenButton, ZenInput, ZenTextarea, ZenCard, ZenCardContent } from '@/components/ui/zen';
 import { Save, Check, MapPin } from 'lucide-react';
 import { UbicacionData } from '../types';
 import { actualizarUbicacion } from '@/lib/actions/studio/profile/ubicacion';
@@ -73,74 +72,73 @@ export function UbicacionSection({
     }
 
     return (
-        <div className="space-y-6">
-            <ZenCard variant="default" padding="none">
-                <ZenCardContent className="p-6 space-y-4">
-                    <div className="flex items-center gap-2 mb-4">
+        <ZenCard variant="default" padding="none">
+            <ZenCardContent className="p-6 space-y-4">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
                         <MapPin className="h-5 w-5 text-blue-400" />
                         <h3 className="text-lg font-semibold text-white">
-                            Ubicación del Estudio
+                            Ubicación
                         </h3>
                     </div>
+                </div>
 
-                    <ZenTextarea
-                        label="Dirección"
-                        value={ubicacionData.direccion || ''}
-                        onChange={(e) => handleInputChange('direccion', e.target.value)}
-                        placeholder="Dirección completa de tu estudio"
-                        rows={3}
-                        disabled={loading}
-                        hint="Dirección física de tu estudio"
-                    />
+                <ZenTextarea
+                    label="Dirección"
+                    value={ubicacionData.direccion || ''}
+                    onChange={(e) => handleInputChange('direccion', e.target.value)}
+                    placeholder="Dirección completa de tu estudio"
+                    rows={3}
+                    disabled={loading}
+                    hint="Dirección física de tu estudio"
+                />
 
-                    <ZenInput
-                        label="Enlace de Google Maps (Opcional)"
-                        value={ubicacionData.google_maps_url || ''}
-                        onChange={(e) => handleInputChange('google_maps_url', e.target.value)}
-                        placeholder="https://maps.google.com/..."
-                        disabled={loading}
-                        hint="Enlace directo a tu ubicación en Google Maps"
-                    />
+                <ZenInput
+                    label="Enlace de Google Maps (Opcional)"
+                    value={ubicacionData.google_maps_url || ''}
+                    onChange={(e) => handleInputChange('google_maps_url', e.target.value)}
+                    placeholder="https://maps.google.com/..."
+                    disabled={loading}
+                    hint="Enlace directo a tu ubicación en Google Maps"
+                />
 
-                    {ubicacionData.google_maps_url && (
-                        <div className="mt-2">
-                            <a
-                                href={ubicacionData.google_maps_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-blue-400 hover:text-blue-300 underline"
-                            >
-                                Abrir en Google Maps
-                            </a>
-                        </div>
-                    )}
-                </ZenCardContent>
-            </ZenCard>
+                {ubicacionData.google_maps_url && (
+                    <div className="mt-2">
+                        <a
+                            href={ubicacionData.google_maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-400 hover:text-blue-300 underline"
+                        >
+                            Abrir en Google Maps
+                        </a>
+                    </div>
+                )}
 
-            {/* Botón de Guardar */}
-            <div className="flex justify-end pt-4">
-                <ZenButton
-                    onClick={handleSave}
-                    disabled={loading || isSaving}
-                    loading={isSaving}
-                    loadingText="Guardando..."
-                    variant="primary"
-                    size="md"
-                >
-                    {saveSuccess ? (
-                        <>
-                            <Check className="h-4 w-4 mr-2" />
-                            Guardado
-                        </>
-                    ) : (
-                        <>
-                            <Save className="h-4 w-4 mr-2" />
-                            Guardar Cambios
-                        </>
-                    )}
-                </ZenButton>
-            </div>
-        </div>
+                <div className="flex justify-end pt-4 border-t border-zinc-800">
+                    <ZenButton
+                        onClick={handleSave}
+                        disabled={loading || isSaving}
+                        loading={isSaving}
+                        loadingText="Guardando..."
+                        variant="primary"
+                        size="sm"
+                    >
+                        {saveSuccess ? (
+                            <>
+                                <Check className="h-4 w-4 mr-2" />
+                                Guardado
+                            </>
+                        ) : (
+                            <>
+                                <Save className="h-4 w-4 mr-2" />
+                                Guardar
+                            </>
+                        )}
+                    </ZenButton>
+                </div>
+            </ZenCardContent>
+        </ZenCard>
     );
 }
 

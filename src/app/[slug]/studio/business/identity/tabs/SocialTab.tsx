@@ -26,7 +26,7 @@ export function SocialTab({ builderData, loading, studioSlug, onDataChange }: So
     return (
         <SocialSection
             studioSlug={studioSlug}
-            redesSociales={builderData?.social_media || []}
+            redesSociales={builderData?.socialNetworks || []}
             onDataChange={onDataChange}
         />
     );

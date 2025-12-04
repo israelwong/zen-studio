@@ -24,9 +24,13 @@ export default function IdentityPage() {
 
     const [builderData, setBuilderData] = useState<BuilderProfileData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [currentTab, setCurrentTab] = useState<TabValue>('brand');
 
-    // Get tab from URL or default to 'brand'
-    const currentTab = (searchParams.get('tab') as TabValue) || 'brand';
+    // Leer tab de URL solo en el cliente para evitar problemas de hidratación
+    useEffect(() => {
+        const tabFromUrl = (searchParams.get('tab') as TabValue) || 'brand';
+        setCurrentTab(tabFromUrl);
+    }, [searchParams]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -54,12 +58,19 @@ export default function IdentityPage() {
     // Función para refrescar datos después de cambios
     const handleDataRefresh = async () => {
         try {
+            console.log('🔄 [IdentityPage] Recargando datos...');
             const result = await getBuilderData(studioSlug);
             if (result.success && result.data) {
+                console.log('✅ [IdentityPage] Datos recargados:', {
+                    phones: result.data.contactInfo.phones,
+                    phonesCount: result.data.contactInfo.phones.length
+                });
                 setBuilderData(result.data);
+            } else {
+                console.error('❌ [IdentityPage] Error al recargar:', result.error);
             }
         } catch (error) {
-            console.error('Error refreshing data:', error);
+            console.error('❌ [IdentityPage] Error refreshing data:', error);
         }
     };
 
@@ -72,8 +83,13 @@ export default function IdentityPage() {
         }
     };
 
-    // Preview data para SectionLayout - estructura compatible con ProfileContent
+    // Preview data para SectionLayout - estructura compatible con ProfileContent y ProfileHeader
     const previewData = builderData ? {
+        // Datos para ProfileHeader (nivel superior)
+        studio_name: builderData.studio.studio_name,
+        slogan: builderData.studio.slogan,
+        logo_url: builderData.studio.logo_url,
+        // Datos para ProfileContent
         studio: {
             id: builderData.studio.id,
             studio_name: builderData.studio.studio_name,
@@ -88,9 +104,16 @@ export default function IdentityPage() {
             zonas_trabajo: builderData.studio.zonas_trabajo,
         },
         contactInfo: {
-            phones: builderData.contactInfo.phones,
+            phones: builderData.contactInfo.phones.map(phone => ({
+                id: phone.id,
+                number: phone.number,
+                type: phone.type, // Mantener tipo original: 'LLAMADAS', 'WHATSAPP', 'AMBOS'
+                label: phone.label,
+                is_active: phone.is_active
+            })),
             address: builderData.contactInfo.address,
             website: builderData.contactInfo.website,
+            email: builderData.contactInfo.email,
             google_maps_url: builderData.studio.maps_url,
             horarios: builderData.contactInfo.horarios,
         },

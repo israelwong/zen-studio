@@ -12,6 +12,7 @@ interface HorariosSectionProps {
     horarios?: Horario[]; // Data from parent (builder-profile)
     onLocalUpdate?: (data: Partial<{ horarios: Horario[] }>) => void;
     loading?: boolean;
+    onDataChange?: () => Promise<void>;
 }
 
 export function HorariosSection({ studioSlug, horarios: initialHorarios = [], onLocalUpdate, loading = false, onDataChange }: HorariosSectionProps) {

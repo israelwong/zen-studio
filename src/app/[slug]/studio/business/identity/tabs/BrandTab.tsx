@@ -27,7 +27,6 @@ export function BrandTab({ builderData, loading, studioSlug, onUpdate }: BrandTa
             if ('slogan' in updateData) studioUpdate.slogan = updateData.slogan;
             if ('presentacion' in updateData) studioUpdate.presentation = updateData.presentacion;
             if ('logo_url' in updateData) studioUpdate.logo_url = updateData.logo_url;
-            if ('pagina_web' in updateData) studioUpdate.website = updateData.pagina_web;
             if ('palabras_clave' in updateData) {
                 studioUpdate.keywords = Array.isArray(updateData.palabras_clave)
                     ? updateData.palabras_clave.join(', ')

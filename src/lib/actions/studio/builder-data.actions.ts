@@ -29,6 +29,7 @@ export async function getBuilderData(studioSlug: string) {
                     address: true,
                     maps_url: true,
                     plan_id: true,
+                    email: true,
                     // Social networks for footer
                     social_networks: {
                         where: { is_active: true },
@@ -194,6 +195,7 @@ export async function getBuilderData(studioSlug: string) {
                     })),
                     address: studio.address,
                     website: studio.website,
+                    email: studio.email,
                     horarios: studio.business_hours?.map(horario => ({
                         id: horario.id,
                         dia: horario.day_of_week,

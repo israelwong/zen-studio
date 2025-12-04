@@ -14,7 +14,7 @@ interface SectionPreviewProps {
 }
 
 // Componente IdentidadPreview integrado con tabs
-function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data?: Record<string, unknown>; loading?: boolean; activeTab?: 'brand' | 'social' | 'contact' | 'zones' }) {
+function IdentidadPreview({ data, loading = false, activeTab = 'brand', studioSlug }: { data?: Record<string, unknown>; loading?: boolean; activeTab?: 'brand' | 'social' | 'contact' | 'zones'; studioSlug?: string }) {
     // Renderizar diferentes previews según el tab activo
     switch (activeTab) {
         case 'brand':
@@ -22,10 +22,12 @@ function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data
                 <MobilePreviewContainer
                     data={data}
                     loading={loading}
+                    showHeader={true}
                     showNavbar={true}
                     showContent={true}
                     activeTab="inicio"
                     contentVariant="info"
+                    studioSlug={studioSlug}
                 />
             );
         case 'social':
@@ -33,10 +35,12 @@ function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data
                 <MobilePreviewContainer
                     data={data}
                     loading={loading}
+                    showHeader={true}
                     showNavbar={true}
                     showContent={true}
                     activeTab="contacto"
                     contentVariant="info"
+                    studioSlug={studioSlug}
                 />
             );
         case 'contact':
@@ -44,10 +48,12 @@ function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data
                 <MobilePreviewContainer
                     data={data}
                     loading={loading}
+                    showHeader={true}
                     showNavbar={true}
                     showContent={true}
                     activeTab="contacto"
                     contentVariant="info"
+                    studioSlug={studioSlug}
                 />
             );
         case 'zones':
@@ -55,10 +61,12 @@ function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data
                 <MobilePreviewContainer
                     data={data}
                     loading={loading}
+                    showHeader={true}
                     showNavbar={true}
                     showContent={true}
                     activeTab="contacto"
                     contentVariant="info"
+                    studioSlug={studioSlug}
                 />
             );
         default:
@@ -66,9 +74,11 @@ function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data
                 <MobilePreviewContainer
                     data={data}
                     loading={loading}
+                    showHeader={true}
                     showNavbar={false}
                     showContent={true}
                     contentVariant="skeleton"
+                    studioSlug={studioSlug}
                 />
             );
     }
@@ -166,7 +176,7 @@ export function SectionPreview({ section, studioSlug, data, loading = false, faq
     switch (section) {
         case 'identidad':
         case 'identity':
-            return <IdentidadPreview data={data} loading={loading} activeTab={activeIdentityTab} />;
+            return <IdentidadPreview data={data} loading={loading} activeTab={activeIdentityTab} studioSlug={studioSlug} />;
         case 'inicio':
             return <InicioPreview data={data} loading={loading} />;
         case 'posts':

@@ -63,7 +63,6 @@ export function IdentidadForm({
                 nombre: data.studio_name || '',
                 slogan: data.slogan || undefined,
                 logo_url: data.logo_url || undefined,
-                pagina_web: data.pagina_web || undefined,
                 palabras_clave: Array.isArray(data.palabras_clave) ? data.palabras_clave.join(', ') : data.palabras_clave || '',
                 presentacion: data.presentacion || undefined
             } as Parameters<typeof actualizarIdentidadCompleta>[1];
@@ -111,7 +110,6 @@ export function IdentidadForm({
                                         nombre: data.studio_name || '',
                                         slogan: data.slogan || undefined,
                                         logo_url: url,
-                                        pagina_web: data.pagina_web || undefined,
                                         palabras_clave: Array.isArray(data.palabras_clave) ? data.palabras_clave.join(', ') : data.palabras_clave || '',
                                         presentacion: data.presentacion || undefined
                                     };
@@ -181,16 +179,6 @@ export function IdentidadForm({
                         rows={5}
                         disabled={loading}
                         hint="Esta presentación aparecerá en tu perfil público"
-                    />
-
-                    {/* Página Web */}
-                    <ZenInput
-                        label="Página Web (Opcional)"
-                        value={data.pagina_web || ''}
-                        onChange={(e) => handleInputChange('pagina_web', e.target.value)}
-                        placeholder="https://tuestudio.com"
-                        disabled={loading}
-                        hint="Tu sitio web principal"
                     />
                 </div>
             </div>

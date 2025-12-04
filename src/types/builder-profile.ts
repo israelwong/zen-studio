@@ -57,6 +57,7 @@ export interface BuilderContactInfo {
     }[];
     address: string | null;
     website: string | null;
+    email: string | null;
     horarios?: BuilderHorario[];
 }
 

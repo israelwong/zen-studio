@@ -25,6 +25,17 @@ export interface PublicStudioProfile {
         slug: string;
     } | null;
     zonas_trabajo?: PublicZonaTrabajo[];
+    redes_sociales?: Array<{
+        id: string;
+        url: string;
+        plataforma: string | null;
+        platform?: {
+            id: string;
+            name: string;
+            icon: string | null;
+        } | null;
+        order: number;
+    }>;
 }
 
 export interface PublicSocialNetwork {
@@ -103,6 +114,7 @@ export interface PublicContactInfo {
     }[];
     address: string | null;
     website: string | null;
+    email: string | null;
     google_maps_url: string | null;
     horarios: PublicHorario[];
 }
