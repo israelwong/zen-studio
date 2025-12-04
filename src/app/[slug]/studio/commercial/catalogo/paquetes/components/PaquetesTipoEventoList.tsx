@@ -1732,20 +1732,8 @@ export function PaquetesTipoEventoList({
                 />
             )}
 
-            {/* Modal para editar tipo de evento */}
-            {isEditTipoEventoModalOpen && editingTipoEvento && (
-                <TipoEventoQuickAddModal
-                    key={`edit-tipo-evento-modal-${editingTipoEvento.id}`}
-                    isOpen={isEditTipoEventoModalOpen}
-                    onClose={() => {
-                        setIsEditTipoEventoModalOpen(false);
-                        setEditingTipoEvento(null);
-                    }}
-                    onSuccess={handleTipoEventoUpdated}
-                    studioSlug={studioSlug}
-                    tipoEvento={editingTipoEvento}
-                />
-            )}
+            {/* Modal para editar tipo de evento - Deshabilitado temporalmente */}
+            {/* TODO: Implementar modal de edición o redirigir a página de gestión */}
 
         </DndContext>
     );
