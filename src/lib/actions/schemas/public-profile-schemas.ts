@@ -103,6 +103,7 @@ export const PublicContactInfoSchema = z.object({
 
 export const PublicPostSchema = z.object({
     id: z.string(),
+    slug: z.string(),
     title: z.string().nullable().optional(),
     caption: z.string().nullable(),
     tags: z.array(z.string()).optional(),

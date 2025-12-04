@@ -127,6 +127,7 @@ export enum ProfileTab {
 
 export interface PublicPost {
     id: string;
+    slug: string;
     title?: string | null;
     caption: string | null;
     tags?: string[];

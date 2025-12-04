@@ -139,6 +139,7 @@ export async function getStudioProfileBySlug(
                         where: { is_published: true },
                         select: {
                             id: true,
+                            slug: true,
                             title: true,
                             caption: true,
                             tags: true,
@@ -295,6 +296,7 @@ export async function getStudioProfileBySlug(
             // Mapear posts
             const posts = studio.posts.map(post => ({
                 id: post.id,
+                slug: post.slug,
                 title: post.title,
                 caption: post.caption,
                 tags: post.tags || [],
