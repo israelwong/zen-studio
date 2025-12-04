@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { ProfileHeader, ProfileNavigation, ProfileFooter } from '@/components/profile';
+import { ProfileHeader, ProfileNavTabs, ProfileFooter } from '@/components/profile';
 
 interface MobilePreviewOfferProps {
   children?: React.ReactNode;
@@ -31,7 +31,7 @@ export function MobilePreviewOffer({
 
         {/* Navigation debajo del header */}
         <div className="flex-shrink-0">
-          <ProfileNavigation activeSection="inicio" />
+          <ProfileNavTabs activeTab="inicio" onTabChange={() => {}} />
         </div>
 
         {/* Contenido con scroll interno */}

@@ -52,12 +52,12 @@ export function PublicProfileEditButton({ studioSlug }: PublicProfileEditButtonP
     return (
         <Link href={`/${studioSlug}/profile/edit/content/posts`}>
             <ZenButton
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-2"
+                className="text-xs text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 px-3 py-1.5 h-auto"
             >
-                <Edit className="h-4 w-4" />
-                Editar Perfil
+                <Edit className="h-3 w-3 mr-1" />
+                Editar
             </ZenButton>
         </Link>
     );

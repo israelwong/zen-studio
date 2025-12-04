@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { ProfileHeader, ProfileContent, ProfileFooter, ProfileNavigation, FaqSection } from '@/components/profile';
+import { ProfileHeader, ProfileContent, ProfileFooter, ProfileNavTabs, FaqSection } from '@/components/profile';
 
 interface MobilePreviewContainerProps {
     children?: React.ReactNode;
@@ -71,8 +71,9 @@ export function MobilePreviewContainer({
                 {/* Navbar de navegación - fijo */}
                 {showNavbar && (
                     <div className="flex-shrink-0">
-                        <ProfileNavigation
-                            activeSection={activeTab}
+                        <ProfileNavTabs
+                            activeTab={activeTab || 'inicio'}
+                            onTabChange={() => {}} // Preview no interactivo
                         />
                     </div>
                 )}

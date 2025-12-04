@@ -232,8 +232,7 @@ export function ContactSection({ studio, contactInfo }: InfoViewProps) {
             {/* Business Description */}
             {studio.presentation && (
                 <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Presentación del negocio</h3>
-                    <p className="text-zinc-300 leading-relaxed">
+                    <p className="text-zinc-300 text-sm leading-relaxed">
                         {studio.presentation.charAt(0).toUpperCase() + studio.presentation.slice(1)}
                     </p>
                 </div>
@@ -241,169 +240,140 @@ export function ContactSection({ studio, contactInfo }: InfoViewProps) {
 
             {/* Botones de contacto */}
             <div className="space-y-3">
-                {/* <h3 className="text-sm font-medium text-zinc-500">Contacto</h3> */}
-                <div className="space-y-3">
-                    {/* Botón de llamada */}
-                    {callPhonesCount > 0 && (
-                        <ZenButton
-                            variant="outline"
-                            onClick={handleCallAction}
-                            className="w-full rounded-full flex items-center justify-center gap-2 bg-blue-800 hover:bg-blue-700 py-3"
-                        >
-                            <Phone className="h-4 w-4" />
-                            Llamar
-                        </ZenButton>
-                    )}
-
-                    {/* Botón de WhatsApp */}
-                    {whatsappPhonesCount > 0 && (
-                        <ZenButton
-                            variant="outline"
-                            onClick={handleWhatsAppAction}
-                            className="w-full rounded-full flex items-center justify-center gap-2 bg-green-800 hover:bg-green-700 py-3"
-                        >
-                            <WhatsAppIcon className="h-4 w-4" />
-                            WhatsApp
-                        </ZenButton>
-                    )}
-
-                    {/* Botón de Agendar - Temporalmente deshabilitado
+                {/* Botón de WhatsApp */}
+                {whatsappPhonesCount > 0 && (
                     <ZenButton
                         variant="outline"
-                        onClick={handleSchedule}
-                        className="w-full rounded-full flex items-center justify-center gap-2 py-3"
+                        onClick={handleWhatsAppAction}
+                        className="w-full rounded-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 border-green-600 text-white py-3 shadow-sm"
                     >
-                        <Calendar className="h-4 w-4" />
-                        Agendar
-                    </ZenButton> */}
-                </div>
+                        <WhatsAppIcon className="h-5 w-5" />
+                        <span className="font-medium">WhatsApp</span>
+                    </ZenButton>
+                )}
+
+                {/* Botón de llamada */}
+                {callPhonesCount > 0 && (
+                    <ZenButton
+                        variant="outline"
+                        onClick={handleCallAction}
+                        className="w-full rounded-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 border-blue-600 text-white py-3 shadow-sm"
+                    >
+                        <Phone className="h-5 w-5" />
+                        <span className="font-medium">Llamar</span>
+                    </ZenButton>
+                )}
             </div>
 
-            {/* Work Zones */}
-            {studio.zonas_trabajo && studio.zonas_trabajo.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Zonas de trabajo</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {studio.zonas_trabajo.map((zona) => (
-                            <ZenBadge key={zona.id} variant="outline" className="text-xs">
-                                {zona.nombre}
-                            </ZenBadge>
-                        ))}
+
+            {/* Email */}
+            {contactInfo.email && (
+                <a
+                    href={`mailto:${contactInfo.email}`}
+                    className="flex items-center gap-3 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-lg transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                        <Mail className="w-4 h-4 text-zinc-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-500">Correo electrónico</p>
+                        <p className="text-sm text-zinc-300 truncate">{contactInfo.email}</p>
+                    </div>
+                </a>
+            )}
+
+            {/* Website */}
+            {studio.website && (
+                <a
+                    href={studio.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/50 rounded-lg transition-colors group"
+                >
+                    <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center group-hover:bg-zinc-700 transition-colors">
+                        <Globe className="w-4 h-4 text-zinc-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <p className="text-xs text-zinc-500">Página web</p>
+                        <p className="text-sm text-zinc-300 truncate">{studio.website}</p>
+                    </div>
+                </a>
+            )}
+
+            {/* Location */}
+            {contactInfo.address && (
+                <div className="px-4 py-3 bg-zinc-800/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs text-zinc-500 mb-1">Dirección</p>
+                            <p className="text-sm text-zinc-300 leading-relaxed">{contactInfo.address}</p>
+                            {contactInfo.google_maps_url && (
+                                <a
+                                    href={contactInfo.google_maps_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors inline-flex items-center gap-1 mt-2"
+                                >
+                                    Ver en Google Maps
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* Horarios de atención */}
             {horariosAgrupados.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500 flex items-center gap-2">
-                        Horarios
-                    </h3>
-                    <div className="space-y-1.5">
-                        {horariosAgrupados.map((grupo, index) => (
-                            <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                                <span className="text-zinc-300 font-medium text-xs leading-tight">
-                                    {grupo.dias}
-                                </span>
-                                <span className="text-zinc-400 bg-zinc-800/40 px-2 py-1 rounded-full text-xs inline-block w-fit">
-                                    {grupo.horario}
-                                </span>
+                <div className="px-4 py-3 bg-zinc-800/30 rounded-lg">
+                    <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                            <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs text-zinc-500 mb-2">Horarios de atención</p>
+                            <div className="space-y-2">
+                                {horariosAgrupados.map((grupo, index) => (
+                                    <div key={index} className="flex items-center justify-between gap-2">
+                                        <span className="text-sm text-zinc-300 font-medium">
+                                            {grupo.dias}
+                                        </span>
+                                        <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded-md">
+                                            {grupo.horario}
+                                        </span>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* Location */}
-            {contactInfo.address && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Ubicación</h3>
-                    <p className="text-zinc-300">{contactInfo.address}</p>
-                    {contactInfo.google_maps_url && (
-                        <a
-                            href={contactInfo.google_maps_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-zinc-500 hover:text-zinc-400 transition-colors underline decoration-dotted underline-offset-2"
-                        >
-                            - abrir en Google Maps
-                        </a>
-                    )}
-                </div>
-            )}
-
-            {/* Website */}
-            {studio.website && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Sitio web</h3>
-                    <a
-                        href={studio.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-zinc-300 hover:text-zinc-200 transition-colors flex items-center gap-2"
-                    >
-                        <Globe className="w-4 h-4 text-zinc-400" />
-                        {studio.website}
-                    </a>
-                </div>
-            )}
-
-            {/* Redes Sociales */}
-            {studio.redes_sociales && studio.redes_sociales.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Redes sociales</h3>
-                    <div className="flex flex-wrap gap-3">
-                        {studio.redes_sociales.map((red, index) => (
-                            <a
-                                key={index}
-                                href={red.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-zinc-300 hover:text-zinc-200 transition-colors"
-                            >
-                                {getSocialIcon(red.plataforma)}
-                                <span className="capitalize text-sm">
-                                    {red.plataforma || 'Red Social'}
-                                </span>
-                            </a>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Email */}
-            {contactInfo.email && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500">Correo electrónico</h3>
-                    <a
-                        href={`mailto:${contactInfo.email}`}
-                        className="text-zinc-300 hover:text-zinc-200 transition-colors flex items-center gap-2"
-                    >
-                        <Mail className="w-4 h-4 text-zinc-400" />
-                        {contactInfo.email}
-                    </a>
-                </div>
-            )}
-
-            {/* Palabras Clave */}
+            {/* Especialidades con # */}
             {studio.keywords && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-zinc-500 flex items-center gap-2">
-                        <Hash className="w-4 h-4" />
-                        Especialidades
-                    </h3>
+                <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
                         {(Array.isArray(studio.keywords)
                             ? studio.keywords
                             : studio.keywords.split(',')
                         ).map((palabra, index) => (
-                            <ZenBadge
+                            <span
                                 key={index}
-                                variant="outline"
-                                className="text-xs bg-zinc-800"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-zinc-800/40 hover:bg-zinc-800/60 rounded-full text-xs text-zinc-300 transition-colors"
                             >
+                                <Hash className="w-3 h-3 text-zinc-500" />
                                 {typeof palabra === 'string' ? palabra.trim() : palabra}
-                            </ZenBadge>
+                            </span>
                         ))}
                     </div>
                 </div>

@@ -24,13 +24,26 @@ export default function IdentityPage() {
 
     const [builderData, setBuilderData] = useState<BuilderProfileData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [currentTab, setCurrentTab] = useState<TabValue>('brand');
+    const [mounted, setMounted] = useState(false);
 
-    // Leer tab de URL solo en el cliente para evitar problemas de hidratación
+    // Obtener tab inicial de manera segura
+    const tabFromUrl = (searchParams.get('tab') as TabValue) || 'brand';
+    const [currentTab, setCurrentTab] = useState<TabValue>(tabFromUrl);
+
+    // Control de hidratación
     useEffect(() => {
-        const tabFromUrl = (searchParams.get('tab') as TabValue) || 'brand';
-        setCurrentTab(tabFromUrl);
-    }, [searchParams]);
+        setMounted(true);
+    }, []);
+
+    // Sincronizar tab con URL después de montar
+    useEffect(() => {
+        if (mounted) {
+            const newTab = (searchParams.get('tab') as TabValue) || 'brand';
+            if (newTab !== currentTab) {
+                setCurrentTab(newTab);
+            }
+        }
+    }, [searchParams, mounted, currentTab]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -125,6 +138,41 @@ export default function IdentityPage() {
             order: network.order,
         })),
     } : null;
+
+    // Evitar hidration mismatch - solo renderizar tabs después de montar
+    if (!mounted) {
+        return (
+            <SectionLayout
+                section="identity"
+                studioSlug={studioSlug}
+                data={previewData as unknown as Record<string, unknown>}
+                loading={true}
+                activeIdentityTab="contact"
+            >
+                <ZenCard variant="default" padding="none">
+                    <ZenCardHeader className="border-b border-zinc-800">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-600/20 rounded-lg">
+                                <Briefcase className="h-5 w-5 text-blue-400" />
+                            </div>
+                            <div>
+                                <ZenCardTitle>Identidad del Negocio</ZenCardTitle>
+                                <ZenCardDescription>
+                                    Configura la información de tu estudio fotográfico
+                                </ZenCardDescription>
+                            </div>
+                        </div>
+                    </ZenCardHeader>
+                    <ZenCardContent className="p-6">
+                        <div className="space-y-4">
+                            <div className="h-10 bg-zinc-800/50 rounded animate-pulse" />
+                            <div className="h-64 bg-zinc-800/50 rounded animate-pulse" />
+                        </div>
+                    </ZenCardContent>
+                </ZenCard>
+            </SectionLayout>
+        );
+    }
 
     return (
         <SectionLayout

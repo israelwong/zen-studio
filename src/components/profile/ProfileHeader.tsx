@@ -2,7 +2,6 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { Star } from 'lucide-react';
 import { PublicProfileEditButton } from './PublicProfileEditButton';
 
 interface ProfileHeaderProps {
@@ -34,7 +33,7 @@ export function ProfileHeader({ data, loading = false, studioSlug }: ProfileHead
     }
 
     return (
-        <div className="sticky top-0 z-10 bg-zinc-900/90 backdrop-blur-lg w-full px-4 py-8">
+        <div className="sticky top-0 z-10 bg-zinc-900/90 backdrop-blur-lg w-full px-4 py-4">
             <div className="flex items-center">
                 {/* Columna 1: Logo, nombre y slogan */}
                 <div className="flex items-center space-x-3 flex-1">
@@ -77,12 +76,9 @@ export function ProfileHeader({ data, loading = false, studioSlug }: ProfileHead
                     </div>
                 </div>
 
-                {/* Columna 2: Botón Editar (si es dueño) o Icono de promoción */}
-                <div className="flex justify-end items-center gap-2">
+                {/* Columna 2: Botón Editar (si es dueño) */}
+                <div className="flex justify-end items-center">
                     {studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
-                    <div className="w-6 h-6 bg-yellow-500/20 rounded-full flex items-center justify-center">
-                        <Star className="h-3 w-3 text-yellow-400" />
-                    </div>
                 </div>
             </div>
         </div>
