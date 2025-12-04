@@ -12,7 +12,7 @@ import { PostFormData, MediaItem as PostMediaItem } from "@/lib/actions/schemas/
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X, Copy, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import cuid from "cuid";
 import { calculateTotalStorage, formatBytes } from "@/lib/utils/storage";
@@ -85,6 +85,26 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isMediaUploading, setIsMediaUploading] = useState(false);
+    const [linkCopied, setLinkCopied] = useState(false);
+    
+    // Calcular slug desde el título o post existente
+    const postSlug = useMemo(() => {
+        if (mode === "edit" && post?.id) {
+            // En modo edición, usar el ID del post para generar el slug
+            // El formato es: titulo-normalizado-abc123 (primeros 6 chars del ID)
+            const titlePart = formData.title
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]+/g, "-")
+                .replace(/(^-|-$)/g, "")
+                .substring(0, 60)
+                .replace(/-+$/, "");
+            const suffix = post.id.substring(0, 6);
+            return titlePart || "post" ? `${titlePart || "post"}-${suffix}` : "";
+        }
+        return ""; // En modo creación no hay slug hasta guardar
+    }, [formData.title, post?.id, mode]);
 
     // Cargar datos del estudio para preview
     useEffect(() => {
@@ -419,13 +439,54 @@ export function PostEditor({ studioSlug, mode, post }: PostEditorProps) {
 
                         <ZenCardContent className="space-y-4">
                             {/* Título */}
-                            <ZenInput
-                                label="Título"
-                                value={formData.title || ""}
-                                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                                placeholder="Título del post"
-                                required
-                            />
+                            <div className="space-y-2">
+                                <ZenInput
+                                    label="Título"
+                                    value={formData.title || ""}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                                    placeholder="Título del post"
+                                    required
+                                />
+                                
+                                {/* Mostrar slug generado y botón copiar (solo en modo edición) */}
+                                {mode === "edit" && postSlug && (
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-xs text-zinc-500">
+                                            URL: <span className="text-zinc-400 font-mono">/{studioSlug}/post/{postSlug}</span>
+                                        </p>
+                                        <ZenButton
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 px-2"
+                                            onClick={async () => {
+                                                const postUrl = `${window.location.origin}/${studioSlug}/post/${postSlug}`;
+                                                try {
+                                                    await navigator.clipboard.writeText(postUrl);
+                                                    setLinkCopied(true);
+                                                    toast.success("Link copiado al portapapeles");
+                                                    setTimeout(() => setLinkCopied(false), 2000);
+                                                } catch {
+                                                    toast.error("Error al copiar el link");
+                                                }
+                                            }}
+                                        >
+                                            {linkCopied ? (
+                                                <Check className="w-3 h-3" />
+                                            ) : (
+                                                <Copy className="w-3 h-3" />
+                                            )}
+                                        </ZenButton>
+                                    </div>
+                                )}
+                                
+                                {/* Mensaje para modo creación */}
+                                {mode === "create" && (
+                                    <p className="text-xs text-zinc-500">
+                                        La URL pública se generará automáticamente al guardar
+                                    </p>
+                                )}
+                            </div>
 
                             {/* Descripción */}
                             <ZenTextarea
