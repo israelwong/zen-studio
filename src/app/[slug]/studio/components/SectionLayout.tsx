@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SectionPreview } from './SectionPreview';
+import { SectionPreview } from '@/components/previews';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { Smartphone } from 'lucide-react';
 
