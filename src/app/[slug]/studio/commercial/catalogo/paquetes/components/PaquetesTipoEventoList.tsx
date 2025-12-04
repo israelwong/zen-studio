@@ -35,7 +35,7 @@ import {
     ZenDropdownMenuSeparator,
 } from "@/components/ui/zen";
 import { ZenConfirmModal } from "@/components/ui/zen/overlays/ZenConfirmModal";
-import { TipoEventoForm } from "@/app/[slug]/studio/configuracion/operacion/tipos/components/TipoEventoFormSimple";
+import { TipoEventoQuickAddModal } from "@/components/shared/tipos-evento/TipoEventoQuickAddModal";
 import { reorderPaquetes, obtenerPaquetes } from "@/lib/actions/studio/paquetes/paquetes.actions";
 import type { TipoEventoData } from "@/lib/actions/schemas/tipos-evento-schemas";
 import type { PaqueteFromDB } from "@/lib/actions/schemas/paquete-schemas";
@@ -1723,7 +1723,7 @@ export function PaquetesTipoEventoList({
 
             {/* Modal para crear tipo de evento */}
             {isCreateTipoEventoModalOpen && (
-                <TipoEventoForm
+                <TipoEventoQuickAddModal
                     key="create-tipo-evento-modal"
                     isOpen={isCreateTipoEventoModalOpen}
                     onClose={handleCloseCreateModal}
@@ -1734,7 +1734,7 @@ export function PaquetesTipoEventoList({
 
             {/* Modal para editar tipo de evento */}
             {isEditTipoEventoModalOpen && editingTipoEvento && (
-                <TipoEventoForm
+                <TipoEventoQuickAddModal
                     key={`edit-tipo-evento-modal-${editingTipoEvento.id}`}
                     isOpen={isEditTipoEventoModalOpen}
                     onClose={() => {

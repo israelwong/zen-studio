@@ -127,7 +127,7 @@ export function EventTypesManager({
           <ZenButton
             variant="outline"
             size="sm"
-            onClick={() => router.push(`/${studioSlug}/studio/configuracion/operacion/tipos`)}
+            onClick={() => setIsOpen(true)}
           >
             <Settings className="h-3 w-3 mr-1" />
             Gestionar
