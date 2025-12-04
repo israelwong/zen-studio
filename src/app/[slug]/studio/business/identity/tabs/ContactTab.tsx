@@ -16,7 +16,7 @@ interface ContactTabProps {
 }
 
 export function ContactTab({ builderData, loading, studioSlug, onDataChange }: ContactTabProps) {
-    
+
     if (loading) {
         return (
             <div className="space-y-6">
@@ -30,19 +30,19 @@ export function ContactTab({ builderData, loading, studioSlug, onDataChange }: C
         <div className="space-y-6">
             <Tabs defaultValue="phones">
                 <TabsList className="grid w-full grid-cols-3 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="phones"
                         className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                     >
                         Teléfonos
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="schedule"
                         className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                     >
                         Horarios
                     </TabsTrigger>
-                    <TabsTrigger 
+                    <TabsTrigger
                         value="location"
                         className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                     >

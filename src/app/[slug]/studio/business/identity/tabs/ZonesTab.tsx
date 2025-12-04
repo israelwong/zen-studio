@@ -13,7 +13,7 @@ interface ZonesTabProps {
 }
 
 export function ZonesTab({ builderData, loading, studioSlug, onDataChange }: ZonesTabProps) {
-    
+
     if (loading) {
         return (
             <div className="space-y-6">

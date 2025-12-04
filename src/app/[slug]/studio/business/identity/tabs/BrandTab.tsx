@@ -15,7 +15,7 @@ interface BrandTabProps {
 }
 
 export function BrandTab({ builderData, loading, studioSlug, onUpdate }: BrandTabProps) {
-    
+
     const handleLocalUpdate = useCallback((data: unknown) => {
         onUpdate((prev: BuilderProfileData | null) => {
             if (!prev) return null;

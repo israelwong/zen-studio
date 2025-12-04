@@ -1,9 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Phone } from 'lucide-react';
+import { Phone, Globe, Mail, Hash } from 'lucide-react';
 import { ZenButton, ZenBadge } from '@/components/ui/zen';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
+import InstagramIcon from '@/components/ui/icons/InstagramIcon';
+import FacebookIcon from '@/components/ui/icons/FacebookIcon';
+import TikTokIcon from '@/components/ui/icons/TikTokIcon';
+import YouTubeIcon from '@/components/ui/icons/YouTubeIcon';
+import LinkedInIcon from '@/components/ui/icons/LinkedInIcon';
+import ThreadsIcon from '@/components/ui/icons/ThreadsIcon';
+import SpotifyIcon from '@/components/ui/icons/SpotifyIcon';
 import { PublicStudioProfile, PublicContactInfo } from '@/types/public-profile';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/shadcn/dialog';
 
@@ -37,6 +44,33 @@ interface PhoneOption {
  */
 export function ContactSection({ studio, contactInfo }: InfoViewProps) {
     const [phoneModal, setPhoneModal] = useState<{ open: boolean; phones: PhoneOption[]; action: 'call' | 'whatsapp' } | null>(null);
+
+    // Función para obtener icono de red social
+    const getSocialIcon = (plataforma: string | undefined | null) => {
+        if (!plataforma || typeof plataforma !== 'string') {
+            return <Globe className="w-4 h-4" />;
+        }
+
+        const platform = plataforma.toLowerCase();
+        switch (platform) {
+            case 'instagram':
+                return <InstagramIcon className="w-4 h-4" />;
+            case 'facebook':
+                return <FacebookIcon className="w-4 h-4" />;
+            case 'tiktok':
+                return <TikTokIcon className="w-4 h-4" />;
+            case 'youtube':
+                return <YouTubeIcon className="w-4 h-4" />;
+            case 'linkedin':
+                return <LinkedInIcon className="w-4 h-4" />;
+            case 'threads':
+                return <ThreadsIcon className="w-4 h-4" />;
+            case 'spotify':
+                return <SpotifyIcon className="w-4 h-4" />;
+            default:
+                return <Globe className="w-4 h-4" />;
+        }
+    };
 
     // Función para traducir días de la semana al español
     const traducirDia = (dia: string): string => {
@@ -277,6 +311,83 @@ export function ContactSection({ studio, contactInfo }: InfoViewProps) {
                             - abrir en Google Maps
                         </a>
                     )}
+                </div>
+            )}
+
+            {/* Website */}
+            {studio.website && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-zinc-500">Sitio web</h3>
+                    <a
+                        href={studio.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-zinc-300 hover:text-zinc-200 transition-colors flex items-center gap-2"
+                    >
+                        <Globe className="w-4 h-4 text-zinc-400" />
+                        {studio.website}
+                    </a>
+                </div>
+            )}
+
+            {/* Redes Sociales */}
+            {studio.redes_sociales && studio.redes_sociales.length > 0 && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-zinc-500">Redes sociales</h3>
+                    <div className="flex flex-wrap gap-3">
+                        {studio.redes_sociales.map((red, index) => (
+                            <a
+                                key={index}
+                                href={red.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-zinc-300 hover:text-zinc-200 transition-colors"
+                            >
+                                {getSocialIcon(red.plataforma)}
+                                <span className="capitalize text-sm">
+                                    {red.plataforma || 'Red Social'}
+                                </span>
+                            </a>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Email */}
+            {contactInfo.email && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-zinc-500">Correo electrónico</h3>
+                    <a
+                        href={`mailto:${contactInfo.email}`}
+                        className="text-zinc-300 hover:text-zinc-200 transition-colors flex items-center gap-2"
+                    >
+                        <Mail className="w-4 h-4 text-zinc-400" />
+                        {contactInfo.email}
+                    </a>
+                </div>
+            )}
+
+            {/* Palabras Clave */}
+            {studio.keywords && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-zinc-500 flex items-center gap-2">
+                        <Hash className="w-4 h-4" />
+                        Especialidades
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                        {(Array.isArray(studio.keywords)
+                            ? studio.keywords
+                            : studio.keywords.split(',')
+                        ).map((palabra, index) => (
+                            <ZenBadge
+                                key={index}
+                                variant="outline"
+                                className="text-xs bg-zinc-800"
+                            >
+                                {typeof palabra === 'string' ? palabra.trim() : palabra}
+                            </ZenBadge>
+                        ))}
+                    </div>
                 </div>
             )}
 

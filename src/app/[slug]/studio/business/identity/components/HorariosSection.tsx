@@ -49,7 +49,7 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios = [], on
                     // Solo mostrar toast si realmente se inicializaron horarios
                     if (wasInitialized) {
                         toast.success('Horarios inicializados. Recarga la página.');
-            await onDataChange?.();
+                        await onDataChange?.();
                     }
                 } catch (error) {
                     console.error('Error initializing horarios:', error);

@@ -13,7 +13,7 @@ interface SocialTabProps {
 }
 
 export function SocialTab({ builderData, loading, studioSlug, onDataChange }: SocialTabProps) {
-    
+
     if (loading) {
         return (
             <div className="space-y-6">

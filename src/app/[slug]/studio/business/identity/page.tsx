@@ -101,29 +101,29 @@ export default function IdentityPage() {
                 <ZenCardContent className="p-6">
                     <Tabs value={currentTab} onValueChange={handleTabChange}>
                         <TabsList className="grid w-full grid-cols-4 mb-6 bg-zinc-900 p-1 rounded-lg border border-zinc-800">
-                            <TabsTrigger 
+                            <TabsTrigger
                                 value="brand"
                                 className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                             >
-                                Marca
+                                Brand
                             </TabsTrigger>
-                            <TabsTrigger 
+                            <TabsTrigger
                                 value="social"
                                 className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                             >
-                                Redes Sociales
+                                Social
                             </TabsTrigger>
-                            <TabsTrigger 
+                            <TabsTrigger
                                 value="contact"
                                 className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                             >
-                                Contacto
+                                Contact
                             </TabsTrigger>
-                            <TabsTrigger 
+                            <TabsTrigger
                                 value="zones"
                                 className="data-[state=active]:bg-blue-600 data-[state=active]:text-white text-zinc-400 hover:text-white transition-colors"
                             >
-                                Zonas de Trabajo
+                                Work zones
                             </TabsTrigger>
                         </TabsList>
 
