@@ -34,7 +34,7 @@ export async function middleware(request: NextRequest) {
   // Redirigir de /login si hay sesión activa
   if (pathname === '/login') {
     const response = NextResponse.next();
-    
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -49,18 +49,18 @@ export async function middleware(request: NextRequest) {
         },
       }
     )
-    
+
     // Verificar sesión usando getUser() para autenticación segura
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     if (!userError && user) {
       const redirectResult = getRedirectPathForUser(user);
-      
+
       if (redirectResult.shouldRedirect && redirectResult.redirectPath) {
         return NextResponse.redirect(new URL(redirectResult.redirectPath, request.url));
       }
     }
-    
+
     return response;
   }
 
@@ -84,7 +84,7 @@ export async function middleware(request: NextRequest) {
 
   if (isProtectedRoute || isStudioProtected || isClienteProtected || isProfileEditProtected) {
     const response = NextResponse.next();
-    
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -99,10 +99,10 @@ export async function middleware(request: NextRequest) {
         },
       }
     )
-    
+
     // Verificar sesión usando getUser() para autenticación segura
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
+
     if (userError || !user) {
       return NextResponse.redirect(new URL("/login", request.url));
     }
@@ -184,7 +184,7 @@ export async function middleware(request: NextRequest) {
   // Manejar rutas de studio sin slug - redirigir al slug del usuario
   if (pathname.startsWith('/studio') && !pathname.match(/^\/([a-zA-Z0-9-]+)\/studio/)) {
     const response = NextResponse.next();
-    
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -199,7 +199,7 @@ export async function middleware(request: NextRequest) {
         },
       }
     );
-    
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user && user.user_metadata?.studio_slug) {
@@ -252,7 +252,7 @@ function checkRouteAccess(userRole: string, pathname: string): boolean {
     case "studio_owner":
       // Suscriptor y studio_owner pueden acceder a rutas de studio dinámicas [slug]/studio y [slug]/profile/edit
       return pathname.match(/^\/([a-zA-Z0-9-]+)\/studio(\/.*)?$/) !== null ||
-             pathname.match(/^\/([a-zA-Z0-9-]+)\/profile\/edit(\/.*)?$/) !== null;
+        pathname.match(/^\/([a-zA-Z0-9-]+)\/profile\/edit(\/.*)?$/) !== null;
 
     default:
       return false;

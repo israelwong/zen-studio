@@ -10,19 +10,68 @@ interface SectionPreviewProps {
     data?: Record<string, unknown>;
     loading?: boolean;
     faqViewMode?: 'compact' | 'expanded';
+    activeIdentityTab?: 'brand' | 'social' | 'contact' | 'zones';
 }
 
-// Componente IdentidadPreview integrado
-function IdentidadPreview({ data, loading = false }: { data?: Record<string, unknown>; loading?: boolean }) {
-    return (
-        <MobilePreviewContainer
-            data={data}
-            loading={loading}
-            showNavbar={false}
-            showContent={true}
-            contentVariant="skeleton"
-        />
-    );
+// Componente IdentidadPreview integrado con tabs
+function IdentidadPreview({ data, loading = false, activeTab = 'brand' }: { data?: Record<string, unknown>; loading?: boolean; activeTab?: 'brand' | 'social' | 'contact' | 'zones' }) {
+    // Renderizar diferentes previews según el tab activo
+    switch (activeTab) {
+        case 'brand':
+            return (
+                <MobilePreviewContainer
+                    data={data}
+                    loading={loading}
+                    showNavbar={true}
+                    showContent={true}
+                    activeTab="inicio"
+                    contentVariant="info"
+                />
+            );
+        case 'social':
+            return (
+                <MobilePreviewContainer
+                    data={data}
+                    loading={loading}
+                    showNavbar={true}
+                    showContent={true}
+                    activeTab="contacto"
+                    contentVariant="info"
+                />
+            );
+        case 'contact':
+            return (
+                <MobilePreviewContainer
+                    data={data}
+                    loading={loading}
+                    showNavbar={true}
+                    showContent={true}
+                    activeTab="contacto"
+                    contentVariant="info"
+                />
+            );
+        case 'zones':
+            return (
+                <MobilePreviewContainer
+                    data={data}
+                    loading={loading}
+                    showNavbar={true}
+                    showContent={true}
+                    activeTab="contacto"
+                    contentVariant="info"
+                />
+            );
+        default:
+            return (
+                <MobilePreviewContainer
+                    data={data}
+                    loading={loading}
+                    showNavbar={false}
+                    showContent={true}
+                    contentVariant="skeleton"
+                />
+            );
+    }
 }
 
 // Componente ContactoPreview integrado
@@ -110,13 +159,14 @@ function FAQPreview({ data, loading = false, faqViewMode = 'expanded' }: { data?
     );
 }
 
-export function SectionPreview({ section, studioSlug, data, loading = false, faqViewMode }: SectionPreviewProps) {
+export function SectionPreview({ section, studioSlug, data, loading = false, faqViewMode, activeIdentityTab }: SectionPreviewProps) {
     // studioSlug is available for future use if needed
     console.log('SectionPreview for studio:', studioSlug);
 
     switch (section) {
         case 'identidad':
-            return <IdentidadPreview data={data} loading={loading} />;
+        case 'identity':
+            return <IdentidadPreview data={data} loading={loading} activeTab={activeIdentityTab} />;
         case 'inicio':
             return <InicioPreview data={data} loading={loading} />;
         case 'posts':

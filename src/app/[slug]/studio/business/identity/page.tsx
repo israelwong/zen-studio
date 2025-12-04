@@ -65,11 +65,12 @@ export default function IdentityPage() {
     } : null;
 
     return (
-        <SectionLayout 
-            section="identity" 
-            studioSlug={studioSlug} 
-            data={previewData as unknown as Record<string, unknown>} 
+        <SectionLayout
+            section="identity"
+            studioSlug={studioSlug}
+            data={previewData as unknown as Record<string, unknown>}
             loading={loading}
+            activeIdentityTab={currentTab}
         >
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
