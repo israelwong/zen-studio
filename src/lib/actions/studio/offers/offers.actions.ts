@@ -1158,3 +1158,74 @@ export async function reorderOffers(
     return { success: false, error: "Error al reordenar las ofertas" };
   }
 }
+
+/**
+ * Obtener ofertas públicas activas de un estudio para mostrar en el perfil público
+ */
+export async function getPublicActiveOffers(studioSlug: string) {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      const now = new Date();
+
+      const offers = await prisma.studio_offers.findMany({
+        where: {
+          studio_id: studio.id,
+          is_active: true,
+          OR: [
+            // Ofertas permanentes
+            { is_permanent: true },
+            // Ofertas con rango de fechas válido
+            {
+              has_date_range: true,
+              start_date: { lte: now },
+              end_date: { gte: now },
+            },
+          ],
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          slug: true,
+          cover_media_url: true,
+          cover_media_type: true,
+          is_permanent: true,
+          has_date_range: true,
+          start_date: true,
+          end_date: true,
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
+
+      return {
+        success: true,
+        data: offers.map(offer => ({
+          id: offer.id,
+          name: offer.name,
+          description: offer.description,
+          slug: offer.slug,
+          cover_media_url: offer.cover_media_url,
+          cover_media_type: offer.cover_media_type as "image" | "video" | null,
+          is_permanent: offer.is_permanent,
+          has_date_range: offer.has_date_range,
+          start_date: offer.start_date,
+          end_date: offer.end_date,
+        })),
+      };
+    });
+  } catch (error) {
+    console.error("[getPublicActiveOffers] Error:", error);
+    return { success: false, error: "Error al obtener ofertas públicas" };
+  }
+}

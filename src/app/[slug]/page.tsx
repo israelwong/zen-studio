@@ -1,6 +1,7 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
 import { getStudioProfileBySlug } from '@/lib/actions/public/profile.actions';
+import { getPublicActiveOffers } from '@/lib/actions/studio/offers/offers.actions';
 import { ProfilePageClient } from './profile/public/ProfilePageClient';
 import { Metadata } from 'next';
 
@@ -27,6 +28,9 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
 
         const profileData = result.data;
 
+        // Fetch public active offers
+        const offersResult = await getPublicActiveOffers(slug);
+        const offers = offersResult.success && offersResult.data ? offersResult.data : [];
 
         // Map items to include required properties
         const mappedProfileData = {
@@ -61,7 +65,11 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
         };
 
         return (
-            <ProfilePageClient profileData={mappedProfileData} studioSlug={slug} />
+            <ProfilePageClient
+                profileData={mappedProfileData}
+                studioSlug={slug}
+                offers={offers}
+            />
         );
     } catch (error) {
         console.error('❌ [PublicProfilePage] Error:', error);

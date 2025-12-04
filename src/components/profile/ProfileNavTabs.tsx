@@ -25,7 +25,7 @@ export function ProfileNavTabs({ activeTab, onTabChange }: ProfileNavTabsProps) 
     ];
 
     return (
-        <div className="bg-zinc-900/50 backdrop-blur-lg p-2">
+        <div className="p-2">
             <nav className="flex gap-2">
                 {tabs.map((tab) => {
                     const isActive = activeTab === tab.id;

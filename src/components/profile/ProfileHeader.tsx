@@ -34,52 +34,54 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
     }
 
     return (
-        <div className="sticky top-0 z-10 bg-zinc-900/90 backdrop-blur-lg w-full px-4 py-4">
-            <div className="flex items-center">
-                {/* Columna 1: Logo, nombre y slogan */}
-                <div className="flex items-center space-x-3 flex-1">
-                    {/* Logo/Avatar */}
-                    <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {loading ? (
-                            <div className="w-6 h-6 bg-zinc-600 rounded-lg animate-pulse"></div>
-                        ) : studioData.logo_url ? (
-                            <Image
-                                src={studioData.logo_url}
-                                alt="Logo"
-                                width={40}
-                                height={40}
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <div className="w-6 h-6 bg-zinc-500 rounded-lg"></div>
-                        )}
+        <div className="sticky top-0 z-10 bg-zinc-900/50 backdrop-blur-lg w-full">
+            <div className="w-full mx-auto max-w-[920px] px-4 py-5">
+                <div className="flex items-center">
+                    {/* Columna 1: Logo, nombre y slogan */}
+                    <div className="flex items-center space-x-3 flex-1">
+                        {/* Logo/Avatar */}
+                        <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                            {loading ? (
+                                <div className="w-6 h-6 bg-zinc-600 rounded-lg animate-pulse"></div>
+                            ) : studioData.logo_url ? (
+                                <Image
+                                    src={studioData.logo_url}
+                                    alt="Logo"
+                                    width={40}
+                                    height={40}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-6 h-6 bg-zinc-500 rounded-lg"></div>
+                            )}
+                        </div>
+
+                        {/* Información del estudio */}
+                        <div className="flex-1">
+                            {loading ? (
+                                <>
+                                    <div className="h-4 bg-zinc-700 rounded animate-pulse mb-2 w-32"></div>
+                                    <div className="h-3 bg-zinc-700 rounded animate-pulse w-24"></div>
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="text-white font-semibold text-sm">
+                                        {studioData.studio_name}
+                                    </h1>
+                                    {studioData.slogan && (
+                                        <p className="text-zinc-400 text-xs">
+                                            {studioData.slogan}
+                                        </p>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
 
-                    {/* Información del estudio */}
-                    <div className="flex-1">
-                        {loading ? (
-                            <>
-                                <div className="h-4 bg-zinc-700 rounded animate-pulse mb-2 w-32"></div>
-                                <div className="h-3 bg-zinc-700 rounded animate-pulse w-24"></div>
-                            </>
-                        ) : (
-                            <>
-                                <h1 className="text-white font-semibold text-sm">
-                                    {studioData.studio_name}
-                                </h1>
-                                {studioData.slogan && (
-                                    <p className="text-zinc-400 text-xs">
-                                        {studioData.slogan}
-                                    </p>
-                                )}
-                            </>
-                        )}
+                    {/* Columna 2: Botón Editar (si es dueño y showEditButton es true) */}
+                    <div className="flex justify-end items-center">
+                        {showEditButton && studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
                     </div>
-                </div>
-
-                {/* Columna 2: Botón Editar (si es dueño y showEditButton es true) */}
-                <div className="flex justify-end items-center">
-                    {showEditButton && studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
                 </div>
             </div>
         </div>

@@ -28,6 +28,7 @@ export { ProfileAIChat } from './ProfileAIChat';
 export { ZenCreditsCard } from './cards/ZenCreditsCard';
 export { BusinessPresentationCard } from './cards/BusinessPresentationCard';
 export { PromotionsCard } from './cards/PromotionsCard';
+export { OffersCard } from './cards/OffersCard';
 
 // Mobile Components (new)
 export { MobilePromotionsSection } from './mobile/MobilePromotionsSection';

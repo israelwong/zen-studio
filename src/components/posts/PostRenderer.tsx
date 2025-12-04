@@ -1,12 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { ZenButton } from "@/components/ui/zen";
 import {
   Heart,
   Share2,
   MessageCircle,
   Calendar,
-  MapPin,
   Phone,
   ExternalLink
 } from "lucide-react";
@@ -37,7 +37,10 @@ interface PostRendererProps {
 }
 
 export function PostRenderer({ post, studioSlug }: PostRendererProps) {
-  const media = Array.isArray(post.media) ? post.media : [];
+  // Filtrar media que tenga id definido (requerido por ImageCarousel)
+  const media = Array.isArray(post.media)
+    ? post.media.filter((m): m is MediaItem & { id: string } => !!m.id)
+    : [];
   const hasMultipleMedia = media.length > 1;
 
   const handleCTAClick = () => {
@@ -117,13 +120,39 @@ export function PostRenderer({ post, studioSlug }: PostRendererProps) {
       {/* Media */}
       {media.length > 0 ? (
         <div className="relative w-full">
-          <ImageCarousel
-            media={media}
-            showArrows={hasMultipleMedia}
-            showDots={hasMultipleMedia}
-            autoplay={0}
-            className="aspect-square"
-          />
+          {!hasMultipleMedia && media[0] ? (
+            // Una sola imagen/video: fullwidth
+            media[0].file_type === 'image' ? (
+              <Image
+                src={media[0].file_url}
+                alt={media[0].filename}
+                width={800}
+                height={800}
+                className="w-full h-auto object-cover aspect-square"
+                unoptimized
+              />
+            ) : (
+              <video
+                src={media[0].file_url}
+                controls
+                autoPlay
+                muted
+                loop
+                playsInline
+                poster={media[0].thumbnail_url}
+                className="w-full h-auto object-cover aspect-square"
+              />
+            )
+          ) : (
+            // Múltiples items: carousel
+            <ImageCarousel
+              media={media}
+              showArrows={true}
+              showDots={true}
+              autoplay={0}
+              className="aspect-square"
+            />
+          )}
         </div>
       ) : (
         <div className="w-full aspect-square bg-zinc-800 flex items-center justify-center">
