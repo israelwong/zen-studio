@@ -9,6 +9,8 @@ export type ContentType = 'POST' | 'PORTFOLIO' | 'OFFER' | 'PACKAGE';
 export type AnalyticsEventType =
   | 'PAGE_VIEW'
   | 'FEED_VIEW'
+  | 'SIDEBAR_VIEW'     // Oferta visible en sidebar
+  | 'OFFER_CLICK'      // Click en oferta
   | 'MODAL_OPEN'
   | 'MODAL_CLOSE'
   | 'NEXT_CONTENT'
@@ -59,11 +61,11 @@ const DEDUPE_WINDOW = 3000; // 3 segundos
 export async function trackContentEvent(input: TrackEventInput) {
   try {
     const headersList = headers();
-    
+
     // Obtener contexto del request
-    const ip_address = headersList.get('x-forwarded-for')?.split(',')[0] || 
-                      headersList.get('x-real-ip') || 
-                      'unknown';
+    const ip_address = headersList.get('x-forwarded-for')?.split(',')[0] ||
+      headersList.get('x-real-ip') ||
+      'unknown';
     const user_agent = headersList.get('user-agent') || undefined;
     const referrer = headersList.get('referer') || undefined;
 
@@ -90,12 +92,12 @@ export async function trackContentEvent(input: TrackEventInput) {
     // Deduplicación de eventos
     const dedupeKey = `${input.contentId}:${input.eventType}:${input.sessionId || rateLimitKey}`;
     const lastTracked = eventDedupeCache.get(dedupeKey);
-    
+
     if (lastTracked && now - lastTracked < DEDUPE_WINDOW) {
       console.debug('[Analytics] Duplicate event ignored', dedupeKey);
       return { success: true, deduplicated: true };
     }
-    
+
     eventDedupeCache.set(dedupeKey, now);
 
     // Extraer UTM params del referrer si existe
@@ -108,7 +110,7 @@ export async function trackContentEvent(input: TrackEventInput) {
         utm_campaign = url.searchParams.get('utm_campaign') || undefined;
         utm_term = url.searchParams.get('utm_term') || undefined;
         utm_content = url.searchParams.get('utm_content') || undefined;
-      } catch {}
+      } catch { }
     }
 
     // Agregar a queue (batch writes)
@@ -143,7 +145,7 @@ export async function trackContentEvent(input: TrackEventInput) {
 if (typeof setInterval !== 'undefined') {
   setInterval(() => {
     const now = Date.now();
-    
+
     // Limpiar rate limit cache
     for (const [key, value] of rateLimitCache.entries()) {
       if (now > value.resetAt) {

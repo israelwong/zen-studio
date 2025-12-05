@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { Sparkles, ArrowRight } from 'lucide-react';
+import { OfferCardWithTracking } from './OfferCardWithTracking';
+import { useParams } from 'next/navigation';
 
 interface PublicOffer {
     id: string;
@@ -20,8 +22,15 @@ interface OffersCardProps {
 /**
  * OffersCard - Card de ofertas activas para sidebar
  * Muestra ofertas públicas activas del estudio
+ * 
+ * Smart Analytics:
+ * - SIDEBAR_VIEW: Trackea cuando oferta es visible ≥50% durante ≥1s
+ * - OFFER_CLICK: Trackea cuando hacen click
  */
 export function OffersCard({ offers, studioSlug }: OffersCardProps) {
+    const params = useParams();
+    const studioId = params?.slug as string;
+
     // No mostrar card si no hay ofertas
     if (!offers || offers.length === 0) {
         return null;
@@ -50,48 +59,12 @@ export function OffersCard({ offers, studioSlug }: OffersCardProps) {
             {/* Content */}
             <div className="space-y-3">
                 {displayOffers.map((offer) => (
-                    <a
+                    <OfferCardWithTracking
                         key={offer.id}
-                        href={`/${studioSlug}/offer/${offer.slug}`}
-                        className="block"
-                    >
-                        <div className="bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 backdrop-blur-sm hover:border-purple-500/30 transition-all group">
-                            {/* Cover Media */}
-                            <div className="relative w-full bg-zinc-800 aspect-[4/3]">
-                                {offer.cover_media_url ? (
-                                    offer.cover_media_type === 'video' ? (
-                                        <video
-                                            src={offer.cover_media_url}
-                                            className="w-full h-full object-cover"
-                                            autoPlay
-                                            muted
-                                            loop
-                                            playsInline
-                                        />
-                                    ) : (
-                                        <img
-                                            src={offer.cover_media_url}
-                                            alt={offer.name}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    )
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900">
-                                        <svg className="w-12 h-12 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="px-3 py-2 border-t border-zinc-800/50">
-                                <p className="text-sm font-medium text-zinc-300 group-hover:text-purple-400 transition-colors">
-                                    {offer.name}
-                                </p>
-                            </div>
-                        </div>
-                    </a>
+                        offer={offer}
+                        studioId={studioId}
+                        studioSlug={studioSlug}
+                    />
                 ))}
             </div>
 

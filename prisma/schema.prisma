@@ -3082,10 +3082,12 @@ enum AnalyticsEventType {
   // Vistas
   PAGE_VIEW       // Página dedicada cargada
   FEED_VIEW       // Renderizado en feed/listado
+  SIDEBAR_VIEW    // Oferta visible en sidebar
   
   // Interacciones básicas
   MODAL_OPEN      // Click para abrir modal/detalle
   MODAL_CLOSE     // Cerrar modal
+  OFFER_CLICK     // Click en oferta
   
   // Navegación
   NEXT_CONTENT    // Navegar al siguiente
