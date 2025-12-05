@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PublicProfileData } from '@/types/public-profile';
 import {
@@ -14,6 +14,7 @@ import {
     QuickActions
 } from '@/components/profile';
 import { PostDetailModal } from '@/components/profile/sections/PostDetailModal';
+import { PortfolioDetailModal } from '@/components/profile/sections/PortfolioDetailModal';
 import { ProfileContentView } from './ProfileContentView';
 
 interface PublicOffer {
@@ -34,23 +35,31 @@ interface ProfilePageClientProps {
 /**
  * ProfilePageClient - Main client component for public profile
  * Nueva estructura unificada responsive: mobile-first con 2 columnas en desktop
- * Maneja modal de post detalle con query params
+ * Maneja modals de post y portfolio con query params
  */
 export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<string>('inicio');
     const [selectedPostSlug, setSelectedPostSlug] = useState<string | null>(null);
+    const [selectedPortfolioSlug, setSelectedPortfolioSlug] = useState<string | null>(null);
 
-    const { studio, paquetes, posts } = profileData;
+    const { studio, paquetes, posts, portfolios } = profileData;
 
-    // Sincronizar query param con modal
+    // Sincronizar query params con modals
     useEffect(() => {
         const postParam = searchParams.get('post');
+        const portfolioParam = searchParams.get('portfolio');
+
         if (postParam) {
             setSelectedPostSlug(postParam);
+            setSelectedPortfolioSlug(null);
+        } else if (portfolioParam) {
+            setSelectedPortfolioSlug(portfolioParam);
+            setSelectedPostSlug(null);
         } else {
             setSelectedPostSlug(null);
+            setSelectedPortfolioSlug(null);
         }
     }, [searchParams]);
 
@@ -62,6 +71,7 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
 
     const handleCloseModal = () => {
         setSelectedPostSlug(null);
+        setSelectedPortfolioSlug(null);
         router.push(`/${studioSlug}`, { scroll: false });
     };
 
@@ -82,6 +92,32 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
             const prevSlug = publishedPosts[currentIndex - 1].slug;
             setSelectedPostSlug(prevSlug);
             router.push(`/${studioSlug}?post=${prevSlug}`, { scroll: false });
+        }
+    };
+
+    // Handlers para modal de portfolio
+    const handlePortfolioClick = (portfolioSlug: string) => {
+        setSelectedPortfolioSlug(portfolioSlug);
+        router.push(`/${studioSlug}?portfolio=${portfolioSlug}`, { scroll: false });
+    };
+
+    const handleNextPortfolio = () => {
+        if (!selectedPortfolioSlug || portfolios.length === 0) return;
+        const currentIndex = portfolios.findIndex(p => p.slug === selectedPortfolioSlug);
+        if (currentIndex >= 0 && currentIndex < portfolios.length - 1) {
+            const nextSlug = portfolios[currentIndex + 1].slug;
+            setSelectedPortfolioSlug(nextSlug);
+            router.push(`/${studioSlug}?portfolio=${nextSlug}`, { scroll: false });
+        }
+    };
+
+    const handlePrevPortfolio = () => {
+        if (!selectedPortfolioSlug || portfolios.length === 0) return;
+        const currentIndex = portfolios.findIndex(p => p.slug === selectedPortfolioSlug);
+        if (currentIndex > 0) {
+            const prevSlug = portfolios[currentIndex - 1].slug;
+            setSelectedPortfolioSlug(prevSlug);
+            router.push(`/${studioSlug}?portfolio=${prevSlug}`, { scroll: false });
         }
     };
 
@@ -110,10 +146,16 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
         }
     } : null;
 
-    // Calcular índice y disponibilidad de navegación
+    // Calcular índice y disponibilidad de navegación para posts
     const currentPostIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
-    const hasNext = currentPostIndex >= 0 && currentPostIndex < publishedPosts.length - 1;
-    const hasPrev = currentPostIndex > 0;
+    const hasNextPost = currentPostIndex >= 0 && currentPostIndex < publishedPosts.length - 1;
+    const hasPrevPost = currentPostIndex > 0;
+
+    // Preparar portfolio seleccionado con info de disponibilidad de navegación
+    const selectedPortfolio = portfolios.find(p => p.slug === selectedPortfolioSlug);
+    const currentPortfolioIndex = portfolios.findIndex(p => p.slug === selectedPortfolioSlug);
+    const hasNextPortfolio = currentPortfolioIndex >= 0 && currentPortfolioIndex < portfolios.length - 1;
+    const hasPrevPortfolio = currentPortfolioIndex > 0;
 
     return (
         <div className="min-h-screen bg-zinc-950">
@@ -150,6 +192,7 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
                                 activeTab={activeTab}
                                 profileData={profileData}
                                 onPostClick={handlePostClick}
+                                onPortfolioClick={handlePortfolioClick}
                                 studioId={studio.id}
                                 ownerUserId={studio.owner_id}
                             />
@@ -202,8 +245,22 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
                 onClose={handleCloseModal}
                 onNext={handleNextPost}
                 onPrev={handlePrevPost}
-                hasNext={hasNext}
-                hasPrev={hasPrev}
+                hasNext={hasNextPost}
+                hasPrev={hasPrevPost}
+            />
+
+            {/* Portfolio Detail Modal */}
+            <PortfolioDetailModal
+                portfolio={selectedPortfolio || null}
+                studioSlug={studioSlug}
+                studioId={studio.id}
+                ownerUserId={studio.owner_id}
+                isOpen={!!selectedPortfolioSlug}
+                onClose={handleCloseModal}
+                onNext={handleNextPortfolio}
+                onPrev={handlePrevPortfolio}
+                hasNext={hasNextPortfolio}
+                hasPrev={hasPrevPortfolio}
             />
         </div>
     );

@@ -10,6 +10,7 @@ interface ProfileContentProps {
     loading?: boolean;
     hidePortfolioHeader?: boolean; // Ocultar título y categoría en portfolio-detail cuando está en modo preview del editor
     onPostClick?: (postSlug: string) => void;
+    onPortfolioClick?: (portfolioSlug: string) => void;
     studioId?: string;
     ownerUserId?: string | null;
 }
@@ -28,6 +29,7 @@ export function ProfileContent({
     loading = false,
     hidePortfolioHeader = false,
     onPostClick,
+    onPortfolioClick,
     studioId,
     ownerUserId
 }: ProfileContentProps) {
@@ -117,7 +119,7 @@ export function ProfileContent({
     // Portfolio content
     if (variant === 'portfolio') {
         const portfolios = data?.portfolios as PublicPortfolio[] || [];
-        return <PortfolioSection portfolios={portfolios} />;
+        return <PortfolioSection portfolios={portfolios} onPortfolioClick={onPortfolioClick} studioId={studioId} ownerUserId={ownerUserId} />;
     }
 
     // Portfolio detail content (para editor)

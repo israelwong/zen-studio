@@ -1,19 +1,22 @@
 import React from 'react';
-import Image from 'next/image';
 import { PublicPortfolio } from '@/types/public-profile';
-import { ZenCard, ZenCardContent, ZenCardTitle } from '@/components/ui/zen';
+import { PortfolioFeedCardWithTracking } from './PortfolioFeedCardWithTracking';
+import { PortfolioFeedCard } from './PortfolioFeedCard';
 import { Image as ImageIcon } from 'lucide-react';
 
 interface PortfolioSectionProps {
     portfolios: PublicPortfolio[];
+    onPortfolioClick?: (portfolioSlug: string) => void;
+    studioId?: string;
+    ownerUserId?: string | null;
 }
 
 /**
  * PortfolioSection - Sección específica de portafolio
- * Muestra los portafolios del estudio de forma organizada
- * Hardcodeado simple para demostración
+ * Usa PortfolioFeedCard para consistencia con posts
+ * Con tracking si studioId está disponible
  */
-export function PortfolioSection({ portfolios }: PortfolioSectionProps) {
+export function PortfolioSection({ portfolios, onPortfolioClick, studioId, ownerUserId }: PortfolioSectionProps) {
     if (portfolios.length === 0) {
         return (
             <div className="p-8 text-center">
@@ -34,38 +37,29 @@ export function PortfolioSection({ portfolios }: PortfolioSectionProps) {
         <div className="p-4 space-y-6">
             {/* Portfolios Fullwidth */}
             <div className="space-y-6">
-                {portfolios.map((portfolio) => (
-                    <ZenCard key={portfolio.id} className="overflow-hidden">
-                        <div className="flex flex-col">
-                            {/* Cover Image */}
-                            <div className="relative w-full aspect-video bg-zinc-800 overflow-hidden">
-                                {portfolio.cover_image_url ? (
-                                    <Image
-                                        src={portfolio.cover_image_url}
-                                        alt={portfolio.title}
-                                        fill
-                                        className="object-cover"
-                                        sizes="100vw"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <ImageIcon className="h-12 w-12 text-zinc-500" />
-                                    </div>
-                                )}
-                            </div>
+                {portfolios.map((portfolio) => {
+                    // Si tenemos studioId, usar versión con tracking
+                    if (studioId) {
+                        return (
+                            <PortfolioFeedCardWithTracking
+                                key={portfolio.id}
+                                portfolio={portfolio}
+                                studioId={studioId}
+                                ownerUserId={ownerUserId}
+                                onPortfolioClick={onPortfolioClick}
+                            />
+                        );
+                    }
 
-                            {/* Content: Title */}
-                            <ZenCardContent className="p-6">
-                                <div className="space-y-4">
-                                    {/* Title */}
-                                    <ZenCardTitle className="text-xl font-semibold text-white">
-                                        {portfolio.title}
-                                    </ZenCardTitle>
-                                </div>
-                            </ZenCardContent>
-                        </div>
-                    </ZenCard>
-                ))}
+                    // Sin studioId, usar card básico
+                    return (
+                        <PortfolioFeedCard
+                            key={portfolio.id}
+                            portfolio={portfolio}
+                            onPortfolioClick={onPortfolioClick}
+                        />
+                    );
+                })}
             </div>
         </div>
     );
