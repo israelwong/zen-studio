@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation';
 
 interface StudioPageProps {
-    params: {
+    params: Promise<{
         slug: string;
-    };
+    }>;
 }
 
-export default function StudioPage({ params }: StudioPageProps) {
+export default async function StudioPage({ params }: StudioPageProps) {
+    const { slug } = await params;
     // Redirect to dashboard
-    redirect(`/${params.slug}/studio/commercial/dashboard`);
+    redirect(`/${slug}/studio/commercial/dashboard`);
 }
