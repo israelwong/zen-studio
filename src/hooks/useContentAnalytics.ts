@@ -75,13 +75,13 @@ export function useContentAnalytics({
   const trackModalOpen = useCallback(() => track('MODAL_OPEN'), [track]);
   const trackModalClose = useCallback(() => track('MODAL_CLOSE'), [track]);
   const trackLinkCopy = useCallback(() => track('LINK_COPY'), [track]);
-  const trackMediaClick = useCallback((mediaId?: string) => 
-    track('MEDIA_CLICK', mediaId ? { media_id: mediaId } : undefined), 
+  const trackMediaClick = useCallback((mediaId?: string) =>
+    track('MEDIA_CLICK', mediaId ? { media_id: mediaId } : undefined),
     [track]
   );
   const trackCarouselNext = useCallback(() => track('CAROUSEL_NEXT'), [track]);
   const trackCarouselPrev = useCallback(() => track('CAROUSEL_PREV'), [track]);
-  const trackCTAClick = useCallback((ctaType?: string) => 
+  const trackCTAClick = useCallback((ctaType?: string) =>
     track('CTA_CLICK', ctaType ? { cta_type: ctaType } : undefined),
     [track]
   );

@@ -88,11 +88,11 @@ export function MainSection({ posts, onPostClick, studioId, ownerUserId }: MainS
 
                     {/* Post con Analytics Tracking */}
                     <div className="py-6 px-4">
-                        <PostFeedCardWithTracking 
-                            post={post} 
+                        <PostFeedCardWithTracking
+                            post={post}
                             studioId={studioId || ''}
                             ownerUserId={ownerUserId}
-                            onPostClick={onPostClick} 
+                            onPostClick={onPostClick}
                         />
                     </div>
                 </React.Fragment>

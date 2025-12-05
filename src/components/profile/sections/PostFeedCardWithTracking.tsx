@@ -40,11 +40,11 @@ interface PostFeedCardWithTrackingProps {
  * - Durante ≥1 segundo
  * - Solo una vez por sesión
  */
-export function PostFeedCardWithTracking({ 
-    post, 
+export function PostFeedCardWithTracking({
+    post,
     studioId,
     ownerUserId,
-    onPostClick 
+    onPostClick
 }: PostFeedCardWithTrackingProps) {
     const cardRef = useRef<HTMLDivElement>(null);
     const hasTrackedView = useRef(false);
@@ -62,7 +62,7 @@ export function PostFeedCardWithTracking({
             ([entry]) => {
                 // Post visible al menos 50%
                 if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-                    
+
                     // Iniciar timer de 1 segundo para confirmar vista
                     if (!hasTrackedView.current && !viewTimer.current) {
                         viewTimer.current = setTimeout(() => {
@@ -102,8 +102,8 @@ export function PostFeedCardWithTracking({
 
     return (
         <div ref={cardRef}>
-            <PostFeedCard 
-                post={post} 
+            <PostFeedCard
+                post={post}
                 onPostClick={onPostClick}
             />
         </div>
