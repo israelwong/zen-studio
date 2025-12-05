@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, LayoutDashboard, UserPlus, LogIn } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PublicProfileEditButton } from './PublicProfileEditButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,6 +51,20 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
         if (studioSlug) {
             router.push(`/${studioSlug}/profile/edit/content/portfolios/nuevo`);
         }
+    };
+
+    const handleDashboard = () => {
+        if (studioSlug) {
+            window.open(`/${studioSlug}/studio/commercial/dashboard`, '_blank');
+        }
+    };
+
+    const handleSignUp = () => {
+        router.push('/sign-up');
+    };
+
+    const handleLogin = () => {
+        router.push('/login');
     };
 
     const handleLogout = async () => {
@@ -110,51 +124,81 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
                         </div>
                     </div>
 
-                    {/* Columna 2: Quick Actions + Botón Editar + Cerrar Sesión */}
+                    {/* Columna 2: Acciones según estado de autenticación */}
                     <div className="flex items-center gap-2">
-                        {/* Quick Actions - Solo si está autenticado */}
-                        {user && studioSlug && (
+                        {user ? (
                             <>
-                                {/* Desktop: Botones separados */}
-                                <div className="hidden sm:flex items-center gap-2">
-                                    <button
-                                        onClick={handleNewPost}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
-                                        aria-label="Crear post"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" />
-                                        Post
-                                    </button>
-                                    <button
-                                        onClick={handleNewPortfolio}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
-                                        aria-label="Crear portfolio"
-                                    >
-                                        <Plus className="w-3.5 h-3.5" />
-                                        Portfolio
-                                    </button>
-                                </div>
+                                {/* Usuario autenticado: Quick Actions + Dashboard + Editar + Salir */}
+                                {studioSlug && (
+                                    <>
+                                        {/* Desktop: Botones separados */}
+                                        <div className="hidden sm:flex items-center gap-2">
+                                            <button
+                                                onClick={handleNewPost}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                                aria-label="Crear post"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Post
+                                            </button>
+                                            <button
+                                                onClick={handleNewPortfolio}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                                aria-label="Crear portfolio"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Portfolio
+                                            </button>
+                                        </div>
 
-                                {/* Mobile: Solo FAB flotante (se mantiene en QuickActions) */}
+                                        {/* Botón Dashboard */}
+                                        <button
+                                            onClick={handleDashboard}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-emerald-400 hover:bg-zinc-800 rounded-md transition-colors"
+                                            aria-label="Abrir dashboard"
+                                        >
+                                            <LayoutDashboard className="w-3.5 h-3.5" />
+                                            <span className="hidden sm:inline">Dashboard</span>
+                                        </button>
+                                    </>
+                                )}
+
+                                {/* Botón Editar */}
+                                {showEditButton && studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
+
+                                {/* Botón Cerrar Sesión */}
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={isLoggingOut}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    aria-label="Cerrar sesión"
+                                >
+                                    <LogOut className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">
+                                        {isLoggingOut ? 'Cerrando...' : 'Salir'}
+                                    </span>
+                                </button>
                             </>
-                        )}
-
-                        {/* Botón Editar */}
-                        {showEditButton && studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
-
-                        {/* Botón Cerrar Sesión - Solo si está autenticado */}
-                        {user && (
-                            <button
-                                onClick={handleLogout}
-                                disabled={isLoggingOut}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                aria-label="Cerrar sesión"
-                            >
-                                <LogOut className="w-3.5 h-3.5" />
-                                <span className="hidden sm:inline">
-                                    {isLoggingOut ? 'Cerrando...' : 'Salir'}
-                                </span>
-                            </button>
+                        ) : (
+                            <>
+                                {/* Usuario no autenticado: Crear cuenta + Iniciar sesión */}
+                                <button
+                                    onClick={handleSignUp}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-100 bg-emerald-600 hover:bg-emerald-500 rounded-md transition-colors"
+                                    aria-label="Crear cuenta"
+                                >
+                                    <UserPlus className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Crear cuenta</span>
+                                </button>
+                                <button
+                                    onClick={handleLogin}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                    aria-label="Iniciar sesión"
+                                >
+                                    <LogIn className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Iniciar sesión</span>
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>
