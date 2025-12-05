@@ -45,44 +45,36 @@ export function StudioLayoutWrapper({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
-      {/* AppHeader - Fixed top, full width, above everything */}
-      <AppHeader studioSlug={studioSlug} onCommandOpen={() => setCommandOpen(true)} />
+      {/* COLUMNA 1: Sidebar Izquierdo (Navegación) */}
+      <StudioSidebar studioSlug={studioSlug} />
 
-      {/* Main Container - Flex row sin padding */}
-      <div className="flex flex-1">
-        {/* Left Column: Sidebar + Main Content con padding top */}
-        <div className="flex flex-1 pt-14">
-          {/* COLUMNA 1: Sidebar Izquierdo (Navegación) */}
-          <StudioSidebar studioSlug={studioSlug} />
-
-          {/* COLUMNA 2: Área de Trabajo (Main) */}
-          <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
-            <div className="flex-1 overflow-y-auto bg-zinc-900/40">
-              <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
-                {children}
-              </div>
-            </div>
-            <CommandMenu
-              studioSlug={studioSlug}
-              onAgendaClick={handleAgendaClick}
-              onContactsClick={handleContactsClick}
-              onMagicClick={handleMagicClick}
-              onPersonalClick={handlePersonalClick}
-              open={commandOpen}
-              onOpenChange={setCommandOpen}
-            />
-          </main>
+      {/* COLUMNA 2: Área de Trabajo (Main) */}
+      <main className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+        <AppHeader studioSlug={studioSlug} onCommandOpen={() => setCommandOpen(true)} />
+        <div className="flex-1 overflow-y-auto bg-zinc-900/40">
+          <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
+            {children}
+          </div>
         </div>
-
-        {/* Right Column: Utility Dock SIN padding top (llega hasta arriba) */}
-        <UtilityDock
+        <CommandMenu
           studioSlug={studioSlug}
           onAgendaClick={handleAgendaClick}
           onContactsClick={handleContactsClick}
           onMagicClick={handleMagicClick}
           onPersonalClick={handlePersonalClick}
+          open={commandOpen}
+          onOpenChange={setCommandOpen}
         />
-      </div>
+      </main>
+
+      {/* COLUMNA 3: Utility Dock (Herramientas) */}
+      <UtilityDock
+        studioSlug={studioSlug}
+        onAgendaClick={handleAgendaClick}
+        onContactsClick={handleContactsClick}
+        onMagicClick={handleMagicClick}
+        onPersonalClick={handlePersonalClick}
+      />
 
       {/* ZEN Magic Chat (siempre al final) */}
       <ZenMagicChatWrapper studioSlug={studioSlug} />

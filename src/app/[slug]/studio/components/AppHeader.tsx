@@ -28,7 +28,7 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
     }, []);
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur-sm">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur-sm">
             {/* LEFT: ZEN Branding + Studio Name */}
             <div className="flex items-center gap-3 min-w-0">
                 {/* Hamburger Menu - Mobile only */}
