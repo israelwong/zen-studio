@@ -47,7 +47,7 @@ export async function getStudioProfileBySlug(
                     plan_id: true,
                     studio_users: {
                         where: {
-                            type: 'owner',
+                            role: 'owner',
                             is_active: true
                         },
                         select: {
