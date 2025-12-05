@@ -34,7 +34,7 @@ export function PortfolioCardMenu({ portfolioId, portfolioSlug, studioSlug, isPu
     }
 
     const handleEdit = () => {
-        router.push(`/${studioSlug}/profile/edit/content/portfolios/${portfolioId}/editar`);
+        router.push(`/${studioSlug}/profile/portfolio/${portfolioId}`);
         setIsOpen(false);
     };
 

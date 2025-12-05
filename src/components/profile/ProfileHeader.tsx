@@ -52,7 +52,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
 
     const handleNewPortfolio = () => {
         if (studioSlug) {
-            router.push(`/${studioSlug}/profile/edit/content/portfolios/nuevo`);
+            router.push(`/${studioSlug}/profile/portfolio/nuevo`);
         }
     };
 
