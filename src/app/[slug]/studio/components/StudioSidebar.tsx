@@ -16,6 +16,7 @@ import {
     Home,
     CreditCard,
     Inbox,
+    BarChart3,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -36,6 +37,7 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             icon: Briefcase,
             items: [
                 { id: 'dashboard', name: 'Dashboard', href: `/commercial/dashboard`, icon: Home },
+                { id: 'analytics', name: 'Analytics', href: `/analytics`, icon: BarChart3 },
                 { id: 'inbox', name: 'Inbox', href: `/commercial/inbox`, icon: Inbox },
 
                 { id: 'ofertas', name: 'Offers', href: `/commercial/ofertas`, icon: Megaphone },
