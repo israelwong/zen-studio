@@ -1,11 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
-import { Plus } from 'lucide-react';
+import { Plus, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PublicProfileEditButton } from './PublicProfileEditButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { logout } from '@/lib/actions/auth/logout.action';
+import { clearRememberMePreference } from '@/lib/supabase/storage-adapter';
 
 interface ProfileHeaderProps {
     data?: {
@@ -30,6 +32,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
     const router = useRouter();
     const { user } = useAuth();
     const studioData = data || {};
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // Solo mostrar header si hay datos reales o está cargando
     const hasData = studioData.studio_name || studioData.logo_url || loading;
@@ -47,6 +50,18 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
     const handleNewPortfolio = () => {
         if (studioSlug) {
             router.push(`/${studioSlug}/profile/edit/content/portfolios/nuevo`);
+        }
+    };
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        setIsLoggingOut(true);
+        try {
+            clearRememberMePreference();
+            await logout();
+        } catch (error) {
+            console.error("Error al cerrar sesión:", error);
+            setIsLoggingOut(false);
         }
     };
 
@@ -95,7 +110,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
                         </div>
                     </div>
 
-                    {/* Columna 2: Quick Actions + Botón Editar */}
+                    {/* Columna 2: Quick Actions + Botón Editar + Cerrar Sesión */}
                     <div className="flex items-center gap-2">
                         {/* Quick Actions - Solo si está autenticado */}
                         {user && studioSlug && (
@@ -126,6 +141,21 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
 
                         {/* Botón Editar */}
                         {showEditButton && studioSlug && <PublicProfileEditButton studioSlug={studioSlug} />}
+
+                        {/* Botón Cerrar Sesión - Solo si está autenticado */}
+                        {user && (
+                            <button
+                                onClick={handleLogout}
+                                disabled={isLoggingOut}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                aria-label="Cerrar sesión"
+                            >
+                                <LogOut className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">
+                                    {isLoggingOut ? 'Cerrando...' : 'Salir'}
+                                </span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

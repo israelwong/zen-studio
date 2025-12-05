@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Inbox } from 'lucide-react';
 import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
 import { UserAvatar } from '@/components/auth/user-avatar';
@@ -31,9 +31,31 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
             </div>
             <div className="flex items-center gap-2 lg:gap-4">
 
+                {/* Badge de Almacenamiento - oculto en mobile */}
+                <div className="hidden md:block">
+                    <StorageBadge studioSlug={studioSlug} />
+                </div>
 
-                {/* Badge de Almacenamiento */}
-                <StorageBadge studioSlug={studioSlug} />
+                {/* Inbox - Conversaciones */}
+                <Link
+                    href={`/${studioSlug}/studio/commercial/inbox`}
+                    className="relative"
+                >
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="relative rounded-full text-zinc-400 hover:text-zinc-200 transition-all"
+                        title="Inbox"
+                    >
+                        <Inbox className="h-5 w-5" />
+                        {/* Badge de contador - preparado para futuro */}
+                        {/* {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )} */}
+                    </ZenButton>
+                </Link>
 
                 {/* Notificaciones */}
                 <NotificationsDropdown studioSlug={studioSlug} />
