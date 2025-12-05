@@ -18,6 +18,9 @@ export { SearchCommandPalette } from './SearchCommandPalette';
 // ProfileFAQ deprecated - usar FaqSection desde sections
 export { FaqSection as ProfileFAQ } from './sections';
 
+// Sheets
+export { PostEditorSheet } from './sheets/PostEditorSheet';
+
 // Container Components
 // MobilePreviewContainer moved to builder components
 

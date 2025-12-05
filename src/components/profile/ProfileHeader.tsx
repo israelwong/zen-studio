@@ -18,6 +18,7 @@ interface ProfileHeaderProps {
     loading?: boolean;
     studioSlug?: string;
     showEditButton?: boolean; // Control para mostrar botón editar
+    onCreatePost?: () => void; // Callback para abrir sheet de crear post
 }
 
 /**
@@ -28,7 +29,7 @@ interface ProfileHeaderProps {
  * - Builder preview (header sticky)
  * - Perfil público (header completo)
  */
-export function ProfileHeader({ data, loading = false, studioSlug, showEditButton = true }: ProfileHeaderProps) {
+export function ProfileHeader({ data, loading = false, studioSlug, showEditButton = true, onCreatePost }: ProfileHeaderProps) {
     const router = useRouter();
     const { user } = useAuth();
     const studioData = data || {};
@@ -42,7 +43,9 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
     }
 
     const handleNewPost = () => {
-        if (studioSlug) {
+        if (onCreatePost) {
+            onCreatePost();
+        } else if (studioSlug) {
             router.push(`/${studioSlug}/profile/edit/content/posts/nuevo`);
         }
     };
@@ -86,7 +89,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, showEditButto
                     {/* Columna 1: Logo, nombre y slogan */}
                     <div className="flex items-center space-x-3 flex-1">
                         {/* Logo/Avatar */}
-                        <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden shrink-0">
                             {loading ? (
                                 <div className="w-6 h-6 bg-zinc-600 rounded-lg animate-pulse"></div>
                             ) : studioData.logo_url ? (

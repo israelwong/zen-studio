@@ -16,6 +16,7 @@ import {
 import { PostDetailModal } from '@/components/profile/sections/PostDetailModal';
 import { PortfolioDetailModal } from '@/components/profile/sections/PortfolioDetailModal';
 import { SearchCommandPalette } from '@/components/profile/SearchCommandPalette';
+import { PostEditorSheet } from '@/components/profile/sheets/PostEditorSheet';
 import { ProfileContentView } from './ProfileContentView';
 
 interface PublicOffer {
@@ -45,6 +46,8 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
     const [selectedPostSlug, setSelectedPostSlug] = useState<string | null>(null);
     const [selectedPortfolioSlug, setSelectedPortfolioSlug] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [isPostEditorOpen, setIsPostEditorOpen] = useState(false);
+    const [editingPostId, setEditingPostId] = useState<string | undefined>(undefined);
 
     const { studio, paquetes, posts, portfolios } = profileData;
 
@@ -214,6 +217,10 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
                     }}
                     studioSlug={studioSlug}
                     showEditButton={true}
+                    onCreatePost={() => {
+                        setEditingPostId(undefined);
+                        setIsPostEditorOpen(true);
+                    }}
                 />
             </header>
 
@@ -320,6 +327,21 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
                 onSelectPortfolio={handlePortfolioClick}
                 onSelectOffer={(slug) => {
                     window.location.href = `/${studioSlug}/offer/${slug}`;
+                }}
+            />
+
+            {/* Post Editor Sheet */}
+            <PostEditorSheet
+                isOpen={isPostEditorOpen}
+                onClose={() => {
+                    setIsPostEditorOpen(false);
+                    setEditingPostId(undefined);
+                }}
+                studioSlug={studioSlug}
+                mode={editingPostId ? "edit" : "create"}
+                postId={editingPostId}
+                onSuccess={() => {
+                    router.refresh();
                 }}
             />
         </div>
