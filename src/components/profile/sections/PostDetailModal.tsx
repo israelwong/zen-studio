@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
 import { PostRenderer } from '@/components/posts/PostRenderer';
 
 interface PostMedia {
@@ -9,6 +8,7 @@ interface PostMedia {
     file_url: string;
     file_type: 'image' | 'video';
     filename: string;
+    storage_path: string;
     thumbnail_url?: string;
     display_order: number;
 }
@@ -95,12 +95,26 @@ export function PostDetailModal({
 
     if (!isOpen || !post) return null;
 
-    // Preparar post con campos CTA por defecto
+    // Preparar post con campos requeridos por PostRenderer
     const postWithCTA = {
         ...post,
+        title: post.title ?? null,
+        tags: post.tags ?? [],
+        media: post.media.map(m => ({
+            ...m,
+            storage_path: m.storage_path || '',
+        })),
         cta_enabled: post.cta_enabled ?? false,
         cta_action: post.cta_action ?? '',
         cta_text: post.cta_text ?? '',
+        created_at: new Date(),
+        view_count: 0,
+        event_type: null,
+        studio: {
+            studio_name: post.studio?.studio_name ?? '',
+            logo_url: post.studio?.logo_url ?? null,
+            whatsapp_number: null,
+        }
     };
 
     return (
@@ -126,7 +140,7 @@ export function PostDetailModal({
                     />
 
                     {/* Footer con botón cerrar discreto - Menos alto */}
-                    <div className="flex-shrink-0 py-2 px-4 border-t border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
+                    <div className="shrink-0 py-2 px-4 border-t border-zinc-800 bg-zinc-900/50 backdrop-blur-sm">
                         <button
                             onClick={onClose}
                             className="w-full py-1.5 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
