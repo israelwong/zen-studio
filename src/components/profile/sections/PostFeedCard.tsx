@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import Image from 'next/image';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { CaptionWithLinks } from '@/app/[slug]/profile/edit/content/posts/components/CaptionWithLinks';
 import { PostCarouselContent } from './PostCarouselContent';
 import Lightbox from "yet-another-react-lightbox";
@@ -31,6 +31,7 @@ interface PostFeedCardProps {
         is_featured?: boolean;
         published_at: Date | null;
     };
+    onPostClick?: (postSlug: string) => void;
 }
 
 /**
@@ -39,10 +40,10 @@ interface PostFeedCardProps {
  * - Encabezado minimalista: título, tiempo relativo y estrella si destacado
  * - Muestra descripción
  * - Galería con carousel y lightbox completo
+ * - Click en caption abre modal de post detalle
  */
-export function PostFeedCard({ post }: PostFeedCardProps) {
+export function PostFeedCard({ post, onPostClick }: PostFeedCardProps) {
     const params = useParams();
-    const router = useRouter();
     const studioSlug = params?.slug as string;
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const firstMedia = post.media?.[0];
@@ -103,7 +104,12 @@ export function PostFeedCard({ post }: PostFeedCardProps) {
 
     const processedCaption = hasCaption ? prepareCaption(post.caption!) : null;
 
-    const postDetailUrl = studioSlug ? `/${studioSlug}/post/${post.slug}` : '#';
+    // Handler para abrir modal de post
+    const handlePostClick = () => {
+        if (onPostClick) {
+            onPostClick(post.slug);
+        }
+    };
 
     return (
         <div className="space-y-3">
@@ -126,16 +132,16 @@ export function PostFeedCard({ post }: PostFeedCardProps) {
                 )}
             </div>
 
-            {/* Descripción con links, sin saltos de línea, truncada - clickeable para post detalle */}
+            {/* Descripción con links, sin saltos de línea, truncada - clickeable para abrir modal */}
             {processedCaption && (
                 <div
                     onClick={(e) => {
-                        // Si el click es en un link, no navegar al post detalle
+                        // Si el click es en un link, no abrir modal
                         const target = e.target as HTMLElement;
                         if (target.closest('a')) {
                             return;
                         }
-                        router.push(postDetailUrl);
+                        handlePostClick();
                     }}
                     className="block w-full hover:opacity-80 transition-opacity cursor-pointer"
                 >

@@ -9,6 +9,7 @@ interface ProfileContentProps {
     data?: Record<string, unknown>;
     loading?: boolean;
     hidePortfolioHeader?: boolean; // Ocultar título y categoría en portfolio-detail cuando está en modo preview del editor
+    onPostClick?: (postSlug: string) => void;
 }
 
 /**
@@ -23,7 +24,8 @@ export function ProfileContent({
     variant = 'skeleton',
     data,
     loading = false,
-    hidePortfolioHeader = false
+    hidePortfolioHeader = false,
+    onPostClick
 }: ProfileContentProps) {
     // Skeleton loading state
     if (loading) {
@@ -65,7 +67,7 @@ export function ProfileContent({
     if (variant === 'inicio' || variant === 'posts') {
         const posts = Array.isArray(data?.posts) ? (data.posts as unknown[]) : [];
         if (variant === 'inicio' || (variant === 'posts' && !data?.portfolios)) {
-            return <MainSection posts={posts as Parameters<typeof MainSection>[0]['posts']} />;
+            return <MainSection posts={posts as Parameters<typeof MainSection>[0]['posts']} onPostClick={onPostClick} />;
         }
         // Fallback a PostSection si no hay posts pero hay variant posts
         return <PostSection posts={posts as Parameters<typeof PostSection>[0]['posts']} />;

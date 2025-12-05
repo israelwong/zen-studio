@@ -12,6 +12,7 @@ interface PostMedia {
 
 interface PublicPost {
     id: string;
+    slug: string;
     title?: string | null;
     caption: string | null;
     tags?: string[];
@@ -24,6 +25,7 @@ interface PublicPost {
 
 interface MainSectionProps {
     posts: PublicPost[];
+    onPostClick?: (postSlug: string) => void;
 }
 
 /**
@@ -32,7 +34,7 @@ interface MainSectionProps {
  * Ordenamiento: destacados primero (sin importar fecha de creación), 
  * luego no destacados por fecha de creación (más nueva primero)
  */
-export function MainSection({ posts }: MainSectionProps) {
+export function MainSection({ posts, onPostClick }: MainSectionProps) {
     // Filtrar solo posts publicados
     const publishedPosts = posts.filter(post => post.is_published);
 
@@ -79,7 +81,7 @@ export function MainSection({ posts }: MainSectionProps) {
 
                     {/* Post */}
                     <div className="py-6 px-4">
-                        <PostFeedCard post={post} />
+                        <PostFeedCard post={post} onPostClick={onPostClick} />
                     </div>
                 </React.Fragment>
             ))}

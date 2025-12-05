@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import { PublicProfileData } from '@/types/public-profile';
 import { ProfileContent } from '@/components/profile';
@@ -6,14 +8,15 @@ import { ProfileContent } from '@/components/profile';
 interface ProfileContentViewProps {
     activeTab: string;
     profileData: PublicProfileData;
+    onPostClick?: (postSlug: string) => void;
 }
 
 /**
  * ProfileContentView - Container that switches between different views
  * Renders the appropriate view based on active tab
- * Handles tab switching logic
+ * Handles tab switching logic and post modal
  */
-export function ProfileContentView({ activeTab, profileData }: ProfileContentViewProps) {
+export function ProfileContentView({ activeTab, profileData, onPostClick }: ProfileContentViewProps) {
     const { studio, contactInfo, portfolios, posts, paquetes } = profileData;
 
     switch (activeTab) {
@@ -22,6 +25,7 @@ export function ProfileContentView({ activeTab, profileData }: ProfileContentVie
                 <ProfileContent
                     variant="inicio"
                     data={{ posts: posts || [] }}
+                    onPostClick={onPostClick}
                 />
             );
 

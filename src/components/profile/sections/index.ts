@@ -17,6 +17,7 @@ export { PortfolioSection } from './PortfolioSection';
 export { PortfolioDetailSection } from './PortfolioDetailSection';
 export { PostSection } from './PostSection';
 export { PostDetailSection } from './PostDetailSection';
+export { PostDetailModal } from './PostDetailModal';
 export { PostFeedCard } from './PostFeedCard';
 export { PostCarouselContent } from './PostCarouselContent';
 export { PaquetesSection } from './PaquetesSection';

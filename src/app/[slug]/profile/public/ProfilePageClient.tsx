@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PublicProfileData } from '@/types/public-profile';
 import {
     ProfileHeader,
@@ -11,6 +12,7 @@ import {
     OffersCard,
     MobilePromotionsSection
 } from '@/components/profile';
+import { PostDetailModal } from '@/components/profile/sections/PostDetailModal';
 import { ProfileContentView } from './ProfileContentView';
 
 interface PublicOffer {
@@ -31,11 +33,86 @@ interface ProfilePageClientProps {
 /**
  * ProfilePageClient - Main client component for public profile
  * Nueva estructura unificada responsive: mobile-first con 2 columnas en desktop
+ * Maneja modal de post detalle con query params
  */
 export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePageClientProps) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<string>('inicio');
+    const [selectedPostSlug, setSelectedPostSlug] = useState<string | null>(null);
 
-    const { studio, paquetes } = profileData;
+    const { studio, paquetes, posts } = profileData;
+
+    // Sincronizar query param con modal
+    useEffect(() => {
+        const postParam = searchParams.get('post');
+        if (postParam) {
+            setSelectedPostSlug(postParam);
+        } else {
+            setSelectedPostSlug(null);
+        }
+    }, [searchParams]);
+
+    // Handlers para modal
+    const handlePostClick = (postSlug: string) => {
+        setSelectedPostSlug(postSlug);
+        router.push(`/${studioSlug}?post=${postSlug}`, { scroll: false });
+    };
+
+    const handleCloseModal = () => {
+        setSelectedPostSlug(null);
+        router.push(`/${studioSlug}`, { scroll: false });
+    };
+
+    const handleNextPost = () => {
+        if (!selectedPostSlug || publishedPosts.length === 0) return;
+        const currentIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+        if (currentIndex >= 0 && currentIndex < publishedPosts.length - 1) {
+            const nextSlug = publishedPosts[currentIndex + 1].slug;
+            setSelectedPostSlug(nextSlug);
+            router.push(`/${studioSlug}?post=${nextSlug}`, { scroll: false });
+        }
+    };
+
+    const handlePrevPost = () => {
+        if (!selectedPostSlug || publishedPosts.length === 0) return;
+        const currentIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+        if (currentIndex > 0) {
+            const prevSlug = publishedPosts[currentIndex - 1].slug;
+            setSelectedPostSlug(prevSlug);
+            router.push(`/${studioSlug}?post=${prevSlug}`, { scroll: false });
+        }
+    };
+
+    // Filtrar y ordenar posts publicados para navegación (mismo orden que MainSection)
+    const publishedPosts = React.useMemo(() => {
+        const filtered = posts?.filter(p => p.is_published) || [];
+        return [...filtered].sort((a, b) => {
+            // Primero destacados
+            if (a.is_featured && !b.is_featured) return -1;
+            if (!a.is_featured && b.is_featured) return 1;
+
+            // Luego por fecha de creación (más nueva primero)
+            const dateA = a.created_at ? new Date(a.created_at).getTime() : (a.published_at ? new Date(a.published_at).getTime() : 0);
+            const dateB = b.created_at ? new Date(b.created_at).getTime() : (b.published_at ? new Date(b.published_at).getTime() : 0);
+            return dateB - dateA;
+        });
+    }, [posts]);
+
+    // Preparar post con info del studio para el modal
+    const selectedPost = publishedPosts.find(p => p.slug === selectedPostSlug);
+    const selectedPostWithStudio = selectedPost ? {
+        ...selectedPost,
+        studio: {
+            studio_name: studio.studio_name,
+            logo_url: studio.logo_url
+        }
+    } : null;
+
+    // Calcular índice y disponibilidad de navegación
+    const currentPostIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+    const hasNext = currentPostIndex >= 0 && currentPostIndex < publishedPosts.length - 1;
+    const hasPrev = currentPostIndex > 0;
 
     return (
         <div className="min-h-screen bg-zinc-950">
@@ -71,6 +148,7 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
                             <ProfileContentView
                                 activeTab={activeTab}
                                 profileData={profileData}
+                                onPostClick={handlePostClick}
                             />
 
                             {/* Mobile-only: Promociones inline */}
@@ -107,6 +185,18 @@ export function ProfilePageClient({ profileData, studioSlug, offers }: ProfilePa
             <footer className="lg:hidden">
                 <ProfileFooter />
             </footer>
+
+            {/* Post Detail Modal */}
+            <PostDetailModal
+                post={selectedPostWithStudio}
+                studioSlug={studioSlug}
+                isOpen={!!selectedPostSlug}
+                onClose={handleCloseModal}
+                onNext={handleNextPost}
+                onPrev={handlePrevPost}
+                hasNext={hasNext}
+                hasPrev={hasPrev}
+            />
         </div>
     );
 }
