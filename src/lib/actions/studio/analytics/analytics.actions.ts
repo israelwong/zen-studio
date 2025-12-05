@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
+import { analyticsQueue } from "@/lib/analytics-queue";
 
 export type ContentType = 'POST' | 'PORTFOLIO' | 'OFFER' | 'PACKAGE';
 
@@ -37,9 +38,23 @@ interface TrackEventInput {
   metadata?: Record<string, unknown>;
 }
 
+// Rate limiting cache
+const rateLimitCache = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW = 60000; // 1 minuto
+const MAX_EVENTS_PER_MINUTE = 30;
+
+// Deduplicación cache
+const eventDedupeCache = new Map<string, number>();
+const DEDUPE_WINDOW = 3000; // 3 segundos
+
 /**
  * Trackear evento de analytics de contenido
  * Server action para registrar interacciones con posts, portfolios, offers, packages
+ * 
+ * Optimizaciones:
+ * - Rate limiting: Max 30 eventos/minuto por IP/usuario
+ * - Deduplicación: Ignora eventos duplicados en 3s
+ * - Batch writes: Usa queue para agrupar inserts
  */
 export async function trackContentEvent(input: TrackEventInput) {
   try {
@@ -51,6 +66,37 @@ export async function trackContentEvent(input: TrackEventInput) {
                       'unknown';
     const user_agent = headersList.get('user-agent') || undefined;
     const referrer = headersList.get('referer') || undefined;
+
+    // Rate limiting por IP/usuario
+    const rateLimitKey = input.userId || ip_address;
+    const now = Date.now();
+    const rateLimit = rateLimitCache.get(rateLimitKey);
+
+    if (rateLimit) {
+      if (now < rateLimit.resetAt) {
+        if (rateLimit.count >= MAX_EVENTS_PER_MINUTE) {
+          console.debug('[Analytics] Rate limit exceeded for', rateLimitKey);
+          return { success: false, error: 'Rate limit exceeded' };
+        }
+        rateLimit.count++;
+      } else {
+        // Reset contador
+        rateLimitCache.set(rateLimitKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+      }
+    } else {
+      rateLimitCache.set(rateLimitKey, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    }
+
+    // Deduplicación de eventos
+    const dedupeKey = `${input.contentId}:${input.eventType}:${input.sessionId || rateLimitKey}`;
+    const lastTracked = eventDedupeCache.get(dedupeKey);
+    
+    if (lastTracked && now - lastTracked < DEDUPE_WINDOW) {
+      console.debug('[Analytics] Duplicate event ignored', dedupeKey);
+      return { success: true, deduplicated: true };
+    }
+    
+    eventDedupeCache.set(dedupeKey, now);
 
     // Extraer UTM params del referrer si existe
     let utm_source, utm_medium, utm_campaign, utm_term, utm_content;
@@ -65,25 +111,24 @@ export async function trackContentEvent(input: TrackEventInput) {
       } catch {}
     }
 
-    // Registrar evento
-    await prisma.studio_content_analytics.create({
-      data: {
-        studio_id: input.studioId,
-        content_type: input.contentType,
-        content_id: input.contentId,
-        event_type: input.eventType,
-        user_id: input.userId,
-        ip_address,
-        user_agent,
-        session_id: input.sessionId,
-        referrer,
-        utm_source,
-        utm_medium,
-        utm_campaign,
-        utm_term,
-        utm_content,
-        metadata: input.metadata ? input.metadata as any : undefined,
-      }
+    // Agregar a queue (batch writes)
+    analyticsQueue.add({
+      studio_id: input.studioId,
+      content_type: input.contentType,
+      content_id: input.contentId,
+      event_type: input.eventType,
+      user_id: input.userId,
+      ip_address,
+      user_agent,
+      session_id: input.sessionId,
+      referrer,
+      utm_source,
+      utm_medium,
+      utm_campaign,
+      utm_term,
+      utm_content,
+      metadata: input.metadata,
+      created_at: new Date()
     });
 
     return { success: true };
@@ -92,6 +137,27 @@ export async function trackContentEvent(input: TrackEventInput) {
     // No fallar silenciosamente - analytics no debe romper la app
     return { success: false, error: 'Failed to track event' };
   }
+}
+
+// Limpiar caches periódicamente
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    
+    // Limpiar rate limit cache
+    for (const [key, value] of rateLimitCache.entries()) {
+      if (now > value.resetAt) {
+        rateLimitCache.delete(key);
+      }
+    }
+
+    // Limpiar dedupe cache (eventos mayores a 5 minutos)
+    for (const [key, timestamp] of eventDedupeCache.entries()) {
+      if (now - timestamp > 300000) {
+        eventDedupeCache.delete(key);
+      }
+    }
+  }, 60000); // Cada minuto
 }
 
 /**

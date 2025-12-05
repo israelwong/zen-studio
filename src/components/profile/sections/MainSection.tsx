@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { PostFeedCard } from './PostFeedCard';
+import { useParams } from 'next/navigation';
+import { PostFeedCardWithTracking } from './PostFeedCardWithTracking';
 
 interface PostMedia {
     id: string;
@@ -33,8 +34,15 @@ interface MainSectionProps {
  * Diseño consistente, fluido y usable con separadores entre posts
  * Ordenamiento: destacados primero (sin importar fecha de creación), 
  * luego no destacados por fecha de creación (más nueva primero)
+ * 
+ * Smart Feed Analytics:
+ * - Tracking automático de FEED_VIEW con Intersection Observer
+ * - Solo trackea posts visibles ≥50% durante ≥1s
  */
 export function MainSection({ posts, onPostClick }: MainSectionProps) {
+    const params = useParams();
+    const studioSlug = params?.slug as string;
+
     // Filtrar solo posts publicados
     const publishedPosts = posts.filter(post => post.is_published);
 
@@ -79,9 +87,13 @@ export function MainSection({ posts, onPostClick }: MainSectionProps) {
                         <div className="border-t border-zinc-700" />
                     )}
 
-                    {/* Post */}
+                    {/* Post con Analytics Tracking */}
                     <div className="py-6 px-4">
-                        <PostFeedCard post={post} onPostClick={onPostClick} />
+                        <PostFeedCardWithTracking 
+                            post={post} 
+                            studioId={studioSlug}
+                            onPostClick={onPostClick} 
+                        />
                     </div>
                 </React.Fragment>
             ))}
