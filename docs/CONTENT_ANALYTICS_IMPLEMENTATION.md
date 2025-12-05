@@ -16,35 +16,35 @@ model studio_content_analytics {
   content_type  ContentType         // POST | PORTFOLIO | OFFER | PACKAGE
   content_id    String
   event_type    AnalyticsEventType  // 20+ tipos de eventos
-  
+
   // Contexto
   user_id       String?
   ip_address    String?
   user_agent    String?
   session_id    String?
-  
+
   // Marketing
   referrer      String?
   utm_*         String?
-  
+
   // Metadata flexible
   metadata      Json?
-  
+
   created_at    DateTime
 }
 ```
 
 ### Eventos Soportados
 
-| Categoría | Eventos |
-|-----------|---------|
-| **Vistas** | `PAGE_VIEW`, `FEED_VIEW` |
-| **Interacciones** | `MODAL_OPEN`, `MODAL_CLOSE` |
-| **Navegación** | `NEXT_CONTENT`, `PREV_CONTENT` |
-| **Compartir** | `LINK_COPY`, `SHARE_CLICK` |
-| **Media** | `MEDIA_CLICK`, `MEDIA_VIEW`, `CAROUSEL_NEXT`, `CAROUSEL_PREV` |
-| **CTAs** | `CTA_CLICK`, `WHATSAPP_CLICK`, `FORM_VIEW`, `FORM_SUBMIT` |
-| **Engagement** | `SCROLL_50`, `SCROLL_100`, `TIME_30S`, `TIME_60S` |
+| Categoría         | Eventos                                                       |
+| ----------------- | ------------------------------------------------------------- |
+| **Vistas**        | `PAGE_VIEW`, `FEED_VIEW`                                      |
+| **Interacciones** | `MODAL_OPEN`, `MODAL_CLOSE`                                   |
+| **Navegación**    | `NEXT_CONTENT`, `PREV_CONTENT`                                |
+| **Compartir**     | `LINK_COPY`, `SHARE_CLICK`                                    |
+| **Media**         | `MEDIA_CLICK`, `MEDIA_VIEW`, `CAROUSEL_NEXT`, `CAROUSEL_PREV` |
+| **CTAs**          | `CTA_CLICK`, `WHATSAPP_CLICK`, `FORM_VIEW`, `FORM_SUBMIT`     |
+| **Engagement**    | `SCROLL_50`, `SCROLL_100`, `TIME_30S`, `TIME_60S`             |
 
 ---
 
@@ -145,20 +145,20 @@ function PostContent({ post, studioId }) {
 
 ```typescript
 // Trackear click en media específica
-analytics.track('MEDIA_CLICK', {
-  media_id: 'media_123',
-  media_type: 'video',
-  media_order: 2
+analytics.track("MEDIA_CLICK", {
+  media_id: "media_123",
+  media_type: "video",
+  media_order: 2,
 });
 
 // Trackear CTA con tipo
-analytics.trackCTAClick('whatsapp');
+analytics.trackCTAClick("whatsapp");
 
 // Metadata compleja
-analytics.track('FORM_SUBMIT', {
-  form_fields: ['name', 'email', 'phone'],
-  event_type_selected: 'boda',
-  interested_package: 'package_123'
+analytics.track("FORM_SUBMIT", {
+  form_fields: ["name", "email", "phone"],
+  event_type_selected: "boda",
+  interested_package: "package_123",
 });
 ```
 
@@ -169,9 +169,9 @@ analytics.track('FORM_SUBMIT', {
 ### Stats de un Contenido
 
 ```typescript
-import { getContentStats } from '@/lib/actions/studio/analytics/analytics.actions';
+import { getContentStats } from "@/lib/actions/studio/analytics/analytics.actions";
 
-const stats = await getContentStats(studioId, 'POST', postId);
+const stats = await getContentStats(studioId, "POST", postId);
 
 console.log(stats.data);
 // {
@@ -187,12 +187,12 @@ console.log(stats.data);
 ### Analytics del Studio
 
 ```typescript
-import { getStudioAnalytics } from '@/lib/actions/studio/analytics/analytics.actions';
+import { getStudioAnalytics } from "@/lib/actions/studio/analytics/analytics.actions";
 
 const analytics = await getStudioAnalytics(
   studioId,
-  new Date('2024-01-01'),  // Desde
-  new Date('2024-12-31')   // Hasta
+  new Date("2024-01-01"), // Desde
+  new Date("2024-12-31") // Hasta
 );
 
 console.log(analytics.data);
@@ -220,7 +220,7 @@ console.log(analytics.data);
 
 ```typescript
 // ✅ Ya implementado
-<PostFeedCard 
+<PostFeedCard
   post={post}
   studioId={studioId}
   onPostClick={(slug) => {
@@ -254,15 +254,15 @@ console.log(analytics.data);
 
 const analytics = useContentAnalytics({
   studioId,
-  contentType: 'POST',
-  contentId: post.id
+  contentType: "POST",
+  contentId: post.id,
 });
 
 useEffect(() => {
-  analytics.trackOnce('PAGE_VIEW');
+  analytics.trackOnce("PAGE_VIEW");
 }, []);
 
-useTimeTracking({ studioId, contentType: 'POST', contentId: post.id });
+useTimeTracking({ studioId, contentType: "POST", contentId: post.id });
 
 const handleCopyLink = () => {
   navigator.clipboard.writeText(url);
@@ -282,12 +282,12 @@ const handleMediaClick = (mediaId: string) => {
 
 const analytics = useContentAnalytics({
   studioId,
-  contentType: 'PORTFOLIO',
-  contentId: portfolio.id
+  contentType: "PORTFOLIO",
+  contentId: portfolio.id,
 });
 
 useEffect(() => {
-  analytics.trackOnce('PAGE_VIEW');
+  analytics.trackOnce("PAGE_VIEW");
 }, []);
 
 const handleCTAClick = () => {
@@ -303,22 +303,22 @@ const handleCTAClick = () => {
 
 const analytics = useContentAnalytics({
   studioId,
-  contentType: 'OFFER',
-  contentId: offer.id
+  contentType: "OFFER",
+  contentId: offer.id,
 });
 
 useEffect(() => {
-  analytics.trackOnce('PAGE_VIEW');
+  analytics.trackOnce("PAGE_VIEW");
 }, []);
 
 const handleFormView = () => {
-  analytics.track('FORM_VIEW');
+  analytics.track("FORM_VIEW");
 };
 
 const handleFormSubmit = async (data) => {
-  analytics.track('FORM_SUBMIT', {
+  analytics.track("FORM_SUBMIT", {
     form_fields: Object.keys(data),
-    event_type_selected: data.eventType
+    event_type_selected: data.eventType,
   });
 };
 ```
@@ -341,10 +341,10 @@ WHERE content_type = 'POST'
 ### CTR (Click-Through Rate)
 
 ```sql
-SELECT 
+SELECT
   COUNT(CASE WHEN event_type = 'FEED_VIEW' THEN 1 END) as views,
   COUNT(CASE WHEN event_type = 'MODAL_OPEN' THEN 1 END) as clicks,
-  (COUNT(CASE WHEN event_type = 'MODAL_OPEN' THEN 1 END)::float / 
+  (COUNT(CASE WHEN event_type = 'MODAL_OPEN' THEN 1 END)::float /
    NULLIF(COUNT(CASE WHEN event_type = 'FEED_VIEW' THEN 1 END), 0) * 100) as ctr
 FROM studio_content_analytics
 WHERE content_type = 'POST' AND content_id = 'xxx';
@@ -353,7 +353,7 @@ WHERE content_type = 'POST' AND content_id = 'xxx';
 ### Top 10 contenidos más populares
 
 ```sql
-SELECT 
+SELECT
   content_type,
   content_id,
   COUNT(*) as total_interactions,
@@ -370,13 +370,13 @@ LIMIT 10;
 ### Engagement Rate (scroll + tiempo)
 
 ```sql
-SELECT 
+SELECT
   content_id,
-  COUNT(DISTINCT CASE WHEN event_type IN ('TIME_30S', 'TIME_60S', 'SCROLL_50', 'SCROLL_100') 
+  COUNT(DISTINCT CASE WHEN event_type IN ('TIME_30S', 'TIME_60S', 'SCROLL_50', 'SCROLL_100')
         THEN session_id END) as engaged_sessions,
   COUNT(DISTINCT session_id) as total_sessions,
-  (COUNT(DISTINCT CASE WHEN event_type IN ('TIME_30S', 'TIME_60S', 'SCROLL_50', 'SCROLL_100') 
-        THEN session_id END)::float / 
+  (COUNT(DISTINCT CASE WHEN event_type IN ('TIME_30S', 'TIME_60S', 'SCROLL_50', 'SCROLL_100')
+        THEN session_id END)::float /
    NULLIF(COUNT(DISTINCT session_id), 0) * 100) as engagement_rate
 FROM studio_content_analytics
 WHERE studio_id = 'xxx' AND content_type = 'POST'
@@ -389,16 +389,19 @@ ORDER BY engagement_rate DESC;
 ## ⚠️ Consideraciones
 
 ### Performance
+
 - **Non-blocking**: Tracking se ejecuta en background sin esperar respuesta
 - **Índices**: Optimizados para queries comunes
 - **Batch processing**: Considerar batch inserts para alto tráfico
 
 ### Privacy
+
 - **IP anónima**: Solo primeros 3 octetos si se requiere GDPR compliance
 - **User ID opcional**: Solo si está autenticado
 - **No PII**: Nunca guardar información personal identificable
 
 ### Testing
+
 - **Dev mode**: Usar `sessionId` fijo para testing
 - **Flag de test**: Considerar agregar `is_test: boolean` para filtrar datos de prueba
 
