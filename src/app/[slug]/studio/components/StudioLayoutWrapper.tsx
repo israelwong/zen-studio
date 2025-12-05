@@ -45,21 +45,23 @@ export function StudioLayoutWrapper({
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
-      {/* Container principal: Sidebar + Main Column + UtilityDock */}
-      {/* COLUMNA 1: Sidebar Izquierdo (Navegación) */}
-      <StudioSidebar studioSlug={studioSlug} />
-
-      {/* COLUMNA 2: Main Column (AppHeader + Content) */}
+      {/* COLUMNA 1: Main Column (AppHeader + Sidebar + Content en flex-col) */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* AppHeader - Full width del main */}
+        {/* AppHeader - Full width */}
         <AppHeader studioSlug={studioSlug} onCommandOpen={() => setCommandOpen(true)} />
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-zinc-900/40">
-          <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
-            {children}
-          </div>
-        </main>
+        {/* Container: Sidebar + Main Content */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar Izquierdo (Navegación) */}
+          <StudioSidebar studioSlug={studioSlug} />
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-y-auto bg-zinc-900/40">
+            <div className="mx-auto max-w-7xl p-4 md:p-6 lg:p-8">
+              {children}
+            </div>
+          </main>
+        </div>
 
         <CommandMenu
           studioSlug={studioSlug}
@@ -72,7 +74,7 @@ export function StudioLayoutWrapper({
         />
       </div>
 
-      {/* COLUMNA 3: Utility Dock (Herramientas) */}
+      {/* COLUMNA 2: Utility Dock (Full height) */}
       <UtilityDock
         studioSlug={studioSlug}
         onAgendaClick={handleAgendaClick}
