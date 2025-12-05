@@ -13,17 +13,20 @@ interface DashboardPageProps {
 
 async function DashboardContent({ studioSlug }: { studioSlug: string }) {
     // Obtener studio profile
-    const studioProfile = await getStudioProfileBySlug({ slug: studioSlug });
+    const result = await getStudioProfileBySlug({ slug: studioSlug });
 
-    if (!studioProfile || !studioProfile.studio) {
+    if (!result.success || !result.data) {
         return (
             <div className="text-center py-12">
                 <p className="text-zinc-400">Error al cargar el studio</p>
+                <p className="text-xs text-zinc-500 mt-2">
+                    {result.success === false ? result.error : 'No data'}
+                </p>
             </div>
         );
     }
 
-    const studio = studioProfile.studio;
+    const studio = result.data.studio;
 
     // Obtener datos de analytics
     const [summaryResult, topContentResult] = await Promise.all([
