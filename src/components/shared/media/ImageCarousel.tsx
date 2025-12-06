@@ -11,6 +11,8 @@ import Video from "yet-another-react-lightbox/plugins/video";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import "yet-another-react-lightbox/styles.css";
 import { VideoPostCarousel } from './VideoPostCarousel';
+import { useDynamicBackground } from '@/contexts/DynamicBackgroundContext';
+import ColorThief from 'colorthief';
 
 interface ImageCarouselProps {
     media: MediaItem[];
@@ -38,9 +40,52 @@ export function ImageCarousel({
     const videoRefsRef = useRef<Map<number, HTMLVideoElement>>(new Map());
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
-    
+
+    // Intentar usar el context, pero no fallar si no existe
+    let setColors: ((colors: { primary: string; accent: string }) => void) | undefined;
+    try {
+        const context = useDynamicBackground();
+        setColors = context.setColors;
+    } catch {
+        // No hay context, no pasa nada
+        setColors = undefined;
+    }
+
     // Detectar si hay múltiples videos para limitar altura
     const hasMultipleVideos = media.length > 1 && media.some(item => item.file_type === 'video');
+
+    // Función para extraer colores de una imagen
+    const extractColors = (imageUrl: string) => {
+        if (!setColors) return; // No hay context, saltar
+
+        const img = document.createElement('img');
+        img.crossOrigin = 'Anonymous';
+
+        img.onload = () => {
+            try {
+                const colorThief = new ColorThief();
+                const palette = colorThief.getPalette(img, 2);
+
+                if (palette && setColors) {
+                    const rgbToHex = (r: number, g: number, b: number): string => {
+                        return '#' + [r, g, b].map(x => {
+                            const hex = x.toString(16);
+                            return hex.length === 1 ? '0' + hex : hex;
+                        }).join('');
+                    };
+
+                    setColors({
+                        primary: rgbToHex(palette[0][0], palette[0][1], palette[0][2]),
+                        accent: rgbToHex(palette[1][0], palette[1][1], palette[1][2]),
+                    });
+                }
+            } catch (error) {
+                console.error('Error extracting colors from carousel:', error);
+            }
+        };
+
+        img.src = imageUrl;
+    };
 
     // Obtener referencias de videos desde VideoPostCarousel
     const setVideoRef = (index: number) => (video: HTMLVideoElement | null) => {
@@ -96,10 +141,24 @@ export function ImageCarousel({
             }
         });
 
-        // No necesitamos trackear el slide actual ya que los videos no se reproducen en preview
+        // Detectar cambios de slide y extraer colores
+        glideInstance.on('run.after', () => {
+            const currentIndex = glideInstance.index;
+            const currentMedia = media[currentIndex];
+
+            // Solo extraer colores de imágenes
+            if (currentMedia && currentMedia.file_type === 'image') {
+                extractColors(currentMedia.file_url);
+            }
+        });
 
         glideInstance.mount();
         glideInstanceRef.current = glideInstance;
+
+        // Extraer colores de la primera imagen al montar
+        if (media[0] && media[0].file_type === 'image') {
+            extractColors(media[0].file_url);
+        }
 
         return () => {
             if (glideInstanceRef.current) {
@@ -107,7 +166,7 @@ export function ImageCarousel({
                 glideInstanceRef.current = null;
             }
         };
-    }, [media, autoplay]);
+    }, [media, autoplay, setColors]);
 
     const handleImageClick = (index: number) => {
         if (enableLightbox) {

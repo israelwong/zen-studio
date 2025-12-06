@@ -319,8 +319,8 @@ export function ArchivedContent({ studioSlug, onPostClick, onPortfolioClick, onP
                                     isDeleting={deletingId === offer.id}
                                     actionLabel="Activar"
                                     onView={() => {
-                                        // Las ofertas van a su propia página
-                                        router.push(`/${studioSlug}/offer/${offer.slug}`);
+                                        // Ofertas archivadas van a Studio para gestión
+                                        window.open(`/${studioSlug}/studio/commercial/ofertas/${offer.id}`, '_blank');
                                     }}
                                 />
                             ))}

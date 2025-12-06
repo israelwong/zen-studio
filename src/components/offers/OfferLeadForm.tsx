@@ -447,7 +447,7 @@ export function OfferLeadForm({
             />
           )}
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/50 via-zinc-950/40 to-zinc-950" />
+          <div className="absolute inset-0 bg-linear-to-b from-zinc-900/50 via-zinc-950/40 to-zinc-950" />
         </div>
       )}
 
@@ -486,17 +486,15 @@ export function OfferLeadForm({
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
                           <ZenCalendar
-                            {...({
-                              mode: 'single' as const,
-                              selected: formData[field.id] ? new Date(formData[field.id]) : undefined,
-                              onSelect: (date: Date | undefined) => {
-                                if (date) {
-                                  const dateString = format(date, "yyyy-MM-dd");
-                                  handleInputChange(field.id, dateString);
-                                }
-                              },
-                              initialFocus: true,
-                            } as ZenCalendarSingleProps)}
+                            mode="single"
+                            selected={formData[field.id] ? new Date(formData[field.id]) : undefined}
+                            onSelect={(date: Date | undefined) => {
+                              if (date) {
+                                const dateString = format(date, "yyyy-MM-dd");
+                                handleInputChange(field.id, dateString);
+                              }
+                            }}
+                            initialFocus={true}
                           />
                         </PopoverContent>
                       </Popover>

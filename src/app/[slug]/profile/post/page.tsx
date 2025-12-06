@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { getAuthenticatedUser } from '@/lib/auth/user-utils-server';
+import { getAuthenticatedUser } from '@/lib/auth/user-utils';
 import { PostCreatorClient } from './PostCreatorClient';
 
 interface PageProps {

@@ -64,9 +64,10 @@ export async function restorePortfolio(portfolioId: string, studioSlug: string) 
 }
 
 /**
- * Activa una oferta (is_active = true)
+ * Activa/Desactiva una oferta (is_active)
+ * @param isActive - true para activar, false para archivar
  */
-export async function activateOffer(offerId: string, studioSlug: string) {
+export async function activateOffer(offerId: string, studioSlug: string, isActive: boolean = true) {
     try {
         const offer = await prisma.studio_offers.findUnique({
             where: { id: offerId },
@@ -79,14 +80,14 @@ export async function activateOffer(offerId: string, studioSlug: string) {
 
         await prisma.studio_offers.update({
             where: { id: offerId },
-            data: { is_active: true }
+            data: { is_active: isActive }
         });
 
         revalidatePath(`/${studioSlug}`);
         return { success: true };
     } catch (error) {
         console.error("[activateOffer] Error:", error);
-        return { success: false, error: "Error al activar oferta" };
+        return { success: false, error: isActive ? "Error al activar oferta" : "Error al archivar oferta" };
     }
 }
 

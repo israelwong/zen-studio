@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { MoreVertical, Edit, Copy, Archive, Trash2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { MoreVertical, ExternalLink, Archive } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { activateOffer } from '@/lib/actions/studio/archive.actions';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface OfferCardMenuProps {
     offerId: string;
@@ -9,42 +14,63 @@ interface OfferCardMenuProps {
 }
 
 /**
- * OfferCardMenu - Menú contextual para gestión de ofertas
- * Solo visible para usuarios autenticados
- * Todas las acciones abren Studio en nueva pestaña
+ * OfferCardMenu - Menú contextual minimalista para ofertas
+ * Gestionar: Abre Studio en nueva pestaña (duplicar/eliminar están ahí)
+ * Archivar: Oculta oferta del perfil público
  */
 export function OfferCardMenu({ offerId, studioSlug }: OfferCardMenuProps) {
+    const router = useRouter();
+    const { user } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
+    const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
 
-    const handleEdit = (e: React.MouseEvent) => {
+    // No mostrar si no hay usuario
+    if (!user) {
+        return null;
+    }
+
+    const handleManage = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         window.open(`/${studioSlug}/studio/commercial/ofertas/${offerId}`, '_blank');
         setIsOpen(false);
     };
 
-    const handleDuplicate = (e: React.MouseEvent) => {
+    const handleArchiveClick = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
-        // TODO: Implementar duplicado de oferta
-        console.log('Duplicar oferta:', offerId);
         setIsOpen(false);
+        // Esperar al siguiente frame para que el dropdown se cierre completamente
+        requestAnimationFrame(() => {
+            setShowArchiveModal(true);
+        });
     };
 
-    const handleArchive = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // TODO: Implementar archivado de oferta
-        console.log('Archivar oferta:', offerId);
-        setIsOpen(false);
-    };
+    const handleArchiveConfirm = async () => {
+        setIsArchiving(true);
+        try {
+            const result = await activateOffer(offerId, studioSlug, false);
 
-    const handleDelete = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // TODO: Implementar eliminación de oferta con confirmación
-        console.log('Eliminar oferta:', offerId);
-        setIsOpen(false);
+            if (result.success) {
+                toast.success('Oferta archivada', {
+                    description: 'La oferta ya no es visible en tu perfil público'
+                });
+                setShowArchiveModal(false);
+
+                // Esperar un poco antes de refresh
+                setTimeout(() => {
+                    router.refresh();
+                }, 500);
+            } else {
+                toast.error(result.error || 'Error al archivar la oferta');
+            }
+        } catch (error) {
+            console.error('Error archiving offer:', error);
+            toast.error('Error al archivar la oferta');
+        } finally {
+            setIsArchiving(false);
+        }
     };
 
     return (
@@ -77,46 +103,63 @@ export function OfferCardMenu({ offerId, studioSlug }: OfferCardMenuProps) {
 
                     {/* Menu */}
                     <div className="absolute right-0 top-full mt-1 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-20 overflow-hidden">
-                        {/* Edit */}
+                        {/* Gestionar (abre Studio) */}
                         <button
-                            onClick={handleEdit}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                            onClick={handleManage}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
                         >
-                            <Edit className="w-4 h-4" />
-                            Editar
-                        </button>
-
-                        {/* Duplicate */}
-                        <button
-                            onClick={handleDuplicate}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
-                        >
-                            <Copy className="w-4 h-4" />
-                            Duplicar
-                        </button>
-
-                        {/* Archive */}
-                        <button
-                            onClick={handleArchive}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
-                        >
-                            <Archive className="w-4 h-4" />
-                            Archivar
+                            <ExternalLink className="w-4 h-4" />
+                            Gestionar
                         </button>
 
                         {/* Divider */}
                         <div className="border-t border-zinc-800" />
 
-                        {/* Delete */}
+                        {/* Archivar */}
                         <button
-                            onClick={handleDelete}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                            onClick={handleArchiveClick}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
                         >
-                            <Trash2 className="w-4 h-4" />
-                            Eliminar
+                            <Archive className="w-4 h-4" />
+                            Archivar
                         </button>
                     </div>
                 </>
+            )}
+
+            {/* Modal de confirmación - Archivar (Portal) */}
+            {showArchiveModal && typeof document !== 'undefined' && createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        onClick={() => !isArchiving && setShowArchiveModal(false)}
+                    />
+                    <div className="relative bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-md w-full">
+                        <h3 className="text-lg font-semibold text-zinc-100 mb-2">
+                            ¿Archivar oferta?
+                        </h3>
+                        <p className="text-sm text-zinc-400 mb-6">
+                            La oferta dejará de ser visible en tu perfil público. Podrás restaurarla más tarde desde la sección de Archivados.
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleArchiveConfirm}
+                                disabled={isArchiving}
+                                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md transition-colors disabled:opacity-50"
+                            >
+                                {isArchiving ? 'Archivando...' : 'Archivar'}
+                            </button>
+                            <button
+                                onClick={() => setShowArchiveModal(false)}
+                                disabled={isArchiving}
+                                className="flex-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );
