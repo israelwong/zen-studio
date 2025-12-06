@@ -3,8 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone } from 'lucide-react';
-import { Flask } from 'lucide-react';
+import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound } from 'lucide-react';
 import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
 import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback, ZenConfirmModal, ZenBadge } from '@/components/ui/zen';
@@ -230,7 +229,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                                         variant="outline"
                                         className="text-amber-400 border-amber-400/50 bg-amber-400/10 flex-shrink-0"
                                     >
-                                        <Flask className="h-3 w-3 mr-1" />
+                                        <FlaskRound className="h-3 w-3 mr-1" />
                                         PRUEBA
                                     </ZenBadge>
                                 )}

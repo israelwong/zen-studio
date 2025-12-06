@@ -2,10 +2,19 @@
 const nextConfig = {
   serverExternalPackages: ["@prisma/client", "@supabase/supabase-js"],
   images: {
-    domains: [
-      "bgtapcutchryzhzooony.supabase.co",
-      "fhwfdwrrnwkbnwxabkcq.supabase.co",
-      "zen.pro",
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'bgtapcutchryzhzooony.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'fhwfdwrrnwkbnwxabkcq.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'zen.pro',
+      },
     ],
   },
   env: {
@@ -39,11 +48,6 @@ const nextConfig = {
         ],
       },
     ];
-  },
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: true,
   },
   typescript: {
     // Warning: This allows production builds to successfully complete even if
