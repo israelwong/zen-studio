@@ -172,6 +172,7 @@ export async function actualizarPalabrasClave(
         });
 
         revalidatePath(`/${studioSlug}/studio/profile/identidad`);
+        revalidatePath(`/${studioSlug}`); // Revalidate public profile
         return {
             keywords: palabrasClave,
         };

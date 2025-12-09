@@ -20,7 +20,8 @@ import {
     EditPresentationModal,
     EditPhoneModal,
     EditContactInfoModal,
-    EditScheduleModal
+    EditScheduleModal,
+    EditKeywordsModal
 } from '@/components/shared/contact-modals';
 
 interface Horario {
@@ -64,6 +65,7 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
     const [editWebsiteOpen, setEditWebsiteOpen] = useState(false);
     const [editAddressOpen, setEditAddressOpen] = useState(false);
     const [editScheduleOpen, setEditScheduleOpen] = useState(false);
+    const [editKeywordsOpen, setEditKeywordsOpen] = useState(false);
 
     // Verificar si el usuario es el dueño del estudio
     const isOwner = user?.id === studio.owner_id;
@@ -492,15 +494,18 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
                             <div className="space-y-2">
                                 <div className="flex items-start gap-3">
                                     <Clock className="w-5 h-5 text-zinc-500 shrink-0 mt-0.5" />
-                                    <div className="flex-1 space-y-1.5">
+                                    <div className="flex-1 space-y-2.5">
                                         {horariosAgrupados.map((grupo, index) => (
-                                            <div key={index} className="flex items-center justify-between gap-3">
-                                                <span className="text-sm text-zinc-300">
-                                                    {grupo.dias}
-                                                </span>
-                                                <span className="text-xs text-zinc-400 shrink-0">
-                                                    {grupo.horario}
-                                                </span>
+                                            <div key={index} className="flex items-center gap-3">
+                                                <div className="flex-shrink-0 w-2 h-2 rounded-full bg-emerald-500/50" />
+                                                <div className="flex-1 flex items-baseline justify-between gap-3">
+                                                    <span className="text-sm text-zinc-200 font-medium">
+                                                        {grupo.dias}
+                                                    </span>
+                                                    <span className="text-sm text-zinc-400 tabular-nums">
+                                                        {grupo.horario}
+                                                    </span>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -531,25 +536,67 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
             </div>
 
             {/* Palabras clave - Sin etiqueta, solo hashtags */}
-            {studio.keywords && (
+            {(studio.keywords || isOwner) && (
                 <>
                     <div className="border-t border-zinc-800/50" />
-                    <div className="flex flex-wrap gap-2">
-                        {(() => {
-                            const keywordsArray = Array.isArray(studio.keywords)
-                                ? studio.keywords
-                                : typeof studio.keywords === 'string'
-                                    ? studio.keywords.split(',')
-                                    : [];
-                            return keywordsArray.map((palabra: string | unknown, index: number) => (
-                                <span
-                                    key={index}
-                                    className="text-xs text-zinc-400"
-                                >
-                                    #{typeof palabra === 'string' ? palabra.trim() : String(palabra)}
+                    <div
+                        className={`relative rounded-lg p-3 -mx-3 transition-all duration-200 group/item ${isOwner
+                            ? 'hover:bg-zinc-900/30 hover:border hover:border-emerald-600/30'
+                            : ''
+                            }`}
+                        onClick={isOwner && !studio.keywords ? () => setEditKeywordsOpen(true) : undefined}
+                    >
+                        {studio.keywords ? (
+                            <div className="flex items-center gap-3">
+                                <Hash className="w-5 h-5 text-zinc-500 shrink-0" />
+                                <div className="flex flex-wrap gap-2">
+                                    {(() => {
+                                        let keywordsArray: string[] = [];
+
+                                        if (Array.isArray(studio.keywords)) {
+                                            keywordsArray = studio.keywords;
+                                        } else if (typeof studio.keywords === 'string') {
+                                            // Try to parse as JSON first
+                                            try {
+                                                const parsed = JSON.parse(studio.keywords);
+                                                keywordsArray = Array.isArray(parsed) ? parsed : [studio.keywords];
+                                            } catch {
+                                                // If not JSON, split by comma
+                                                keywordsArray = studio.keywords.split(',').map(k => k.trim()).filter(k => k);
+                                            }
+                                        }
+
+                                        return keywordsArray.map((palabra: string, index: number) => (
+                                            <span
+                                                key={index}
+                                                className="text-xs text-zinc-400"
+                                            >
+                                                #{palabra.trim()}
+                                            </span>
+                                        ));
+                                    })()}
+                                </div>
+                            </div>
+                        ) : isOwner ? (
+                            <div className="flex items-center gap-3 cursor-pointer">
+                                <Hash className="w-5 h-5 text-zinc-600" />
+                                <span className="text-sm text-zinc-500 italic">
+                                    Agrega palabras clave para SEO
                                 </span>
-                            ));
-                        })()}
+                            </div>
+                        ) : null}
+                        {isOwner && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditKeywordsOpen(true);
+                                }}
+                                className="absolute top-1/2 -translate-y-1/2 right-1 p-2 rounded-md bg-emerald-600/10 text-emerald-400 opacity-0 group-hover/item:opacity-100 md:group-hover/item:opacity-100 transition-all duration-200 hover:bg-emerald-600/20 hover:scale-110"
+                                aria-label="Editar palabras clave"
+                            >
+                                <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                     </div>
                 </>
             )}
@@ -650,6 +697,14 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
                         onClose={() => setEditScheduleOpen(false)}
                         studioSlug={studioSlug}
                         horarios={contactInfo.horarios || []}
+                        onSuccess={handleDataRefresh}
+                    />
+
+                    <EditKeywordsModal
+                        isOpen={editKeywordsOpen}
+                        onClose={() => setEditKeywordsOpen(false)}
+                        studioSlug={studioSlug}
+                        currentValue={studio.keywords}
                         onSuccess={handleDataRefresh}
                     />
                 </>
