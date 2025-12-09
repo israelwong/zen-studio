@@ -38,9 +38,10 @@ export async function getStudioProfileBySlug(
                 where: { slug, is_active: true },
                 select: {
                     id: true,
-                    studio_users: {
-                        where: { role: 'owner', is_active: true },
-                        select: { platform_user_id: true },
+                    // Buscar en user_profiles (relación con studio_user_profiles)
+                    user_profiles: {
+                        where: { is_active: true },
+                        select: { supabase_id: true },
                         take: 1
                     }
                 }
@@ -53,7 +54,7 @@ export async function getStudioProfileBySlug(
                 };
             }
 
-            const ownerId = studioCheck.studio_users[0]?.platform_user_id || null;
+            const ownerId = studioCheck.user_profiles[0]?.supabase_id || null;
             const isOwner = userId === ownerId;
 
             // Single query to get all profile data
@@ -72,13 +73,12 @@ export async function getStudioProfileBySlug(
                     website: true,
                     address: true,
                     plan_id: true,
-                    studio_users: {
+                    user_profiles: {
                         where: {
-                            role: 'owner',
                             is_active: true
                         },
                         select: {
-                            platform_user_id: true
+                            supabase_id: true
                         },
                         take: 1
                     },
@@ -268,7 +268,7 @@ export async function getStudioProfileBySlug(
             // Transform data to match our types
             const studioProfile: PublicStudioProfile = {
                 id: studio.id,
-                owner_id: studio.studio_users?.[0]?.platform_user_id || null,
+                owner_id: studio.user_profiles?.[0]?.supabase_id || null,
                 studio_name: studio.studio_name,
                 presentation: studio.presentation,
                 keywords: studio.keywords,

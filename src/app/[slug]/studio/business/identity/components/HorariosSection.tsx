@@ -140,7 +140,7 @@ export function HorariosSection({ studioSlug, horarios: initialHorarios = [], on
                 h.id === id ? { ...h, cerrado: !cerrado } : h
             );
             setHorarios(reverted);
-            onLocalUpdate({ horarios: reverted });
+            onLocalUpdate?.({ horarios: reverted });
         }
     };
 

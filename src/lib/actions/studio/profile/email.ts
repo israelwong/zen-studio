@@ -48,6 +48,7 @@ export async function actualizarEmailStudio(
         });
 
         revalidatePath(`/${studioSlug}/studio/business/identity`);
+        revalidatePath(`/${studioSlug}`);
 
         return { success: true };
     } catch (error) {

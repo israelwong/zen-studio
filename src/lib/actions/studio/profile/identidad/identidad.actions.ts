@@ -68,6 +68,42 @@ export async function obtenerIdentidadStudio(studioSlug: string) {
     });
 }
 
+// Actualizar solo la presentación del studio
+export async function updateStudioPresentation(
+    studioSlug: string,
+    presentation: string | null
+) {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return {
+                success: false,
+                error: 'Studio no encontrado'
+            };
+        }
+
+        await prisma.studios.update({
+            where: { id: studio.id },
+            data: { presentation: presentation }
+        });
+
+        revalidatePath(`/${studioSlug}`);
+        revalidatePath(`/${studioSlug}/studio/business/identity`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('[updateStudioPresentation] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al actualizar presentación'
+        };
+    }
+}
+
 // Actualizar información básica de identidad
 export async function actualizarIdentidadBasica(
     studioSlug: string,

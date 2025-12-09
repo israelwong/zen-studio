@@ -14,8 +14,8 @@ import { z } from 'zod';
  */
 
 const UbicacionUpdateSchema = z.object({
-  direccion: z.string().max(500, "La dirección es muy larga").optional().or(z.literal("")),
-  google_maps_url: z.string().url("URL de Google Maps inválida").optional().or(z.literal("")).or(z.null()).or(z.undefined()),
+    direccion: z.string().max(500, "La dirección es muy larga").optional().or(z.literal("")),
+    google_maps_url: z.string().url("URL de Google Maps inválida").optional().or(z.literal("")).or(z.null()).or(z.undefined()),
 });
 
 export type UbicacionUpdateForm = z.infer<typeof UbicacionUpdateSchema>;
@@ -91,7 +91,8 @@ export async function actualizarUbicacion(
 
         revalidatePath(`/${studioSlug}/studio/profile/ubicacion`);
         revalidatePath(`/${studioSlug}/studio/profile/identidad`);
-        
+        revalidatePath(`/${studioSlug}`);
+
         return {
             success: true,
             data: {

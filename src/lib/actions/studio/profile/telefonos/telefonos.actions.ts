@@ -88,6 +88,7 @@ export async function actualizarTelefono(
         });
 
         revalidatePath(`/${studioSlug}/studio/profile/telefonos`);
+        revalidatePath(`/${studioSlug}`);
         return telefono;
     } catch (error) {
         console.error('Error actualizando teléfono:', error);

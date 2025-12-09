@@ -74,6 +74,7 @@ export function ProfileContentView({ activeTab, profileData, onPostClick, onPort
                         studio,
                         contactInfo
                     }}
+                    studioSlug={studioSlug}
                 />
             );
 
