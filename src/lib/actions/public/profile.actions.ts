@@ -324,9 +324,6 @@ export async function getStudioProfileBySlug(
             }));
 
             const portfolios: PublicPortfolio[] = studio.portfolios.map(portfolio => {
-                // Debug: Log is_published
-                console.log('[profile.actions] Portfolio:', portfolio.title, 'is_published:', portfolio.is_published);
-
                 // Mapear media para PortfolioDetailSection
                 const portfolioMedia = portfolio.media.map(item => ({
                     id: item.id,

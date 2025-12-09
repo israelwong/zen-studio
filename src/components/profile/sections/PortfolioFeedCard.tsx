@@ -84,35 +84,25 @@ export function PortfolioFeedCard({
                                 sizes="112px"
                             />
                             {/* Badge de estado - solo si está autenticado */}
-                            {user && (() => {
-                                const isPublished = portfolio.is_published === true;
-                                console.log('[PortfolioFeedCard Badge]', {
-                                    title: portfolio.title,
-                                    is_published: portfolio.is_published,
-                                    type: typeof portfolio.is_published,
-                                    isPublished
-                                });
-
-                                return (
-                                    <div className="absolute top-2 left-2">
-                                        {isPublished ? (
-                                            <ZenBadge
-                                                variant="outline"
-                                                className="text-[10px] bg-emerald-900/80 backdrop-blur-sm border-emerald-700 text-emerald-300 px-1.5 py-0.5"
-                                            >
-                                                Publicado
-                                            </ZenBadge>
-                                        ) : (
-                                            <ZenBadge
-                                                variant="outline"
-                                                className="text-[10px] bg-zinc-900/80 backdrop-blur-sm border-zinc-700 text-zinc-300 px-1.5 py-0.5"
-                                            >
-                                                Borrador
-                                            </ZenBadge>
-                                        )}
-                                    </div>
-                                );
-                            })()}
+                            {user && (
+                                <div className="absolute top-2 left-2">
+                                    {portfolio.is_published === true ? (
+                                        <ZenBadge
+                                            variant="outline"
+                                            className="text-[10px] bg-emerald-900/80 backdrop-blur-sm border-emerald-700 text-emerald-300 px-1.5 py-0.5"
+                                        >
+                                            Publicado
+                                        </ZenBadge>
+                                    ) : (
+                                        <ZenBadge
+                                            variant="outline"
+                                            className="text-[10px] bg-zinc-900/80 backdrop-blur-sm border-zinc-700 text-zinc-300 px-1.5 py-0.5"
+                                        >
+                                            Borrador
+                                        </ZenBadge>
+                                    )}
+                                </div>
+                            )}
                         </>
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
