@@ -131,7 +131,7 @@ export const PublicContactInfoSchema = z.object({
     address: z.string().nullable(),
     website: z.string().nullable(),
     email: z.string().nullable(),
-    google_maps_url: z.string().nullable(),
+    maps_url: z.string().nullable(),
     horarios: z.array(z.object({
         id: z.string(),
         dia: z.string(),

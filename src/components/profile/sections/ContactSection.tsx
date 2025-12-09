@@ -445,11 +445,11 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
                                         {contactInfo.address}
                                     </p>
                                 </div>
-                                {contactInfo.google_maps_url && (
+                                {contactInfo.maps_url && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            window.open(contactInfo.google_maps_url!, '_blank');
+                                            window.open(contactInfo.maps_url!, '_blank');
                                         }}
                                         className="ml-8 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-300 transition-colors"
                                     >
@@ -688,7 +688,7 @@ export function ContactSection({ studio, contactInfo, studioSlug }: InfoViewProp
                         studioSlug={studioSlug}
                         type="address"
                         currentValue={contactInfo.address ?? null}
-                        googleMapsUrl={contactInfo.google_maps_url ?? null}
+                        googleMapsUrl={contactInfo.maps_url ?? null}
                         onSuccess={handleDataRefresh}
                     />
 

@@ -137,7 +137,7 @@ export interface PublicContactInfo {
     address: string | null;
     website: string | null;
     email: string | null;
-    google_maps_url: string | null;
+    maps_url: string | null;
     horarios: PublicHorario[];
 }
 

@@ -64,8 +64,6 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
             })),
             contactInfo: {
                 ...profileData.contactInfo,
-                email: null,
-                google_maps_url: null,
                 horarios: (profileData as { contactInfo?: { horarios?: import('@/types/public-profile').PublicHorario[] } }).contactInfo?.horarios || []
             }
         };

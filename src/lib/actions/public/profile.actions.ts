@@ -303,7 +303,7 @@ export async function getStudioProfileBySlug(
                 address: studio.address,
                 website: studio.website,
                 email: studio.email,
-                google_maps_url: studio.maps_url,
+                maps_url: studio.maps_url,
                 horarios: studio.business_hours?.map(horario => ({
                     id: horario.id,
                     dia: horario.day_of_week,

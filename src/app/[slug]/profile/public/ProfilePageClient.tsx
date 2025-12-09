@@ -55,7 +55,6 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
 
     const { studio, paquetes, posts, portfolios } = profileData;
 
-
     // Keyboard shortcut para abrir buscador (Cmd+K / Ctrl+K)
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
