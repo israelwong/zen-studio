@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Link2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Link2, X, RotateCcw } from 'lucide-react';
 import { PortfolioDetailSection } from './PortfolioDetailSection';
 import { PublicPortfolio } from '@/types/public-profile';
 import { ContentBlock } from '@/types/content-blocks';
@@ -18,6 +18,8 @@ interface PortfolioDetailModalProps {
     onPrev?: () => void;
     hasNext?: boolean;
     hasPrev?: boolean;
+    isArchived?: boolean;
+    onRestore?: () => void;
 }
 
 /**
@@ -33,7 +35,9 @@ export function PortfolioDetailModal({
     onNext,
     onPrev,
     hasNext = false,
-    hasPrev = false
+    hasPrev = false,
+    isArchived = false,
+    onRestore
 }: PortfolioDetailModalProps) {
     const contentRef = useRef<HTMLDivElement>(null);
 
@@ -150,48 +154,62 @@ export function PortfolioDetailModal({
                                 )}
                             </div>
 
-                            {/* Actions: Share + Navigation + Close */}
+                            {/* Actions: Share/Restore + Navigation + Close */}
                             <div className="flex items-center gap-2">
-                                {/* Share button */}
-                                <button
-                                    onClick={handleCopyLink}
-                                    className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
-                                    aria-label="Compartir"
-                                >
-                                    <Link2 className="w-5 h-5" />
-                                </button>
-
-                                {/* Navigation buttons */}
-                                {(hasPrev || hasNext) && (
+                                {/* Restore button - Solo si está archivado */}
+                                {isArchived && onRestore ? (
+                                    <button
+                                        onClick={onRestore}
+                                        className="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-medium flex items-center gap-1.5 transition-colors"
+                                        aria-label="Restaurar"
+                                    >
+                                        <RotateCcw className="w-4 h-4" />
+                                        <span>Restaurar</span>
+                                    </button>
+                                ) : (
                                     <>
-                                        <div className="h-5 w-px bg-zinc-700" />
+                                        {/* Share button - Solo si NO está archivado */}
                                         <button
-                                            onClick={onPrev}
-                                            disabled={!hasPrev}
-                                            className={`p-2 rounded-full transition-colors ${hasPrev
-                                                ? 'hover:bg-zinc-800 text-zinc-400'
-                                                : 'text-zinc-700 cursor-not-allowed'
-                                                }`}
-                                            aria-label="Portafolio anterior"
+                                            onClick={handleCopyLink}
+                                            className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
+                                            aria-label="Compartir"
                                         >
-                                            <ChevronLeft className="w-5 h-5" />
+                                            <Link2 className="w-5 h-5" />
                                         </button>
-                                        <button
-                                            onClick={onNext}
-                                            disabled={!hasNext}
-                                            className={`p-2 rounded-full transition-colors ${hasNext
-                                                ? 'hover:bg-zinc-800 text-zinc-400'
-                                                : 'text-zinc-700 cursor-not-allowed'
-                                                }`}
-                                            aria-label="Siguiente portafolio"
-                                        >
-                                            <ChevronRight className="w-5 h-5" />
-                                        </button>
-                                        <div className="h-5 w-px bg-zinc-700" />
+
+                                        {/* Navigation buttons - Solo si NO está archivado */}
+                                        {(hasPrev || hasNext) && (
+                                            <>
+                                                <div className="h-5 w-px bg-zinc-700" />
+                                                <button
+                                                    onClick={onPrev}
+                                                    disabled={!hasPrev}
+                                                    className={`p-2 rounded-full transition-colors ${hasPrev
+                                                        ? 'hover:bg-zinc-800 text-zinc-400'
+                                                        : 'text-zinc-700 cursor-not-allowed'
+                                                        }`}
+                                                    aria-label="Portafolio anterior"
+                                                >
+                                                    <ChevronLeft className="w-5 h-5" />
+                                                </button>
+                                                <button
+                                                    onClick={onNext}
+                                                    disabled={!hasNext}
+                                                    className={`p-2 rounded-full transition-colors ${hasNext
+                                                        ? 'hover:bg-zinc-800 text-zinc-400'
+                                                        : 'text-zinc-700 cursor-not-allowed'
+                                                        }`}
+                                                    aria-label="Siguiente portafolio"
+                                                >
+                                                    <ChevronRight className="w-5 h-5" />
+                                                </button>
+                                                <div className="h-5 w-px bg-zinc-700" />
+                                            </>
+                                        )}
                                     </>
                                 )}
 
-                                {/* Close button */}
+                                {/* Close button - Siempre visible */}
                                 <button
                                     onClick={handleClose}
                                     className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"

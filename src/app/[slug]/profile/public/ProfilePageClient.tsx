@@ -348,6 +348,24 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
                 onPrev={handlePrevPortfolio}
                 hasNext={hasNextPortfolio}
                 hasPrev={hasPrevPortfolio}
+                isArchived={selectedPortfolio?.is_published === false}
+                onRestore={selectedPortfolio?.is_published === false ? async () => {
+                    // Importar y llamar restorePortfolio
+                    const { restorePortfolio } = await import('@/lib/actions/studio/archive.actions');
+                    const result = await restorePortfolio(selectedPortfolio.id, studioSlug);
+                    if (result.success) {
+                        // Actualizar estado local de ArchivedContent
+                        if (typeof window !== 'undefined') {
+                            const win = window as typeof window & { __handleArchivedPortfolioRestore?: (id: string) => void };
+                            win.__handleArchivedPortfolioRestore?.(selectedPortfolio.id);
+                        }
+                        toast.success('Portfolio restaurado exitosamente');
+                        handleCloseModal();
+                        setTimeout(() => router.refresh(), 300);
+                    } else {
+                        toast.error(result.error || 'Error al restaurar');
+                    }
+                } : undefined}
             />
 
             {/* Search Command Palette */}

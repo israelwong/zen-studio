@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Archive, RotateCcw, Loader2, FileText, Folder, Sparkles, Trash2 } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Archive, RotateCcw, Loader2, FileText, Folder, Sparkles, Trash2, MoreVertical, Edit } from 'lucide-react';
 import { getArchivedContent } from '@/lib/actions/public/archived-content.actions';
 import { restorePost, restorePortfolio, activateOffer, deletePost, deletePortfolio, deleteOffer } from '@/lib/actions/studio/archive.actions';
 import { toast } from 'sonner';
@@ -374,88 +374,163 @@ interface ArchivedCardProps {
 }
 
 function ArchivedCard({ item, onRestore, onDelete, isRestoring, isDeleting, actionLabel = 'Restaurar', onView }: ArchivedCardProps) {
-    return (
-        <div
-            className="bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden hover:bg-zinc-900 transition-colors cursor-pointer"
-            onClick={onView}
-        >
-            <div className="flex gap-3 p-3">
-                {/* Imagen izquierda */}
-                <div className="relative w-20 h-20 bg-zinc-800 rounded-md shrink-0 overflow-hidden">
-                    {item.cover_url ? (
-                        <Image
-                            src={item.cover_url}
-                            alt={item.title}
-                            fill
-                            className="object-cover"
-                            unoptimized
-                        />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                            <Archive className="w-8 h-8 text-zinc-600" />
-                        </div>
-                    )}
-                </div>
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const buttonRef = useRef<HTMLButtonElement>(null);
+    const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+    const router = useRouter();
 
-                {/* Detalles derecha */}
-                <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                        <h3 className="text-sm font-medium text-zinc-300 truncate">
-                            {item.title}
-                        </h3>
-                        {item.description && (
-                            <p className="text-xs text-zinc-500 truncate mt-0.5">
-                                {item.description}
-                            </p>
+    useEffect(() => {
+        if (isMenuOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setMenuPosition({
+                top: rect.bottom + 4,
+                right: window.innerWidth - rect.right
+            });
+        }
+    }, [isMenuOpen]);
+
+    const handleEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsMenuOpen(false);
+
+        // Redirigir al editor según el tipo
+        if (item.type === 'post') {
+            router.push(`/${item.slug}/profile/posts?edit=${item.id}`);
+        } else if (item.type === 'portfolio') {
+            router.push(`/${item.slug}/profile/portfolio/${item.slug}`);
+        }
+    };
+
+    return (
+        <>
+            <div
+                className="bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden hover:bg-zinc-900 transition-colors cursor-pointer"
+                onClick={onView}
+            >
+                <div className="flex gap-3 p-3">
+                    {/* Imagen izquierda */}
+                    <div className="relative w-20 h-20 bg-zinc-800 rounded-md shrink-0 overflow-hidden">
+                        {item.cover_url ? (
+                            <Image
+                                src={item.cover_url}
+                                alt={item.title}
+                                fill
+                                className="object-cover"
+                                unoptimized
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                                <Archive className="w-8 h-8 text-zinc-600" />
+                            </div>
                         )}
-                        <p className="text-xs text-zinc-600 mt-1">
-                            {new Date(item.updated_at).toLocaleDateString('es-ES', {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric'
-                            })}
-                        </p>
                     </div>
 
-                    {/* Botones de acción */}
-                    <div className="flex items-center gap-2">
-                        {/* Botón restaurar */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onRestore(item);
-                            }}
-                            disabled={isRestoring || isDeleting}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-                        >
-                            {isRestoring ? (
-                                <>
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    <span className="hidden sm:inline">Restaurando...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <RotateCcw className="w-3.5 h-3.5" />
-                                    <span className="hidden sm:inline">{actionLabel}</span>
-                                </>
+                    {/* Detalles derecha */}
+                    <div className="flex-1 min-w-0 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-medium text-zinc-300 truncate">
+                                {item.title}
+                            </h3>
+                            {item.description && (
+                                <p className="text-xs text-zinc-500 truncate mt-0.5">
+                                    {item.description}
+                                </p>
                             )}
-                        </button>
+                            <p className="text-xs text-zinc-600 mt-1">
+                                {new Date(item.updated_at).toLocaleDateString('es-ES', {
+                                    day: 'numeric',
+                                    month: 'short',
+                                    year: 'numeric'
+                                })}
+                            </p>
+                        </div>
 
-                        {/* Botón eliminar */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onDelete(item);
-                            }}
-                            disabled={isRestoring || isDeleting}
-                            className="p-1.5 rounded-md text-red-400 hover:bg-red-950/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Eliminar permanentemente"
-                        >
-                            <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Botones de acción */}
+                        <div className="flex items-center gap-2">
+                            {/* Botón restaurar */}
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onRestore(item);
+                                }}
+                                disabled={isRestoring || isDeleting}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            >
+                                {isRestoring ? (
+                                    <>
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span className="hidden sm:inline">Restaurando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        <span className="hidden sm:inline">{actionLabel}</span>
+                                    </>
+                                )}
+                            </button>
+
+                            {/* Botón menú */}
+                            <button
+                                ref={buttonRef}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsMenuOpen(!isMenuOpen);
+                                }}
+                                disabled={isRestoring || isDeleting}
+                                className="p-1.5 rounded-md text-zinc-400 hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title="Más opciones"
+                            >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Menú desplegable */}
+            {isMenuOpen && (
+                <>
+                    <div
+                        className="fixed inset-0 z-40"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsMenuOpen(false);
+                        }}
+                    />
+                    <div
+                        className="fixed z-50 w-40 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl overflow-hidden"
+                        style={{
+                            top: `${menuPosition.top}px`,
+                            right: `${menuPosition.right}px`,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Editar */}
+                        {(item.type === 'post' || item.type === 'portfolio') && (
+                            <button
+                                onClick={handleEdit}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 transition-colors text-left"
+                            >
+                                <Edit className="w-4 h-4" />
+                                <span>Editar</span>
+                            </button>
+                        )}
+
+                        {/* Eliminar */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsMenuOpen(false);
+                                onDelete(item);
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-400 hover:bg-red-950/20 transition-colors text-left"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Eliminar</span>
+                        </button>
+                    </div>
+                </>
+            )}
+        </>
     );
 }
