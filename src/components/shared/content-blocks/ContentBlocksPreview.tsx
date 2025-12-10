@@ -7,11 +7,19 @@ import { BlockRenderer } from './BlockRenderer';
 interface ContentBlocksPreviewProps {
     blocks: ContentBlock[];
     className?: string;
+    context?: 'portfolio' | 'offer';
+    contextData?: {
+        eventTypeName?: string;
+        offerSlug?: string;
+        offerId?: string;
+    };
 }
 
 export function ContentBlocksPreview({
     blocks,
-    className = ''
+    className = '',
+    context,
+    contextData
 }: ContentBlocksPreviewProps) {
     if (!blocks || blocks.length === 0) {
         return (
@@ -35,11 +43,24 @@ export function ContentBlocksPreview({
         <div className={`space-y-2 ${className}`}>
             {blocks
                 .sort((a, b) => a.order - b.order) // Asegurar orden correcto
-                .map((block) => (
-                    <div key={block.id} className="w-full">
-                        <BlockRenderer block={block} />
-                    </div>
-                ))}
+                .map((block) => {
+                    // Si es hero-portfolio, inyectar eventTypeName en el config
+                    const enrichedBlock = block.type === 'hero-portfolio' && contextData?.eventTypeName
+                        ? {
+                            ...block,
+                            config: {
+                                ...block.config,
+                                eventTypeName: contextData.eventTypeName
+                            }
+                        }
+                        : block;
+
+                    return (
+                        <div key={block.id} className="w-full">
+                            <BlockRenderer block={enrichedBlock} context={context} />
+                        </div>
+                    );
+                })}
         </div>
     );
 }

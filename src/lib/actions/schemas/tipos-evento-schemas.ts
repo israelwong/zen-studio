@@ -38,16 +38,21 @@ export const ActualizarOrdenTiposEventoSchema = z.object({
  */
 export interface TipoEventoData {
     id: string;
-    projectId: string;
+    studio_id?: string;
+    projectId?: string;
     nombre: string;
     status: string;
     orden: number;
+    color?: string;
     createdAt: Date;
     updatedAt: Date;
     icono?: string;
     descripcion?: string;
     // Relaciones
     paquetes?: PaqueteData[];
+    _count?: {
+        eventos: number;
+    };
 }
 
 export interface TipoEventoFormData {

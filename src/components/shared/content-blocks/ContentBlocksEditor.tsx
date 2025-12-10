@@ -22,13 +22,15 @@ import {
 } from '@dnd-kit/sortable';
 import { ZenButton } from '@/components/ui/zen';
 import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
-import { ContentBlock, ComponentType, MediaMode, MediaType, MediaItem, MediaBlockConfig, HeroConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig } from '@/types/content-blocks';
+import { ContentBlock, ComponentType, MediaMode, MediaType, MediaItem, MediaBlockConfig, HeroConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig, HeroPortfolioConfig, HeroOfferConfig } from '@/types/content-blocks';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
 import { toast } from 'sonner';
 import { VideoSingle } from '@/components/shared/video';
 import { ImageSingle, ImageGrid, MediaGallery } from '@/components/shared/media';
 import { RichTextBlock } from '@/components/shared/text';
 import HeroEditor from '@/components/shared/hero/HeroEditor';
+import HeroPortfolioEditor from '@/components/shared/hero/portfolio/HeroPortfolioEditor';
+import HeroOfferEditor from '@/components/shared/hero/offer/HeroOfferEditor';
 import { formatBytes, calculateTotalStorage, getStorageInfo } from '@/lib/utils/storage';
 
 // Función para obtener el nombre de visualización del componente
@@ -95,6 +97,7 @@ interface ContentBlocksEditorProps {
     heroContextData?: {
         offerSlug?: string;
         offerId?: string;
+        eventTypeName?: string; // Nombre del tipo de evento (para portfolios y ofertas)
     };
 }
 
@@ -357,10 +360,10 @@ export function ContentBlocksEditor({
             };
         } else if (component.type === 'hero-image') {
             config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
+                title: heroContext === 'portfolio' ? 'Título de tu portafolio' : 'Tu Título Aquí',
+                subtitle: heroContext === 'portfolio' ? 'Categoría o especialidad' : 'Subtítulo Impactante',
+                description: heroContext === 'portfolio' ? 'Descripción breve de tu portafolio' : 'Descripción que cautive a tus prospectos',
+                buttons: heroContext === 'portfolio' ? [] : [
                     {
                         text: 'Ver Trabajo',
                         variant: 'primary',
@@ -382,10 +385,10 @@ export function ContentBlocksEditor({
             };
         } else if (component.type === 'hero-video') {
             config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
+                title: heroContext === 'portfolio' ? 'Título de tu portafolio' : 'Tu Título Aquí',
+                subtitle: heroContext === 'portfolio' ? 'Categoría o especialidad' : 'Subtítulo Impactante',
+                description: heroContext === 'portfolio' ? 'Descripción breve de tu portafolio' : 'Descripción que cautive a tus prospectos',
+                buttons: heroContext === 'portfolio' ? [] : [
                     {
                         text: 'Ver Trabajo',
                         variant: 'primary',
@@ -409,10 +412,10 @@ export function ContentBlocksEditor({
             };
         } else if (component.type === 'hero-text') {
             config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
-                buttons: [
+                title: heroContext === 'portfolio' ? 'Título de tu portafolio' : 'Tu Título Aquí',
+                subtitle: heroContext === 'portfolio' ? 'Categoría o especialidad' : 'Subtítulo Impactante',
+                description: heroContext === 'portfolio' ? 'Descripción breve de tu portafolio' : 'Descripción que cautive a tus prospectos',
+                buttons: heroContext === 'portfolio' ? [] : [
                     {
                         text: 'Ver Trabajo',
                         variant: 'primary',
@@ -435,9 +438,10 @@ export function ContentBlocksEditor({
             };
         } else if (component.type === 'hero') {
             config = {
-                title: 'Tu Título Aquí',
-                subtitle: 'Subtítulo Impactante',
-                description: 'Descripción que cautive a tus prospectos',
+                title: heroContext === 'portfolio' ? 'Título de tu portafolio' : 'Tu Título Aquí',
+                subtitle: heroContext === 'portfolio' ? 'Categoría o especialidad' : 'Subtítulo Impactante',
+                description: heroContext === 'portfolio' ? 'Descripción breve de tu portafolio' : 'Descripción que cautive a tus prospectos',
+                buttons: heroContext === 'portfolio' ? [] : undefined,
                 textAlignment: 'center',
                 verticalAlignment: 'center',
                 backgroundType: 'image',
@@ -817,7 +821,7 @@ export function ContentBlocksEditor({
                                 setShowComponentSelector(true);
                             }
                         }}
-                        className="flex items-center space-x-2 flex-shrink-0 w-full sm:w-auto"
+                        className="flex items-center space-x-2 shrink-0 w-full sm:w-auto"
                     >
                         <Plus className="h-4 w-4" />
                         <span className="hidden sm:inline">Agregar Componente</span>
@@ -1066,6 +1070,10 @@ function SortableBlock({
             case 'hero-text':
             case 'hero':
                 return renderHeroContent();
+            case 'hero-portfolio':
+                return renderHeroPortfolioContent();
+            case 'hero-offer':
+                return renderHeroOfferContent();
             default:
                 return null;
         }
@@ -1322,7 +1330,7 @@ function SortableBlock({
 
                     {/* Slider para altura/grosor */}
                     <div className="flex-1 flex items-center gap-2">
-                        <span className="text-xs text-zinc-500 min-w-[3rem]">
+                        <span className="text-xs text-zinc-500 min-w-12">
                             {height}px
                         </span>
                         <input
@@ -1482,6 +1490,132 @@ function SortableBlock({
                 studioSlug={studioSlug}
                 context={effectiveContext}
                 contextData={effectiveContextData}
+            />
+        );
+    };
+
+    const renderHeroPortfolioContent = () => {
+        const portfolioConfig = (block.config || {}) as HeroPortfolioConfig;
+
+        const handleConfigChange = (newConfig: HeroPortfolioConfig) => {
+            onUpdate(block.id, {
+                config: newConfig as Record<string, unknown>
+            });
+        };
+
+        const handleMediaChange = (newMedia: MediaItem[]) => {
+            onUpdate(block.id, {
+                media: newMedia
+            });
+        };
+
+        const handleDropFiles = async (files: File[]) => {
+            await onDropFiles(files, block.id);
+        };
+
+        // Usar eventTypeName de heroContextData si está disponible, sino del config
+        const eventTypeName = (heroContextData as { eventTypeName?: string } | undefined)?.eventTypeName || portfolioConfig.eventTypeName;
+
+        return (
+            <HeroPortfolioEditor
+                config={portfolioConfig}
+                media={block.media || []}
+                onConfigChange={handleConfigChange}
+                onMediaChange={handleMediaChange}
+                onDropFiles={handleDropFiles}
+                isUploading={isUploading}
+                studioSlug={studioSlug}
+                eventTypeName={eventTypeName}
+            />
+        );
+    };
+
+    const renderHeroOfferContent = () => {
+        // Hero Offer usa HeroOfferEditor especializado
+        const offerConfig = (block.config || {}) as HeroOfferConfig;
+
+        // Convertir HeroOfferConfig a HeroConfig para HeroOfferEditor
+        const heroConfig: HeroConfig & Record<string, unknown> = {
+            title: offerConfig.title,
+            subtitle: offerConfig.subtitle,
+            description: offerConfig.description,
+            buttons: offerConfig.buttons,
+            overlay: offerConfig.overlay,
+            overlayOpacity: offerConfig.overlayOpacity,
+            textAlignment: offerConfig.textAlignment,
+            verticalAlignment: offerConfig.verticalAlignment,
+            backgroundType: offerConfig.backgroundType,
+            autoPlay: offerConfig.autoPlay,
+            muted: offerConfig.muted,
+            loop: offerConfig.loop,
+            containerStyle: offerConfig.containerStyle,
+            aspectRatio: offerConfig.aspectRatio,
+            borderRadius: offerConfig.borderRadius,
+            gradientOverlay: offerConfig.gradientOverlay,
+            gradientPosition: offerConfig.gradientPosition,
+            parallax: offerConfig.parallax,
+            _context: 'offer',
+            _contextData: {
+                offerSlug: offerConfig.offerSlug || heroContextData?.offerSlug,
+                offerId: offerConfig.offerId || heroContextData?.offerId
+            }
+        };
+
+        const handleConfigChange = (newConfig: HeroConfig) => {
+            // Convertir de vuelta a HeroOfferConfig y preservar eventTypeName
+            const configToSave: HeroOfferConfig & Record<string, unknown> = {
+                title: newConfig.title,
+                subtitle: newConfig.subtitle,
+                description: newConfig.description,
+                buttons: newConfig.buttons,
+                overlay: newConfig.overlay,
+                overlayOpacity: newConfig.overlayOpacity,
+                textAlignment: newConfig.textAlignment,
+                verticalAlignment: newConfig.verticalAlignment,
+                backgroundType: newConfig.backgroundType,
+                autoPlay: newConfig.autoPlay,
+                muted: newConfig.muted,
+                loop: newConfig.loop,
+                containerStyle: newConfig.containerStyle,
+                aspectRatio: newConfig.aspectRatio,
+                borderRadius: newConfig.borderRadius,
+                gradientOverlay: newConfig.gradientOverlay,
+                gradientPosition: newConfig.gradientPosition,
+                parallax: newConfig.parallax,
+                eventTypeName: offerConfig.eventTypeName, // Preservar
+                offerSlug: heroContextData?.offerSlug,
+                offerId: heroContextData?.offerId
+            };
+
+            onUpdate(block.id, {
+                config: configToSave
+            });
+        };
+
+        const handleMediaChange = (newMedia: MediaItem[]) => {
+            onUpdate(block.id, {
+                media: newMedia
+            });
+        };
+
+        const handleDropFiles = async (files: File[]) => {
+            await onDropFiles(files, block.id);
+        };
+
+        return (
+            <HeroOfferEditor
+                config={heroConfig}
+                media={block.media || []}
+                onConfigChange={handleConfigChange}
+                onMediaChange={handleMediaChange}
+                onDropFiles={handleDropFiles}
+                isUploading={isUploading}
+                studioSlug={studioSlug}
+                context="offer"
+                contextData={{
+                    offerSlug: offerConfig.offerSlug || heroContextData?.offerSlug,
+                    offerId: offerConfig.offerId || heroContextData?.offerId
+                }}
             />
         );
     };

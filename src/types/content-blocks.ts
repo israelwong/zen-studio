@@ -3,7 +3,7 @@
  * Reutilizables entre ZEN Posts, ZEN Invitations y otros módulos
  */
 
-export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'hero' | 'separator' | 'media-gallery';
+export type ComponentType = 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'hero' | 'separator' | 'media-gallery' | 'hero-portfolio' | 'hero-offer';
 
 export type MediaMode = 'single' | 'grid' | 'masonry' | 'slide';
 
@@ -173,8 +173,57 @@ export interface SeparatorBlockConfig {
     color?: string; // Color de la línea (default: zinc-600)
 }
 
+// Configuraciones para nuevos Heroes especializados
+export interface HeroPortfolioConfig {
+    title?: string;
+    eventTypeName?: string; // Desde studio_event_types.nombre (NO editable)
+    description?: string;
+    overlay?: boolean;
+    overlayOpacity?: number;
+    textAlignment?: TextAlignment;
+    verticalAlignment?: 'top' | 'center' | 'bottom';
+    backgroundType?: 'image' | 'video';
+    autoPlay?: boolean;
+    muted?: boolean;
+    loop?: boolean;
+    containerStyle?: 'fullscreen' | 'wrapped';
+    aspectRatio?: 'square' | 'vertical';
+    borderRadius?: 'none' | 'md' | 'lg';
+    borderColor?: string;
+    borderWidth?: number;
+    borderStyle?: 'solid' | 'dashed' | 'dotted';
+    gradientOverlay?: boolean;
+    gradientPosition?: 'top' | 'bottom' | 'left' | 'right';
+    parallax?: boolean;
+}
+
+export interface HeroOfferConfig {
+    title?: string;
+    subtitle?: string; // Texto libre editable
+    description?: string;
+    buttons?: ButtonConfig[];
+    overlay?: boolean;
+    overlayOpacity?: number;
+    textAlignment?: TextAlignment;
+    verticalAlignment?: 'top' | 'center' | 'bottom';
+    backgroundType?: 'image' | 'video';
+    autoPlay?: boolean;
+    muted?: boolean;
+    loop?: boolean;
+    containerStyle?: 'fullscreen' | 'wrapped';
+    aspectRatio?: 'square' | 'vertical';
+    borderRadius?: 'none' | 'md' | 'lg';
+    gradientOverlay?: boolean;
+    gradientPosition?: 'top' | 'bottom' | 'left' | 'right';
+    parallax?: boolean;
+    // Datos del contexto de offer
+    eventTypeName?: string; // Para enriquecer leadform
+    offerSlug?: string;
+    offerId?: string;
+}
+
 // Union type para todas las configuraciones
-export type BlockConfig = MediaBlockConfig | TextBlockConfig | HeroContactConfig | HeroImageConfig | HeroVideoConfig | HeroTextConfig | HeroConfig | SeparatorBlockConfig;
+export type BlockConfig = MediaBlockConfig | TextBlockConfig | HeroContactConfig | HeroImageConfig | HeroVideoConfig | HeroTextConfig | HeroConfig | SeparatorBlockConfig | HeroPortfolioConfig | HeroOfferConfig;
 
 // Props base para todos los componentes de bloque
 export interface BaseBlockProps {

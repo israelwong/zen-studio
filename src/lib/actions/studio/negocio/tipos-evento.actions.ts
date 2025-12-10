@@ -60,6 +60,11 @@ export async function obtenerTiposEvento(
                         status: true,
                     },
                 },
+                _count: {
+                    select: {
+                        events: true,
+                    },
+                },
             },
             orderBy: { order: 'asc' },
         });
@@ -81,6 +86,9 @@ export async function obtenerTiposEvento(
                 precio: p.precio || 0,
                 status: p.status,
             })),
+            _count: {
+                eventos: tipo._count.events,
+            },
         }));
 
         return { success: true, data: tiposEventoData };
@@ -107,6 +115,24 @@ export async function crearTipoEvento(
         }
 
         const validatedData = TipoEventoSchema.parse(data);
+
+        // Verificar que no exista un tipo con el mismo nombre
+        const existente = await prisma.studio_event_types.findFirst({
+            where: {
+                studio_id,
+                name: {
+                    equals: validatedData.nombre,
+                    mode: 'insensitive',
+                },
+            },
+        });
+
+        if (existente) {
+            return {
+                success: false,
+                error: 'Ya existe un tipo de evento con ese nombre',
+            };
+        }
 
         // Obtener el siguiente número de posición
         const ultimoTipo = await prisma.studio_event_types.findFirst({
@@ -167,6 +193,36 @@ export async function actualizarTipoEvento(
 ): Promise<ActionResponse<TipoEventoData>> {
     try {
         const validatedData = ActualizarTipoEventoSchema.parse(data);
+
+        // Si se está actualizando el nombre, verificar que no exista duplicado
+        if (validatedData.nombre) {
+            const tipoActual = await prisma.studio_event_types.findUnique({
+                where: { id: tipoId },
+                select: { studio_id: true },
+            });
+
+            if (!tipoActual) {
+                return { success: false, error: 'Tipo de evento no encontrado' };
+            }
+
+            const existente = await prisma.studio_event_types.findFirst({
+                where: {
+                    studio_id: tipoActual.studio_id,
+                    id: { not: tipoId },
+                    name: {
+                        equals: validatedData.nombre,
+                        mode: 'insensitive',
+                    },
+                },
+            });
+
+            if (existente) {
+                return {
+                    success: false,
+                    error: 'Ya existe un tipo de evento con ese nombre',
+                };
+            }
+        }
 
         const tipoEvento = await prisma.studio_event_types.update({
             where: { id: tipoId },

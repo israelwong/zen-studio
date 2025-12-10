@@ -149,7 +149,7 @@ export function OfferLandingPage({
                   />
                 )}
                 <div className={isFullWidth ? '' : 'px-4'}>
-                  <BlockRenderer block={block} />
+                  <BlockRenderer block={block} context="offer" />
                 </div>
               </div>
             );

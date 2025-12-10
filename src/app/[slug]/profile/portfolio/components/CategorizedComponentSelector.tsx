@@ -42,10 +42,10 @@ const COMPONENTS: ComponentOption[] = [
         description: 'Sube una o más fotos y videos y personaliza cómo se ven',
     },
     {
-        type: 'hero',
-        label: 'Hero',
+        type: 'hero-portfolio',
+        label: 'Hero Portfolio',
         icon: Sparkles,
-        description: 'Hero unificado con imagen o video de fondo, título, descripción y botones',
+        description: 'Hero con imagen o video de fondo, título y descripción (sin botones)',
     },
 ];
 

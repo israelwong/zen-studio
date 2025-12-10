@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { ZenButton, ZenBadge } from "@/components/ui/zen";
 import { TipoEventoQuickAddModal } from "./TipoEventoQuickAddModal";
+import { TipoEventoManagementModal } from "./TipoEventoManagementModal";
 import { obtenerTiposEvento } from "@/lib/actions/studio/negocio/tipos-evento.actions";
 import type { TipoEventoData } from "@/lib/actions/schemas/tipos-evento-schemas";
 import { Plus, Settings, Loader2 } from "lucide-react";
@@ -20,10 +20,10 @@ export function EventTypesManager({
   selectedTypes,
   onChange,
 }: EventTypesManagerProps) {
-  const router = useRouter();
   const [eventTypes, setEventTypes] = useState<TipoEventoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
 
   useEffect(() => {
     loadEventTypes();
@@ -127,7 +127,7 @@ export function EventTypesManager({
           <ZenButton
             variant="outline"
             size="sm"
-            onClick={() => setIsOpen(true)}
+            onClick={() => setShowManagement(true)}
           >
             <Settings className="h-3 w-3 mr-1" />
             Gestionar
@@ -187,6 +187,22 @@ export function EventTypesManager({
           onClose={() => setShowQuickAdd(false)}
           onSuccess={handleQuickAddSuccess}
           studioSlug={studioSlug}
+        />
+      )}
+
+      {/* Management Modal */}
+      {showManagement && (
+        <TipoEventoManagementModal
+          isOpen={showManagement}
+          onClose={() => setShowManagement(false)}
+          studioSlug={studioSlug}
+          onUpdate={(updatedTypes) => {
+            // Actualizar lista local sin recargar desde servidor
+            if (updatedTypes) {
+              const activeTypes = updatedTypes.filter(t => t.status === "active");
+              setEventTypes(activeTypes);
+            }
+          }}
         />
       )}
     </div>

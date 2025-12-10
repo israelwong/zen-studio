@@ -2,27 +2,24 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { ZenButtonWithEffects } from '@/components/ui/zen';
-import { HeroConfig } from '@/types/content-blocks';
+import { HeroPortfolioConfig } from '@/types/content-blocks';
 import { cn } from '@/lib/utils';
 
-interface HeroComponentProps {
-    config: HeroConfig;
+interface HeroPortfolioComponentProps {
+    config: HeroPortfolioConfig;
     media: Array<{ file_url: string; file_type: string; filename: string; thumbnail_url?: string }>;
     className?: string;
     isEditable?: boolean;
-    // Contexto para determinar comportamiento de botones
-    context?: 'portfolio' | 'offer';
+    eventTypeName?: string; // Nombre del tipo de evento
 }
 
-export default function HeroComponent({
+export default function HeroPortfolioComponent({
     config,
     media,
     className = '',
     isEditable = false,
-    context
-}: HeroComponentProps) {
+    eventTypeName
+}: HeroPortfolioComponentProps) {
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [showPlayButton, setShowPlayButton] = useState(false);
@@ -32,9 +29,8 @@ export default function HeroComponent({
 
     const {
         title,
-        subtitle,
+        eventTypeName: configEventTypeName,
         description,
-        buttons = [],
         overlay = true,
         overlayOpacity = 50,
         textAlignment = 'center',
@@ -43,13 +39,13 @@ export default function HeroComponent({
         containerStyle = 'fullscreen',
         borderRadius = 'none',
         aspectRatio,
-        borderColor,
-        borderWidth,
-        borderStyle,
         gradientOverlay = false,
         gradientPosition = 'top',
         parallax = false,
     } = config;
+
+    // Usar eventTypeName de props si está disponible, sino del config
+    const displayEventTypeName = eventTypeName || configEventTypeName;
 
     const backgroundMedia = media[0];
     const isVideo = backgroundType === 'video' || backgroundMedia?.file_type === 'video';
@@ -143,38 +139,16 @@ export default function HeroComponent({
 
     const aspectRatioClass = aspectRatio ? aspectRatioClasses[aspectRatio] : '';
 
-    const getButtonVariant = (variant?: string): 'primary' | 'secondary' | 'outline' | 'ghost' => {
-        switch (variant) {
-            case 'primary': return 'primary';
-            case 'secondary': return 'secondary';
-            case 'outline': return 'outline';
-            case 'ghost': return 'ghost';
-            case 'gradient': return 'primary';
-            default: return 'primary';
-        }
-    };
-
-
-    const borderStyles = borderColor && borderWidth && borderWidth > 0 && borderStyle
-        ? {
-            borderColor,
-            borderWidth: `${borderWidth}px`,
-            borderStyle
-        }
-        : {};
-
     const containerClassName = containerStyle === 'wrapped'
         ? `${containerStyleClasses.wrapped} ${borderRadiusClasses[borderRadius]}`
         : '';
 
-    // Padding uniforme: mismo valor para todos los lados (p-3)
     const contentPaddingClass = 'p-3';
 
-    // Efecto parallax mejorado para mobile preview
+    // Efecto parallax
     useEffect(() => {
         if (!parallax || isEditable) return;
 
-        // Buscar contenedor con scroll (para mobile preview)
         const findScrollContainer = (element: HTMLElement | null): HTMLElement | Window => {
             if (!element) return window;
 
@@ -182,10 +156,7 @@ export default function HeroComponent({
             while (parent) {
                 const style = window.getComputedStyle(parent);
                 const overflowY = style.overflowY || style.overflow;
-                const overflowX = style.overflowX || style.overflow;
-                if ((overflowY === 'auto' || overflowY === 'scroll') ||
-                    (overflowX === 'auto' || overflowX === 'scroll')) {
-                    // Verificar que realmente tenga scroll
+                if (overflowY === 'auto' || overflowY === 'scroll') {
                     if (parent.scrollHeight > parent.clientHeight) {
                         return parent;
                     }
@@ -203,41 +174,14 @@ export default function HeroComponent({
             if (!heroRef.current) return;
 
             const heroRect = heroRef.current.getBoundingClientRect();
-
-            // Obtener scroll position del contenedor
-            let scrollTop = 0;
-            let containerHeight = window.innerHeight;
-
-            if (scrollContainer instanceof Window) {
-                scrollTop = window.scrollY || window.pageYOffset || 0;
-                containerHeight = window.innerHeight;
-            } else {
-                scrollTop = scrollContainer.scrollTop || 0;
-                const containerRect = scrollContainer.getBoundingClientRect();
-                containerHeight = containerRect.height;
-            }
-
-            // Calcular posición del hero en el viewport
-            // heroRect.top: distancia desde el top del viewport hasta el top del hero
-            // Cuando heroRect.top <= 0, el hero ya empezó a salirse del viewport
             const heroTopInViewport = heroRect.top;
-            const heroVisibleHeight = Math.max(0, Math.min(heroRect.height, containerHeight - heroTopInViewport));
+            const heroVisibleHeight = Math.max(0, Math.min(heroRect.height, window.innerHeight - heroTopInViewport));
             const scrollProgress = 1 - (heroVisibleHeight / heroRect.height);
-
-            // Parallax: el fondo se mueve más lento que el scroll (50% de velocidad)
             const parallaxFactor = 0.5;
-
-            // Calcular offset: cuando scrollProgress = 0 (hero completamente visible arriba), offset = 0
-            // Offset inicial centrado: la imagen al 130% necesita estar desplazada 15% hacia abajo para centrarse
-            // Si el hero tiene altura h, necesitamos mover (130% - 100%) / 2 = 15% hacia abajo
             const heroHeight = heroRect.height;
-            const centeringOffset = parallax ? heroHeight * 0.15 : 0; // 15% de la altura para centrar 130%
-
-            // Parallax scroll offset: conforme scrolleas, el fondo se mueve más lento
-            const maxOffset = 150; // Máximo desplazamiento en píxeles
+            const centeringOffset = parallax ? heroHeight * 0.075 : 0;
+            const maxOffset = 100;
             const scrollOffset = -scrollProgress * maxOffset * parallaxFactor;
-
-            // Offset total: centrado inicial + movimiento parallax
             const offset = centeringOffset + scrollOffset;
 
             setParallaxOffset(offset);
@@ -250,11 +194,9 @@ export default function HeroComponent({
             rafId = requestAnimationFrame(calculateParallax);
         };
 
-        // Agregar listener al contenedor correcto
         scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-        // También escuchar resize para recalcular
         window.addEventListener('resize', handleScroll, { passive: true });
-        handleScroll(); // Calcular valor inicial
+        handleScroll();
 
         return () => {
             scrollContainer.removeEventListener('scroll', handleScroll);
@@ -276,32 +218,24 @@ export default function HeroComponent({
                 containerClassName,
                 className
             )}
-            style={containerStyle === 'wrapped' && Object.keys(borderStyles).length > 0 ? borderStyles : undefined}
         >
             {/* Fallback Background */}
             <div className={cn(
-                "absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 -z-20",
+                "absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-900 -z-20",
                 containerStyle === 'wrapped' && borderRadiusClasses[borderRadius]
             )} />
 
             {/* Background: Image */}
             {imageSrc && !isVideo && (
-                <div
-                    className="absolute inset-0 overflow-hidden"
-                    style={{
-                        zIndex: 1
-                    }}
-                >
+                <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 1 }}>
                     <div
                         style={{
                             position: 'absolute',
-                            top: parallax ? '-15%' : 0,
-                            left: parallax ? '-15%' : 0,
-                            width: parallax ? '130%' : '100%',
-                            height: parallax ? '130%' : '100%',
-                            transform: parallax
-                                ? `translate3d(0, ${parallaxOffset}px, 0)`
-                                : undefined,
+                            top: parallax ? '-7.5%' : 0,
+                            left: parallax ? '-7.5%' : 0,
+                            width: parallax ? '115%' : '100%',
+                            height: parallax ? '115%' : '100%',
+                            transform: parallax ? `translate3d(0, ${parallaxOffset}px, 0)` : undefined,
                             willChange: parallax ? 'transform' : undefined,
                             transition: 'none'
                         }}
@@ -313,16 +247,14 @@ export default function HeroComponent({
                             priority
                             className="object-cover"
                             sizes="100vw"
-                            style={{
-                                transition: 'none'
-                            }}
+                            style={{ transition: 'none' }}
                         />
                     </div>
                 </div>
             )}
 
             {/* Background: Video */}
-            {isVideo && videoSrc && videoSrc !== '/placeholder-video.mp4' && (
+            {isVideo && videoSrc && (
                 <>
                     <video
                         ref={videoRef}
@@ -349,10 +281,10 @@ export default function HeroComponent({
                         }}
                         style={{
                             position: 'absolute',
-                            top: parallax ? '-15%' : 0,
-                            left: parallax ? '-15%' : 0,
-                            width: parallax ? '130%' : '100%',
-                            height: parallax ? '130%' : '100%',
+                            top: parallax ? '-7.5%' : 0,
+                            left: parallax ? '-7.5%' : 0,
+                            width: parallax ? '115%' : '100%',
+                            height: parallax ? '115%' : '100%',
                             objectFit: 'cover',
                             zIndex: 1,
                             transform: parallax ? `translate3d(0, ${parallaxOffset}px, 0)` : undefined,
@@ -364,9 +296,8 @@ export default function HeroComponent({
                         Tu navegador no soporta el elemento video.
                     </video>
 
-                    {/* Loading state */}
                     {!isVideoLoaded && !videoError && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center" style={{ zIndex: 3 }}>
+                        <div className="absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-900 flex items-center justify-center" style={{ zIndex: 3 }}>
                             <div className="text-center">
                                 <div className="w-8 h-8 mx-auto mb-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
                                 <p className="text-zinc-400 text-sm">Cargando video...</p>
@@ -374,7 +305,6 @@ export default function HeroComponent({
                         </div>
                     )}
 
-                    {/* Play button for mobile */}
                     {showPlayButton && !videoError && (
                         <div className="absolute inset-0 bg-black/30 flex items-center justify-center" style={{ zIndex: 3 }}>
                             <button
@@ -388,9 +318,8 @@ export default function HeroComponent({
                         </div>
                     )}
 
-                    {/* Error state */}
                     {videoError && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 to-blue-900/20 flex items-center justify-center" style={{ zIndex: 3 }}>
+                        <div className="absolute inset-0 bg-linear-to-br from-emerald-900/20 to-blue-900/20 flex items-center justify-center" style={{ zIndex: 3 }}>
                             <div className="text-center">
                                 <div className="w-16 h-16 mx-auto mb-4 bg-zinc-700 rounded-lg flex items-center justify-center">
                                     <svg className="w-8 h-8 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
@@ -448,10 +377,10 @@ export default function HeroComponent({
                     contentPaddingClass,
                     textAlignmentClasses[textAlignment]
                 )}>
-                    {/* Subtitle */}
-                    {subtitle && (
+                    {/* Event Type Name (Categoría) */}
+                    {displayEventTypeName && (
                         <p className="text-xs sm:text-sm text-zinc-400 font-medium mb-2 sm:mb-3 uppercase tracking-wide">
-                            {subtitle}
+                            {displayEventTypeName}
                         </p>
                     )}
 
@@ -468,112 +397,8 @@ export default function HeroComponent({
                             {description}
                         </p>
                     )}
-
-                    {/* Buttons - Ocultar en portfolios (objetivo: presentar, no generar leads) */}
-                    {buttons.length > 0 && context !== 'portfolio' && (
-                        <div className={cn(
-                            "flex flex-wrap gap-3",
-                            textAlignment === 'center' ? 'justify-center' : textAlignment === 'right' ? 'justify-end' : 'justify-start',
-                            "w-full"
-                        )}>
-                            {buttons.map((button, index) => {
-                                const buttonEffect = (button.buttonEffect || (button.pulse ? 'pulse' : 'none')) as 'none' | 'pulse' | 'border-spin' | 'radial-glow';
-
-                                // Estilos de borderRadius (sobrescriben el rounded-md default)
-                                const borderRadiusClasses = {
-                                    normal: '!rounded-none',
-                                    sm: '!rounded-sm',
-                                    full: '!rounded-full'
-                                };
-                                const borderRadiusClass = borderRadiusClasses[button.borderRadius || 'normal'];
-
-                                // Estilos de borde adicional
-                                const borderClass = button.withBorder ? 'border-2 border-zinc-400/30' : '';
-
-                                // Estilos de sombra (sutil para separar del fondo)
-                                const shadowPosition = button.shadowPosition || 'full';
-                                const shadowClass = button.shadow
-                                    ? shadowPosition === 'bottom'
-                                        ? 'shadow-[0_4px_6px_-1px_rgba(0,0,0,0.2)]'
-                                        : 'shadow-lg shadow-black/20'
-                                    : '';
-
-                                // Estilos personalizados para color personalizado
-                                const customColorStyle = button.customColor ? (() => {
-                                    const variant = button.variant || 'primary';
-                                    if (variant === 'outline') {
-                                        return {
-                                            borderColor: button.customColor,
-                                            color: button.customColor
-                                        };
-                                    } else if (variant === 'ghost') {
-                                        return {
-                                            color: button.customColor
-                                        };
-                                    } else {
-                                        // primary, secondary, etc.
-                                        return {
-                                            backgroundColor: button.customColor,
-                                            borderColor: button.customColor,
-                                            color: '#ffffff'
-                                        };
-                                    }
-                                })() : undefined;
-
-                                return button.href ? (
-                                    <ZenButtonWithEffects
-                                        key={index}
-                                        asChild
-                                        variant={getButtonVariant(button.variant)}
-                                        size="md"
-                                        effect={buttonEffect}
-                                        className={cn(
-                                            "text-xs sm:text-base",
-                                            "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
-                                            "whitespace-normal break-words",
-                                            "text-center",
-                                            borderRadiusClass,
-                                            borderClass,
-                                            shadowClass
-                                        )}
-                                        style={customColorStyle}
-                                    >
-                                        <Link
-                                            href={button.href}
-                                            target={button.target || (button.linkType === 'external' ? '_blank' : '_self')}
-                                            onClick={button.onClick}
-                                            className="block"
-                                        >
-                                            {button.text}
-                                        </Link>
-                                    </ZenButtonWithEffects>
-                                ) : (
-                                    <ZenButtonWithEffects
-                                        key={index}
-                                        variant={getButtonVariant(button.variant)}
-                                        size="md"
-                                        effect={buttonEffect}
-                                        className={cn(
-                                            "text-xs sm:text-base",
-                                            "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
-                                            "whitespace-normal break-words",
-                                            "text-center",
-                                            borderRadiusClass,
-                                            borderClass,
-                                            shadowClass
-                                        )}
-                                        style={customColorStyle}
-                                        onClick={button.onClick}
-                                    >
-                                        {button.text}
-                                    </ZenButtonWithEffects>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
     );
 }
-

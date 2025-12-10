@@ -9,6 +9,8 @@ import { ContentBlock } from "@/types/content-blocks";
 
 interface LandingEditorProps {
   studioSlug: string;
+  offerSlug?: string;
+  offerId?: string;
 }
 
 // Componente para inyectar botones entre cada bloque renderizado por ContentBlocksEditor
@@ -118,8 +120,8 @@ function InjectAddButtons({
   return null;
 }
 
-export function LandingEditor({ studioSlug }: LandingEditorProps) {
-  const { contentBlocks, updateContentBlocks, formData, offerId } = useOfferEditor();
+export function LandingEditor({ studioSlug, offerSlug, offerId }: LandingEditorProps) {
+  const { contentBlocks, updateContentBlocks, formData } = useOfferEditor();
 
   const [showComponentSelector, setShowComponentSelector] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
@@ -311,7 +313,7 @@ export function LandingEditor({ studioSlug }: LandingEditorProps) {
           onDragStateChange={handleDragStateChange}
           heroContext="offer"
           heroContextData={{
-            offerSlug: formData.slug,
+            offerSlug: offerSlug || formData.slug,
             offerId: offerId
           }}
         />

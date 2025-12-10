@@ -49,8 +49,14 @@ export function PortfolioDetailSection({ portfolio, hideHeader = false }: Portfo
     if (hideHeader) {
         return (
             <div className="space-y-6">
-                {/* Bloques de Contenido */}
-                <ContentBlocksPreview blocks={portfolio.content_blocks || []} />
+                {/* Bloques de Contenido - Contexto portfolio (sin botones CTA) */}
+                <ContentBlocksPreview
+                    blocks={portfolio.content_blocks || []}
+                    context="portfolio"
+                    contextData={{
+                        eventTypeName: portfolio.event_type?.nombre
+                    }}
+                />
             </div>
         );
     }
@@ -89,7 +95,7 @@ export function PortfolioDetailSection({ portfolio, hideHeader = false }: Portfo
             {/* Descripción */}
             {portfolio.description && (
                 <div className="w-full">
-                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-normal break-words overflow-wrap-anywhere">
+                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-normal wrap-break-word overflow-wrap-anywhere">
                         {portfolio.description}
                     </p>
                 </div>
@@ -151,14 +157,20 @@ export function PortfolioDetailSection({ portfolio, hideHeader = false }: Portfo
             {/* Caption */}
             {portfolio.caption && (
                 <div className="w-full">
-                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-normal break-words overflow-wrap-anywhere">
+                    <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-normal wrap-break-word overflow-wrap-anywhere">
                         {portfolio.caption}
                     </p>
                 </div>
             )}
 
-            {/* Bloques de Contenido */}
-            <ContentBlocksPreview blocks={portfolio.content_blocks || []} />
+            {/* Bloques de Contenido - Contexto portfolio (sin botones CTA) */}
+            <ContentBlocksPreview
+                blocks={portfolio.content_blocks || []}
+                context="portfolio"
+                contextData={{
+                    eventTypeName: portfolio.event_type?.nombre
+                }}
+            />
 
             {/* Media Adicional */}
             {portfolio.media.length > 1 && (

@@ -5,7 +5,7 @@ import { Plus, X, AlignStartVertical, AlignVerticalDistributeCenter, AlignEndVer
 import { ZenInput, ZenTextarea, ZenSelect, ZenButton, ZenCard, ZenCardContent, ZenSwitch } from '@/components/ui/zen';
 import { HeroConfig, ButtonConfig, MediaItem } from '@/types/content-blocks';
 import { cn } from '@/lib/utils';
-import HeroDropzone from './HeroDropzone';
+import HeroDropzone from '../HeroDropzone';
 
 interface HeroEditorProps {
     config: HeroConfig;
@@ -23,7 +23,7 @@ interface HeroEditorProps {
     };
 }
 
-export default function HeroEditor({
+export default function HeroOfferEditor({
     config,
     media,
     onConfigChange,
@@ -438,7 +438,7 @@ export default function HeroEditor({
 
     return (
         <ZenCard padding="none">
-            <ZenCardContent className="space-y-4 !px-4">
+            <ZenCardContent className="space-y-4 px-4!">
                 {/* Tabs Navigation */}
                 <div
                     ref={tabsContainerRef}
@@ -450,7 +450,7 @@ export default function HeroEditor({
                             ref={(el) => { tabRefs.current[tab.id] = el; }}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
-                                "flex-shrink-0 py-2 px-4 font-medium text-sm transition-all duration-200 rounded text-center whitespace-nowrap",
+                                "shrink-0 py-2 px-4 font-medium text-sm transition-all duration-200 rounded text-center whitespace-nowrap",
                                 activeTab === tab.id
                                     ? "bg-zinc-900 text-emerald-400 shadow-lg"
                                     : "text-zinc-400 hover:text-zinc-300"
@@ -676,101 +676,6 @@ export default function HeroEditor({
                                             })}
                                         </div>
                                     </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-zinc-200 mb-2">
-                                            Bordes
-                                        </label>
-                                        <div className="flex items-center gap-2">
-                                            {/* Color */}
-                                            <input
-                                                type="color"
-                                                value={localConfig.borderColor || '#ffffff'}
-                                                onChange={(e) => updateConfig({ borderColor: e.target.value })}
-                                                className="w-10 h-10 rounded border border-zinc-700 bg-zinc-800 cursor-pointer"
-                                                title="Color del borde"
-                                            />
-
-                                            {/* Slider Grosor */}
-                                            <div className="flex-1 flex items-center gap-2">
-                                                <input
-                                                    type="range"
-                                                    min="0"
-                                                    max="10"
-                                                    step="0.5"
-                                                    value={localConfig.borderWidth ?? 0}
-                                                    onChange={(e) => {
-                                                        const newWidth = parseFloat(e.target.value);
-                                                        if (newWidth === 0) {
-                                                            updateConfig({ borderWidth: 0, borderStyle: undefined });
-                                                        } else {
-                                                            updateConfig({
-                                                                borderWidth: newWidth,
-                                                                borderStyle: localConfig.borderStyle || 'solid',
-                                                                borderColor: localConfig.borderColor || '#ffffff'
-                                                            });
-                                                        }
-                                                    }}
-                                                    className="flex-1 h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                                                    title={`Grosor: ${localConfig.borderWidth ?? 0}px`}
-                                                />
-                                                <span className="text-xs text-zinc-400 w-10 text-right">
-                                                    {localConfig.borderWidth ?? 0}px
-                                                </span>
-                                            </div>
-
-                                            {/* Iconos Estilos */}
-                                            <div className="flex gap-1">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateConfig({ borderWidth: 0, borderStyle: undefined })}
-                                                    className={cn(
-                                                        "p-2 rounded transition-colors",
-                                                        (!localConfig.borderWidth || localConfig.borderWidth === 0)
-                                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                            : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
-                                                    )}
-                                                    title="Sin borde"
-                                                >
-                                                    <NoBorderStyleIcon className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateConfig({
-                                                        borderStyle: 'solid',
-                                                        borderWidth: localConfig.borderWidth && localConfig.borderWidth > 0 ? localConfig.borderWidth : 0.5,
-                                                        borderColor: localConfig.borderColor || '#ffffff'
-                                                    })}
-                                                    className={cn(
-                                                        "p-2 rounded transition-colors",
-                                                        localConfig.borderStyle === 'solid' && localConfig.borderWidth && localConfig.borderWidth > 0
-                                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                            : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
-                                                    )}
-                                                    title="Sólido"
-                                                >
-                                                    <SolidBorderIcon className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => updateConfig({
-                                                        borderStyle: 'dashed',
-                                                        borderWidth: localConfig.borderWidth && localConfig.borderWidth > 0 ? localConfig.borderWidth : 0.5,
-                                                        borderColor: localConfig.borderColor || '#ffffff'
-                                                    })}
-                                                    className={cn(
-                                                        "p-2 rounded transition-colors",
-                                                        localConfig.borderStyle === 'dashed' && localConfig.borderWidth && localConfig.borderWidth > 0
-                                                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                            : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
-                                                    )}
-                                                    title="Punteado"
-                                                >
-                                                    <DashedBorderIcon className="h-4 w-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </>
                             )}
                         </div>
@@ -991,7 +896,7 @@ export default function HeroEditor({
                                         {/* Contenedor con scroll */}
                                         <div className="flex items-start justify-between gap-2 overflow-x-auto scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] min-h-[60px]">
                                             {/* Pulse */}
-                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 flex-shrink-0">
+                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 shrink-0">
                                                 <span className="text-xs text-zinc-400 font-medium h-4 flex items-center">Pulse</span>
                                                 <div className="flex items-center justify-center h-8">
                                                     <div
@@ -1008,10 +913,10 @@ export default function HeroEditor({
                                             </div>
 
                                             {/* Separador */}
-                                            <div className="h-12 w-px bg-zinc-700/30 flex-shrink-0"></div>
+                                            <div className="h-12 w-px bg-zinc-700/30 shrink-0"></div>
 
                                             {/* Borde */}
-                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 flex-shrink-0">
+                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 shrink-0">
                                                 <span className="text-xs text-zinc-400 font-medium h-4 flex items-center">Borde</span>
                                                 <div className="flex items-center justify-center h-8">
                                                     <button
@@ -1035,10 +940,10 @@ export default function HeroEditor({
                                             </div>
 
                                             {/* Separador */}
-                                            <div className="h-12 w-px bg-zinc-700/30 flex-shrink-0"></div>
+                                            <div className="h-12 w-px bg-zinc-700/30 shrink-0"></div>
 
                                             {/* Sombra - Toggle y posición en la misma línea */}
-                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 flex-shrink-0">
+                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 shrink-0">
                                                 <span className="text-xs text-zinc-400 font-medium h-4 flex items-center">Sombra</span>
                                                 <div className="flex items-center justify-center h-8 gap-1">
                                                     {/* Toggle On/Off */}
@@ -1050,7 +955,7 @@ export default function HeroEditor({
                                                             updateButton(index, { shadow: !button.shadow });
                                                         }}
                                                         className={cn(
-                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
+                                                            "size-8 p-0 rounded transition-colors flex items-center justify-center shrink-0 relative z-10",
                                                             button.shadow
                                                                 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                                 : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
@@ -1061,7 +966,7 @@ export default function HeroEditor({
                                                     </button>
 
                                                     {/* Borde lateral interno - siempre visible */}
-                                                    <div className="h-6 w-px bg-zinc-700/40 flex-shrink-0"></div>
+                                                    <div className="h-6 w-px bg-zinc-700/40 shrink-0"></div>
 
                                                     {/* Iconos de posición - siempre presentes, deshabilitados si sombra inactiva */}
                                                     <div className="flex gap-0.5 items-center">
@@ -1082,7 +987,7 @@ export default function HeroEditor({
                                                                     }}
                                                                     disabled={isDisabled}
                                                                     className={cn(
-                                                                        "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
+                                                                        "size-8 p-0 rounded transition-colors flex items-center justify-center shrink-0 relative z-10",
                                                                         isDisabled && "opacity-40 cursor-not-allowed",
                                                                         !isDisabled && isActive
                                                                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
@@ -1099,10 +1004,10 @@ export default function HeroEditor({
                                             </div>
 
                                             {/* Separador */}
-                                            <div className="h-12 w-px bg-zinc-700/30 flex-shrink-0"></div>
+                                            <div className="h-12 w-px bg-zinc-700/30 shrink-0"></div>
 
                                             {/* Esquinas */}
-                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 flex-shrink-0">
+                                            <div className="flex flex-col items-center gap-1.5 min-h-[60px] justify-between px-2 shrink-0">
                                                 <span className="text-xs text-zinc-400 font-medium h-4 flex items-center">Esquinas</span>
                                                 <div className="flex gap-0.5 items-center justify-center h-8">
                                                     {buttonBorderRadiusOptions.map((option) => {
@@ -1118,7 +1023,7 @@ export default function HeroEditor({
                                                                     updateButton(index, { borderRadius: option.value });
                                                                 }}
                                                                 className={cn(
-                                                                    "size-8 p-0 rounded transition-colors flex items-center justify-center flex-shrink-0 relative z-10",
+                                                                    "size-8 p-0 rounded transition-colors flex items-center justify-center shrink-0 relative z-10",
                                                                     isActive
                                                                         ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                                                                         : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
@@ -1179,33 +1084,28 @@ export default function HeroEditor({
                                 {localConfig.gradientOverlay && (
                                     <>
                                         <div className="border-t border-zinc-700/50"></div>
-                                        <div>
-                                            <label className="block text-sm font-medium text-zinc-200 mb-2">
-                                                Posición del Degradado
-                                            </label>
-                                            <div className="grid grid-cols-4 gap-2">
-                                                {gradientPositionOptions.map((option) => {
-                                                    const Icon = option.icon;
-                                                    const isActive = (localConfig.gradientPosition || 'bottom') === option.value;
-                                                    return (
-                                                        <button
-                                                            key={option.value}
-                                                            type="button"
-                                                            onClick={() => updateConfig({ gradientPosition: option.value })}
-                                                            className={cn(
-                                                                "p-3 rounded transition-colors flex flex-col items-center gap-1",
-                                                                isActive
-                                                                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                                                                    : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
-                                                            )}
-                                                            title={option.label}
-                                                        >
-                                                            <Icon className="h-5 w-5" />
-                                                            <span className="text-xs">{option.label}</span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {gradientPositionOptions.map((option) => {
+                                                const Icon = option.icon;
+                                                const isActive = (localConfig.gradientPosition || 'bottom') === option.value;
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        onClick={() => updateConfig({ gradientPosition: option.value })}
+                                                        className={cn(
+                                                            "p-3 rounded transition-colors flex flex-col items-center gap-1",
+                                                            isActive
+                                                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                                                : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 border border-transparent"
+                                                        )}
+                                                        title={option.label}
+                                                    >
+                                                        <Icon className="h-5 w-5" />
+                                                        <span className="text-xs">{option.label}</span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </>
                                 )}

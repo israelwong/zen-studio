@@ -486,7 +486,13 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
           savedOfferId={savedOfferId || currentOffer?.id || null}
         />
       )}
-      {activeTab === "landing" && <LandingPageTab studioSlug={studioSlug} />}
+      {activeTab === "landing" && (
+        <LandingPageTab
+          studioSlug={studioSlug}
+          offerSlug={currentOffer?.slug}
+          offerId={currentOffer?.id}
+        />
+      )}
       {activeTab === "leadform" && (
         <LeadFormTab
           studioSlug={studioSlug}

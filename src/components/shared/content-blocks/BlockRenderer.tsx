@@ -1,18 +1,22 @@
 'use client';
 
 import React from 'react';
-import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig, HeroConfig, SeparatorBlockConfig } from '@/types/content-blocks';
+import { ContentBlock, TextBlockConfig, MediaBlockConfig, HeroContactConfig, HeroImageConfig, HeroVideoConfig, HeroTextConfig, HeroConfig, SeparatorBlockConfig, HeroPortfolioConfig, HeroOfferConfig } from '@/types/content-blocks';
 import { VideoSingle } from '@/components/shared/video';
 import { ImageSingle, ImageGrid, ImageCarousel } from '@/components/shared/media';
 import { MasonryGallery } from '@/components/shared/media/MasonryGallery';
 import HeroComponent from '@/components/shared/hero/HeroComponent';
+import HeroPortfolioComponent from '@/components/shared/hero/portfolio/HeroPortfolioComponent';
+import HeroOfferComponent from '@/components/shared/hero/offer/HeroOfferComponent';
 
 interface BlockRendererProps {
     block: ContentBlock;
     className?: string;
+    // Contexto para determinar comportamiento (ej: ocultar botones en portfolios)
+    context?: 'portfolio' | 'offer';
 }
 
-export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
+export function BlockRenderer({ block, className = '', context }: BlockRendererProps) {
     const renderBlock = () => {
         switch (block.type) {
             case 'image':
@@ -307,13 +311,70 @@ export function BlockRenderer({ block, className = '' }: BlockRendererProps) {
                     heroConfig = (block.config || {}) as HeroConfig;
                 }
 
+                // Extraer contexto del config si no viene en props (preservar contexto almacenado)
+                const configWithContext = block.config as HeroConfig & {
+                    _context?: 'portfolio' | 'offer';
+                };
+                const effectiveContext = context || configWithContext._context;
+
                 return (
                     <HeroComponent
                         config={heroConfig}
                         media={block.media || []}
                         className={className}
+                        context={effectiveContext}
                     />
                 );
+
+            case 'hero-portfolio': {
+                const portfolioConfig = (block.config || {}) as HeroPortfolioConfig;
+                // Extraer eventTypeName del config si existe
+                const configWithMeta = block.config as HeroPortfolioConfig & {
+                    eventTypeName?: string;
+                };
+                return (
+                    <HeroPortfolioComponent
+                        config={portfolioConfig}
+                        media={block.media || []}
+                        className={className}
+                        eventTypeName={configWithMeta.eventTypeName || portfolioConfig.eventTypeName}
+                    />
+                );
+            }
+
+            case 'hero-offer': {
+                const offerConfig = (block.config || {}) as HeroOfferConfig;
+                // Convertir HeroOfferConfig a HeroConfig para HeroOfferComponent
+                const offerHeroConfig: HeroConfig = {
+                    title: offerConfig.title,
+                    subtitle: offerConfig.subtitle,
+                    description: offerConfig.description,
+                    buttons: offerConfig.buttons,
+                    overlay: offerConfig.overlay,
+                    overlayOpacity: offerConfig.overlayOpacity,
+                    textAlignment: offerConfig.textAlignment,
+                    verticalAlignment: offerConfig.verticalAlignment,
+                    backgroundType: offerConfig.backgroundType,
+                    autoPlay: offerConfig.autoPlay,
+                    muted: offerConfig.muted,
+                    loop: offerConfig.loop,
+                    containerStyle: offerConfig.containerStyle,
+                    aspectRatio: offerConfig.aspectRatio,
+                    borderRadius: offerConfig.borderRadius,
+                    gradientOverlay: offerConfig.gradientOverlay,
+                    gradientPosition: offerConfig.gradientPosition,
+                    parallax: offerConfig.parallax
+                };
+
+                return (
+                    <HeroOfferComponent
+                        config={offerHeroConfig}
+                        media={block.media || []}
+                        className={className}
+                        context="offer"
+                    />
+                );
+            }
 
             case 'separator':
                 const separatorConfig = (block.config || {}) as Partial<SeparatorBlockConfig>;

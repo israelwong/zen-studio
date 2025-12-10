@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { ZenButton, ZenBadge } from "@/components/ui/zen";
 import { TipoEventoQuickAddModal } from "./TipoEventoQuickAddModal";
+import { TipoEventoManagementModal } from "./TipoEventoManagementModal";
 import { obtenerTiposEvento } from "@/lib/actions/studio/negocio/tipos-evento.actions";
 import type { TipoEventoData } from "@/lib/actions/schemas/tipos-evento-schemas";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 interface TipoEventoSelectorProps {
@@ -32,6 +33,7 @@ export function TipoEventoSelector({
   const [eventTypes, setEventTypes] = useState<TipoEventoData[]>([]);
   const [loading, setLoading] = useState(true);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showManagement, setShowManagement] = useState(false);
 
   useEffect(() => {
     loadEventTypes();
@@ -84,16 +86,28 @@ export function TipoEventoSelector({
           )}
         </label>
         {eventTypes.length > 0 && (
-          <ZenButton
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowQuickAdd(true)}
-            className="h-7 text-xs"
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Agregar tipo
-          </ZenButton>
+          <div className="flex items-center gap-2">
+            <ZenButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowQuickAdd(true)}
+              className="h-7 text-xs"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Agregar tipo
+            </ZenButton>
+            <ZenButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShowManagement(true)}
+              className="h-7 text-xs"
+            >
+              <Settings className="h-3 w-3 mr-1" />
+              Gestionar
+            </ZenButton>
+          </div>
         )}
       </div>
 
@@ -144,6 +158,22 @@ export function TipoEventoSelector({
           onClose={() => setShowQuickAdd(false)}
           onSuccess={handleQuickAddSuccess}
           studioSlug={studioSlug}
+        />
+      )}
+
+      {/* Management Modal */}
+      {showManagement && (
+        <TipoEventoManagementModal
+          isOpen={showManagement}
+          onClose={() => setShowManagement(false)}
+          studioSlug={studioSlug}
+          onUpdate={(updatedTypes) => {
+            // Actualizar lista local sin recargar desde servidor
+            if (updatedTypes) {
+              const activeTypes = updatedTypes.filter(t => t.status === "active");
+              setEventTypes(activeTypes);
+            }
+          }}
         />
       )}
     </div>

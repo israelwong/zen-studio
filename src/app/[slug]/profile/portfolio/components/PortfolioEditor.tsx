@@ -8,6 +8,7 @@ import { ContentBlock } from "@/types/content-blocks";
 import { CategorizedComponentSelector, ComponentOption } from "./CategorizedComponentSelector";
 import { TipoEventoSelector } from "@/components/shared/tipos-evento";
 import { obtenerIdentidadStudio } from "@/lib/actions/studio/profile/identidad";
+import { obtenerTiposEvento } from "@/lib/actions/studio/negocio/tipos-evento.actions";
 import {
     getStudioPortfoliosBySlug,
     createStudioPortfolioFromSlug,
@@ -287,6 +288,7 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
     const [isValidatingSlug, setIsValidatingSlug] = useState(false);
     const [slugHint, setSlugHint] = useState<string | null>(null);
     const [linkCopied, setLinkCopied] = useState(false);
+    const [eventTypeName, setEventTypeName] = useState<string | null>(null);
     const { uploadFiles } = useMediaUpload();
     const { triggerRefresh } = useStorageRefresh(studioSlug);
 
@@ -373,6 +375,28 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
 
         return () => clearTimeout(timeoutId);
     }, [formData.slug, formData.title, studioSlug, mode, portfolio?.slug, portfolio?.id]);
+
+    // Cargar nombre del tipo de evento cuando cambia event_type_id
+    useEffect(() => {
+        const loadEventTypeName = async () => {
+            if (!formData.event_type_id) {
+                setEventTypeName(null);
+                return;
+            }
+
+            try {
+                const result = await obtenerTiposEvento(studioSlug);
+                if (result.success && result.data) {
+                    const eventType = result.data.find(t => t.id === formData.event_type_id);
+                    setEventTypeName(eventType?.nombre || null);
+                }
+            } catch (error) {
+                console.error("Error loading event type name:", error);
+            }
+        };
+
+        loadEventTypeName();
+    }, [formData.event_type_id, studioSlug]);
 
     // Cargar datos del estudio para preview
     useEffect(() => {
@@ -779,30 +803,34 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                     height: 0.5
                 };
                 break;
+            case 'hero-portfolio':
+                // Hero Portfolio: sin botones, eventTypeName desde portfolio
+                config = {
+                    title: 'Título de tu portafolio',
+                    eventTypeName: '', // Se llenará automáticamente desde el selector de tipo de evento
+                    description: 'Descripción breve de tu portafolio',
+                    overlay: true,
+                    overlayOpacity: 50,
+                    textAlignment: 'center',
+                    verticalAlignment: 'center',
+                    backgroundType: 'image',
+                    containerStyle: 'fullscreen',
+                    autoPlay: false,
+                    muted: true,
+                    loop: false
+                };
+                break;
             case 'hero-contact':
             case 'hero-image':
             case 'hero-video':
             case 'hero-text':
             case 'hero':
-                // Usar configuración unificada para todos los tipos hero
+                // Heroes legacy - mantener compatibilidad
                 config = {
-                    title: 'Tu Título Aquí',
-                    subtitle: 'Subtítulo Impactante',
-                    description: 'Descripción que cautive a tus prospectos',
-                    buttons: [
-                        {
-                            text: 'Ver Trabajo',
-                            href: '#',
-                            variant: 'primary',
-                            size: 'lg'
-                        },
-                        {
-                            text: 'Contactar',
-                            href: '#',
-                            variant: 'outline',
-                            size: 'lg'
-                        }
-                    ],
+                    title: 'Título de tu portafolio',
+                    subtitle: 'Categoría o especialidad',
+                    description: 'Descripción breve de tu portafolio',
+                    buttons: [], // Sin botones en portfolios
                     overlay: true,
                     overlayOpacity: 50,
                     textAlignment: 'center',
@@ -1298,6 +1326,10 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                             setShowComponentSelector(true);
                                         }}
                                         onDragStateChange={handleDragStateChange}
+                                        heroContext="portfolio"
+                                        heroContextData={{
+                                            eventTypeName: eventTypeName || undefined
+                                        }}
                                     />
 
                                     {/* Inyectar botones después de cada bloque usando useEffect - Solo si hay componentes */}

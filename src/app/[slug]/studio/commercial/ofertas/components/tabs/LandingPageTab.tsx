@@ -8,9 +8,11 @@ import { useOfferEditor } from "../OfferEditorContext";
 
 interface LandingPageTabProps {
   studioSlug: string;
+  offerSlug?: string;
+  offerId?: string;
 }
 
-export function LandingPageTab({ studioSlug }: LandingPageTabProps) {
+export function LandingPageTab({ studioSlug, offerSlug, offerId }: LandingPageTabProps) {
   const { formData, contentBlocks } = useOfferEditor();
 
   // CTA vacío para preview - sin botones hardcodeados
@@ -29,7 +31,11 @@ export function LandingPageTab({ studioSlug }: LandingPageTabProps) {
             </ZenCardTitle>
           </ZenCardHeader>
           <ZenCardContent>
-            <LandingEditor studioSlug={studioSlug} />
+            <LandingEditor
+              studioSlug={studioSlug}
+              offerSlug={offerSlug}
+              offerId={offerId}
+            />
           </ZenCardContent>
         </ZenCard>
       </div>

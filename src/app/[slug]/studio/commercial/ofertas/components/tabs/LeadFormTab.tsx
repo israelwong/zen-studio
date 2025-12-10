@@ -49,13 +49,11 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
       <div className="hidden lg:block">
         <div className="sticky top-6">
           <MobilePreviewFull
-            data={null}
-            contentVariant="custom"
-            activeTab="inicio"
+            data={undefined}
             loading={false}
             onClose={() => { }}
             isEditMode={true}
-            hidePortfolioHeader={true}
+            hideHeader={true}
           >
             <div className="h-full overflow-auto">
               <OfferLeadForm

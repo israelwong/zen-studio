@@ -16,7 +16,7 @@ interface HeroComponentProps {
     context?: 'portfolio' | 'offer';
 }
 
-export default function HeroComponent({
+export default function HeroOfferComponent({
     config,
     media,
     className = '',
@@ -231,10 +231,10 @@ export default function HeroComponent({
             // Offset inicial centrado: la imagen al 130% necesita estar desplazada 15% hacia abajo para centrarse
             // Si el hero tiene altura h, necesitamos mover (130% - 100%) / 2 = 15% hacia abajo
             const heroHeight = heroRect.height;
-            const centeringOffset = parallax ? heroHeight * 0.15 : 0; // 15% de la altura para centrar 130%
+            const centeringOffset = parallax ? heroHeight * 0.075 : 0; // 7.5% de la altura para centrar 115%
 
             // Parallax scroll offset: conforme scrolleas, el fondo se mueve más lento
-            const maxOffset = 150; // Máximo desplazamiento en píxeles
+            const maxOffset = 100; // Máximo desplazamiento en píxeles
             const scrollOffset = -scrollProgress * maxOffset * parallaxFactor;
 
             // Offset total: centrado inicial + movimiento parallax
@@ -280,7 +280,7 @@ export default function HeroComponent({
         >
             {/* Fallback Background */}
             <div className={cn(
-                "absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 -z-20",
+                "absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-900 -z-20",
                 containerStyle === 'wrapped' && borderRadiusClasses[borderRadius]
             )} />
 
@@ -295,10 +295,10 @@ export default function HeroComponent({
                     <div
                         style={{
                             position: 'absolute',
-                            top: parallax ? '-15%' : 0,
-                            left: parallax ? '-15%' : 0,
-                            width: parallax ? '130%' : '100%',
-                            height: parallax ? '130%' : '100%',
+                            top: parallax ? '-7.5%' : 0,
+                            left: parallax ? '-7.5%' : 0,
+                            width: parallax ? '115%' : '100%',
+                            height: parallax ? '115%' : '100%',
                             transform: parallax
                                 ? `translate3d(0, ${parallaxOffset}px, 0)`
                                 : undefined,
@@ -349,10 +349,10 @@ export default function HeroComponent({
                         }}
                         style={{
                             position: 'absolute',
-                            top: parallax ? '-15%' : 0,
-                            left: parallax ? '-15%' : 0,
-                            width: parallax ? '130%' : '100%',
-                            height: parallax ? '130%' : '100%',
+                            top: parallax ? '-7.5%' : 0,
+                            left: parallax ? '-7.5%' : 0,
+                            width: parallax ? '115%' : '100%',
+                            height: parallax ? '115%' : '100%',
                             objectFit: 'cover',
                             zIndex: 1,
                             transform: parallax ? `translate3d(0, ${parallaxOffset}px, 0)` : undefined,
@@ -366,7 +366,7 @@ export default function HeroComponent({
 
                     {/* Loading state */}
                     {!isVideoLoaded && !videoError && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center" style={{ zIndex: 3 }}>
+                        <div className="absolute inset-0 bg-linear-to-br from-zinc-800 to-zinc-900 flex items-center justify-center" style={{ zIndex: 3 }}>
                             <div className="text-center">
                                 <div className="w-8 h-8 mx-auto mb-3 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
                                 <p className="text-zinc-400 text-sm">Cargando video...</p>
@@ -390,7 +390,7 @@ export default function HeroComponent({
 
                     {/* Error state */}
                     {videoError && (
-                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/20 to-blue-900/20 flex items-center justify-center" style={{ zIndex: 3 }}>
+                        <div className="absolute inset-0 bg-linear-to-br from-emerald-900/20 to-blue-900/20 flex items-center justify-center" style={{ zIndex: 3 }}>
                             <div className="text-center">
                                 <div className="w-16 h-16 mx-auto mb-4 bg-zinc-700 rounded-lg flex items-center justify-center">
                                     <svg className="w-8 h-8 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
@@ -530,7 +530,7 @@ export default function HeroComponent({
                                         className={cn(
                                             "text-xs sm:text-base",
                                             "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
-                                            "whitespace-normal break-words",
+                                            "whitespace-normal wrap-break-word",
                                             "text-center",
                                             borderRadiusClass,
                                             borderClass,
@@ -556,7 +556,7 @@ export default function HeroComponent({
                                         className={cn(
                                             "text-xs sm:text-base",
                                             "w-auto min-w-fit max-w-[calc(50%-0.75rem)]",
-                                            "whitespace-normal break-words",
+                                            "whitespace-normal wrap-break-word",
                                             "text-center",
                                             borderRadiusClass,
                                             borderClass,

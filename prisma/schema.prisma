@@ -998,6 +998,7 @@ model studio_event_types {
   promises           studio_promises[]
   contract_templates studio_contract_templates[]
 
+  @@unique([studio_id, name])
   @@index([studio_id])
   @@index([studio_id, status])
 }
