@@ -48,7 +48,8 @@ export interface StudioOfferLeadform {
   fields_config: LeadFormFieldsConfig;
   subject_options?: string[]; // LEGACY: si use_event_types = false
   use_event_types?: boolean; // Si true: usar studio_event_types
-  selected_event_type_ids?: string[]; // IDs de tipos de evento seleccionados
+  event_type_id?: string | null; // Para OFERTAS: UN tipo de evento asociado (single)
+  selected_event_type_ids?: string[]; // Para LEADFORMS GENÉRICOS: múltiples tipos (array)
   show_packages_after_submit?: boolean; // Mostrar paquetes post-registro
   email_required?: boolean;
   enable_interest_date?: boolean;

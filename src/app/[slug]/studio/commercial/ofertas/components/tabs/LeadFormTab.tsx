@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from "@/components/ui/zen";
 import { MobilePreviewFull } from "@/components/previews";
-import { LeadFormEditor } from "../editors/LeadFormEditor";
+import { LeadFormEditor } from "@/components/shared/forms";
 import { OfferLeadForm } from "@/components/offers/OfferLeadForm";
 import { useOfferEditor } from "../OfferEditorContext";
 import { getStudioIdBySlug } from "@/lib/actions/studio/offers/offers.actions";
@@ -15,7 +15,7 @@ interface LeadFormTabProps {
 
 export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormTabProps) {
   const [studioId, setStudioId] = useState<string>(initialStudioId || "");
-  const { formData, leadformData } = useOfferEditor();
+  const { formData, leadformData, updateLeadformData } = useOfferEditor();
 
   useEffect(() => {
     if (!initialStudioId) {
@@ -40,7 +40,12 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
             </ZenCardTitle>
           </ZenCardHeader>
           <ZenCardContent>
-            <LeadFormEditor />
+            <LeadFormEditor
+              studioSlug={studioSlug}
+              formData={leadformData}
+              onUpdate={updateLeadformData}
+              mode="single"
+            />
           </ZenCardContent>
         </ZenCard>
       </div>
@@ -66,7 +71,7 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
                 successMessage={leadformData.success_message}
                 successRedirectUrl={leadformData.success_redirect_url}
                 fieldsConfig={leadformData.fields_config}
-                selectedEventTypeIds={leadformData.selected_event_type_ids}
+                eventTypeId={leadformData.event_type_id}
                 enableInterestDate={leadformData.enable_interest_date}
                 validateWithCalendar={leadformData.validate_with_calendar}
                 emailRequired={leadformData.email_required}

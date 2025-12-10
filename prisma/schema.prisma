@@ -2622,7 +2622,8 @@ model studio_offer_leadforms {
   fields_config              Json
   subject_options            Json? // LEGACY: opciones personalizadas (usar si use_event_types = false)
   use_event_types            Boolean       @default(false) // Si true: usar studio_event_types, si false: usar subject_options
-  selected_event_type_ids    Json? // Array de IDs de studio_event_types seleccionados
+  event_type_id              String? // Para OFERTAS: UN tipo de evento asociado (single)
+  selected_event_type_ids    Json? // Para LEADFORMS GENÉRICOS: múltiples tipos disponibles (array)
   show_packages_after_submit Boolean       @default(false) // Mostrar paquetes después de registro
   email_required             Boolean       @default(false)
   enable_interest_date       Boolean       @default(false)
@@ -2632,6 +2633,7 @@ model studio_offer_leadforms {
   offer                      studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@index([offer_id])
+  @@index([event_type_id])
 }
 
 model studio_offer_visits {

@@ -53,7 +53,7 @@ interface OfferLeadFormProps {
   successMessage: string;
   successRedirectUrl?: string | null;
   fieldsConfig: LeadFormFieldsConfig;
-  selectedEventTypeIds?: string[]; // IDs de tipos de evento seleccionados
+  eventTypeId?: string | null; // ID del tipo de evento asociado (pre-seleccionado)
   enableInterestDate?: boolean;
   validateWithCalendar?: boolean;
   emailRequired?: boolean;
@@ -75,7 +75,7 @@ export function OfferLeadForm({
   successMessage,
   successRedirectUrl,
   fieldsConfig,
-  selectedEventTypeIds = [],
+  eventTypeId = null,
   enableInterestDate,
   validateWithCalendar = false,
   emailRequired = false,
@@ -92,30 +92,9 @@ export function OfferLeadForm({
     checking: boolean;
     available: boolean | null;
   }>({ checking: false, available: null });
-  const [eventTypes, setEventTypes] = useState<Array<{ id: string; nombre: string }>>([]);
 
   // Verificar si viene de éxito
   const isSuccess = searchParams.get("success") === "true";
-
-  // Cargar tipos de evento seleccionados
-  useEffect(() => {
-    if (selectedEventTypeIds && selectedEventTypeIds.length > 0) {
-      const loadEventTypes = async () => {
-        try {
-          const { obtenerTiposEvento } = await import("@/lib/actions/studio/negocio/tipos-evento.actions");
-          const result = await obtenerTiposEvento(studioSlug);
-          if (result.success && result.data) {
-            // Filtrar solo los tipos seleccionados
-            const selected = result.data.filter(t => selectedEventTypeIds.includes(t.id));
-            setEventTypes(selected.map(t => ({ id: t.id, nombre: t.nombre })));
-          }
-        } catch (error) {
-          console.error("Error loading event types:", error);
-        }
-      };
-      loadEventTypes();
-    }
-  }, [selectedEventTypeIds, studioSlug]);
 
   useEffect(() => {
     // Registrar visita al cargar el leadform
@@ -196,18 +175,6 @@ export function OfferLeadForm({
       placeholder: "tu@email.com",
     },
   ];
-
-  // Agregar campo de tipo de evento (si hay tipos seleccionados)
-  if (selectedEventTypeIds && selectedEventTypeIds.length > 0 && eventTypes.length > 0) {
-    basicFields.push({
-      id: "event_type_id",
-      type: "select",
-      label: "¿Qué tipo de evento te interesa?",
-      required: true,
-      placeholder: "Selecciona un tipo de evento",
-      options: eventTypes.map(t => t.nombre),
-    });
-  }
 
   // Agregar campo de fecha de interés si está habilitado
   if (enableInterestDate) {
@@ -330,19 +297,12 @@ export function OfferLeadForm({
         }
       });
 
-      // Mapear event_type_id (formData contiene el nombre, necesitamos el ID)
-      let eventTypeId: string | undefined;
-      if (formData.event_type_id) {
-        const selectedType = eventTypes.find(t => t.nombre === formData.event_type_id);
-        eventTypeId = selectedType?.id;
-      }
-
       const result = await submitOfferLeadform(studioSlug, {
         offer_id: offerId,
         name: formData.name,
         phone: formData.phone,
         email: formData.email || "",
-        event_type_id: eventTypeId,
+        event_type_id: eventTypeId || undefined, // Tipo de evento pre-asociado
         custom_fields: customFields,
         utm_source: urlParams.get("utm_source") || undefined,
         utm_medium: urlParams.get("utm_medium") || undefined,

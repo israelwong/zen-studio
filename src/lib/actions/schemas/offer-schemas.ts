@@ -62,7 +62,8 @@ export const CreateOfferSchema = z.object({
     fields_config: LeadFormFieldsConfigSchema,
     subject_options: z.array(z.string()).optional().default([]), // LEGACY: si use_event_types = false
     use_event_types: z.boolean().default(true), // Default: usar studio_event_types
-    selected_event_type_ids: z.array(z.string()).optional().default([]), // IDs seleccionados
+    event_type_id: z.string().nullable().optional(), // Para OFERTAS: UN tipo de evento (single)
+    selected_event_type_ids: z.array(z.string()).optional().default([]), // Para LEADFORMS GENÉRICOS: múltiples tipos (array)
     show_packages_after_submit: z.boolean().default(false), // Mostrar paquetes post-registro
     email_required: z.boolean().default(false),
     enable_interest_date: z.boolean().default(false),

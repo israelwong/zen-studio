@@ -86,28 +86,16 @@ export function TipoEventoSelector({
           )}
         </label>
         {eventTypes.length > 0 && (
-          <div className="flex items-center gap-2">
-            <ZenButton
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowQuickAdd(true)}
-              className="h-7 text-xs"
-            >
-              <Plus className="h-3 w-3 mr-1" />
-              Agregar tipo
-            </ZenButton>
-            <ZenButton
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setShowManagement(true)}
-              className="h-7 text-xs"
-            >
-              <Settings className="h-3 w-3 mr-1" />
-              Gestionar
-            </ZenButton>
-          </div>
+          <ZenButton
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowManagement(true)}
+            className="h-7 text-xs"
+          >
+            <Settings className="h-3 w-3 mr-1" />
+            Gestionar
+          </ZenButton>
         )}
       </div>
 

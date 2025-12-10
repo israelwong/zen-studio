@@ -29,7 +29,8 @@ interface LeadFormData {
   success_redirect_url: string;
   subject_options: string[]; // LEGACY: si use_event_types = false
   use_event_types: boolean; // Si true: usar studio_event_types
-  selected_event_type_ids: string[]; // IDs de tipos seleccionados
+  event_type_id: string | null; // Para OFERTAS: UN tipo de evento (single)
+  selected_event_type_ids: string[]; // Para LEADFORMS GENÉRICOS: múltiples tipos (array)
   show_packages_after_submit: boolean; // Mostrar paquetes post-registro
   email_required: boolean;
   enable_interest_date: boolean;
@@ -102,6 +103,7 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     success_redirect_url: initialOffer?.leadform?.success_redirect_url || "",
     subject_options: (initialOffer?.leadform?.subject_options as string[]) || [],
     use_event_types: initialOffer?.leadform?.use_event_types ?? true, // Default: usar tipos de evento
+    event_type_id: (initialOffer?.leadform?.event_type_id as string) || null, // Para ofertas (single)
     selected_event_type_ids: (initialOffer?.leadform?.selected_event_type_ids as string[]) || [],
     show_packages_after_submit: initialOffer?.leadform?.show_packages_after_submit || false,
     email_required: (initialOffer?.leadform?.email_required as boolean) || false,
@@ -168,6 +170,7 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
         fields_config: leadformData.fields_config,
         subject_options: leadformData.subject_options,
         use_event_types: leadformData.use_event_types,
+        event_type_id: leadformData.event_type_id || undefined,
         selected_event_type_ids: leadformData.selected_event_type_ids,
         show_packages_after_submit: leadformData.show_packages_after_submit,
         email_required: leadformData.email_required,
