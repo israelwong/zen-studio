@@ -15,6 +15,7 @@ interface SchedulerRowProps {
     start_date: Date;
     end_date: Date;
     is_completed: boolean;
+    has_crew_member?: boolean;
   }>;
   dateRange: DateRange;
   onTaskUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
@@ -51,7 +52,7 @@ export const SchedulerRow = React.memo(({
     (e: React.MouseEvent<HTMLDivElement>) => {
       // Si ya tiene tarea, no permitir crear otra
       if (hasTask) return;
-      
+
       // Si no hay callback de creación, no hacer nada
       if (!onTaskCreate) return;
 
@@ -73,9 +74,8 @@ export const SchedulerRow = React.memo(({
 
   return (
     <div
-      className={`relative h-[60px] border-b border-zinc-800/50 transition-colors ${
-        !hasTask ? 'hover:bg-zinc-900/30 cursor-pointer' : ''
-      }`}
+      className={`relative h-[60px] border-b border-zinc-800/50 transition-colors ${!hasTask ? 'hover:bg-zinc-900/30 cursor-pointer' : ''
+        }`}
       style={{ width: `${totalWidth}px`, minWidth: `${totalWidth}px` }}
       onClick={handleRowClick}
     >
@@ -100,6 +100,7 @@ export const SchedulerRow = React.memo(({
             startDate={new Date(task.start_date)}
             endDate={new Date(task.end_date)}
             isCompleted={task.is_completed}
+            hasCrewMember={task.has_crew_member}
             dateRange={dateRange}
             onUpdate={handleTaskUpdate}
             onDelete={onTaskDelete}

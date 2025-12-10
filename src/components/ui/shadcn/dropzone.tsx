@@ -42,6 +42,8 @@ export function Dropzone({
     disabled,
     onDragEnter: () => setDragActive(true),
     onDragLeave: () => setDragActive(false),
+    // Deshabilitar File System Access API para evitar NotAllowedError
+    useFsAccessApi: false,
   });
 
   const getFileIcon = (fileType: string) => {
@@ -60,7 +62,7 @@ export function Dropzone({
 
   const hasNoBorder = className?.includes('border-0');
   const hasChildren = !!children;
-  
+
   return (
     <div className={cn("w-full", !hasChildren && className)}>
       <div
@@ -75,7 +77,7 @@ export function Dropzone({
         )}
       >
         <input {...getInputProps()} />
-        
+
         {children ? (
           children
         ) : (
@@ -83,7 +85,7 @@ export function Dropzone({
             <div className="mx-auto w-12 h-12 bg-zinc-700 rounded-full flex items-center justify-center">
               <Upload className="h-6 w-6 text-zinc-400" />
             </div>
-            
+
             <div className="space-y-1">
               <p className="text-zinc-300 font-medium">
                 {isDragActive ? 'Suelta el archivo aquí' : 'Arrastra y suelta un archivo'}
@@ -92,7 +94,7 @@ export function Dropzone({
                 o haz clic para seleccionar
               </p>
             </div>
-            
+
             <div className="text-xs text-zinc-600">
               <p>Tipos permitidos: {Object.keys(acceptedFileTypes).join(', ')}</p>
               <p>Tamaño máximo: {maxSize}MB</p>

@@ -15,42 +15,57 @@ interface TaskStatusContext {
  */
 export function calculateTaskStatus(context: TaskStatusContext): TaskStatus {
   const { startDate, endDate, isCompleted } = context;
-  
+
   if (isCompleted) {
     return 'COMPLETED';
   }
-  
+
   const today = normalizeDate(new Date());
   const start = normalizeDate(startDate);
   const end = normalizeDate(endDate);
-  
+
   if (today < start) {
     return 'PENDING';
   }
-  
+
   if (today >= start && today <= end) {
     return 'IN_PROCESS';
   }
-  
+
   if (today > end) {
     return 'DELAYED';
   }
-  
+
   return 'PENDING';
 }
 
 /**
  * Mapea el estado de tarea a color visual
+ * @param status Estado de la tarea
+ * @param hasCrewMember Si tiene personal asignado (opcional)
  */
-export function getStatusColor(status: TaskStatus): string {
-  const colorMap: Record<TaskStatus, string> = {
-    PENDING: 'bg-zinc-600 hover:bg-zinc-500',
-    IN_PROCESS: 'bg-blue-600 hover:bg-blue-500',
-    DELAYED: 'bg-red-600 hover:bg-red-500',
-    COMPLETED: 'bg-emerald-600 hover:bg-emerald-500',
-  };
-  
-  return colorMap[status] || colorMap.PENDING;
+export function getStatusColor(status: TaskStatus, hasCrewMember?: boolean): string {
+  // Si está completada, siempre verde
+  if (status === 'COMPLETED') {
+    return 'bg-emerald-600 hover:bg-emerald-500';
+  }
+
+  // Si está atrasada, siempre rojo
+  if (status === 'DELAYED') {
+    return 'bg-red-600 hover:bg-red-500';
+  }
+
+  // Para PENDING e IN_PROCESS:
+  // - Con personal asignado: azul
+  // - Sin personal asignado: gris
+  if (hasCrewMember) {
+    return status === 'IN_PROCESS'
+      ? 'bg-blue-600 hover:bg-blue-500'
+      : 'bg-blue-700 hover:bg-blue-600'; // Pendiente con personal: azul más oscuro
+  }
+
+  // Sin personal asignado: gris
+  return 'bg-zinc-600 hover:bg-zinc-500';
 }
 
 /**
@@ -63,7 +78,7 @@ export function getStatusLabel(status: TaskStatus): string {
     DELAYED: 'Atrasada',
     COMPLETED: 'Completada',
   };
-  
+
   return labelMap[status] || 'Desconocido';
 }
 

@@ -24,6 +24,7 @@ interface TaskBarProps {
   startDate: Date;
   endDate: Date;
   isCompleted: boolean;
+  hasCrewMember?: boolean;
   dateRange: DateRange;
   onUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   onDelete?: (taskId: string) => Promise<void>;
@@ -38,6 +39,7 @@ export const TaskBar = React.memo(({
   startDate,
   endDate,
   isCompleted,
+  hasCrewMember = false,
   dateRange,
   onUpdate,
   onDelete,
@@ -63,7 +65,7 @@ export const TaskBar = React.memo(({
     isCompleted,
   });
 
-  const statusColor = getStatusColor(status);
+  const statusColor = getStatusColor(status, hasCrewMember);
   const initialX = getPositionFromDate(localStartDate, dateRange);
   const width = getWidthFromDuration(localStartDate, localEndDate);
 

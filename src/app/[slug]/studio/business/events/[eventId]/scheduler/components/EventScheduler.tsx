@@ -143,12 +143,18 @@ export const EventScheduler = React.memo(function EventScheduler({
     const map = new Map<string, CotizacionItem>();
 
     localEventData.cotizaciones?.forEach((cotizacion) => {
-      if (cotizacion.status === 'autorizada' || cotizacion.status === 'aprobada' || cotizacion.status === 'approved') {
+      // Incluir cotizaciones aprobadas/autorizadas
+      const isApproved = cotizacion.status === 'autorizada'
+        || cotizacion.status === 'aprobada'
+        || cotizacion.status === 'approved'
+        || cotizacion.status === 'seleccionada';
+
+      if (isApproved) {
         cotizacion.cotizacion_items?.forEach((item) => {
-          // Indexar por item_id para que coincida con servicio.id del catálogo
-          if (item.item_id) {
-            map.set(item.item_id, item);
-          }
+          // Indexar por item_id (si existe) O por el id del cotizacion_item
+          // Esto permite soportar items creados desde catálogo o paquetes
+          const key = item.item_id || item.id;
+          map.set(key, item);
         });
       }
     });
@@ -156,9 +162,11 @@ export const EventScheduler = React.memo(function EventScheduler({
     return map;
   }, [localEventData.cotizaciones]);
 
-  // Filtrar secciones del catálogo para mostrar solo items que están en la cotización
+  // Construir estructura personalizada para items sin catálogo
+  // Agrupar items por sección/categoría del snapshot
   const seccionesFiltradasConItems = useMemo(() => {
-    return secciones
+    // Primero intentar filtrar por catálogo normal
+    const seccionesConCatalogo = secciones
       .map((seccion) => ({
         ...seccion,
         categorias: seccion.categorias
@@ -169,6 +177,61 @@ export const EventScheduler = React.memo(function EventScheduler({
           .filter((categoria) => categoria.servicios.length > 0),
       }))
       .filter((seccion) => seccion.categorias.length > 0);
+
+    // Si hay items con catálogo, usar esa estructura
+    if (seccionesConCatalogo.length > 0) {
+      return seccionesConCatalogo;
+    }
+
+    // Si no hay match con catálogo (items sin item_id), crear estructura sintética
+    // agrupando por seccion_name y category_name de los snapshots
+    const itemsArray = Array.from(itemsMap.values());
+
+    if (itemsArray.length === 0) {
+      return [];
+    }
+
+    // Agrupar por sección y categoría
+    const seccionesMap = new Map<string, Map<string, CotizacionItem[]>>();
+
+    itemsArray.forEach((item) => {
+      const seccionName = item.seccion_name_snapshot || item.seccion_name || 'Sin categoría';
+      const categoryName = item.category_name_snapshot || item.category_name || 'Sin categoría';
+
+      if (!seccionesMap.has(seccionName)) {
+        seccionesMap.set(seccionName, new Map());
+      }
+
+      const categoriasMap = seccionesMap.get(seccionName)!;
+      if (!categoriasMap.has(categoryName)) {
+        categoriasMap.set(categoryName, []);
+      }
+
+      categoriasMap.get(categoryName)!.push(item);
+    });
+
+    // Convertir a estructura compatible con SchedulerPanel
+    return Array.from(seccionesMap.entries()).map(([seccionName, categoriasMap], sIndex) => ({
+      id: `seccion-${sIndex}`,
+      nombre: seccionName,
+      descripcion: null,
+      orden: sIndex,
+      categorias: Array.from(categoriasMap.entries()).map(([categoryName, items], cIndex) => ({
+        id: `categoria-${sIndex}-${cIndex}`,
+        nombre: categoryName,
+        orden: cIndex,
+        servicios: items.map((item, iIndex) => ({
+          id: item.id, // Usar el id del cotizacion_item como key
+          nombre: item.name || item.name_snapshot || 'Sin nombre',
+          tipo: 'SERVICIO' as const,
+          costo: item.cost || item.cost_snapshot || 0,
+          gasto: 0,
+          utilidad_tipo: item.profit_type || item.profit_type_snapshot || 'service',
+          orden: iIndex,
+          estado: 'active',
+        })),
+      })),
+    }));
   }, [secciones, itemsMap]);
 
   // Manejar actualización de tareas

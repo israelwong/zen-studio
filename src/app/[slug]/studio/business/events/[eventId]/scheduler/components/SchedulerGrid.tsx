@@ -49,6 +49,8 @@ export const SchedulerGrid = React.memo(({
                 const item = itemsMap.get(servicio.id);
                 if (!item) return null;
 
+                const hasCrewMember = !!item.assigned_to_crew_member_id;
+
                 const tasks = item.scheduler_task
                   ? [
                     {
@@ -57,6 +59,7 @@ export const SchedulerGrid = React.memo(({
                       start_date: new Date(item.scheduler_task.start_date),
                       end_date: new Date(item.scheduler_task.end_date),
                       is_completed: !!item.scheduler_task.completed_at,
+                      has_crew_member: hasCrewMember,
                     },
                   ]
                   : [];

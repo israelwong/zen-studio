@@ -344,163 +344,116 @@ export function EventCotizacionesCard({
                   return (
                     <div
                       key={cotizacion.id}
-                      className="flex items-start gap-4 p-4 pr-12 bg-zinc-900 rounded border border-zinc-800 relative group"
+                      className="p-3 bg-zinc-900 rounded border border-zinc-800 relative group hover:border-zinc-700 transition-colors"
                     >
-                      <div className="flex-1 min-w-0 relative">
-                        <p className="text-sm font-medium text-zinc-100 truncate mb-2">
-                          {cotizacion.name}
-                        </p>
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-zinc-400">Precio:</span>
-                            <span className="text-zinc-300">{formatAmount(cotizacion.price)}</span>
-                          </div>
-                          {cotizacion.discount ? (
-                            <>
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-zinc-400">Descuento:</span>
+                      <div className="flex items-start justify-between gap-3 pr-8">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-zinc-100 truncate mb-1">
+                            {cotizacion.name}
+                          </p>
+
+                          {/* Balance compacto */}
+                          <div className="space-y-0.5 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Total:</span>
+                              <span className="text-zinc-300">{formatAmount(cotizacion.price)}</span>
+                            </div>
+                            {cotizacion.discount > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Descuento:</span>
                                 <span className="text-red-400">-{formatAmount(cotizacion.discount)}</span>
                               </div>
-                              <div className="flex items-center justify-between text-xs border-t border-zinc-700 pt-1">
-                                <span className="font-medium text-emerald-400">Total a pagar:</span>
-                                <span className="font-medium text-emerald-400">
-                                  {formatAmount(cotizacion.price - cotizacion.discount)}
-                                </span>
-                              </div>
-                            </>
-                          ) : null}
+                            )}
+                            <div className="flex justify-between pt-0.5 border-t border-zinc-800">
+                              <span className="text-emerald-400 font-medium">A pagar:</span>
+                              <span className="text-emerald-400 font-medium">
+                                {formatAmount(cotizacion.price - (cotizacion.discount || 0))}
+                              </span>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-zinc-600 mt-1.5">
+                            {formatDate(cotizacion.updated_at)}
+                          </p>
                         </div>
 
-                        {/* Stats de progreso */}
-                        {(stats.totalTasks > 0 || stats.totalRequiringCrew > 0) && (
-                          <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
-                            {/* Stats de tareas */}
-                            {stats.totalTasks > 0 && (
-                              <div className="flex items-center gap-2 text-xs">
-                                <CheckCircle2 className="h-3 w-3 text-emerald-400 flex-shrink-0" />
-                                <span className="text-zinc-400">Tareas:</span>
-                                <span className={`font-medium ${stats.completedTasks === stats.totalTasks ? 'text-emerald-400' : 'text-zinc-300'}`}>
-                                  {stats.completedTasks}/{stats.totalTasks}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Stats de asignaciones */}
-                            {stats.totalRequiringCrew > 0 && (
-                              <div className="flex items-center gap-2 text-xs">
-                                <Users className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                                <span className="text-zinc-400">Crew:</span>
-                                <span className={`font-medium ${stats.assignedCrew === stats.totalRequiringCrew ? 'text-emerald-400' : stats.assignedCrew > 0 ? 'text-blue-400' : 'text-zinc-500'}`}>
-                                  {stats.assignedCrew}/{stats.totalRequiringCrew}
-                                </span>
-                              </div>
-                            )}
-
-                            {/* Dream Team - Mini avatares */}
-                            {stats.crewMembers.length > 0 && (
-                              <div className="flex items-center gap-1.5 mt-1.5">
-                                <span className="text-[10px] text-zinc-500">Equipo:</span>
-                                <div className="flex items-center gap-1">
-                                  {stats.crewMembers.slice(0, 4).map((member) => (
-                                    <ZenAvatar key={member.id} className="h-5 w-5 border border-zinc-700" title={member.name}>
-                                      <ZenAvatarFallback className="bg-blue-600/20 text-blue-400 text-[10px]">
-                                        {getInitials(member.name)}
-                                      </ZenAvatarFallback>
-                                    </ZenAvatar>
-                                  ))}
-                                  {stats.crewMembers.length > 4 && (
-                                    <span className="text-[10px] text-zinc-500 ml-0.5" title={`${stats.crewMembers.length - 4} miembros más`}>
-                                      +{stats.crewMembers.length - 4}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <p className="text-xs text-zinc-500 mt-2">
-                          Autorizada: {formatDate(cotizacion.updated_at)}
-                        </p>
-
-                        {/* Botón Scheduler por cotización */}
-                        {stats.totalTasks > 0 && (
-                          <div className="mt-3 pt-2 border-t border-zinc-800">
-                            <ZenButton
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleGestionarScheduler(cotizacion.id)}
-                              className="h-7 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 w-full justify-start"
-                            >
-                              <Calendar className="h-3 w-3 mr-1.5" />
-                              Gestionar cronograma
-                            </ZenButton>
-                          </div>
-                        )}
-
-                        {/* Spinner de carga */}
-                        {isLoading && (
-                          <div className="absolute inset-0 bg-zinc-900/90 rounded flex items-center justify-center gap-2 z-10">
-                            <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
-                            <span className="text-xs text-emerald-400 font-medium">
-                              Generando vista previa de la cotización
-                            </span>
-                          </div>
-                        )}
+                        {/* Menú dropdown */}
+                        <div className="absolute top-2 right-2">
+                          <ZenDropdownMenu
+                            open={isMenuOpen}
+                            onOpenChange={(open) => setOpenMenuId(open ? cotizacion.id : null)}
+                          >
+                            <ZenDropdownMenuTrigger asChild>
+                              <ZenButton
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </ZenButton>
+                            </ZenDropdownMenuTrigger>
+                            <ZenDropdownMenuContent align="end">
+                              <ZenDropdownMenuItem
+                                onClick={() => {
+                                  handleVer(cotizacion);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                Ver
+                              </ZenDropdownMenuItem>
+                              <ZenDropdownMenuSeparator />
+                              <ZenDropdownMenuItem
+                                onClick={() => {
+                                  handleEditar(cotizacion);
+                                  setOpenMenuId(null);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Editar
+                              </ZenDropdownMenuItem>
+                              <ZenDropdownMenuSeparator />
+                              <ZenDropdownMenuItem
+                                onClick={() => {
+                                  handleCancelarClick(cotizacion.id);
+                                  setOpenMenuId(null);
+                                }}
+                                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Cancelar
+                              </ZenDropdownMenuItem>
+                            </ZenDropdownMenuContent>
+                          </ZenDropdownMenu>
+                        </div>
                       </div>
-                      {/* Menú dropdown */}
-                      <div className="absolute top-3 right-3 z-20">
-                        <ZenDropdownMenu
-                          open={isMenuOpen}
-                          onOpenChange={(open) => setOpenMenuId(open ? cotizacion.id : null)}
-                        >
-                          <ZenDropdownMenuTrigger asChild>
-                            <ZenButton
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </ZenButton>
-                          </ZenDropdownMenuTrigger>
-                          <ZenDropdownMenuContent align="end">
-                            <ZenDropdownMenuItem
-                              onClick={() => {
-                                handleVer(cotizacion);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              Ver
-                            </ZenDropdownMenuItem>
-                            <ZenDropdownMenuSeparator />
-                            <ZenDropdownMenuItem
-                              onClick={() => {
-                                handleEditar(cotizacion);
-                                setOpenMenuId(null);
-                              }}
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </ZenDropdownMenuItem>
-                            <ZenDropdownMenuSeparator />
-                            <ZenDropdownMenuItem
-                              onClick={() => {
-                                handleCancelarClick(cotizacion.id);
-                                setOpenMenuId(null);
-                              }}
-                              className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
-                            >
-                              <X className="mr-2 h-4 w-4" />
-                              Cancelar
-                            </ZenDropdownMenuItem>
-                          </ZenDropdownMenuContent>
-                        </ZenDropdownMenu>
-                      </div>
+
+                      {/* Spinner de carga */}
+                      {isLoading && (
+                        <div className="absolute inset-0 bg-zinc-900/90 rounded flex items-center justify-center gap-2 z-10">
+                          <Loader2 className="h-4 w-4 text-emerald-400 animate-spin" />
+                          <span className="text-xs text-emerald-400 font-medium">
+                            Generando vista previa
+                          </span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
+
+              {/* Botón Scheduler global (si hay tareas) */}
+              {cotizacionesAprobadas.some(c => calculateCotizacionStats(c).totalTasks > 0) && (
+                <ZenButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleGestionarScheduler()}
+                  className="w-full gap-2 text-xs"
+                >
+                  <Calendar className="h-3 w-3" />
+                  Ver cronograma
+                </ZenButton>
+              )}
 
               {/* Revisiones pendientes */}
               {revisionesPendientes.length > 0 && (
@@ -581,16 +534,6 @@ export function EventCotizacionesCard({
                   </div>
                 </div>
               )}
-
-              {/* Resumen - Total aprobado */}
-              {totalAprobado > 0 && (
-                <div className="grid grid-cols-1 gap-2 text-xs pt-2 border-t border-zinc-800">
-                  <div className="p-2 bg-emerald-900/20 rounded border border-emerald-500/30">
-                    <p className="text-zinc-400">Total aprobado</p>
-                    <p className="font-semibold text-emerald-400">{formatAmount(totalAprobado)}</p>
-                  </div>
-                </div>
-              )}
             </>
           ) : (
             <div className="text-center py-4">
@@ -609,112 +552,120 @@ export function EventCotizacionesCard({
       </ZenCardContent>
 
       {/* Modal de confirmación para cancelar */}
-      {showCancelModal && cotizacionACancelar && (
-        <ZenConfirmModal
-          isOpen={showCancelModal}
-          onClose={() => {
-            if (!isCancelling) {
-              setShowCancelModal(false);
-              setCancelandoCotizacionId(null);
+      {
+        showCancelModal && cotizacionACancelar && (
+          <ZenConfirmModal
+            isOpen={showCancelModal}
+            onClose={() => {
+              if (!isCancelling) {
+                setShowCancelModal(false);
+                setCancelandoCotizacionId(null);
+              }
+            }}
+            onConfirm={handleCancelConfirm}
+            title="Cancelar cotización"
+            description={
+              esUnicaCotizacion
+                ? '¿Deseas cancelar la cotización y el evento?'
+                : 'Solo se cancelará la cotización seleccionada pero el evento se mantendrá activo porque existen cotizaciones aprobadas.'
             }
-          }}
-          onConfirm={handleCancelConfirm}
-          title="Cancelar cotización"
-          description={
-            esUnicaCotizacion
-              ? '¿Deseas cancelar la cotización y el evento?'
-              : 'Solo se cancelará la cotización seleccionada pero el evento se mantendrá activo porque existen cotizaciones aprobadas.'
-          }
-          confirmText="Cancelar cotización"
-          cancelText="No cancelar"
-          variant="destructive"
-          loading={isCancelling}
-          loadingText="Cancelando..."
-        />
-      )}
+            confirmText="Cancelar cotización"
+            cancelText="No cancelar"
+            variant="destructive"
+            loading={isCancelling}
+            loadingText="Cancelando..."
+          />
+        )
+      }
 
       {/* Modal para ver resumen de cotización */}
-      {showViewModal && cotizacionCompleta && (
-        <ZenDialog
-          isOpen={showViewModal}
-          onClose={() => {
-            setShowViewModal(false);
-            setCotizacionCompleta(null);
-          }}
-          title="Resumen de Cotización"
-          maxWidth="5xl"
-        >
-          {cotizacionCompleta.cotizacion_items && cotizacionCompleta.cotizacion_items.length > 0 ? (
-            // Cotización autorizada: mostrar datos guardados
-            <ResumenCotizacionAutorizada
-              cotizacion={{
-                id: cotizacionCompleta.id,
-                name: cotizacionCompleta.name,
-                description: null, // Los items tienen su propia descripción
-                price: cotizacionCompleta.price,
-                discount: cotizacionCompleta.discount,
-                status: cotizacionCompleta.status,
-                cotizacion_items: cotizacionCompleta.cotizacion_items as ResumenCotizacionItem[],
-              }}
-              studioSlug={studioSlug}
-              promiseId={cotizacionCompleta.promise_id || undefined}
-              onEditar={handleEditarDesdeModal}
-            />
-          ) : (
-            // Cotización no autorizada: usar componente original que carga catálogo
-            <ResumenCotizacion
-              cotizacion={{
-                id: cotizacionCompleta.id,
-                name: cotizacionCompleta.name,
-                description: null, // No disponible en EventoDetalle
-                price: cotizacionCompleta.price,
-                status: cotizacionCompleta.status,
-                items: cotizacionCompleta.cotizacion_items?.map((item) => ({
-                  item_id: item.item_id || '',
-                  quantity: item.quantity,
-                })) || [],
-              }}
-              studioSlug={studioSlug}
-              promiseId={cotizacionCompleta.promise_id || undefined}
-              onEditar={handleEditarDesdeModal}
-            />
-          )}
-        </ZenDialog>
-      )}
+      {
+        showViewModal && cotizacionCompleta && (
+          <ZenDialog
+            isOpen={showViewModal}
+            onClose={() => {
+              setShowViewModal(false);
+              setCotizacionCompleta(null);
+            }}
+            title="Resumen de Cotización"
+            maxWidth="5xl"
+          >
+            {cotizacionCompleta.cotizacion_items && cotizacionCompleta.cotizacion_items.length > 0 ? (
+              // Cotización autorizada: mostrar datos guardados
+              <ResumenCotizacionAutorizada
+                cotizacion={{
+                  id: cotizacionCompleta.id,
+                  name: cotizacionCompleta.name,
+                  description: null, // Los items tienen su propia descripción
+                  price: cotizacionCompleta.price,
+                  discount: cotizacionCompleta.discount,
+                  status: cotizacionCompleta.status,
+                  cotizacion_items: cotizacionCompleta.cotizacion_items as ResumenCotizacionItem[],
+                }}
+                studioSlug={studioSlug}
+                promiseId={cotizacionCompleta.promise_id || undefined}
+                onEditar={handleEditarDesdeModal}
+              />
+            ) : (
+              // Cotización no autorizada: usar componente original que carga catálogo
+              <ResumenCotizacion
+                cotizacion={{
+                  id: cotizacionCompleta.id,
+                  name: cotizacionCompleta.name,
+                  description: null, // No disponible en EventoDetalle
+                  price: cotizacionCompleta.price,
+                  status: cotizacionCompleta.status,
+                  items: cotizacionCompleta.cotizacion_items?.map((item) => ({
+                    item_id: item.item_id || '',
+                    quantity: item.quantity,
+                  })) || [],
+                }}
+                studioSlug={studioSlug}
+                promiseId={cotizacionCompleta.promise_id || undefined}
+                onEditar={handleEditarDesdeModal}
+              />
+            )}
+          </ZenDialog>
+        )
+      }
 
       {/* Modal informativo que crea revisión directamente */}
-      {cotizacionParaRevision && (
-        <InfoCrearRevisionModal
-          isOpen={showInfoCrearRevisionModal}
-          onClose={() => {
-            setShowInfoCrearRevisionModal(false);
-            setCotizacionParaRevision(null);
-          }}
-          onConfirm={() => {
-            setShowInfoCrearRevisionModal(false);
-            setCotizacionParaRevision(null);
-            onUpdated?.();
-          }}
-          cotizacion={cotizacionParaRevision}
-          studioSlug={studioSlug}
-        />
-      )}
+      {
+        cotizacionParaRevision && (
+          <InfoCrearRevisionModal
+            isOpen={showInfoCrearRevisionModal}
+            onClose={() => {
+              setShowInfoCrearRevisionModal(false);
+              setCotizacionParaRevision(null);
+            }}
+            onConfirm={() => {
+              setShowInfoCrearRevisionModal(false);
+              setCotizacionParaRevision(null);
+              onUpdated?.();
+            }}
+            cotizacion={cotizacionParaRevision}
+            studioSlug={studioSlug}
+          />
+        )
+      }
 
       {/* Modal para autorizar revisión */}
-      {revisionParaAutorizar && promiseId && (
-        <AutorizarRevisionModal
-          isOpen={showAutorizarRevisionModal}
-          onClose={() => {
-            setShowAutorizarRevisionModal(false);
-            setRevisionParaAutorizar(null);
-          }}
-          studioSlug={studioSlug}
-          revision={revisionParaAutorizar}
-          promiseId={promiseId}
-          onSuccess={handleRevisionAutorizada}
-        />
-      )}
-    </ZenCard>
+      {
+        revisionParaAutorizar && promiseId && (
+          <AutorizarRevisionModal
+            isOpen={showAutorizarRevisionModal}
+            onClose={() => {
+              setShowAutorizarRevisionModal(false);
+              setRevisionParaAutorizar(null);
+            }}
+            studioSlug={studioSlug}
+            revision={revisionParaAutorizar}
+            promiseId={promiseId}
+            onSuccess={handleRevisionAutorizada}
+          />
+        )
+      }
+    </ZenCard >
   );
 }
 

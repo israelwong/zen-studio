@@ -11,8 +11,8 @@ import {
   ZenConfirmModal,
 } from '@/components/ui/zen';
 import { PaymentFormModal } from '@/components/shared/payments/PaymentFormModal';
-import { PaymentFormCard } from '@/components/shared/payments/PaymentFormCard';
 import { PaymentReceipt } from '@/components/shared/payments/PaymentReceipt';
+import { PaymentsHistorySheet } from './PaymentsHistorySheet';
 import {
   obtenerPagosPorCotizacion,
   eliminarPago,
@@ -54,6 +54,7 @@ export function EventPaymentsCard({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [editingPayment, setEditingPayment] = useState<PaymentItem | null>(null);
@@ -214,22 +215,19 @@ export function EventPaymentsCard({
                 </div>
               </div>
 
-              {/* Lista de pagos */}
-              {payments.length > 0 ? (
-                <div className="space-y-3">
-                  {payments.map((payment) => (
-                    <PaymentFormCard
-                      key={payment.id}
-                      payment={payment}
-                      onEdit={handleEdit}
-                      onDelete={handleDeleteClick}
-                      onViewReceipt={handleViewReceipt}
-                      openMenuId={openMenuId}
-                      onMenuOpenChange={setOpenMenuId}
-                    />
-                  ))}
-                </div>
-              ) : (
+              {/* Botón para ver historial */}
+              {payments.length > 0 && (
+                <ZenButton
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsHistorySheetOpen(true)}
+                  className="w-full gap-2 text-xs"
+                >
+                  Ver historial de pagos ({payments.length})
+                </ZenButton>
+              )}
+
+              {payments.length === 0 && (
                 <div className="text-center py-4">
                   <p className="text-xs text-zinc-500 mb-2">
                     No hay pagos registrados
@@ -296,6 +294,18 @@ export function EventPaymentsCard({
           paymentId={receiptPaymentId}
         />
       )}
+
+      {/* Sheet de historial de pagos */}
+      <PaymentsHistorySheet
+        isOpen={isHistorySheetOpen}
+        onClose={() => setIsHistorySheetOpen(false)}
+        payments={payments}
+        onEdit={handleEdit}
+        onDelete={handleDeleteClick}
+        onViewReceipt={handleViewReceipt}
+        openMenuId={openMenuId}
+        onMenuOpenChange={setOpenMenuId}
+      />
     </>
   );
 }

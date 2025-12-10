@@ -5,7 +5,8 @@ import { ContactEventInfoCard } from '@/components/shared/contact-info';
 import { EventCotizacionesCard } from './EventCotizacionesCard';
 import { EventPaymentsCard } from './EventPaymentsCard';
 import { EventAgendamiento } from './EventAgendamiento';
-import { EventDeliverablesCard } from './EventDeliverablesCard';
+import { EventTodoCard } from './EventTodoCard';
+import { EventItinerarioCard } from './EventItinerarioCard';
 
 import type { EventoDetalle } from '@/lib/actions/studio/business/events';
 
@@ -77,25 +78,21 @@ export function EventPanel({
           />
         </div>
 
-        {/* Columna 2: Cotizaciones */}
-        <div className="lg:col-span-1">
+        {/* Columna 2: Agenda + Cotizaciones + Pagos */}
+        <div className="lg:col-span-1 space-y-6">
+          <EventAgendamiento
+            studioSlug={studioSlug}
+            eventId={eventId}
+            eventDate={eventData.promise?.event_date || eventData.event_date}
+            onAgendaUpdated={onEventUpdated}
+          />
+
           <EventCotizacionesCard
             studioSlug={studioSlug}
             eventId={eventId}
             promiseId={eventData.promise_id}
             cotizaciones={eventData.cotizaciones || []}
             onUpdated={onEventUpdated}
-          />
-        </div>
-
-        {/* Columna 3: Agenda + Pagos */}
-        <div className="lg:col-span-1 space-y-6">
-
-          <EventAgendamiento
-            studioSlug={studioSlug}
-            eventId={eventId}
-            eventDate={eventData.promise?.event_date || eventData.event_date}
-            onAgendaUpdated={onEventUpdated}
           />
 
           <EventPaymentsCard
@@ -113,11 +110,19 @@ export function EventPanel({
             }))}
             onPaymentAdded={onEventUpdated}
           />
+        </div>
 
-          <EventDeliverablesCard
+        {/* Columna 3: TODO + Itinerario */}
+        <div className="lg:col-span-1 space-y-6">
+
+          <EventTodoCard
             studioSlug={studioSlug}
             eventId={eventId}
-            onUpdated={onEventUpdated}
+          />
+
+          <EventItinerarioCard
+            studioSlug={studioSlug}
+            eventId={eventId}
           />
 
         </div>

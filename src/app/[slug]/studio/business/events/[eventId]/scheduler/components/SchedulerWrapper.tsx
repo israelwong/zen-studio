@@ -107,19 +107,22 @@ export function SchedulerWrapper({
   // Calcular progreso y estadísticas de tareas
   const taskStats = useMemo(() => {
     if (!filteredCotizaciones || !dateRange) {
-      return { completed: 0, total: 0, percentage: 0, delayed: 0, inProcess: 0, pending: 0, unassigned: 0, withoutCrew: 0 };
+      return {
+        completed: 0,
+        total: 0,
+        percentage: 0,
+        delayed: 0,
+        inProcess: 0,
+        pending: 0,
+        unassigned: 0,
+        pendingWithoutCrew: 0
+      };
     }
 
     const allItems = filteredCotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const total = allItems.length;
     const itemsWithTasks = allItems.filter(item => item.scheduler_task);
     const unassigned = total - itemsWithTasks.length;
-
-    const withoutCrew = itemsWithTasks.filter(item => {
-      const hasCompleted = !!item.scheduler_task?.completed_at;
-      const hasCrew = !!item.assigned_to_crew_member_id;
-      return !hasCompleted && !hasCrew;
-    }).length;
 
     const completed = itemsWithTasks.filter(item => !!item.scheduler_task?.completed_at).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
@@ -130,6 +133,7 @@ export function SchedulerWrapper({
     let delayed = 0;
     let inProcess = 0;
     let pending = 0;
+    let withoutCrew = 0; // Todas las tareas activas (no completadas) sin personal asignado
 
     itemsWithTasks.forEach(item => {
       if (item.scheduler_task?.completed_at) return;
@@ -138,6 +142,13 @@ export function SchedulerWrapper({
       const endDate = new Date(item.scheduler_task!.end_date);
       startDate.setHours(0, 0, 0, 0);
       endDate.setHours(0, 0, 0, 0);
+
+      const hasCrew = !!item.assigned_to_crew_member_id;
+
+      // Contar tareas sin crew (activas)
+      if (!hasCrew) {
+        withoutCrew++;
+      }
 
       if (today > endDate) {
         delayed++;
@@ -180,34 +191,34 @@ export function SchedulerWrapper({
 
               {taskStats.unassigned > 0 && (
                 <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-900 text-zinc-500 border-zinc-800">
-                  <span className="text-xs">{taskStats.unassigned} Sin slot</span>
+                  <span className="text-xs">{taskStats.unassigned} Sin asignar</span>
                 </ZenBadge>
               )}
 
               {taskStats.withoutCrew > 0 && (
                 <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-amber-950/30 text-amber-400 border-amber-800/50">
                   <Users className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.withoutCrew}</span>
+                  <span className="text-xs">{taskStats.withoutCrew} Sin personal</span>
                 </ZenBadge>
               )}
 
               {taskStats.pending > 0 && (
                 <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-800 text-zinc-400 border-zinc-700">
-                  <span className="text-xs">{taskStats.pending} Pendientes</span>
+                  <span className="text-xs">{taskStats.pending} Programadas</span>
                 </ZenBadge>
               )}
 
               {taskStats.inProcess > 0 && (
                 <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-blue-950/30 text-blue-400 border-blue-800/50">
                   <Clock className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.inProcess}</span>
+                  <span className="text-xs">{taskStats.inProcess} En proceso</span>
                 </ZenBadge>
               )}
 
               {taskStats.delayed > 0 && (
                 <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-red-950/30 text-red-400 border-red-800/50">
                   <AlertCircle className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.delayed}</span>
+                  <span className="text-xs">{taskStats.delayed} Atrasadas</span>
                 </ZenBadge>
               )}
             </div>
