@@ -6,8 +6,14 @@ import { revalidatePath } from 'next/cache';
 import {
     IdentidadUpdateSchema,
     LogoUpdateSchema,
+    StudioNameUpdateSchema,
+    SloganUpdateSchema,
+    LogoUrlUpdateSchema,
     type IdentidadUpdateForm,
     type LogoUpdateForm,
+    type StudioNameUpdateForm,
+    type SloganUpdateForm,
+    type LogoUrlUpdateForm,
 } from '@/lib/actions/schemas/identidad-schemas';
 import { FAQItem } from '@/app/[slug]/studio/profile/identidad/types';
 
@@ -100,6 +106,115 @@ export async function updateStudioPresentation(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al actualizar presentación'
+        };
+    }
+}
+
+// ============================================
+// INLINE EDIT ACTIONS
+// ============================================
+
+// Actualizar nombre del studio
+export async function updateStudioName(
+    studioSlug: string,
+    data: StudioNameUpdateForm
+) {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const validated = StudioNameUpdateSchema.parse(data);
+
+        await prisma.studios.update({
+            where: { id: studio.id },
+            data: { studio_name: validated.studio_name }
+        });
+
+        revalidatePath(`/${studioSlug}`);
+        revalidatePath(`/${studioSlug}/studio/business/identity`);
+
+        return { success: true, data: { studio_name: validated.studio_name } };
+    } catch (error) {
+        console.error('[updateStudioName] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al actualizar nombre'
+        };
+    }
+}
+
+// Actualizar slogan del studio
+export async function updateStudioSlogan(
+    studioSlug: string,
+    data: SloganUpdateForm
+) {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const validated = SloganUpdateSchema.parse(data);
+
+        await prisma.studios.update({
+            where: { id: studio.id },
+            data: { slogan: validated.slogan }
+        });
+
+        revalidatePath(`/${studioSlug}`);
+        revalidatePath(`/${studioSlug}/studio/business/identity`);
+
+        return { success: true, data: { slogan: validated.slogan } };
+    } catch (error) {
+        console.error('[updateStudioSlogan] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al actualizar slogan'
+        };
+    }
+}
+
+// Actualizar logo del studio
+export async function updateStudioLogo(
+    studioSlug: string,
+    data: LogoUrlUpdateForm
+) {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const validated = LogoUrlUpdateSchema.parse(data);
+
+        await prisma.studios.update({
+            where: { id: studio.id },
+            data: { logo_url: validated.logo_url }
+        });
+
+        revalidatePath(`/${studioSlug}`);
+        revalidatePath(`/${studioSlug}/studio/business/identity`);
+
+        return { success: true, data: { logo_url: validated.logo_url } };
+    } catch (error) {
+        console.error('[updateStudioLogo] Error:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al actualizar logo'
         };
     }
 }

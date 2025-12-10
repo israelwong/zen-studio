@@ -224,13 +224,18 @@ export function AvatarManager({
                         {/* Overlay con opciones al hacer hover */}
                         {!isDeleting && (
                             <div className={`absolute inset-0 bg-black/60 backdrop-blur-sm rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center z-20 pointer-events-none ${variant === 'compact' ? 'gap-1.5' : 'gap-2'}`}>
-                                {/* Botón Ajustar - Solo si showAdjustButton es true */}
-                                {showAdjustButton && url && !url.toLowerCase().endsWith('.svg') && (
+                                {/* Botón Ajustar - Solo si showAdjustButton es true y NO es SVG */}
+                                {showAdjustButton && url && !url.toLowerCase().includes('.svg') && (
                                     <button
                                         type="button"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             e.preventDefault();
+                                            // Doble verificación: no abrir modal si es SVG
+                                            if (url.toLowerCase().includes('.svg')) {
+                                                toast.error('Los archivos SVG no necesitan ajuste');
+                                                return;
+                                            }
                                             setCropImageUrl(url);
                                             setShowCropModal(true);
                                         }}

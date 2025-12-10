@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Plus, LogOut, LayoutDashboard, UserPlus, LogIn } from 'lucide-react';
+import { Plus, LogOut, LayoutDashboard, UserPlus, LogIn, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { logout } from '@/lib/actions/auth/logout.action';
 import { clearRememberMePreference } from '@/lib/supabase/storage-adapter';
+import { EditStudioNameModal, EditSloganModal, EditLogoModal } from './modals';
 
 interface ProfileHeaderProps {
     data?: {
@@ -17,6 +18,32 @@ interface ProfileHeaderProps {
     loading?: boolean;
     studioSlug?: string;
     onCreatePost?: () => void; // Callback para abrir sheet de crear post
+    isEditMode?: boolean; // Habilita botones de edición inline
+}
+
+/**
+ * Genera iniciales del nombre del estudio (1-2 letras)
+ * Ejemplos:
+ * - "ProSocial" → "PS"
+ * - "Estudio Fotográfico" → "EF"
+ * - "Luz" → "L"
+ */
+function getStudioInitials(studioName?: string): string {
+    if (!studioName?.trim()) return '';
+
+    const words = studioName.trim().split(/\s+/);
+
+    if (words.length === 1) {
+        // Una palabra: primera letra
+        return words[0][0].toUpperCase();
+    }
+
+    // Múltiples palabras: primera letra de las primeras 2 palabras
+    return words
+        .slice(0, 2)
+        .map(word => word[0])
+        .join('')
+        .toUpperCase();
 }
 
 /**
@@ -27,11 +54,24 @@ interface ProfileHeaderProps {
  * - Builder preview (header sticky)
  * - Perfil público (header completo)
  */
-export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost }: ProfileHeaderProps) {
+export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost, isEditMode = false }: ProfileHeaderProps) {
     const router = useRouter();
     const { user } = useAuth();
     const studioData = data || {};
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+    // Estados para modales de edición
+    const [editNameModal, setEditNameModal] = useState(false);
+    const [editSloganModal, setEditSloganModal] = useState(false);
+    const [editLogoModal, setEditLogoModal] = useState(false);
+
+    // Estado para manejar error de carga de imagen
+    const [imageError, setImageError] = useState(false);
+
+    // Resetear error de imagen cuando cambia la URL
+    React.useEffect(() => {
+        setImageError(false);
+    }, [studioData.logo_url]);
 
     // Solo mostrar header si hay datos reales o está cargando
     const hasData = studioData.studio_name || studioData.logo_url || loading;
@@ -86,25 +126,43 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost 
                 <div className="flex items-center">
                     {/* Columna 1: Logo, nombre y slogan */}
                     <div className="flex items-center space-x-3 flex-1">
-                        {/* Logo/Avatar */}
-                        <div className="w-10 h-10 bg-zinc-700 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-                            {loading ? (
-                                <div className="w-6 h-6 bg-zinc-600 rounded-lg animate-pulse"></div>
-                            ) : studioData.logo_url ? (
-                                <Image
-                                    src={studioData.logo_url}
-                                    alt="Logo"
-                                    width={40}
-                                    height={40}
-                                    className="w-full h-full object-cover"
-                                />
-                            ) : (
-                                <div className="w-6 h-6 bg-zinc-500 rounded-lg"></div>
+                        {/* Logo/Avatar con botón de edición */}
+                        <div className="relative group shrink-0">
+                            <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-800 rounded-full flex items-center justify-center overflow-hidden">
+                                {loading ? (
+                                    <div className="w-6 h-6 bg-zinc-600 rounded-lg animate-pulse"></div>
+                                ) : studioData.logo_url && !imageError ? (
+                                    <Image
+                                        src={studioData.logo_url}
+                                        alt="Logo"
+                                        width={40}
+                                        height={40}
+                                        className="w-full h-full object-cover"
+                                        key={studioData.logo_url} // Force re-render on URL change
+                                        onError={() => setImageError(true)} // Manejar error de carga
+                                    />
+                                ) : (
+                                    // Iniciales del nombre del estudio (1-2 letras)
+                                    <span className="text-white font-bold text-sm select-none">
+                                        {getStudioInitials(studioData.studio_name)}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Botón editar logo - solo visible en edit mode y hover */}
+                            {isEditMode && !loading && (
+                                <button
+                                    onClick={() => setEditLogoModal(true)}
+                                    className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    aria-label="Editar logo"
+                                >
+                                    <Pencil className="w-4 h-4 text-white" />
+                                </button>
                             )}
                         </div>
 
-                        {/* Información del estudio */}
-                        <div className="flex-1">
+                        {/* Información del estudio con botones de edición */}
+                        <div className="flex-1 min-w-0">
                             {loading ? (
                                 <>
                                     <div className="h-4 bg-zinc-700 rounded animate-pulse mb-2 w-32"></div>
@@ -112,14 +170,43 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost 
                                 </>
                             ) : (
                                 <>
-                                    <h1 className="text-white font-semibold text-sm">
-                                        {studioData.studio_name}
-                                    </h1>
-                                    {studioData.slogan && (
-                                        <p className="text-zinc-400 text-xs">
-                                            {studioData.slogan}
-                                        </p>
-                                    )}
+                                    {/* Nombre del estudio */}
+                                    <div className="flex items-center gap-2 group/name">
+                                        <h1 className="text-white font-semibold text-sm truncate">
+                                            {studioData.studio_name}
+                                        </h1>
+                                        {isEditMode && (
+                                            <button
+                                                onClick={() => setEditNameModal(true)}
+                                                className="opacity-0 group-hover/name:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded"
+                                                aria-label="Editar nombre"
+                                            >
+                                                <Pencil className="w-3 h-3 text-zinc-400 hover:text-emerald-400" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Slogan */}
+                                    <div className="flex items-center gap-2 group/slogan">
+                                        {studioData.slogan ? (
+                                            <p className="text-zinc-400 text-xs truncate">
+                                                {studioData.slogan}
+                                            </p>
+                                        ) : isEditMode ? (
+                                            <p className="text-zinc-600 text-xs italic">
+                                                Sin slogan
+                                            </p>
+                                        ) : null}
+                                        {isEditMode && (
+                                            <button
+                                                onClick={() => setEditSloganModal(true)}
+                                                className="opacity-0 group-hover/slogan:opacity-100 transition-opacity p-1 hover:bg-zinc-800 rounded"
+                                                aria-label="Editar slogan"
+                                            >
+                                                <Pencil className="w-3 h-3 text-zinc-400 hover:text-emerald-400" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </>
                             )}
                         </div>
@@ -201,6 +288,44 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost 
                     </div>
                 </div>
             </div>
+
+            {/* Modales de edición */}
+            {isEditMode && studioSlug && (
+                <>
+                    <EditStudioNameModal
+                        isOpen={editNameModal}
+                        onClose={() => setEditNameModal(false)}
+                        studioSlug={studioSlug}
+                        currentValue={studioData.studio_name || ''}
+                        onSuccess={() => {
+                            // Refrescar data del servidor
+                            router.refresh();
+                        }}
+                    />
+                    <EditSloganModal
+                        isOpen={editSloganModal}
+                        onClose={() => setEditSloganModal(false)}
+                        studioSlug={studioSlug}
+                        currentValue={studioData.slogan || null}
+                        onSuccess={() => {
+                            router.refresh();
+                        }}
+                    />
+                    <EditLogoModal
+                        isOpen={editLogoModal}
+                        onClose={() => {
+                            setEditLogoModal(false);
+                            setImageError(false); // Reset error al cerrar
+                        }}
+                        studioSlug={studioSlug}
+                        currentLogoUrl={studioData.logo_url || null}
+                        onSuccess={() => {
+                            setEditLogoModal(false); // Asegurar cierre
+                            router.refresh();
+                        }}
+                    />
+                </>
+            )}
         </div>
     );
 }

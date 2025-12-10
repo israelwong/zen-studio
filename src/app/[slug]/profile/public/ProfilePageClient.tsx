@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import { PublicProfileData } from '@/types/public-profile';
 import {
     ProfileHeader,
@@ -43,6 +44,7 @@ interface ProfilePageClientProps {
 export function ProfilePageClient({ profileData, studioSlug, offers = [] }: ProfilePageClientProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
+    const { user } = useAuth();
 
     // Inicializar con el section param desde URL para evitar parpadeo
     const initialTab = searchParams.get('section') || 'inicio';
@@ -54,6 +56,9 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
     const [editingPostId, setEditingPostId] = useState<string | undefined>(undefined);
 
     const { studio, paquetes, posts, portfolios } = profileData;
+
+    // Verificar si el usuario autenticado es el owner del studio
+    const isOwner = user?.id === studio.owner_id;
 
     // Keyboard shortcut para abrir buscador (Cmd+K / Ctrl+K)
     useEffect(() => {
@@ -231,6 +236,7 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
                         setEditingPostId(undefined);
                         setIsPostEditorOpen(true);
                     }}
+                    isEditMode={isOwner}
                 />
             </header>
 
