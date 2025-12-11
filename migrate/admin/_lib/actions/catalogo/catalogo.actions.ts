@@ -196,6 +196,8 @@ async function reorderContainerAfterRemoval(tx: any, itemType: string, parentId:
                     where: { id: sibling.id },
                     data: { posicion: index }
                 });
+            default:
+                throw new Error(`Tipo de item no válido: ${itemType}`);
         }
     });
 
@@ -288,6 +290,8 @@ async function reorderDestinationContainer(tx: any, itemType: string, parentId: 
                     where: { id: itemId },
                     data: { posicion: index }
                 });
+            default:
+                throw new Error(`Tipo de item no válido: ${itemType}`);
         }
     });
 
@@ -442,10 +446,13 @@ export async function deleteItem(id: string, type: 'seccion' | 'categoria') {
             if (!categoriaToDelete) throw new Error("Categoría no encontrada.");
             if (categoriaToDelete.Servicio.length > 0) throw new Error("No se puede eliminar una categoría con servicios.");
 
+            // Obtener sección ANTES de eliminar para poder reordenar después
+            const seccion = await tx.seccionCategoria.findFirst({ where: { categoriaId: id } });
+            
             await tx.seccionCategoria.delete({ where: { categoriaId: id } });
             await tx.servicioCategoria.delete({ where: { id } });
+            
             // Reordenar las categorías restantes en la misma sección
-            const seccion = await tx.seccionCategoria.findFirst({ where: { categoriaId: id } });
             if (seccion) {
                 const remaining = await tx.servicioCategoria.findMany({ where: { seccionCategoria: { seccionId: seccion.seccionId } }, orderBy: { posicion: 'asc' } });
                 await Promise.all(remaining.map((item, index) => tx.servicioCategoria.update({ where: { id: item.id }, data: { posicion: index } })));
