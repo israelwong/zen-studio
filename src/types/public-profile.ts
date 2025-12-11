@@ -12,6 +12,14 @@ export interface PublicZonaTrabajo {
     orden: number;
 }
 
+export interface PublicFAQ {
+    id: string;
+    pregunta: string;
+    respuesta: string;
+    orden: number;
+    is_active: boolean;
+}
+
 export interface PublicStudioProfile {
     id: string;
     owner_id?: string | null; // platform_user_id del owner
@@ -28,6 +36,7 @@ export interface PublicStudioProfile {
         slug: string;
     } | null;
     zonas_trabajo?: PublicZonaTrabajo[];
+    faq?: PublicFAQ[];
     redes_sociales?: Array<{
         id: string;
         url: string;

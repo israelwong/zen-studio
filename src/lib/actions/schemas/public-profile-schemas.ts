@@ -8,6 +8,14 @@ import { z } from 'zod';
 import { ComponentType } from '@/types/content-blocks';
 
 // Base schemas
+export const PublicFAQSchema = z.object({
+    id: z.string(),
+    pregunta: z.string(),
+    respuesta: z.string(),
+    orden: z.number(),
+    is_active: z.boolean(),
+});
+
 export const PublicStudioProfileSchema = z.object({
     id: z.string(),
     owner_id: z.string().nullable().optional(),
@@ -23,6 +31,7 @@ export const PublicStudioProfileSchema = z.object({
         name: z.string(),
         slug: z.string(),
     }).nullable().optional(),
+    faq: z.array(PublicFAQSchema).optional(),
 });
 
 export const PublicSocialNetworkSchema = z.object({

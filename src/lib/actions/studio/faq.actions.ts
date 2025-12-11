@@ -16,7 +16,7 @@ export interface FAQItem {
  */
 export async function getStudioFAQs(studioSlug: string) {
     try {
-        const studio = await prisma.studio.findUnique({
+        const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: {
                 id: true,
@@ -48,7 +48,7 @@ export async function getStudioFAQs(studioSlug: string) {
  */
 export async function createFAQ(studioSlug: string, data: { pregunta: string; respuesta: string }) {
     try {
-        const studio = await prisma.studio.findUnique({
+        const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
             select: {
                 id: true,
@@ -66,7 +66,7 @@ export async function createFAQ(studioSlug: string, data: { pregunta: string; re
         // Calcular siguiente orden
         const nextOrder = studio.faq.length > 0 ? studio.faq[0].orden + 1 : 0;
 
-        const faq = await prisma.faq.create({
+        const faq = await prisma.studio_faq.create({
             data: {
                 studio_id: studio.id,
                 pregunta: data.pregunta,
@@ -96,7 +96,7 @@ export async function createFAQ(studioSlug: string, data: { pregunta: string; re
  */
 export async function updateFAQ(faqId: string, studioSlug: string, data: { pregunta?: string; respuesta?: string; is_active?: boolean }) {
     try {
-        const faq = await prisma.faq.update({
+        const faq = await prisma.studio_faq.update({
             where: { id: faqId },
             data: {
                 ...(data.pregunta !== undefined && { pregunta: data.pregunta }),
@@ -125,7 +125,7 @@ export async function updateFAQ(faqId: string, studioSlug: string, data: { pregu
  */
 export async function deleteFAQ(faqId: string, studioSlug: string) {
     try {
-        await prisma.faq.delete({
+        await prisma.studio_faq.delete({
             where: { id: faqId }
         });
 
@@ -149,7 +149,7 @@ export async function reorderFAQs(studioSlug: string, faqIds: string[]) {
         // Actualizar orden de cada FAQ
         await Promise.all(
             faqIds.map((faqId, index) =>
-                prisma.faq.update({
+                prisma.studio_faq.update({
                     where: { id: faqId },
                     data: { orden: index }
                 })
@@ -161,6 +161,61 @@ export async function reorderFAQs(studioSlug: string, faqIds: string[]) {
         return { success: true };
     } catch (error) {
         console.error("Error reordering FAQs:", error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Error desconocido"
+        };
+    }
+}
+
+/**
+ * Reordenar un solo FAQ (mover arriba/abajo)
+ */
+export async function reorderFAQ(faqId: string, newIndex: number, studioSlug: string) {
+    try {
+        // Obtener todas las FAQs del studio
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: {
+                id: true,
+                faq: {
+                    where: { is_active: true },
+                    orderBy: { orden: 'asc' }
+                }
+            }
+        });
+
+        if (!studio) {
+            return { success: false, error: "Studio no encontrado" };
+        }
+
+        const faqs = studio.faq;
+        const currentIndex = faqs.findIndex(f => f.id === faqId);
+
+        if (currentIndex === -1) {
+            return { success: false, error: "FAQ no encontrado" };
+        }
+
+        // Crear nuevo array con el orden actualizado
+        const reorderedFaqs = [...faqs];
+        const [movedItem] = reorderedFaqs.splice(currentIndex, 1);
+        reorderedFaqs.splice(newIndex, 0, movedItem);
+
+        // Actualizar orden de todos los FAQs afectados
+        await Promise.all(
+            reorderedFaqs.map((faq, index) =>
+                prisma.studio_faq.update({
+                    where: { id: faq.id },
+                    data: { orden: index }
+                })
+            )
+        );
+
+        revalidatePath(`/${studioSlug}`);
+
+        return { success: true };
+    } catch (error) {
+        console.error("Error reordering FAQ:", error);
         return {
             success: false,
             error: error instanceof Error ? error.message : "Error desconocido"

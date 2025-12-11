@@ -63,6 +63,7 @@ export function ProfileContentView({ activeTab, profileData, onPostClick, onPort
                     variant="faq"
                     data={{ faq: (studio as unknown as { faq?: Array<{ id: string; pregunta: string; respuesta: string; orden: number; is_active: boolean }> }).faq || [] }}
                     studioSlug={studioSlug}
+                    ownerUserId={ownerUserId}
                 />
             );
 

@@ -11,6 +11,7 @@ interface SectionPreviewProps {
     loading?: boolean;
     faqViewMode?: 'compact' | 'expanded';
     activeIdentityTab?: 'brand' | 'social' | 'contact' | 'zones';
+    ownerId?: string | null;
 }
 
 // Componente IdentidadPreview integrado con tabs
@@ -155,7 +156,7 @@ function PostsPreview({ data, loading = false }: { data?: Record<string, unknown
 }
 
 // Componente FAQPreview integrado
-function FAQPreview({ data, loading = false, faqViewMode = 'expanded' }: { data?: Record<string, unknown>; loading?: boolean; faqViewMode?: 'compact' | 'expanded' }) {
+function FAQPreview({ data, loading = false, faqViewMode = 'expanded', studioSlug, ownerId }: { data?: Record<string, unknown>; loading?: boolean; faqViewMode?: 'compact' | 'expanded'; studioSlug?: string; ownerId?: string | null }) {
     return (
         <MobilePreviewContainer
             data={data}
@@ -165,11 +166,13 @@ function FAQPreview({ data, loading = false, faqViewMode = 'expanded' }: { data?
             activeTab="faq"
             contentVariant="faq"
             faqViewMode={faqViewMode}
+            studioSlug={studioSlug}
+            ownerId={ownerId}
         />
     );
 }
 
-export function SectionPreview({ section, studioSlug, data, loading = false, faqViewMode, activeIdentityTab }: SectionPreviewProps) {
+export function SectionPreview({ section, studioSlug, data, loading = false, faqViewMode, activeIdentityTab, ownerId }: SectionPreviewProps) {
     // studioSlug is available for future use if needed
     console.log('SectionPreview for studio:', studioSlug);
 
@@ -189,7 +192,7 @@ export function SectionPreview({ section, studioSlug, data, loading = false, faq
         case 'paquetes':
             return <PaquetesPreview data={data} loading={loading} />;
         case 'faq':
-            return <FAQPreview data={data} loading={loading} faqViewMode={faqViewMode} />;
+            return <FAQPreview data={data} loading={loading} faqViewMode={faqViewMode} studioSlug={studioSlug} ownerId={ownerId} />;
         default:
             return <div className="w-full max-w-sm mx-auto p-4 text-center text-zinc-500">
                 <p>Preview no disponible para la sección: {section}</p>

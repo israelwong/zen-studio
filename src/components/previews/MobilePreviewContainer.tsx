@@ -18,8 +18,10 @@ interface MobilePreviewContainerProps {
     activeTab?: string;
     // Modo de visualización FAQ
     faqViewMode?: 'compact' | 'expanded';
-    // Studio slug para ProfileHeader
+    // Studio slug para ProfileHeader y FAQ
     studioSlug?: string;
+    // Owner ID para permisos de edición
+    ownerId?: string | null;
 }
 
 /**
@@ -43,7 +45,8 @@ export function MobilePreviewContainer({
     contentVariant = 'skeleton',
     activeTab,
     faqViewMode,
-    studioSlug
+    studioSlug,
+    ownerId
 }: MobilePreviewContainerProps) {
     // Default: expanded para mobile preview, compact solo si se especifica explícitamente
     const effectiveFaqViewMode = faqViewMode ?? (contentVariant === 'faq' ? 'expanded' : 'compact');
@@ -73,7 +76,7 @@ export function MobilePreviewContainer({
                     <div className="flex-shrink-0">
                         <ProfileNavTabs
                             activeTab={activeTab || 'inicio'}
-                            onTabChange={() => {}} // Preview no interactivo
+                            onTabChange={() => { }} // Preview no interactivo
                         />
                     </div>
                 )}
@@ -93,6 +96,8 @@ export function MobilePreviewContainer({
                                 data={data}
                                 loading={loading}
                                 viewMode={effectiveFaqViewMode}
+                                studioSlug={studioSlug || ''}
+                                ownerId={ownerId}
                             />
                         ) : showContent && !children ? (
                             <ProfileContent
@@ -111,6 +116,8 @@ export function MobilePreviewContainer({
                                     data={data}
                                     loading={loading}
                                     viewMode={effectiveFaqViewMode}
+                                    studioSlug={studioSlug || ''}
+                                    ownerId={ownerId}
                                 />
                             </div>
                         ) : null}

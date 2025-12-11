@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MainSection, PortfolioSection, PortfolioDetailSection, PostSection, PostDetailSection, ContactSection, PaquetesSection, FaqSection, FaqSectionEditable } from './sections';
+import { MainSection, PortfolioSection, PortfolioDetailSection, PostSection, PostDetailSection, ContactSection, PaquetesSection, FaqSection } from './sections';
 import { PublicPortfolio, PublicStudioProfile, PublicContactInfo, PublicPaquete } from '@/types/public-profile';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -163,12 +163,14 @@ export function ProfileContent({
             is_active: boolean;
         }> || [];
 
-        // Si está autenticado y tiene studioSlug, usar versión editable
-        if (user && studioSlug) {
-            return <FaqSectionEditable faq={faq} studioSlug={studioSlug} isAuthenticated={true} />;
-        }
-
-        return <FaqSection faq={faq} loading={loading} />;
+        return (
+            <FaqSection
+                faq={faq}
+                loading={loading}
+                studioSlug={studioSlug || ''}
+                ownerId={ownerUserId || null}
+            />
+        );
     }
 
     // Info/Contact content

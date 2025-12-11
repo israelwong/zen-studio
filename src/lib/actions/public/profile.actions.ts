@@ -254,6 +254,17 @@ export async function getStudioProfileBySlug(
                         },
                         orderBy: { created_at: 'desc' },
                         take: 50
+                    },
+                    faq: {
+                        where: { is_active: true },
+                        select: {
+                            id: true,
+                            pregunta: true,
+                            respuesta: true,
+                            orden: true,
+                            is_active: true,
+                        },
+                        orderBy: { orden: 'asc' }
                     }
                 }
             });
@@ -281,6 +292,13 @@ export async function getStudioProfileBySlug(
                 plan_id: studio.plan_id,
                 plan: studio.plan,
                 zonas_trabajo: studio.zonas_trabajo,
+                faq: studio.faq.map(faq => ({
+                    id: faq.id,
+                    pregunta: faq.pregunta,
+                    respuesta: faq.respuesta,
+                    orden: faq.orden,
+                    is_active: faq.is_active,
+                })),
             };
 
             const socialNetworks: PublicSocialNetwork[] = studio.social_networks.map(network => ({

@@ -448,10 +448,10 @@ export async function deleteItem(id: string, type: 'seccion' | 'categoria') {
 
             // Obtener sección ANTES de eliminar para poder reordenar después
             const seccion = await tx.seccionCategoria.findFirst({ where: { categoriaId: id } });
-            
+
             await tx.seccionCategoria.delete({ where: { categoriaId: id } });
             await tx.servicioCategoria.delete({ where: { id } });
-            
+
             // Reordenar las categorías restantes en la misma sección
             if (seccion) {
                 const remaining = await tx.servicioCategoria.findMany({ where: { seccionCategoria: { seccionId: seccion.seccionId } }, orderBy: { posicion: 'asc' } });

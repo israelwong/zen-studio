@@ -13,9 +13,10 @@ interface SectionLayoutProps {
     loading?: boolean;
     faqViewMode?: 'compact' | 'expanded';
     activeIdentityTab?: 'brand' | 'social' | 'contact' | 'zones';
+    ownerId?: string | null;
 }
 
-export function SectionLayout({ children, section, studioSlug, data, loading = false, faqViewMode, activeIdentityTab }: SectionLayoutProps) {
+export function SectionLayout({ children, section, studioSlug, data, loading = false, faqViewMode, activeIdentityTab, ownerId }: SectionLayoutProps) {
     return (
         <div className="space-y-8">
             {/* Main Content Grid - Editor + Preview */}
@@ -54,6 +55,7 @@ export function SectionLayout({ children, section, studioSlug, data, loading = f
                                     loading={loading}
                                     faqViewMode={faqViewMode}
                                     activeIdentityTab={activeIdentityTab}
+                                    ownerId={ownerId}
                                 />
                             )}
                         </ZenCardContent>
