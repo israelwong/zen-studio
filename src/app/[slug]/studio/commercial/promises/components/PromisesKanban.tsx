@@ -102,7 +102,9 @@ export function PromisesKanban({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 5, // Reducido de 8 a 5 para activación más rápida
+        tolerance: 5,
+        delay: 0, // Sin delay para respuesta inmediata
       },
     }),
     useSensor(KeyboardSensor, {
@@ -516,8 +518,9 @@ export function PromisesKanban({
     }
   };
 
+  // ✅ FIX: Buscar promesa activa por promise_id (no contact_id)
   const activePromise = activeId
-    ? localPromises.find((p: PromiseWithContact) => p.id === activeId)
+    ? localPromises.find((p: PromiseWithContact) => p.promise_id === activeId)
     : null;
 
   return (
@@ -616,9 +619,15 @@ export function PromisesKanban({
           )}
         </div>
 
-        <DragOverlay style={{ cursor: 'grabbing' }}>
+        <DragOverlay 
+          style={{ cursor: 'grabbing' }}
+          dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}
+        >
           {activePromise ? (
-            <div className="opacity-90 rotate-2 shadow-2xl">
+            <div className="opacity-95 scale-105 rotate-3 shadow-2xl transform-gpu will-change-transform animate-in fade-in-0 zoom-in-95 duration-200">
               <PromiseKanbanCard 
                 promise={activePromise} 
                 studioSlug={studioSlug} 
@@ -681,13 +690,15 @@ function KanbanColumn({
       className={`${isFlexible
         ? 'flex-1 min-w-[280px]'
         : 'w-[280px] min-w-[280px] max-w-[280px] flex-shrink-0'
-        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-200 ${isOver
-          ? 'bg-zinc-800/70'
+        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-300 ease-in-out ${isOver
+          ? 'bg-zinc-800/90 border-2 scale-[1.02] transform-gpu'
           : 'bg-zinc-900/50 border-zinc-700'
         }`}
       style={{
         borderColor: isOver ? stage.color : undefined,
-        boxShadow: isOver ? `0 10px 15px -3px ${stage.color}20, 0 4px 6px -2px ${stage.color}10` : undefined,
+        boxShadow: isOver 
+          ? `0 20px 25px -5px ${stage.color}30, 0 10px 10px -5px ${stage.color}20, inset 0 0 0 1px ${stage.color}40` 
+          : undefined,
       }}
     >
       {/* Header de columna */}
@@ -715,7 +726,7 @@ function KanbanColumn({
         }}
       >
         <SortableContext
-          items={promises.map((p) => p.id)}
+          items={promises.map((p) => p.promise_id || p.id)} // ✅ FIX: Usar promise_id como ID único
           strategy={verticalListSortingStrategy}
         >
           {promises.map((promise) => (

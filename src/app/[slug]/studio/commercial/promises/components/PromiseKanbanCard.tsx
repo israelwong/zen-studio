@@ -32,8 +32,11 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
 
     const style = {
         transform: CSS.Transform.toString(transform),
-        transition: isDragging ? transition : `${transition}, all 0.2s ease-in-out`,
-        opacity: isDragging ? 0.5 : 1,
+        transition: isDragging 
+            ? 'none' // Sin transición durante drag para seguimiento suave del cursor
+            : `${transition}, all 0.2s cubic-bezier(0.18, 0.67, 0.6, 1.22)`, // Transición suave al soltar
+        opacity: isDragging ? 0 : 1, // Ocultar card original durante drag (se ve en DragOverlay)
+        cursor: isDragging ? 'grabbing' : 'grab',
     };
 
     // Obtener fecha de evento (event_date tiene prioridad, luego defined_date, luego interested_dates)
