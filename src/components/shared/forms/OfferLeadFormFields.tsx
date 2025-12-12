@@ -6,7 +6,7 @@ import { es } from "date-fns/locale";
 import { ZenButton, ZenInput, ZenBadge, ZenCalendar, type ZenCalendarProps } from "@/components/ui/zen";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/popover";
 import { checkDateAvailability } from "@/lib/actions/studio/offers/offer-availability.actions";
-import { validatePhoneBeforeSubmit } from "@/lib/actions/studio/offers/offer-submissions.actions";
+import { validatePhoneBeforeSubmit, validateEmailBeforeSubmit } from "@/lib/actions/studio/offers/offer-submissions.actions";
 import { LeadFormFieldsConfig, LeadFormField } from "@/lib/actions/schemas/offer-schemas";
 import { Loader2, CalendarIcon, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
@@ -62,6 +62,10 @@ export function OfferLeadFormFields({
     type: 'phone_different_email' | 'duplicate_request';
     existingEmail?: string;
     existingDate?: string;
+  } | null>(null);
+  const [emailConflict, setEmailConflict] = useState<{
+    type: 'email_different_phone';
+    existingPhone?: string;
   } | null>(null);
   const [dateAvailability, setDateAvailability] = useState<{
     checking: boolean;
@@ -199,21 +203,38 @@ export function OfferLeadFormFields({
 
     setIsSubmitting(true);
     setPhoneConflict(null); // Limpiar conflictos previos
+    setEmailConflict(null); // Limpiar conflictos de email previos
 
     try {
-      // Validar teléfono antes de enviar
       const cleanPhone = formData.phone.replace(/\D/g, "");
-      const validation = await validatePhoneBeforeSubmit(
+      
+      // Validar teléfono antes de enviar
+      const phoneValidation = await validatePhoneBeforeSubmit(
         studioSlug,
         cleanPhone,
         formData.email || undefined,
         formData.interest_date || undefined
       );
 
-      if (!validation.success && validation.conflict) {
-        setPhoneConflict(validation.conflict);
+      if (!phoneValidation.success && phoneValidation.conflict) {
+        setPhoneConflict(phoneValidation.conflict);
         setIsSubmitting(false);
         return;
+      }
+
+      // Validar email si está presente
+      if (formData.email) {
+        const emailValidation = await validateEmailBeforeSubmit(
+          studioSlug,
+          formData.email,
+          cleanPhone
+        );
+
+        if (!emailValidation.success && emailValidation.conflict) {
+          setEmailConflict(emailValidation.conflict);
+          setIsSubmitting(false);
+          return;
+        }
       }
 
       await onSubmit({
@@ -228,6 +249,7 @@ export function OfferLeadFormFields({
         setFormData(initialData);
         setErrors({});
         setPhoneConflict(null);
+        setEmailConflict(null);
         setDateAvailability({ checking: false, available: null });
         setPastDateAlert(false);
       }
@@ -326,6 +348,35 @@ export function OfferLeadFormFields({
               </div>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {/* Alert de conflicto de email */}
+      {emailConflict && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-yellow-400 mb-1">
+                Verifica tu correo electrónico
+              </h4>
+              <p className="text-sm text-zinc-300">
+                El email que ingresaste está registrado con el número{" "}
+                <span className="font-semibold">{emailConflict.existingPhone}</span>.
+              </p>
+              <p className="text-sm text-zinc-400 mt-2">
+                ¿El email ingresado es correcto? Si es así, usa el mismo número de teléfono asociado.
+              </p>
+              <ZenButton
+                size="sm"
+                variant="ghost"
+                onClick={() => setEmailConflict(null)}
+                className="mt-3"
+              >
+                Corregir datos
+              </ZenButton>
+            </div>
+          </div>
         </div>
       )}
 

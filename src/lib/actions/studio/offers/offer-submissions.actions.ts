@@ -14,6 +14,73 @@ import { notifyPromiseCreated } from "@/lib/notifications/studio/helpers/promise
  * Validar teléfono antes de submit
  * Retorna info del contacto existente si lo encuentra
  */
+/**
+ * Valida que el email no esté registrado con otro teléfono
+ */
+export async function validateEmailBeforeSubmit(
+  studioSlug: string,
+  email: string,
+  phone: string
+): Promise<{
+  success: boolean;
+  conflict?: {
+    type: 'email_different_phone';
+    existingPhone?: string;
+  };
+}> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      });
+
+      if (!studio) {
+        return { success: false };
+      }
+
+      // Buscar contacto con este email
+      const existingContact = await prisma.studio_contacts.findFirst({
+        where: {
+          studio_id: studio.id,
+          email: email,
+        },
+        select: {
+          id: true,
+          phone: true,
+        },
+      });
+
+      if (!existingContact) {
+        // No existe, puede proceder
+        return { success: true };
+      }
+
+      // Existe el email, verificar teléfono
+      if (existingContact.phone && existingContact.phone !== phone) {
+        // Email existe pero con teléfono diferente
+        return {
+          success: false,
+          conflict: {
+            type: 'email_different_phone',
+            existingPhone: existingContact.phone,
+          },
+        };
+      }
+
+      // Email y teléfono coinciden: puede proceder
+      return { success: true };
+    });
+  } catch (error) {
+    console.error("[validateEmailBeforeSubmit] Error:", error);
+    return { success: true }; // En caso de error, permitir continuar
+  }
+}
+
+/**
+ * Valida que el teléfono no esté registrado con otro email
+ * y que no sea una solicitud duplicada para la misma fecha
+ */
 export async function validatePhoneBeforeSubmit(
   studioSlug: string,
   phone: string,
