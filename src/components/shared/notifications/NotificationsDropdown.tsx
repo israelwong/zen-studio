@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Loader2, AlertCircle, X } from 'lucide-react';
+import { Bell, Loader2, AlertCircle, X, FlaskRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZenButton } from '@/components/ui/zen';
 import {
@@ -112,7 +112,11 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
     }
   };
 
-  const getNotificationIcon = () => {
+  const getNotificationIcon = (notification: typeof notifications[0]) => {
+    // Mostrar icono de flask para notificaciones de prueba
+    if (notification.metadata && typeof notification.metadata === 'object' && 'is_test' in notification.metadata && notification.metadata.is_test) {
+      return <FlaskRound className="h-4 w-4 text-amber-400" />;
+    }
     return <Bell className="h-4 w-4" />;
   };
 
@@ -209,7 +213,7 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
                   <X className="h-3 w-3" />
                 </button>
                 <div className="flex items-start gap-2 w-full pr-6">
-                  <div className="mt-0.5">{getNotificationIcon()}</div>
+                  <div className="mt-0.5">{getNotificationIcon(notification)}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <p

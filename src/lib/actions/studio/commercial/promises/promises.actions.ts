@@ -38,122 +38,105 @@ export async function getPromises(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    const where: {
-      studio_id: string;
-      status: string;
-      id?: { in: string[] };
-      OR?: Array<{
-        name?: { contains: string; mode: 'insensitive' };
-        email?: { contains: string; mode: 'insensitive' };
-        phone?: { contains: string; mode: 'insensitive' };
-      }>;
-    } = {
+    // NUEVA ARQUITECTURA: Query directa a promesas (no a contactos)
+    const where: Prisma.studio_promisesWhereInput = {
       studio_id: studio.id,
-      status: 'prospecto',
+      // Filtrar por pipeline_stage si se especifica
+      ...(pipeline_stage_id && { pipeline_stage_id }),
     };
 
-    if (pipeline_stage_id) {
-      // Filtrar contactos que tienen promesas con el pipeline_stage_id especificado
-      const contactsWithStage = await prisma.studio_promises.findMany({
-        where: {
-          studio_id: studio.id,
-          pipeline_stage_id: pipeline_stage_id,
-        },
-        select: { contact_id: true },
-        distinct: ['contact_id'],
-      });
-      const contactIds = contactsWithStage.map((p) => p.contact_id);
-      if (contactIds.length > 0) {
-        where.id = { in: contactIds };
-      } else {
-        // Si no hay contactos con ese stage, retornar vacío
-        where.id = { in: [] };
-      }
-    }
-
+    // Si hay búsqueda, filtrar por datos del contacto
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-      ];
+      where.contact = {
+        OR: [
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ],
+      };
     }
 
-    const total = await prisma.studio_contacts.count({ where });
+    const total = await prisma.studio_promises.count({ where });
 
-    const contacts = await prisma.studio_contacts.findMany({
+    const promises = await prisma.studio_promises.findMany({
       where,
       include: {
-        promises: {
+        contact: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            avatar_url: true,
+            status: true,
+            created_at: true,
+            updated_at: true,
+          },
+        },
+        pipeline_stage: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            color: true,
+            order: true,
+          },
+        },
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        logs: {
+          orderBy: { created_at: 'desc' },
+          take: 1,
+          select: {
+            id: true,
+            content: true,
+            created_at: true,
+          },
+        },
+        tags: {
           include: {
-            pipeline_stage: {
+            tag: {
               select: {
                 id: true,
                 name: true,
                 slug: true,
                 color: true,
+                description: true,
                 order: true,
-              },
-            },
-            event_type: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-            event: {
-              select: {
-                id: true,
-                status: true,
-              },
-            },
-            logs: {
-              orderBy: { created_at: 'desc' },
-              take: 1,
-              select: {
-                id: true,
-                content: true,
+                is_active: true,
                 created_at: true,
+                updated_at: true,
               },
-            },
-            tags: {
-              include: {
-                tag: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                    color: true,
-                    description: true,
-                    order: true,
-                    is_active: true,
-                    created_at: true,
-                    updated_at: true,
-                  },
-                },
-              },
-              orderBy: { created_at: 'asc' },
-            },
-            quotes: {
-              select: {
-                id: true,
-              },
-            },
-            agenda: {
-              select: {
-                id: true,
-                type_scheduling: true,
-                date: true,
-                time: true,
-                address: true,
-                link_meeting_url: true,
-                concept: true,
-              },
-              orderBy: { date: 'desc' },
-              take: 1,
             },
           },
-          orderBy: { created_at: 'desc' },
+          orderBy: { created_at: 'asc' },
+        },
+        quotes: {
+          select: {
+            id: true,
+          },
+        },
+        agenda: {
+          select: {
+            id: true,
+            type_scheduling: true,
+            date: true,
+            time: true,
+            address: true,
+            link_meeting_url: true,
+            concept: true,
+          },
+          orderBy: { date: 'desc' },
           take: 1,
         },
       },
@@ -162,11 +145,10 @@ export async function getPromises(
       take: limit,
     });
 
-    const promises: PromiseWithContact[] = contacts.map((contact) => {
-      const latestPromise = contact.promises[0];
-
+    // Mapear promesas a PromiseWithContact
+    const mappedPromises: PromiseWithContact[] = promises.map((promise) => {
       // Mapear tags activos
-      const tags = latestPromise?.tags
+      const tags = promise.tags
         ?.filter((pt) => pt.tag.is_active)
         .map((pt) => ({
           id: pt.tag.id,
@@ -181,39 +163,39 @@ export async function getPromises(
         })) || [];
 
       return {
-        id: contact.id,
-        promise_id: latestPromise?.id || null,
-        studio_id: contact.studio_id,
-        name: contact.name,
-        phone: contact.phone,
-        email: contact.email,
-        avatar_url: contact.avatar_url,
-        status: contact.status,
-        event_type_id: latestPromise?.event_type_id || null,
-        event_name: latestPromise?.name || null,
-        interested_dates: latestPromise?.tentative_dates
-          ? (latestPromise.tentative_dates as string[])
+        id: promise.contact.id,
+        promise_id: promise.id,
+        studio_id: promise.studio_id,
+        name: promise.contact.name,
+        phone: promise.contact.phone,
+        email: promise.contact.email,
+        avatar_url: promise.contact.avatar_url,
+        status: promise.contact.status,
+        event_type_id: promise.event_type_id,
+        event_name: promise.name || null,
+        interested_dates: promise.tentative_dates
+          ? (promise.tentative_dates as string[])
           : null,
-        event_date: latestPromise?.event_date || null,
-        defined_date: latestPromise?.defined_date || null,
-        promise_pipeline_stage_id: latestPromise?.pipeline_stage_id || null,
-        is_test: latestPromise?.is_test || false, // ✅ Incluir flag de prueba
-        created_at: contact.created_at,
-        updated_at: latestPromise?.updated_at || contact.updated_at,
-        event_type: latestPromise?.event_type || null,
-        promise_pipeline_stage: latestPromise?.pipeline_stage || null,
-        last_log: latestPromise?.logs?.[0] || null,
+        event_date: promise.event_date,
+        defined_date: promise.defined_date,
+        promise_pipeline_stage_id: promise.pipeline_stage_id,
+        is_test: promise.is_test || false,
+        created_at: promise.contact.created_at,
+        updated_at: promise.updated_at,
+        event_type: promise.event_type || null,
+        promise_pipeline_stage: promise.pipeline_stage || null,
+        last_log: promise.logs?.[0] || null,
         tags: tags.length > 0 ? tags : undefined,
-        cotizaciones_count: latestPromise?.quotes?.length || 0,
-        event: latestPromise?.event || null,
-        agenda: latestPromise?.agenda?.[0] || null,
+        cotizaciones_count: promise.quotes?.length || 0,
+        event: promise.event || null,
+        agenda: promise.agenda?.[0] || null,
       };
     });
 
     return {
       success: true,
       data: {
-        promises,
+        promises: mappedPromises,
         total,
         page,
         totalPages: Math.ceil(total / limit),
@@ -227,6 +209,7 @@ export async function getPromises(
     };
   }
 }
+
 
 /**
  * Crear nueva promise

@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { UserSearch, Plus, Receipt, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
 import { PromisesWrapper } from './components';
 import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
 import { TerminosCondicionesManager } from '@/components/shared/terminos-condiciones';
@@ -16,10 +16,12 @@ export default function PromisesPage() {
   const studioSlug = params.slug as string;
   const openPromiseFormRef = useRef<(() => void) | null>(null);
   const reloadKanbanRef = useRef<(() => void) | null>(null);
+  const removeTestPromisesRef = useRef<(() => void) | null>(null);
   const [showCondicionesManager, setShowCondicionesManager] = useState(false);
   const [showTerminosManager, setShowTerminosManager] = useState(false);
   const [testPromisesCount, setTestPromisesCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Cargar conteo de promesas de prueba
   useEffect(() => {
@@ -40,21 +42,24 @@ export default function PromisesPage() {
 
   // Eliminar promesas de prueba
   const handleDeleteTestPromises = async () => {
-    if (!confirm('¿Eliminar todas las promesas de prueba? Esta acción no se puede deshacer.')) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       const result = await deleteTestPromises(studioSlug);
 
       if (result.success) {
+        // Cerrar el modal primero para evitar re-render
+        setShowDeleteConfirm(false);
+
+        // Esperar a que el modal se cierre completamente
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Remover promesas de prueba del estado local
+        if (removeTestPromisesRef.current) {
+          removeTestPromisesRef.current();
+        }
+
         toast.success(`${result.deleted || 0} promesa(s) de prueba eliminadas`);
         setTestPromisesCount(0);
-        // Recargar el kanban sin recargar toda la página
-        if (reloadKanbanRef.current) {
-          reloadKanbanRef.current();
-        }
       } else {
         toast.error(result.error || 'Error al eliminar promesas de prueba');
       }
@@ -127,21 +132,12 @@ export default function PromisesPage() {
                 <ZenButton
                   variant="outline"
                   size="sm"
-                  onClick={handleDeleteTestPromises}
+                  onClick={() => setShowDeleteConfirm(true)}
                   disabled={isDeleting}
                   className="text-amber-400 border-amber-400/50 hover:bg-amber-400/10 shrink-0"
                 >
-                  {isDeleting ? (
-                    <>
-                      <div className="h-4 w-4 mr-2 border-2 border-amber-400/30 border-t-amber-400 rounded-full animate-spin" />
-                      Eliminando...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Limpiar pruebas
-                    </>
-                  )}
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Limpiar pruebas
                 </ZenButton>
               </div>
             </div>
@@ -149,10 +145,11 @@ export default function PromisesPage() {
         )}
 
         <ZenCardContent className="p-6 flex-1 min-h-0 overflow-hidden">
-          <PromisesWrapper 
-            studioSlug={studioSlug} 
+          <PromisesWrapper
+            studioSlug={studioSlug}
             onOpenPromiseFormRef={openPromiseFormRef}
             onReloadKanbanRef={reloadKanbanRef}
+            onRemoveTestPromisesRef={removeTestPromisesRef}
           />
         </ZenCardContent>
       </ZenCard>
@@ -167,6 +164,18 @@ export default function PromisesPage() {
         studioSlug={studioSlug}
         isOpen={showTerminosManager}
         onClose={() => setShowTerminosManager(false)}
+      />
+
+      <ZenConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={handleDeleteTestPromises}
+        title="Eliminar promesas de prueba"
+        description={`¿Estás seguro de que deseas eliminar ${testPromisesCount === 1 ? 'la promesa' : `las ${testPromisesCount} promesas`} de prueba? Esta acción no se puede deshacer.`}
+        confirmText={isDeleting ? 'Eliminando...' : 'Eliminar'}
+        cancelText="Cancelar"
+        variant="destructive"
+        disabled={isDeleting}
       />
     </div>
   );

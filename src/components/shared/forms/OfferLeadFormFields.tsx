@@ -33,6 +33,7 @@ export interface OfferLeadFormFieldsProps {
     email: string;
     interest_date?: string;
   }) => Promise<void> | void;
+  onSuccess?: () => void; // Callback opcional después de submit exitoso
   initialData?: Record<string, string>;
   submitLabel?: string;
 }
@@ -50,6 +51,7 @@ export function OfferLeadFormFields({
   studioSlug,
   isPreview = false,
   onSubmit,
+  onSuccess,
   initialData = {},
   submitLabel = "Enviar solicitud",
 }: OfferLeadFormFieldsProps) {
@@ -66,6 +68,7 @@ export function OfferLeadFormFields({
     available: boolean | null;
   }>({ checking: false, available: null });
   const [pastDateAlert, setPastDateAlert] = useState(false);
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   // Campos básicos siempre presentes
   const basicFields: LeadFormField[] = [
@@ -219,6 +222,20 @@ export function OfferLeadFormFields({
         email: formData.email || "",
         interest_date: formData.interest_date,
       });
+      
+      // Si es preview, limpiar el formulario después del submit exitoso
+      if (isPreview) {
+        setFormData(initialData);
+        setErrors({});
+        setPhoneConflict(null);
+        setDateAvailability({ checking: false, available: null });
+        setPastDateAlert(false);
+      }
+      
+      // Llamar callback de éxito si existe
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error("[OfferLeadFormFields] Error:", error);
       toast.error("Error al enviar el formulario. Por favor intenta de nuevo.");
@@ -321,7 +338,7 @@ export function OfferLeadFormFields({
                 {field.label}
                 {field.required && <span className="text-red-400 ml-1">*</span>}
               </label>
-              <Popover>
+              <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
                 <PopoverTrigger asChild>
                   <ZenButton
                     variant="outline"
@@ -330,14 +347,23 @@ export function OfferLeadFormFields({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {formData[field.id]
-                      ? format(new Date(formData[field.id]), "PPP", { locale: es })
+                      ? (() => {
+                          // Parsear fecha en zona horaria local
+                          const [year, month, day] = formData[field.id].split('-');
+                          const localDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                          return format(localDate, "PPP", { locale: es });
+                        })()
                       : field.placeholder || "Selecciona una fecha"}
                   </ZenButton>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
                   <ZenCalendar
                     mode="single"
-                    selected={formData[field.id] ? new Date(formData[field.id]) : undefined}
+                    selected={formData[field.id] ? (() => {
+                      // Parsear fecha en zona horaria local
+                      const [year, month, day] = formData[field.id].split('-');
+                      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                    })() : undefined}
                     onSelect={(date: Date | undefined) => {
                       if (date) {
                         // Verificar si es fecha pasada
@@ -351,9 +377,15 @@ export function OfferLeadFormFields({
                           return;
                         }
 
-                        const dateString = format(date, "yyyy-MM-dd");
+                        // Formatear fecha en zona horaria local para evitar offset
+                        const year = date.getFullYear();
+                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                        const day = String(date.getDate()).padStart(2, '0');
+                        const dateString = `${year}-${month}-${day}`;
+                        
                         handleInputChange(field.id, dateString);
                         setPastDateAlert(false);
+                        setDatePopoverOpen(false); // Cerrar popover
                       }
                     }}
                     disabled={(date) => {

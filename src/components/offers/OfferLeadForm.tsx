@@ -232,17 +232,14 @@ export function OfferLeadForm({
       // Mensaje de éxito diferenciado para preview vs producción
       if (effectiveIsPreview) {
         toast.success("🧪 Promesa de prueba creada correctamente. Revisa la notificación arriba ↗");
+
+        // Llamar onSuccess para que el componente padre maneje el éxito
+        if (onSuccess) {
+          onSuccess();
+        }
+        return;
       } else {
         toast.success(successMessage);
-      }
-
-      // Si es preview, no redirigir - mantener en editor
-      if (effectiveIsPreview) {
-        // Resetear el estado de submitting después de un delay
-        setTimeout(() => {
-          setIsSubmitting(false);
-        }, 2000);
-        return;
       }
 
       // Si hay callback onSuccess (modal), usarlo en lugar de redirigir

@@ -68,6 +68,14 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
     const daysRemaining = getDaysRemaining();
     const isExpired = daysRemaining !== null && daysRemaining < 0;
 
+    // Determinar color de fecha según días restantes
+    const getDateColor = (): string => {
+        if (daysRemaining === null) return 'text-zinc-400';
+        if (daysRemaining < 0) return 'text-red-400'; // Expirada
+        if (daysRemaining <= 7) return 'text-amber-400'; // Próxima (7 días o menos)
+        return 'text-emerald-400'; // Con tiempo (más de 7 días)
+    };
+
     const formatDate = (date: Date): string => {
         return date.toLocaleDateString('es-MX', {
             day: 'numeric',
@@ -228,13 +236,10 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                                 <h3 className="font-medium text-white text-sm leading-tight truncate">{promise.name}</h3>
                                 {/* Badge de prueba */}
                                 {promise.is_test && (
-                                    <ZenBadge
-                                        variant="outline"
-                                        className="text-amber-400 border-amber-400/50 bg-amber-400/10 flex-shrink-0"
-                                    >
-                                        <FlaskRound className="h-3 w-3 mr-1" />
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-400/30 shrink-0">
+                                        <FlaskRound className="h-2.5 w-2.5" />
                                         PRUEBA
-                                    </ZenBadge>
+                                    </span>
                                 )}
                             </div>
                             {promise.phone && (
@@ -249,14 +254,14 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                         </div>
                     </div>
 
-                    {/* Fecha de interés */}
+                    {/* Fecha de interés - Color dinámico según urgencia */}
                     {eventDate && (
-                        <div className={`flex items-center gap-1.5 text-xs ${isExpired ? 'text-red-400' : 'text-zinc-400'}`}>
+                        <div className={`flex items-center gap-1.5 text-xs ${getDateColor()}`}>
                             <Calendar className="h-3 w-3 flex-shrink-0" />
-                            <span>
+                            <span className="font-medium">
                                 {formatDate(eventDate)}
                                 {daysRemaining !== null && (
-                                    <span className={`ml-1.5 ${isExpired ? 'text-red-400 font-medium' : 'text-zinc-500'}`}>
+                                    <span className="ml-1.5 font-normal opacity-80">
                                         {isExpired
                                             ? `(Hace ${Math.abs(daysRemaining)} ${Math.abs(daysRemaining) === 1 ? 'día' : 'días'})`
                                             : `(Faltan ${daysRemaining} ${daysRemaining === 1 ? 'día' : 'días'})`

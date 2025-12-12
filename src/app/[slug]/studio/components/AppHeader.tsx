@@ -77,8 +77,8 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                     <StorageBadge studioSlug={studioSlug} />
                 </div>
 
-                {/* Inbox - Conversaciones */}
-                <Link
+                {/* Inbox - Conversaciones - Comentado temporalmente */}
+                {/* <Link
                     href={`/${studioSlug}/studio/commercial/inbox`}
                     className="relative"
                 >
@@ -89,14 +89,13 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                         title="Inbox"
                     >
                         <Inbox className="h-5 w-5" />
-                        {/* Badge de contador - preparado para futuro */}
-                        {/* {unreadCount > 0 && (
+                        {unreadCount > 0 && (
                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white">
                                 {unreadCount > 99 ? '99+' : unreadCount}
                             </span>
-                        )} */}
+                        )}
                     </ZenButton>
-                </Link>
+                </Link> */}
 
                 {/* Notificaciones */}
                 <NotificationsDropdown studioSlug={studioSlug} />

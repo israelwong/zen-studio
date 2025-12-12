@@ -19,7 +19,7 @@ export async function notifyPromiseCreated(
 
   // Construir mensaje detallado
   let message = isTest 
-    ? `🧪 Promesa de PRUEBA registrada para ${contactName}`
+    ? `Promesa de prueba registrada para ${contactName}`
     : `Nueva promesa registrada para ${contactName}`;
     
   if (eventType) {
@@ -39,7 +39,7 @@ export async function notifyPromiseCreated(
     scope: StudioNotificationScope.STUDIO,
     type: StudioNotificationType.PROMISE_CREATED,
     studio_id: studioId,
-    title: isTest ? '🧪 Promesa de prueba creada' : 'Nueva promesa creada',
+    title: isTest ? 'Promesa de prueba creada' : 'Nueva promesa creada',
     message,
     category: 'promises',
     priority: NotificationPriority.MEDIUM,

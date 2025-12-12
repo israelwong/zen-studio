@@ -4,19 +4,22 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { PromisesKanban, PromisesSkeleton } from './';
 import { getPromises, getPipelineStages } from '@/lib/actions/studio/commercial/promises';
+import { usePromisesRealtime } from '@/hooks/usePromisesRealtime';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 
 interface PromisesWrapperProps {
   studioSlug: string;
   onOpenPromiseFormRef?: React.MutableRefObject<(() => void) | null>;
   onReloadKanbanRef?: React.MutableRefObject<(() => void) | null>;
+  onRemoveTestPromisesRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanbanRef }: PromisesWrapperProps) {
+export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanbanRef, onRemoveTestPromisesRef }: PromisesWrapperProps) {
   const [promises, setPromises] = useState<PromiseWithContact[]>([]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPromiseFormModalOpen, setIsPromiseFormModalOpen] = useState(false);
+  const [studioId, setStudioId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -34,6 +37,11 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
         // Filtrar solo promesas que tengan promise_id (excluir contactos sin promesas)
         const promisesWithId = promisesResult.data.promises.filter((p) => p.promise_id !== null);
         setPromises(promisesWithId);
+        
+        // Guardar studio_id para Realtime (tomarlo de la primera promesa)
+        if (promisesWithId.length > 0 && !studioId) {
+          setStudioId(promisesWithId[0].studio_id);
+        }
       } else {
         toast.error(promisesResult.error || 'Error al cargar promesas');
       }
@@ -49,7 +57,7 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
     } finally {
       setLoading(false);
     }
-  }, [studioSlug]);
+  }, [studioSlug, studioId]);
 
   useEffect(() => {
     loadData();
@@ -72,6 +80,31 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
     loadData();
   }, [loadData]);
 
+  // Callbacks para Realtime
+  const handlePromiseInserted = useCallback(() => {
+    console.log('[PromisesWrapper] Nueva promesa detectada, recargando...');
+    loadData();
+  }, [loadData]);
+
+  const handlePromiseUpdatedRealtime = useCallback((promiseId: string) => {
+    console.log('[PromisesWrapper] Promesa actualizada:', promiseId);
+    loadData();
+  }, [loadData]);
+
+  const handlePromiseDeleted = useCallback((promiseId: string) => {
+    console.log('[PromisesWrapper] Promesa eliminada:', promiseId);
+    // Remover del estado local sin recargar
+    setPromises((prev) => prev.filter((p) => p.promise_id !== promiseId));
+  }, []);
+
+  // Suscribirse a cambios en tiempo real
+  usePromisesRealtime({
+    studioId: studioId || '',
+    onPromiseInserted: handlePromiseInserted,
+    onPromiseUpdated: handlePromiseUpdatedRealtime,
+    onPromiseDeleted: handlePromiseDeleted,
+  });
+
   // Exponer función para abrir modal desde el header
   useEffect(() => {
     if (onOpenPromiseFormRef) {
@@ -85,6 +118,18 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
       onReloadKanbanRef.current = loadData;
     }
   }, [onReloadKanbanRef, loadData]);
+
+  // Función para remover promesas de prueba del estado local (sin recargar)
+  const removeTestPromises = useCallback(() => {
+    setPromises((prevPromises) => prevPromises.filter((p) => !p.is_test));
+  }, []);
+
+  // Exponer función para remover promesas de prueba desde el header
+  useEffect(() => {
+    if (onRemoveTestPromisesRef) {
+      onRemoveTestPromisesRef.current = removeTestPromises;
+    }
+  }, [onRemoveTestPromisesRef, removeTestPromises]);
 
   if (loading) {
     return <PromisesSkeleton />;
