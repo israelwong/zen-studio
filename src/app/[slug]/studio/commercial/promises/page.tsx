@@ -15,6 +15,7 @@ export default function PromisesPage() {
   const params = useParams();
   const studioSlug = params.slug as string;
   const openPromiseFormRef = useRef<(() => void) | null>(null);
+  const reloadKanbanRef = useRef<(() => void) | null>(null);
   const [showCondicionesManager, setShowCondicionesManager] = useState(false);
   const [showTerminosManager, setShowTerminosManager] = useState(false);
   const [testPromisesCount, setTestPromisesCount] = useState(0);
@@ -50,8 +51,10 @@ export default function PromisesPage() {
       if (result.success) {
         toast.success(`${result.deleted || 0} promesa(s) de prueba eliminadas`);
         setTestPromisesCount(0);
-        // Recargar la página para actualizar el kanban
-        window.location.reload();
+        // Recargar el kanban sin recargar toda la página
+        if (reloadKanbanRef.current) {
+          reloadKanbanRef.current();
+        }
       } else {
         toast.error(result.error || 'Error al eliminar promesas de prueba');
       }
@@ -146,7 +149,11 @@ export default function PromisesPage() {
         )}
 
         <ZenCardContent className="p-6 flex-1 min-h-0 overflow-hidden">
-          <PromisesWrapper studioSlug={studioSlug} onOpenPromiseFormRef={openPromiseFormRef} />
+          <PromisesWrapper 
+            studioSlug={studioSlug} 
+            onOpenPromiseFormRef={openPromiseFormRef}
+            onReloadKanbanRef={reloadKanbanRef}
+          />
         </ZenCardContent>
       </ZenCard>
 

@@ -9,9 +9,10 @@ import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/pr
 interface PromisesWrapperProps {
   studioSlug: string;
   onOpenPromiseFormRef?: React.MutableRefObject<(() => void) | null>;
+  onReloadKanbanRef?: React.MutableRefObject<(() => void) | null>;
 }
 
-export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef }: PromisesWrapperProps) {
+export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanbanRef }: PromisesWrapperProps) {
   const [promises, setPromises] = useState<PromiseWithContact[]>([]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,6 +78,13 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef }: PromisesWr
       onOpenPromiseFormRef.current = () => setIsPromiseFormModalOpen(true);
     }
   }, [onOpenPromiseFormRef]);
+
+  // Exponer función para recargar kanban desde el header
+  useEffect(() => {
+    if (onReloadKanbanRef) {
+      onReloadKanbanRef.current = loadData;
+    }
+  }, [onReloadKanbanRef, loadData]);
 
   if (loading) {
     return <PromisesSkeleton />;
