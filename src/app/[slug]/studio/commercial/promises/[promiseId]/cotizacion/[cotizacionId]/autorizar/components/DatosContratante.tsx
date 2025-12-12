@@ -10,18 +10,15 @@ interface DatosContratanteProps {
     contact_phone: string;
     contact_email: string | null;
     event_type_name: string | null;
-    interested_dates: string[] | null;
-    defined_date: Date | null;
+    event_date: Date | null;
   };
 }
 
 export function DatosContratante({ promise }: DatosContratanteProps) {
-  // Obtener fecha de celebración (prioridad: defined_date > primera fecha de interested_dates)
-  const fechaCelebracion = promise.defined_date
-    ? promise.defined_date.toISOString()
-    : (promise.interested_dates && promise.interested_dates.length > 0
-      ? promise.interested_dates[0]
-      : null);
+  // ✅ Obtener fecha de celebración desde event_date (único campo)
+  const fechaCelebracion = promise.event_date
+    ? promise.event_date.toISOString()
+    : null;
 
   const formatDate = (dateString: string) => {
     try {

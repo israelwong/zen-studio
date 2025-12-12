@@ -1000,8 +1000,7 @@ export async function autorizarCotizacion(
             contact_id: true,
             event_type_id: true,
             event_location: true,
-            defined_date: true,
-            tentative_dates: true,
+            event_date: true, // ✅ ÚNICO CAMPO DE FECHA (nuevo estándar)
             contact: {
               select: {
                 id: true,
@@ -1070,20 +1069,15 @@ export async function autorizarCotizacion(
       return { success: false, error: 'No se encontró la etapa inicial del pipeline' };
     }
 
-    // Obtener fecha del evento: priorizar defined_date, luego primera fecha de tentative_dates
-    let eventDate: Date = new Date();
-    if (cotizacion.promise?.defined_date) {
-      eventDate = cotizacion.promise.defined_date;
-    } else if (cotizacion.promise?.tentative_dates) {
-      const tentativeDates = cotizacion.promise.tentative_dates as string[] | null;
-      if (tentativeDates && tentativeDates.length > 0) {
-        // Tomar la primera fecha de interés
-        const firstDate = new Date(tentativeDates[0]);
-        if (!isNaN(firstDate.getTime())) {
-          eventDate = firstDate;
-        }
-      }
+    // ✅ VALIDACIÓN OBLIGATORIA: event_date debe existir antes de autorizar
+    if (!cotizacion.promise?.event_date) {
+      return {
+        success: false,
+        error: 'Debes confirmar la fecha del evento antes de autorizar la cotización. Ve a la promesa y define la fecha del evento.'
+      };
     }
+
+    const eventDate: Date = cotizacion.promise.event_date;
 
     // Determinar evento existente o crear uno nuevo
     let eventoId: string | null = null;

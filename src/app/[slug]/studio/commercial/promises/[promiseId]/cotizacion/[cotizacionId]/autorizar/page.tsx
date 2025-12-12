@@ -36,8 +36,7 @@ export default function AutorizarCotizacionPage() {
     contact_phone: string;
     contact_email: string | null;
     event_type_name: string | null;
-    interested_dates: string[] | null;
-    defined_date: Date | null;
+    event_date: Date | null;
   } | null>(null);
 
   // Estados del formulario
@@ -74,8 +73,7 @@ export default function AutorizarCotizacionPage() {
             contact_phone: promiseResult.data.contact_phone,
             contact_email: promiseResult.data.contact_email,
             event_type_name: promiseResult.data.event_type_name,
-            interested_dates: promiseResult.data.interested_dates,
-            defined_date: promiseResult.data.defined_date,
+            event_date: promiseResult.data.event_date,
           });
         } else {
           toast.error(promiseResult.error || 'Error al cargar datos de la promesa');
