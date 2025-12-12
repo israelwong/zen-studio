@@ -296,15 +296,15 @@ export function PromisesKanban({
 
     if (!over || active.id === over.id) return;
 
-    const promiseId = active.id as string;
+    const draggedPromiseId = active.id as string; // ✅ Este es promise.promise_id (unique ID)
     const newStageId = over.id as string;
 
     // Verificar que es un stage válido
     const stage = pipelineStages.find((s: PipelineStage) => s.id === newStageId);
     if (!stage) return;
 
-    // Buscar la promesa para obtener su promise_id
-    const promise = localPromises.find((p: PromiseWithContact) => p.id === promiseId);
+    // ✅ FIX: Buscar por promise_id (no por contact id)
+    const promise = localPromises.find((p: PromiseWithContact) => p.promise_id === draggedPromiseId);
     if (!promise || !promise.promise_id) {
       toast.error('No se pudo encontrar la promesa');
       return;
@@ -336,7 +336,7 @@ export function PromisesKanban({
         try {
           // Buscar el elemento en el DOM usando el ID de la promesa
           // Usar un pequeño delay para asegurar que el elemento esté en su nueva posición
-          const activeElement = document.querySelector(`[data-id="${promiseId}"]`) as HTMLElement;
+          const activeElement = document.querySelector(`[data-id="${draggedPromiseId}"]`) as HTMLElement;
 
           if (activeElement) {
             const rect = activeElement.getBoundingClientRect();
@@ -371,7 +371,7 @@ export function PromisesKanban({
     // Actualización optimista local - actualizar tanto el ID como el objeto completo del stage
     setLocalPromises((prev) =>
       prev.map((p) =>
-        p.id === promiseId
+        p.promise_id === draggedPromiseId // ✅ FIX: Comparar por promise_id
           ? {
               ...p,
               promise_pipeline_stage_id: newStageId,
@@ -401,7 +401,7 @@ export function PromisesKanban({
         // Revertir actualización optimista en caso de error
         setLocalPromises((prev) =>
           prev.map((p) =>
-            p.id === promiseId
+            p.promise_id === draggedPromiseId // ✅ FIX: Comparar por promise_id
               ? {
                   ...p,
                   promise_pipeline_stage_id: promise.promise_pipeline_stage_id,
@@ -416,7 +416,7 @@ export function PromisesKanban({
       // Revertir actualización optimista en caso de error
       setLocalPromises((prev) =>
         prev.map((p) =>
-          p.id === promiseId
+          p.promise_id === draggedPromiseId // ✅ FIX: Comparar por promise_id
             ? {
                 ...p,
                 promise_pipeline_stage_id: promise.promise_pipeline_stage_id,

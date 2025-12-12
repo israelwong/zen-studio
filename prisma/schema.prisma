@@ -1382,7 +1382,7 @@ model studio_events {
 
   // Relaciones comerciales
   contact         studio_contacts                 @relation(fields: [contact_id], references: [id])
-  promise         studio_promises?                @relation(fields: [promise_id], references: [id])
+  promise         studio_promises?                @relation(fields: [promise_id], references: [id], onDelete: Cascade)
   cotizacion      studio_cotizaciones?            @relation("EventoCotizacionAutorizada", fields: [cotizacion_id], references: [id])
   event_type      studio_event_types?             @relation(fields: [event_type_id], references: [id])
   stage           studio_manager_pipeline_stages? @relation(fields: [stage_id], references: [id])
