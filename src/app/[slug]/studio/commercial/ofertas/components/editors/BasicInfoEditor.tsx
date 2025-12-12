@@ -17,6 +17,7 @@ import { obtenerTodasCondicionesComerciales } from "@/lib/actions/studio/config/
 import { CondicionesComercialesManager } from "@/components/shared/condiciones-comerciales/CondicionesComercialesManager";
 import { CrearCondicionComercialModal } from "@/components/shared/condiciones-comerciales/CrearCondicionComercialModal";
 import { Settings } from "lucide-react";
+import { TipoEventoSelector } from "@/components/shared/tipos-evento";
 
 interface BasicInfoEditorProps {
   studioSlug: string;
@@ -198,6 +199,24 @@ export function BasicInfoEditor({
         rows={3}
       />
 
+      {/* Tipo de Evento */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-zinc-300">
+            Tipo de Evento
+          </label>
+          <span className="text-red-400">*</span>
+        </div>
+        <TipoEventoSelector
+          studioSlug={studioSlug}
+          selectedEventTypeId={formData.event_type_id}
+          onChange={(eventTypeId) => updateFormData({ event_type_id: eventTypeId })}
+          placeholder="Selecciona el tipo de evento para esta oferta"
+        />
+        <p className="text-xs text-zinc-500">
+          El tipo de evento asociará esta oferta con el catálogo y promesas correspondientes
+        </p>
+      </div>
 
       {/* Portada Multimedia */}
       <div>

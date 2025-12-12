@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from "react";
 import { ContentBlock } from "@/types/content-blocks";
 import { CreateOfferData, UpdateOfferData, LeadFormField } from "@/lib/actions/schemas/offer-schemas";
 import type { StudioOffer } from "@/types/offers";
@@ -20,6 +20,7 @@ interface OfferFormData {
   start_date: Date | null;
   end_date: Date | null;
   business_term_id: string | null; // Condición comercial especial
+  event_type_id: string | null; // Tipo de evento asociado (boda, quinceañera, etc.)
 }
 
 interface LeadFormData {
@@ -86,6 +87,7 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     start_date: initialOffer?.start_date ? new Date(initialOffer.start_date) : null,
     end_date: initialOffer?.end_date ? new Date(initialOffer.end_date) : null,
     business_term_id: initialOffer?.business_term_id || null,
+    event_type_id: initialOffer?.leadform?.event_type_id || null,
   });
 
   // Estado para landing page
@@ -141,6 +143,13 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     setLeadformData((prev) => ({ ...prev, ...data }));
     setIsDirty(true);
   }, []);
+
+  // Sincronizar event_type_id entre formData y leadformData
+  useEffect(() => {
+    if (formData.event_type_id !== leadformData.event_type_id) {
+      setLeadformData((prev) => ({ ...prev, event_type_id: formData.event_type_id }));
+    }
+  }, [formData.event_type_id]);
 
   // Helper para obtener datos completos para guardar
   const getOfferData = useCallback((): CreateOfferData | UpdateOfferData => {

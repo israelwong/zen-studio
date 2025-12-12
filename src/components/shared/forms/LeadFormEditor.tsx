@@ -89,51 +89,9 @@ export function LeadFormEditor({
           </div>
 
           {/* Tipos de Evento */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
-            {mode === "single" ? (
-              <>
-                {/* Modo SINGLE: Para ofertas - UN tipo de evento */}
-                <TipoEventoSelector
-                  studioSlug={studioSlug}
-                  selectedEventTypeId={formData.event_type_id || null}
-                  onChange={(eventTypeId) => onUpdate({ event_type_id: eventTypeId })}
-                  label="Tipo de Evento"
-                  hint="Asocia esta oferta a un tipo de evento específico"
-                  showBadge={false}
-                />
-
-                {/* Feature: Mostrar paquetes después de registro */}
-                {formData.event_type_id && (
-                  <div className="border-t border-zinc-800 pt-4 mt-4">
-                    <div className="mb-3">
-                      <h4 className="text-sm font-medium text-zinc-300">
-                        Después de registrarse
-                      </h4>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        Opcional: Mostrar paquetes del tipo de evento asociado
-                      </p>
-                    </div>
-
-                    <ZenSwitch
-                      checked={formData.show_packages_after_submit || false}
-                      onCheckedChange={(checked) =>
-                        onUpdate({ show_packages_after_submit: checked })
-                      }
-                      label="Mostrar paquetes relacionados"
-                    />
-
-                    {formData.show_packages_after_submit && (
-                      <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
-                        <p className="text-xs text-blue-300">
-                          ℹ️ El prospecto verá los paquetes disponibles del tipo de evento asociado.
-                          Si no hay paquetes, se mostrará un mensaje indicándolo.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
+          {mode === "multiple" && (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              {/* Modo MULTIPLE: Para leadforms genéricos - múltiples tipos de evento */}
               <>
                 {/* Modo MULTIPLE: Para leadforms genéricos - múltiples tipos */}
                 <div className="mb-3">
@@ -183,8 +141,39 @@ export function LeadFormEditor({
                     </div>
                   )}
               </>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Mostrar paquetes después de registro (modo SINGLE - ofertas) */}
+          {mode === "single" && formData.event_type_id && (
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+              <div className="mb-3">
+                <h4 className="text-sm font-medium text-zinc-300">
+                  Después de registrarse
+                </h4>
+                <p className="text-xs text-zinc-500 mt-1">
+                  Opcional: Mostrar paquetes del tipo de evento asociado
+                </p>
+              </div>
+
+              <ZenSwitch
+                checked={formData.show_packages_after_submit || false}
+                onCheckedChange={(checked) =>
+                  onUpdate({ show_packages_after_submit: checked })
+                }
+                label="Mostrar paquetes relacionados"
+              />
+
+              {formData.show_packages_after_submit && (
+                <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
+                  <p className="text-xs text-blue-300">
+                    ℹ️ El prospecto verá los paquetes disponibles del tipo de evento asociado.
+                    Si no hay paquetes, se mostrará un mensaje indicándolo.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Fecha de interés */}
           <div className="space-y-4">
