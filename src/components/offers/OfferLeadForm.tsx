@@ -170,11 +170,6 @@ export function OfferLeadForm({
     email: string;
     interest_date?: string;
   }) => {
-    // Si es preview, no enviar (ya se maneja en el componente compartido)
-    if (effectiveIsPreview) {
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
@@ -234,7 +229,21 @@ export function OfferLeadForm({
         }
       }
 
-      toast.success(successMessage);
+      // Mensaje de éxito diferenciado para preview vs producción
+      if (effectiveIsPreview) {
+        toast.success("🧪 Promesa de prueba creada correctamente. Revisa la notificación arriba ↗");
+      } else {
+        toast.success(successMessage);
+      }
+
+      // Si es preview, no redirigir - mantener en editor
+      if (effectiveIsPreview) {
+        // Resetear el estado de submitting después de un delay
+        setTimeout(() => {
+          setIsSubmitting(false);
+        }, 2000);
+        return;
+      }
 
       // Si hay callback onSuccess (modal), usarlo en lugar de redirigir
       if (onSuccess) {

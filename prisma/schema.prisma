@@ -1255,6 +1255,7 @@ model studio_promises {
   id                String                          @id @default(cuid())
   studio_id         String
   contact_id        String
+  offer_id          String? // Oferta de origen (null si es prospecto manual)
   event_type_id     String?
   event_location    String? // Lugar del evento (consolidado con sede)
   name              String? // Nombre del evento (opcional)
@@ -1270,6 +1271,7 @@ model studio_promises {
   updated_at        DateTime                        @updatedAt
   studio            studios                         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   contact           studio_contacts                 @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  offer             studio_offers?                  @relation(fields: [offer_id], references: [id], onDelete: SetNull)
   event_type        studio_event_types?             @relation(fields: [event_type_id], references: [id])
   pipeline_stage    studio_promise_pipeline_stages? @relation(fields: [pipeline_stage_id], references: [id])
   quotes            studio_cotizaciones[]
@@ -1283,6 +1285,8 @@ model studio_promises {
   @@index([studio_id, contact_id])
   @@index([studio_id, status])
   @@index([studio_id, is_test])
+  @@index([studio_id, offer_id])
+  @@index([offer_id])
   @@index([pipeline_stage_id])
   @@index([event_date])
 }
@@ -2600,6 +2604,7 @@ model studio_offers {
   media                  studio_offer_media[]                @relation("offer_media")
   content_blocks         studio_offer_content_blocks[]
   business_term          studio_condiciones_comerciales?
+  promises               studio_promises[] // Promesas generadas desde esta oferta
 
   @@unique([studio_id, slug])
   @@index([studio_id, is_active])

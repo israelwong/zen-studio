@@ -79,7 +79,8 @@ export interface PromiseWithContact {
   event_type_id: string | null;
   event_name: string | null; // Nombre del evento (opcional)
   interested_dates: string[] | null;
-  defined_date: Date | null; // Fecha definida del evento
+  event_date: Date | null; // Fecha del evento (consolidado)
+  defined_date: Date | null; // Fecha definida del evento (legacy)
   promise_pipeline_stage_id: string | null;
   is_test: boolean; // Marca si es una promesa de prueba del preview
   created_at: Date;

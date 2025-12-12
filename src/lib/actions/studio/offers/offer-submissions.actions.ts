@@ -67,20 +67,20 @@ export async function validatePhoneBeforeSubmit(
         };
       }
 
-      // Teléfono y email coinciden (o no hay email), verificar fecha
-      if (interestDate) {
-        const existingPromise = await prisma.studio_promises.findFirst({
-          where: {
-            contact_id: existingContact.id,
-            interest_date: interestDate,
-          },
-          select: {
-            interest_date: true,
-          },
-          orderBy: {
-            created_at: 'desc',
-          },
-        });
+    // Teléfono y email coinciden (o no hay email), verificar fecha
+    if (interestDate) {
+      const existingPromise = await prisma.studio_promises.findFirst({
+        where: {
+          contact_id: existingContact.id,
+          event_date: new Date(interestDate),
+        },
+        select: {
+          event_date: true,
+        },
+        orderBy: {
+          created_at: 'desc',
+        },
+      });
 
         if (existingPromise) {
           // Ya solicitó info para esta fecha
@@ -143,22 +143,24 @@ export async function submitOfferLeadform(
       }
 
       // Verificar que la oferta existe y está activa
+      // En preview, offer_id puede ser "preview" - validar solo en producción
       const offer = await prisma.studio_offers.findFirst({
         where: {
           id: validatedData.offer_id,
           studio_id: studio.id,
-          is_active: true,
+          ...(isTest ? {} : { is_active: true }), // En test no validar is_active
         },
         include: {
           leadform: true,
         },
       });
 
-      if (!offer) {
+      if (!offer && !isTest) {
+        // Solo fallar si NO es test (en test, offer puede no existir aún)
         return { success: false, error: "Oferta no encontrada o inactiva" };
       }
 
-      if (!offer.leadform) {
+      if (offer && !offer.leadform && !isTest) {
         return { success: false, error: "Leadform no configurado" };
       }
 
@@ -171,36 +173,39 @@ export async function submitOfferLeadform(
       const userAgent = headersList.get("user-agent") || null;
 
       // Buscar o crear visita de tipo 'leadform' para esta sesión
+      // Solo en producción (no en preview/test) y si la oferta existe
       let visitId: string | null = null;
-      if (validatedData.session_id) {
-        const existingVisit = await prisma.studio_offer_visits.findFirst({
-          where: {
-            offer_id: validatedData.offer_id,
-            session_id: validatedData.session_id,
-            visit_type: "leadform",
-          },
-          orderBy: {
-            created_at: "desc",
-          },
-        });
-        visitId = existingVisit?.id || null;
-      }
+      if (!isTest && offer) {
+        if (validatedData.session_id) {
+          const existingVisit = await prisma.studio_offer_visits.findFirst({
+            where: {
+              offer_id: offer.id,
+              session_id: validatedData.session_id,
+              visit_type: "leadform",
+            },
+            orderBy: {
+              created_at: "desc",
+            },
+          });
+          visitId = existingVisit?.id || null;
+        }
 
-      // Si no hay visita, crear una nueva
-      if (!visitId) {
-        const newVisit = await prisma.studio_offer_visits.create({
-          data: {
-            offer_id: validatedData.offer_id,
-            visit_type: "leadform",
-            ip_address: ipAddress,
-            user_agent: userAgent,
-            utm_source: validatedData.utm_source || null,
-            utm_medium: validatedData.utm_medium || null,
-            utm_campaign: validatedData.utm_campaign || null,
-            session_id: validatedData.session_id || null,
-          },
-        });
-        visitId = newVisit.id;
+        // Si no hay visita, crear una nueva
+        if (!visitId) {
+          const newVisit = await prisma.studio_offer_visits.create({
+            data: {
+              offer_id: offer.id,
+              visit_type: "leadform",
+              ip_address: ipAddress,
+              user_agent: userAgent,
+              utm_source: validatedData.utm_source || null,
+              utm_medium: validatedData.utm_medium || null,
+              utm_campaign: validatedData.utm_campaign || null,
+              session_id: validatedData.session_id || null,
+            },
+          });
+          visitId = newVisit.id;
+        }
       }
 
       // Obtener canal de adquisición "Leadform"
@@ -281,10 +286,11 @@ export async function submitOfferLeadform(
         data: {
           studio_id: studio.id,
           contact_id: contact.id,
+          offer_id: offer?.id || null, // ✅ Asociar con oferta (null si es preview sin oferta creada)
           pipeline_stage_id: nuevoStage?.id || null,
           status: "pending",
           event_type_id: validatedData.event_type_id || null,
-          interest_date: validatedData.interest_date || null,
+          event_date: validatedData.interest_date ? new Date(validatedData.interest_date) : null, // ✅ Guardar como event_date
           // ✅ Marcar como prueba si aplica
           is_test: isTest,
           test_created_at: testTimestamp,
@@ -301,20 +307,19 @@ export async function submitOfferLeadform(
         eventTypeName = eventType?.name || null;
       }
 
-      // ✅ Crear notificación de nueva promesa (solo si NO es test)
-      if (!isTest) {
-        try {
-          await notifyPromiseCreated(
-            studio.id,
-            promise.id,
-            validatedData.name,
-            eventTypeName,
-            validatedData.interest_date || null
-          );
-        } catch (notifError) {
-          console.error("[submitOfferLeadform] Error creando notificación:", notifError);
-          // No fallar el submit si falla la notificación
-        }
+      // ✅ Crear notificación de nueva promesa (incluyendo pruebas con badge especial)
+      try {
+        await notifyPromiseCreated(
+          studio.id,
+          promise.id,
+          validatedData.name,
+          eventTypeName,
+          validatedData.interest_date || null,
+          isTest // ← Pasar flag para diferenciar en notificación
+        );
+      } catch (notifError) {
+        console.error("[submitOfferLeadform] Error creando notificación:", notifError);
+        // No fallar el submit si falla la notificación
       }
 
       // Preparar datos del formulario para guardar
@@ -328,30 +333,34 @@ export async function submitOfferLeadform(
         ...(validatedData.custom_fields || {}),
       };
 
-      // Crear submission
-      const submission = await prisma.studio_offer_submissions.create({
-        data: {
-          offer_id: validatedData.offer_id,
-          contact_id: contact.id,
-          visit_id: visitId,
-          form_data: formData,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          utm_source: validatedData.utm_source || null,
-          utm_medium: validatedData.utm_medium || null,
-          utm_campaign: validatedData.utm_campaign || null,
-        },
-      });
+      // Crear submission (solo si hay oferta real)
+      let submission = null;
+      if (offer) {
+        submission = await prisma.studio_offer_submissions.create({
+          data: {
+            offer_id: offer.id,
+            contact_id: contact.id,
+            visit_id: visitId,
+            form_data: formData,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            utm_source: validatedData.utm_source || null,
+            utm_medium: validatedData.utm_medium || null,
+            utm_campaign: validatedData.utm_campaign || null,
+          },
+        });
+      }
 
       // Determinar URL de redirección
-      const redirectUrl =
-        offer.leadform.success_redirect_url ||
-        `/${studioSlug}/offer/${offer.slug}/leadform?success=true`;
+      const redirectUrl = isTest 
+        ? null // Preview no redirige
+        : (offer?.leadform?.success_redirect_url || 
+           (offer ? `/${studioSlug}/offer/${offer.slug}/leadform?success=true` : null));
 
       return {
         success: true,
         data: {
-          submission_id: submission.id,
+          submission_id: submission?.id || null,
           contact_id: contact.id,
           promise_id: promise.id,
           redirect_url: redirectUrl,

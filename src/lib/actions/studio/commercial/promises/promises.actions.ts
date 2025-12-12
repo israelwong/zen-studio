@@ -194,6 +194,7 @@ export async function getPromises(
         interested_dates: latestPromise?.tentative_dates
           ? (latestPromise.tentative_dates as string[])
           : null,
+        event_date: latestPromise?.event_date || null,
         defined_date: latestPromise?.defined_date || null,
         promise_pipeline_stage_id: latestPromise?.pipeline_stage_id || null,
         is_test: latestPromise?.is_test || false, // ✅ Incluir flag de prueba
@@ -1232,25 +1233,25 @@ export async function deleteTestPromises(
         return { count: 0 };
       }
 
-      // 2. Eliminar cada promesa y sus relaciones
+      // 2. Recopilar IDs únicos de contactos de prueba
+      const testContactIds = new Set<string>();
+      for (const promise of testPromises) {
+        if (promise.contact.is_test) {
+          testContactIds.add(promise.contact.id);
+        }
+      }
+
+      // 3. Eliminar cada promesa y sus relaciones
       for (const promise of testPromises) {
         // Eliminar evento si existe (cascada automática eliminará: agenda, gastos, nominas)
         if (promise.event) {
-          await tx.studio_events.delete({
+          await tx.studio_events.deleteMany({
             where: { id: promise.event.id },
           });
         }
 
-        // Eliminar relaciones de la promesa
+        // Eliminar relaciones de la promesa que NO tienen cascade automático
         await tx.studio_cotizaciones.deleteMany({
-          where: { promise_id: promise.id },
-        });
-
-        await tx.studio_promise_logs.deleteMany({
-          where: { promise_id: promise.id },
-        });
-
-        await tx.studio_promises_tags.deleteMany({
           where: { promise_id: promise.id },
         });
 
@@ -1266,34 +1267,39 @@ export async function deleteTestPromises(
           where: { promise_id: promise.id },
         });
 
-        // Eliminar promesa
-        await tx.studio_promises.delete({
+        // Eliminar promesa (esto eliminará en cascada: logs, tags por onDelete: Cascade)
+        await tx.studio_promises.deleteMany({
           where: { id: promise.id },
         });
+      }
 
-        // 3. Verificar si el contacto solo tenía promesas de prueba
-        const realPromises = promise.contact.promises.filter(
-          (p) => p.id !== promise.id && !p.is_test
-        );
+      // 4. Eliminar contactos de prueba que ya no tienen promesas
+      for (const contactId of testContactIds) {
+        const remainingPromises = await tx.studio_promises.count({
+          where: { contact_id: contactId },
+        });
 
-        if (realPromises.length === 0 && promise.contact.is_test) {
+        if (remainingPromises === 0) {
           // Eliminar relaciones del contacto
           await tx.studio_offer_submissions.deleteMany({
-            where: { contact_id: promise.contact.id },
+            where: { contact_id: contactId },
           });
 
           await tx.studio_contact_logs.deleteMany({
-            where: { contact_id: promise.contact.id },
+            where: { contact_id: contactId },
           });
 
           // Eliminar contacto
-          await tx.studio_contacts.delete({
-            where: { id: promise.contact.id },
+          await tx.studio_contacts.deleteMany({
+            where: { 
+              id: contactId,
+              is_test: true, // Extra validación de seguridad
+            },
           });
         }
       }
 
-      // 4. Eliminar leads de prueba huérfanos (sin contacto asociado directo)
+      // 5. Eliminar leads de prueba huérfanos (sin contacto asociado directo)
       await tx.platform_leads.deleteMany({
         where: {
           studio_id: studio.id,

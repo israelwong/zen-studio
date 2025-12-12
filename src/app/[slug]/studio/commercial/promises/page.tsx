@@ -2,7 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { UserSearch, Plus, Receipt, AlertTriangle, Trash2, Eye, EyeOff, Flask } from 'lucide-react';
+import { UserSearch, Plus, Receipt, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { PromisesWrapper } from './components';
 import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
@@ -66,7 +66,7 @@ export default function PromisesPage() {
   return (
     <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
       <ZenCard variant="default" padding="none" className="flex flex-col flex-1 min-h-0">
-        <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0">
+        <ZenCardHeader className="border-b border-zinc-800 shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-purple-600/20 rounded-lg">
@@ -110,7 +110,7 @@ export default function PromisesPage() {
             <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-3 flex-1">
-                  <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-amber-300">
                       Tienes {testPromisesCount} promesa{testPromisesCount > 1 ? 's' : ''} de prueba
@@ -126,7 +126,7 @@ export default function PromisesPage() {
                   size="sm"
                   onClick={handleDeleteTestPromises}
                   disabled={isDeleting}
-                  className="text-amber-400 border-amber-400/50 hover:bg-amber-400/10 flex-shrink-0"
+                  className="text-amber-400 border-amber-400/50 hover:bg-amber-400/10 shrink-0"
                 >
                   {isDeleting ? (
                     <>

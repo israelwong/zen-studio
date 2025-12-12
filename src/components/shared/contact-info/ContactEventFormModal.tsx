@@ -29,6 +29,7 @@ interface ContactEventFormModalProps {
         event_type_id?: string;
         event_location?: string;
         event_name?: string; // Nombre del evento (opcional)
+        event_date?: Date | null; // Fecha única del evento
         interested_dates?: string[];
         acquisition_channel_id?: string;
         social_network_id?: string;
@@ -72,14 +73,25 @@ export function ContactEventFormModal({
     const [showContactSuggestions, setShowContactSuggestions] = useState(false);
     const [filteredContactSuggestions, setFilteredContactSuggestions] = useState<Array<{ id: string; name: string; phone: string; email: string | null }>>([]);
     const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; email: string | null }>>([]);
-    const [selectedDates, setSelectedDates] = useState<Date[]>(
-        initialData?.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
-    );
-    const [month, setMonth] = useState<Date | undefined>(
-        initialData?.interested_dates && initialData.interested_dates.length > 0
-            ? new Date(initialData.interested_dates[0])
-            : undefined
-    );
+    const [selectedDates, setSelectedDates] = useState<Date[]>(() => {
+        // Priorizar event_date si existe, luego interested_dates
+        if (initialData?.event_date) {
+            return [new Date(initialData.event_date)];
+        }
+        if (initialData?.interested_dates) {
+            return initialData.interested_dates.map(d => new Date(d));
+        }
+        return [];
+    });
+    const [month, setMonth] = useState<Date | undefined>(() => {
+        if (initialData?.event_date) {
+            return new Date(initialData.event_date);
+        }
+        if (initialData?.interested_dates && initialData.interested_dates.length > 0) {
+            return new Date(initialData.interested_dates[0]);
+        }
+        return undefined;
+    });
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [referrerInputValue, setReferrerInputValue] = useState(
         initialData?.referrer_name || ''
@@ -183,14 +195,18 @@ export function ContactEventFormModal({
                     referrer_name: initialData.referrer_name,
                 });
                 setNameInput(initialData.name || '');
-                setSelectedDates(
-                    initialData.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
-                );
-                setMonth(
-                    initialData.interested_dates && initialData.interested_dates.length > 0
-                        ? new Date(initialData.interested_dates[0])
-                        : undefined
-                );
+
+                // Priorizar event_date si existe
+                if (initialData.event_date) {
+                    setSelectedDates([new Date(initialData.event_date)]);
+                    setMonth(new Date(initialData.event_date));
+                } else if (initialData.interested_dates && initialData.interested_dates.length > 0) {
+                    setSelectedDates(initialData.interested_dates.map(d => new Date(d)));
+                    setMonth(new Date(initialData.interested_dates[0]));
+                } else {
+                    setSelectedDates([]);
+                    setMonth(undefined);
+                }
                 // Inicializar referrerInputValue: si hay referrer_name, usarlo; si no, se sincronizará cuando se carguen los contactos
                 if (initialData.referrer_name) {
                     // Si hay referrer_name, usarlo directamente

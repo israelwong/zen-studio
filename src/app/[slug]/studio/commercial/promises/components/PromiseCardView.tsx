@@ -20,6 +20,7 @@ interface PromiseCardViewProps {
     event_type_name?: string | null;
     event_location?: string | null;
     event_name?: string | null;
+    event_date?: Date | null;
     interested_dates: string[] | null;
     acquisition_channel_id?: string | null;
     acquisition_channel_name?: string | null;
@@ -79,6 +80,7 @@ export function PromiseCardView({
                 event_type_name: data.event_type_name || null,
                 event_location: data.event_location || null,
                 event_name: data.event_name || null,
+                event_date: data.event_date || null,
                 interested_dates: data.interested_dates,
               }}
               acquisitionData={{
@@ -175,6 +177,8 @@ export function PromiseCardView({
             email: data.email || undefined,
             event_type_id: data.event_type_id || undefined,
             event_location: data.event_location || undefined,
+            event_name: data.event_name || undefined,
+            event_date: data.event_date || undefined,
             interested_dates: data.interested_dates || undefined,
             acquisition_channel_id: data.acquisition_channel_id || undefined,
             social_network_id: data.social_network_id || undefined,

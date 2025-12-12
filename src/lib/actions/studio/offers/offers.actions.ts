@@ -115,6 +115,7 @@ export async function createOffer(
               fields_config: validatedData.leadform.fields_config,
               subject_options: validatedData.leadform.subject_options || null,
               use_event_types: validatedData.leadform.use_event_types,
+              event_type_id: validatedData.leadform.event_type_id || null,
               selected_event_type_ids: validatedData.leadform.selected_event_type_ids || null,
               show_packages_after_submit: validatedData.leadform.show_packages_after_submit,
               email_required: validatedData.leadform.email_required,
@@ -206,6 +207,7 @@ export async function createOffer(
             },
             subject_options: offer.leadform.subject_options as string[] | undefined,
             use_event_types: (offer.leadform as any).use_event_types as boolean | undefined,
+            event_type_id: (offer.leadform as any).event_type_id as string | undefined,
             selected_event_type_ids: offer.leadform.selected_event_type_ids as string[] | undefined,
             show_packages_after_submit: (offer.leadform as any).show_packages_after_submit as boolean | undefined,
             email_required: (offer.leadform as any).email_required as boolean | undefined,
@@ -304,6 +306,11 @@ export async function updateOffer(
             success_redirect_url?: string | null;
             fields_config?: unknown;
             subject_options?: unknown;
+            use_event_types?: boolean;
+            event_type_id?: string | null;
+            selected_event_type_ids?: unknown;
+            show_packages_after_submit?: boolean;
+            email_required?: boolean;
             enable_interest_date?: boolean;
             validate_with_calendar?: boolean;
           };
@@ -348,6 +355,7 @@ export async function updateOffer(
             fields_config: validatedData.leadform.fields_config,
             subject_options: validatedData.leadform.subject_options || null,
             use_event_types: validatedData.leadform.use_event_types,
+            event_type_id: validatedData.leadform.event_type_id || null,
             selected_event_type_ids: validatedData.leadform.selected_event_type_ids || null,
             show_packages_after_submit: validatedData.leadform.show_packages_after_submit,
             email_required: validatedData.leadform.email_required,
@@ -478,6 +486,7 @@ export async function updateOffer(
             },
             subject_options: offer.leadform.subject_options as string[] | undefined,
             use_event_types: (offer.leadform as any).use_event_types as boolean | undefined,
+            event_type_id: (offer.leadform as any).event_type_id as string | undefined,
             selected_event_type_ids: offer.leadform.selected_event_type_ids as string[] | undefined,
             show_packages_after_submit: (offer.leadform as any).show_packages_after_submit as boolean | undefined,
             email_required: (offer.leadform as any).email_required as boolean | undefined,
@@ -611,6 +620,7 @@ export async function getOffer(
             },
             subject_options: offer.leadform.subject_options as string[] | undefined,
             use_event_types: (offer.leadform as any).use_event_types as boolean | undefined,
+            event_type_id: (offer.leadform as any).event_type_id as string | undefined,
             selected_event_type_ids: offer.leadform.selected_event_type_ids as string[] | undefined,
             show_packages_after_submit: (offer.leadform as any).show_packages_after_submit as boolean | undefined,
             email_required: (offer.leadform as any).email_required as boolean | undefined,
@@ -740,6 +750,7 @@ export async function getPublicOffer(
             },
             subject_options: offer.leadform.subject_options as string[] | undefined,
             use_event_types: (offer.leadform as any).use_event_types as boolean | undefined,
+            event_type_id: (offer.leadform as any).event_type_id as string | undefined,
             selected_event_type_ids: offer.leadform.selected_event_type_ids as string[] | undefined,
             show_packages_after_submit: (offer.leadform as any).show_packages_after_submit as boolean | undefined,
             email_required: (offer.leadform as any).email_required as boolean | undefined,

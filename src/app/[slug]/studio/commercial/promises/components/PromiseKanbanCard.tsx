@@ -36,8 +36,11 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
         opacity: isDragging ? 0.5 : 1,
     };
 
-    // Obtener fecha de evento (defined_date tiene prioridad sobre interested_dates)
+    // Obtener fecha de evento (event_date tiene prioridad, luego defined_date, luego interested_dates)
     const getEventDate = (): Date | null => {
+        if (promise.event_date) {
+            return new Date(promise.event_date);
+        }
         if (promise.defined_date) {
             return new Date(promise.defined_date);
         }

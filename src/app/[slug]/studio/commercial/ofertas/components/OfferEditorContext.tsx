@@ -86,7 +86,7 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     start_date: initialOffer?.start_date ? new Date(initialOffer.start_date) : null,
     end_date: initialOffer?.end_date ? new Date(initialOffer.end_date) : null,
     business_term_id: initialOffer?.business_term_id || null,
-    event_type_id: initialOffer?.leadform?.event_type_id || null,
+    event_type_id: initialOffer?.event_type_id || initialOffer?.leadform?.event_type_id || null,
   });
 
   // Estado para landing page

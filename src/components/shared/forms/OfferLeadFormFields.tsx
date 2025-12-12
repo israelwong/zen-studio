@@ -194,12 +194,6 @@ export function OfferLeadFormFields({
       return;
     }
 
-    // Si es preview, solo validar
-    if (isPreview) {
-      toast.success("Preview: Formulario validado correctamente");
-      return;
-    }
-
     setIsSubmitting(true);
     setPhoneConflict(null); // Limpiar conflictos previos
 

@@ -9,7 +9,8 @@ export async function notifyPromiseCreated(
   promiseId: string,
   contactName: string,
   eventType: string | null,
-  eventDate: string | null
+  eventDate: string | null,
+  isTest: boolean = false
 ) {
   const studio = await prisma.studios.findUnique({
     where: { id: studioId },
@@ -17,7 +18,10 @@ export async function notifyPromiseCreated(
   });
 
   // Construir mensaje detallado
-  let message = `Nueva promesa registrada para ${contactName}`;
+  let message = isTest 
+    ? `🧪 Promesa de PRUEBA registrada para ${contactName}`
+    : `Nueva promesa registrada para ${contactName}`;
+    
   if (eventType) {
     message += ` - ${eventType}`;
   }
@@ -35,7 +39,7 @@ export async function notifyPromiseCreated(
     scope: StudioNotificationScope.STUDIO,
     type: StudioNotificationType.PROMISE_CREATED,
     studio_id: studioId,
-    title: 'Nueva promesa creada',
+    title: isTest ? '🧪 Promesa de prueba creada' : 'Nueva promesa creada',
     message,
     category: 'promises',
     priority: NotificationPriority.MEDIUM,
@@ -48,6 +52,7 @@ export async function notifyPromiseCreated(
       contact_name: contactName,
       event_type: eventType,
       event_date: eventDate,
+      is_test: isTest,
     },
     promise_id: promiseId,
   });
