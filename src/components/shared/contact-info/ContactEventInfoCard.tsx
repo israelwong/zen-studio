@@ -3,13 +3,52 @@
 import React, { useState, useEffect } from 'react';
 import { Edit, ExternalLink, Loader2, ContactRound, Calendar } from 'lucide-react';
 import { useContactsSheet } from '@/components/shared/contacts/ContactsSheetContext';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton, SeparadorZen } from '@/components/ui/zen';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton, SeparadorZen, ZenBadge } from '@/components/ui/zen';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/shadcn/hover-card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import { getContactById } from '@/lib/actions/studio/commercial/contacts/contacts.actions';
 import { ContactEventFormModal } from './ContactEventFormModal';
+
+/**
+ * Determina el color del badge de fecha según días restantes
+ */
+function getDateBadgeColor(date: Date): {
+  bgColor: string;
+  textColor: string;
+  borderColor: string;
+} {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(date);
+  eventDate.setHours(0, 0, 0, 0);
+  const diffTime = eventDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    // Expirada - Rojo
+    return {
+      bgColor: 'bg-red-500/20',
+      textColor: 'text-red-400',
+      borderColor: 'border-red-400/50',
+    };
+  } else if (diffDays <= 7) {
+    // Próxima (7 días o menos) - Ámbar
+    return {
+      bgColor: 'bg-amber-500/20',
+      textColor: 'text-amber-400',
+      borderColor: 'border-amber-400/50',
+    };
+  } else {
+    // Con tiempo (más de 7 días) - Verde
+    return {
+      bgColor: 'bg-emerald-500/20',
+      textColor: 'text-emerald-400',
+      borderColor: 'border-emerald-400/50',
+    };
+  }
+}
 
 interface ContactEventInfoCardProps {
   studioSlug: string;
@@ -354,13 +393,18 @@ export function ContactEventInfoCard({
               </div>
             )}
 
-            {/* Tipo de Evento */}
+            {/* Tipo de Evento - Badge destacado */}
             {eventData.event_type_name ? (
               <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                <label className="text-xs font-medium text-zinc-400 block mb-2">
                   Tipo de Evento
                 </label>
-                <p className="text-sm text-zinc-200">{eventData.event_type_name}</p>
+                <ZenBadge
+                  variant="outline"
+                  className="bg-blue-500/20 text-blue-400 border-blue-400/50 font-medium px-3 py-1.5"
+                >
+                  {eventData.event_type_name}
+                </ZenBadge>
               </div>
             ) : (
               <div>
@@ -395,30 +439,45 @@ export function ContactEventInfoCard({
               </div>
             )}
 
-            {/* Fecha del Evento */}
+            {/* Fecha del Evento - Badge con color según urgencia */}
             {eventData.event_date ? (
               <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                <label className="text-xs font-medium text-zinc-400 block mb-2">
                   Fecha del Evento
                 </label>
-                <p className="text-sm text-zinc-200">
-                  {formatDate(eventData.event_date)}
-                </p>
+                {(() => {
+                  const colors = getDateBadgeColor(eventData.event_date);
+                  return (
+                    <ZenBadge
+                      variant="outline"
+                      className={`${colors.bgColor} ${colors.textColor} ${colors.borderColor} font-medium px-3 py-1.5`}
+                    >
+                      <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                      {formatDate(eventData.event_date)}
+                    </ZenBadge>
+                  );
+                })()}
               </div>
             ) : eventData.interested_dates && eventData.interested_dates.length > 0 ? (
               <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                <label className="text-xs font-medium text-zinc-400 block mb-2">
                   Fecha(s) de Interés
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {eventData.interested_dates.map((date, idx) => (
-                    <span
-                      key={idx}
-                      className="inline-flex items-center px-2 py-1 rounded text-xs bg-emerald-600/20 text-emerald-300 border border-emerald-600/30"
-                    >
-                      {formatDate(new Date(date))}
-                    </span>
-                  ))}
+                  {eventData.interested_dates.map((date, idx) => {
+                    const dateObj = new Date(date);
+                    const colors = getDateBadgeColor(dateObj);
+                    return (
+                      <ZenBadge
+                        key={idx}
+                        variant="outline"
+                        className={`${colors.bgColor} ${colors.textColor} ${colors.borderColor} font-medium px-2.5 py-1`}
+                      >
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {formatDate(dateObj)}
+                      </ZenBadge>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
