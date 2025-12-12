@@ -199,24 +199,8 @@ export function BasicInfoEditor({
         rows={3}
       />
 
-      {/* Tipo de Evento */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-zinc-300">
-            Tipo de Evento
-          </label>
-          <span className="text-red-400">*</span>
-        </div>
-        <TipoEventoSelector
-          studioSlug={studioSlug}
-          selectedEventTypeId={formData.event_type_id}
-          onChange={(eventTypeId) => updateFormData({ event_type_id: eventTypeId })}
-          placeholder="Selecciona el tipo de evento para esta oferta"
-        />
-        <p className="text-xs text-zinc-500">
-          El tipo de evento asociará esta oferta con el catálogo y promesas correspondientes
-        </p>
-      </div>
+      {/* Divisor */}
+      <div className="border-t border-zinc-800" />
 
       {/* Portada Multimedia */}
       <div>
@@ -239,6 +223,21 @@ export function BasicInfoEditor({
         <p className="text-xs text-zinc-500 mt-2">
           Esta imagen/video se mostrará en el feed público de tu perfil
         </p>
+      </div>
+
+      {/* Divisor */}
+      <div className="border-t border-zinc-800" />
+
+      {/* Tipo de Evento */}
+      <div>
+        <TipoEventoSelector
+          studioSlug={studioSlug}
+          selectedEventTypeId={formData.event_type_id}
+          onChange={(eventTypeId) => updateFormData({ event_type_id: eventTypeId })}
+          label="Tipo de Evento"
+          hint="Asocia esta oferta con el catálogo y promesas del tipo de evento"
+          showBadge={false}
+        />
       </div>
 
       {/* Disponibilidad */}

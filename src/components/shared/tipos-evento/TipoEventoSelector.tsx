@@ -66,9 +66,18 @@ export function TipoEventoSelector({
 
   if (loading) {
     return (
-      <div className="flex items-center py-3">
-        <Loader2 className="h-4 w-4 text-zinc-500 animate-spin mr-2" />
-        <span className="text-sm text-zinc-500">Cargando tipos de evento...</span>
+      <div className="space-y-2">
+        {/* Label skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="h-5 w-32 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse" />
+        </div>
+        {/* Items skeleton */}
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 bg-zinc-800/50 rounded-lg animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }

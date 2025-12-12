@@ -45,6 +45,7 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
               formData={leadformData}
               onUpdate={updateLeadformData}
               mode="single"
+              eventTypeId={formData.event_type_id}
             />
           </ZenCardContent>
         </ZenCard>
@@ -71,7 +72,7 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
                 successMessage={leadformData.success_message}
                 successRedirectUrl={leadformData.success_redirect_url || null}
                 fieldsConfig={leadformData.fields_config}
-                eventTypeId={leadformData.event_type_id}
+                eventTypeId={formData.event_type_id}
                 enableInterestDate={leadformData.enable_interest_date}
                 validateWithCalendar={leadformData.validate_with_calendar}
                 emailRequired={leadformData.email_required}

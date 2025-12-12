@@ -11,7 +11,6 @@ export interface LeadFormConfig {
   title: string;
   description: string;
   email_required: boolean;
-  event_type_id?: string | null; // Para OFERTAS: UN tipo de evento (single)
   selected_event_type_ids?: string[]; // Para LEADFORMS GENÉRICOS: múltiples tipos (array)
   show_packages_after_submit?: boolean;
   enable_interest_date: boolean;
@@ -25,13 +24,15 @@ interface LeadFormEditorProps {
   formData: LeadFormConfig;
   onUpdate: (updates: Partial<LeadFormConfig>) => void;
   mode?: "single" | "multiple"; // single: ofertas (UN tipo), multiple: leadforms genéricos (múltiples)
+  eventTypeId?: string | null; // Para modo single (ofertas): viene de formData del context padre
 }
 
 export function LeadFormEditor({
   studioSlug,
   formData,
   onUpdate,
-  mode = "single" // Default: ofertas (un tipo de evento)
+  mode = "single", // Default: ofertas (un tipo de evento)
+  eventTypeId = null
 }: LeadFormEditorProps) {
   return (
     <div className="space-y-6">
@@ -144,8 +145,47 @@ export function LeadFormEditor({
             </div>
           )}
 
+          {/* Fecha de interés */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+            <div className="mb-3">
+              <h4 className="text-sm font-medium text-zinc-300">
+                Fecha de interés
+              </h4>
+              <p className="text-xs text-zinc-500 mt-1">
+                Solicita al prospecto la fecha en que planea su evento
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <ZenSwitch
+                checked={formData.enable_interest_date}
+                onCheckedChange={(checked) =>
+                  onUpdate({ enable_interest_date: checked })
+                }
+                label="Solicitar fecha de interés"
+              />
+
+              {formData.enable_interest_date && (
+                <div className="space-y-2 pl-4 border-l-2 border-zinc-700/50">
+                  <ZenSwitch
+                    checked={formData.validate_with_calendar}
+                    onCheckedChange={(checked) =>
+                      onUpdate({ validate_with_calendar: checked })
+                    }
+                    label="Validar fecha de interés con agenda"
+                  />
+                  <p className="text-xs text-zinc-500">
+                    {formData.validate_with_calendar
+                      ? "Solo se mostrarán fechas disponibles en tu agenda"
+                      : "El usuario podrá seleccionar cualquier fecha"}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Mostrar paquetes después de registro (modo SINGLE - ofertas) */}
-          {mode === "single" && formData.event_type_id && (
+          {mode === "single" && eventTypeId && (
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
               <div className="mb-3">
                 <h4 className="text-sm font-medium text-zinc-300">
@@ -174,38 +214,6 @@ export function LeadFormEditor({
               )}
             </div>
           )}
-
-          {/* Fecha de interés */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <ZenSwitch
-                checked={formData.enable_interest_date}
-                onCheckedChange={(checked) =>
-                  onUpdate({ enable_interest_date: checked })
-                }
-                label="Solicitar fecha de interés"
-              />
-            </div>
-
-            {formData.enable_interest_date && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <ZenSwitch
-                    checked={formData.validate_with_calendar}
-                    onCheckedChange={(checked) =>
-                      onUpdate({ validate_with_calendar: checked })
-                    }
-                    label="Validar fecha de interés con agenda"
-                  />
-                </div>
-                <p className="text-xs text-zinc-500">
-                  {formData.validate_with_calendar
-                    ? "Solo se mostrarán fechas disponibles en tu agenda"
-                    : "El usuario podrá seleccionar cualquier fecha"}
-                </p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
