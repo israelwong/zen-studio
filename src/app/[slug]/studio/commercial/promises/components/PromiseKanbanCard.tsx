@@ -28,7 +28,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: promise.id });
+    } = useSortable({ id: promise.promise_id || promise.id });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -199,7 +199,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                 style={style}
                 {...attributes}
                 {...listeners}
-                data-id={promise.id}
+                data-id={promise.promise_id || promise.id}
                 onClick={() => onClick?.(promise)}
                 className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 cursor-pointer transition-all duration-200 hover:shadow-lg relative"
             >

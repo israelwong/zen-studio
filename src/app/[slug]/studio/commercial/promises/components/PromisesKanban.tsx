@@ -720,7 +720,7 @@ function KanbanColumn({
         >
           {promises.map((promise) => (
             <PromiseKanbanCard
-              key={promise.id}
+              key={promise.promise_id}
               promise={promise}
               onClick={onPromiseClick}
               studioSlug={studioSlug}
