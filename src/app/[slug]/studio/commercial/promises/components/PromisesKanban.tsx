@@ -690,15 +690,12 @@ function KanbanColumn({
       className={`${isFlexible
         ? 'flex-1 min-w-[280px]'
         : 'w-[280px] min-w-[280px] max-w-[280px] flex-shrink-0'
-        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-300 ease-in-out ${isOver
-          ? 'bg-zinc-800/90 border-2 scale-[1.02] transform-gpu'
+        } flex flex-col rounded-lg border-2 p-4 h-full overflow-hidden transition-all duration-300 ease-in-out ${isOver
+          ? 'bg-zinc-800/80'
           : 'bg-zinc-900/50 border-zinc-700'
         }`}
       style={{
         borderColor: isOver ? stage.color : undefined,
-        boxShadow: isOver 
-          ? `0 20px 25px -5px ${stage.color}30, 0 10px 10px -5px ${stage.color}20, inset 0 0 0 1px ${stage.color}40` 
-          : undefined,
       }}
     >
       {/* Header de columna */}
@@ -741,8 +738,22 @@ function KanbanColumn({
         </SortableContext>
 
         {promises.length === 0 && (
-          <div className="text-center py-8 text-zinc-500 text-sm">
-            Sin promesas
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div 
+              className="w-16 h-16 rounded-full flex items-center justify-center mb-4 opacity-20"
+              style={{ backgroundColor: stage.color }}
+            >
+              <div 
+                className="w-10 h-10 rounded-full border-2 border-dashed"
+                style={{ borderColor: stage.color }}
+              />
+            </div>
+            <p className="text-sm text-zinc-500 font-medium mb-1">
+              Sin promesas
+            </p>
+            <p className="text-xs text-zinc-600">
+              Arrastra aquí para mover
+            </p>
           </div>
         )}
       </div>

@@ -5,7 +5,7 @@ import { ContactsSheetProvider } from '@/components/shared/contacts/ContactsShee
 import { SessionTimeoutProvider } from '@/components/providers/SessionTimeoutProvider';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
 import { StudioInitializer } from './components/StudioInitializer';
-import { Toaster } from 'sonner';
+import { Toaster } from '@/components/ui/shadcn/sonner';
 import { StudioLayoutWrapper } from './components/StudioLayoutWrapper';
 
 export default async function StudioLayout({
