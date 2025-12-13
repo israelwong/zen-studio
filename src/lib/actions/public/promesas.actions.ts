@@ -81,7 +81,7 @@ export async function getPublicPromiseData(
       where: { slug: studioSlug },
       select: { 
         id: true,
-        name: true,
+        studio_name: true,
         logo_url: true,
       },
     });

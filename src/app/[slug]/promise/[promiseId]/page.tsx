@@ -33,7 +33,7 @@ export default async function PromisePage({ params }: PromisePageProps) {
         eventTypeName={promise.event_type_name}
         eventDate={promise.event_date}
         eventLocation={promise.event_location}
-        studioName={studio.name}
+        studioName={studio.studio_name}
         studioLogoUrl={studio.logo_url}
       />
 
@@ -68,7 +68,7 @@ export default async function PromisePage({ params }: PromisePageProps) {
       <footer className="py-8 px-4 border-t border-zinc-800">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-sm text-zinc-400">
-            ¿Tienes dudas? Contacta directamente con {studio.name}
+            ¿Tienes dudas? Contacta directamente con {studio.studio_name}
           </p>
         </div>
       </footer>

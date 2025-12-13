@@ -12,7 +12,7 @@ export interface PublicPromiseData {
     event_location: string | null;
   };
   studio: {
-    name: string;
+    studio_name: string;
     logo_url: string | null;
   };
   cotizaciones: PublicCotizacion[];
