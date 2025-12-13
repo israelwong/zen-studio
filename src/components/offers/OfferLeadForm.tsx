@@ -15,7 +15,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from "@/components/ui/zen";
+import { CheckCircle2 } from "lucide-react";
+import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenDialog } from "@/components/ui/zen";
 import { submitOfferLeadform } from "@/lib/actions/studio/offers/offer-submissions.actions";
 import { trackOfferVisit } from "@/lib/actions/studio/offers/offer-visits.actions";
 import { LeadFormFieldsConfig } from "@/lib/actions/schemas/offer-schemas";
@@ -286,97 +287,124 @@ export function OfferLeadForm({
     }
   };
 
-  if (isSuccess) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
-        <ZenCard className="max-w-md w-full">
-          <ZenCardHeader>
-            <ZenCardTitle className="text-center text-emerald-400">
-              ¡Gracias!
-            </ZenCardTitle>
-          </ZenCardHeader>
-          <ZenCardContent className="text-center space-y-4">
-            <p className="text-zinc-300">{successMessage}</p>
-            <ZenButton
-              variant="outline"
-              onClick={() => router.push(`/${studioSlug}`)}
-            >
-              Volver al inicio
-            </ZenButton>
-          </ZenCardContent>
-        </ZenCard>
-      </div>
-    );
-  }
+  const handleCloseSuccessModal = () => {
+    // Redirigir al perfil del estudio
+    router.push(`/${studioSlug}`);
+  };
 
   return (
-    <div className={`relative bg-zinc-950 ${!coverUrl && !isModal ? 'min-h-screen' : ''}`}>
-      {/* Hero Cover */}
-      {coverUrl && (
-        <div className="absolute inset-0 h-[40vh] md:h-[45vh] overflow-hidden">
-          {coverType === 'video' ? (
-            <video
-              src={coverUrl}
-              className="w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-          ) : (
-            <Image
-              src={coverUrl}
-              alt="Cover"
-              fill
-              className="object-cover"
-              priority
-              unoptimized
-            />
-          )}
-          {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-linear-to-b from-zinc-900/50 via-zinc-950/40 to-zinc-950" />
-        </div>
-      )}
-
-      {/* Formulario superpuesto */}
-      <div className={`relative z-10 ${isModal ? 'p-0' : 'p-4 pb-12'} ${coverUrl && !isModal ? 'pt-[20vh] md:pt-[15vh]' : !isModal ? 'min-h-screen flex items-center justify-center' : ''}`}>
-        <ZenCard className={`max-w-lg w-full ${isModal ? 'bg-transparent shadow-none border-0' : 'bg-zinc-950/50 backdrop-blur-md shadow-2xl border-zinc-800/50'}`}>
-          {!isModal && (
-            <ZenCardHeader>
-              <ZenCardTitle>{title || "Solicita información"}</ZenCardTitle>
-              {description && (
-                <p className="text-sm text-zinc-400 mt-2">{description}</p>
-              )}
-            </ZenCardHeader>
-          )}
-          <ZenCardContent className={`${isModal ? 'pt-0' : ''}`}>
-            <OfferLeadFormFields
-              fieldsConfig={fieldsConfig}
-              emailRequired={emailRequired}
-              enableInterestDate={enableInterestDate}
-              validateWithCalendar={validateWithCalendar}
-              eventTypeId={eventTypeId}
-              studioId={studioId}
-              studioSlug={studioSlug}
-              isPreview={isPreview}
-              onSubmit={handleFormSubmit}
-              submitLabel="Enviar solicitud"
-            />
-            {!isModal && (
-              <div className="mt-4">
-                <ZenButton
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => router.back()}
-                  disabled={isSubmitting || isEditMode}
-                >
-                  Cancelar
-                </ZenButton>
+    <>
+      {/* Modal de éxito */}
+      <ZenDialog
+        isOpen={isSuccess}
+        onClose={handleCloseSuccessModal}
+        title=""
+        description=""
+        maxWidth="md"
+        showCloseButton={false}
+        closeOnClickOutside={false}
+        zIndex={10050}
+      >
+        <div className="text-center space-y-8 py-8 px-2">
+          {/* Icono de éxito */}
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl"></div>
+              <div className="relative bg-emerald-500/10 rounded-full p-4 border border-emerald-500/20">
+                <CheckCircle2 className="w-16 h-16 text-emerald-400" strokeWidth={1.5} />
               </div>
+            </div>
+          </div>
+
+          {/* Mensaje */}
+          <div className="space-y-3">
+            <p className="text-white text-xl md:text-2xl leading-relaxed font-semibold">
+              {successMessage}
+            </p>
+          </div>
+
+          {/* Botón */}
+          <div className="pt-4">
+            <ZenButton
+              variant="primary"
+              onClick={handleCloseSuccessModal}
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              Cerrar
+            </ZenButton>
+          </div>
+        </div>
+      </ZenDialog>
+
+      {/* Formulario (siempre visible) */}
+      <div className={`relative ${coverUrl ? 'bg-zinc-950' : 'bg-transparent'} ${!coverUrl && !isModal ? 'min-h-screen' : ''}`}>
+        {/* Hero Cover */}
+        {coverUrl && (
+          <div className="absolute inset-0 h-[40vh] md:h-[45vh] overflow-hidden">
+            {coverType === 'video' ? (
+              <video
+                src={coverUrl}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            ) : (
+              <Image
+                src={coverUrl}
+                alt="Cover"
+                fill
+                className="object-cover"
+                priority
+                unoptimized
+              />
             )}
-          </ZenCardContent>
-        </ZenCard>
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-linear-to-b from-zinc-900/50 via-zinc-950/40 to-zinc-950" />
+          </div>
+        )}
+
+        {/* Formulario superpuesto */}
+        <div className={`relative z-10 ${isModal ? 'p-0' : coverUrl ? 'p-4 pb-12' : 'p-0'} ${coverUrl && !isModal ? 'pt-[20vh] md:pt-[15vh]' : !isModal && !coverUrl ? 'flex items-center justify-center' : ''}`}>
+          <ZenCard className={`max-w-lg w-full ${isModal ? 'bg-transparent shadow-none border-0' : 'bg-zinc-950/50 backdrop-blur-md shadow-2xl border-zinc-800/50'}`}>
+            {!isModal && (
+              <ZenCardHeader>
+                <ZenCardTitle>{title || "Solicita información"}</ZenCardTitle>
+                {description && (
+                  <p className="text-sm text-zinc-400 mt-2">{description}</p>
+                )}
+              </ZenCardHeader>
+            )}
+            <ZenCardContent className={`${isModal ? 'pt-0' : ''}`}>
+              <OfferLeadFormFields
+                fieldsConfig={fieldsConfig}
+                emailRequired={emailRequired}
+                enableInterestDate={enableInterestDate}
+                validateWithCalendar={validateWithCalendar}
+                eventTypeId={eventTypeId}
+                studioId={studioId}
+                studioSlug={studioSlug}
+                isPreview={effectiveIsPreview}
+                onSubmit={handleFormSubmit}
+                submitLabel="Enviar solicitud"
+              />
+              {!isModal && (
+                <div className="mt-4">
+                  <ZenButton
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => router.back()}
+                    disabled={isSubmitting || isEditMode}
+                  >
+                    Cancelar
+                  </ZenButton>
+                </div>
+              )}
+            </ZenCardContent>
+          </ZenCard>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

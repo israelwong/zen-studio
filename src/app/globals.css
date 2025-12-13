@@ -58,6 +58,11 @@
   --sidebar-accent-foreground: hsl(240 5.9% 10%);
   --sidebar-border: hsl(220 13% 91%);
   --sidebar-ring: hsl(217.2 91.2% 59.8%);
+
+  /* Toast/Popover variables */
+  --popover: hsl(240 10% 3.9%); /* zinc-950 */
+  --popover-foreground: hsl(0 0% 100%); /* white */
+  --border: hsl(240 3.7% 15.9%); /* zinc-800 */
 }
 
 .dark {
@@ -70,6 +75,11 @@
   --sidebar-accent-foreground: hsl(240 4.8% 95.9%); /* zinc-100 */
   --sidebar-border: hsl(240 3.7% 15.9%); /* zinc-800 */
   --sidebar-ring: hsl(217.2 91.2% 59.8%); /* blue-500 */
+
+  /* Toast/Popover variables para dark mode */
+  --popover: hsl(240 10% 3.9%); /* zinc-950 */
+  --popover-foreground: hsl(0 0% 100%); /* white */
+  --border: hsl(240 3.7% 15.9%); /* zinc-800 */
 }
 
 @theme inline {
@@ -91,4 +101,79 @@
   body {
     @apply bg-zinc-950 text-white;
   }
+}
+
+/* Sonner Toast Styles - Fix para toasts apilados sin texto visible */
+[data-sonner-toast]:not([data-type="success"]):not([data-type="error"]):not(
+    [data-type="info"]
+  ):not([data-type="warning"]) {
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  border-color: var(--border) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: var(--popover-foreground) !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast] [data-description] {
+  color: var(--popover-foreground) !important;
+  opacity: 0.8 !important;
+}
+
+[data-sonner-toast] [data-icon] {
+  color: var(--popover-foreground) !important;
+}
+
+[data-sonner-toast][data-styled="true"] {
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+}
+
+[data-sonner-toast][data-styled="true"] [data-title] {
+  color: var(--popover-foreground) !important;
+  opacity: 1 !important;
+}
+
+[data-sonner-toast][data-styled="true"] [data-description] {
+  color: var(--popover-foreground) !important;
+  opacity: 0.8 !important;
+}
+
+[data-sonner-toast][data-styled="true"] [data-icon] {
+  color: var(--popover-foreground) !important;
+}
+
+/* Fix para richColors con toasts apilados */
+[data-sonner-toast][data-type="success"],
+[data-sonner-toast][data-type="success"][data-styled="true"] {
+  background: hsl(142 30% 12%) !important;
+  border-color: hsl(142 76% 36%) !important;
+}
+
+[data-sonner-toast][data-type="error"],
+[data-sonner-toast][data-type="error"][data-styled="true"] {
+  background: hsl(0 30% 12%) !important;
+  border-color: hsl(0 72% 50%) !important;
+}
+
+[data-sonner-toast][data-type="info"],
+[data-sonner-toast][data-type="warning"] {
+  background: var(--popover) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-title],
+[data-sonner-toast][data-type="error"] [data-title],
+[data-sonner-toast][data-type="info"] [data-title],
+[data-sonner-toast][data-type="warning"] [data-title] {
+  color: var(--popover-foreground) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-description],
+[data-sonner-toast][data-type="error"] [data-description],
+[data-sonner-toast][data-type="info"] [data-description],
+[data-sonner-toast][data-type="warning"] [data-description] {
+  color: var(--popover-foreground) !important;
+  opacity: 0.8 !important;
 }

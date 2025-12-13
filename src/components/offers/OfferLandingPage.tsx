@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BlockRenderer } from "@/components/shared/content-blocks";
 import { ContentBlock } from "@/types/content-blocks";
 import { CTAConfig, LeadFormFieldsConfig } from "@/lib/actions/schemas/offer-schemas";
-import { ZenButton, ZenDialog } from "@/components/ui/zen";
+import { ZenButton } from "@/components/ui/zen";
 import Link from "next/link";
 import { trackOfferVisit } from "@/lib/actions/studio/offers/offer-visits.actions";
-import { OfferLeadForm } from "./OfferLeadForm";
 
 // Tipos para objetos globales de tracking
 interface WindowWithDataLayer extends Window {
@@ -69,7 +69,7 @@ export function OfferLandingPage({
   isPreview: isPreviewProp = false,
   isEditMode = false,
 }: OfferLandingPageProps) {
-  const [showLeadFormModal, setShowLeadFormModal] = useState(false);
+  const router = useRouter();
   const [isPreviewFromUrl, setIsPreviewFromUrl] = useState(false);
 
   // Alias para evitar conflictos con el estado interno
@@ -164,72 +164,64 @@ export function OfferLandingPage({
 
   const leadformUrl = `/${studioSlug}/offer/${offerSlug}/leadform`;
 
-  // Tracking de prospecto al abrir modal
+  // Tracking de prospecto al navegar a leadform
   const handleOpenLeadForm = async () => {
-    // Si es preview, solo abrir modal sin trackear
-    if (isPreview) {
-      setShowLeadFormModal(true);
-      return;
-    }
+    // Si es preview, no trackear pero sí navegar
+    if (!isPreview) {
+      // Obtener parámetros UTM de la URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const utmParams = {
+        utm_source: urlParams.get("utm_source") || undefined,
+        utm_medium: urlParams.get("utm_medium") || undefined,
+        utm_campaign: urlParams.get("utm_campaign") || undefined,
+        utm_term: urlParams.get("utm_term") || undefined,
+        utm_content: urlParams.get("utm_content") || undefined,
+      };
 
-    // Obtener parámetros UTM de la URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const utmParams = {
-      utm_source: urlParams.get("utm_source") || undefined,
-      utm_medium: urlParams.get("utm_medium") || undefined,
-      utm_campaign: urlParams.get("utm_campaign") || undefined,
-      utm_term: urlParams.get("utm_term") || undefined,
-      utm_content: urlParams.get("utm_content") || undefined,
-    };
-
-    // Obtener session_id de localStorage o generar uno nuevo
-    let sessionId = localStorage.getItem(`offer_session_${offerId}`);
-    if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem(`offer_session_${offerId}`, sessionId);
-    }
-
-    // Registrar visita como prospecto (intención de contacto)
-    // Usamos "leadform" como tipo ya que es la intención de ver el leadform
-    await trackOfferVisit({
-      offer_id: offerId,
-      visit_type: "leadform", // Tracking de intención de contacto
-      referrer: document.referrer || undefined,
-      ...utmParams,
-      session_id: sessionId,
-    });
-
-    // Disparar evento personalizado para GTM/Facebook Pixel
-    if (typeof window !== "undefined") {
-      const windowWithDataLayer = window as WindowWithDataLayer;
-      const windowWithFbq = window as WindowWithFbq;
-
-      // GTM - Evento de prospecto
-      if (windowWithDataLayer.dataLayer) {
-        windowWithDataLayer.dataLayer.push({
-          event: "offer_leadform_intent",
-          offer_id: offerId,
-          offer_slug: offerSlug,
-          ...utmParams,
-        });
+      // Obtener session_id de localStorage o generar uno nuevo
+      let sessionId = localStorage.getItem(`offer_session_${offerId}`);
+      if (!sessionId) {
+        sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem(`offer_session_${offerId}`, sessionId);
       }
 
-      // Facebook Pixel - InitiateCheckout (intención)
-      if (windowWithFbq.fbq) {
-        windowWithFbq.fbq("track", "InitiateCheckout", {
-          content_name: offerSlug,
-          content_category: "offer",
-          ...utmParams,
-        });
+      // Registrar visita como prospecto (intención de contacto)
+      await trackOfferVisit({
+        offer_id: offerId,
+        visit_type: "leadform",
+        referrer: document.referrer || undefined,
+        ...utmParams,
+        session_id: sessionId,
+      });
+
+      // Disparar evento personalizado para GTM/Facebook Pixel
+      if (typeof window !== "undefined") {
+        const windowWithDataLayer = window as WindowWithDataLayer;
+        const windowWithFbq = window as WindowWithFbq;
+
+        // GTM - Evento de prospecto
+        if (windowWithDataLayer.dataLayer) {
+          windowWithDataLayer.dataLayer.push({
+            event: "offer_leadform_intent",
+            offer_id: offerId,
+            offer_slug: offerSlug,
+            ...utmParams,
+          });
+        }
+
+        // Facebook Pixel - InitiateCheckout (intención)
+        if (windowWithFbq.fbq) {
+          windowWithFbq.fbq("track", "InitiateCheckout", {
+            content_name: offerSlug,
+            content_category: "offer",
+            ...utmParams,
+          });
+        }
       }
     }
 
-    setShowLeadFormModal(true);
-  };
-
-  // Manejar cierre del modal después de envío exitoso
-  const handleFormSuccess = () => {
-    setShowLeadFormModal(false);
+    // Navegar a la ruta persistente del leadform
+    router.push(leadformUrl);
   };
 
   return (
@@ -318,42 +310,6 @@ export function OfferLandingPage({
           />
         </div>
       )}
-
-      {/* Modal de Leadform */}
-      {leadformData && (
-        <ZenDialog
-          isOpen={showLeadFormModal}
-          onClose={() => setShowLeadFormModal(false)}
-          title={leadformData.title || "Solicita información"}
-          description={leadformData.description || undefined}
-          maxWidth="md"
-          showCloseButton={true}
-          closeOnClickOutside={true}
-          onCancel={() => setShowLeadFormModal(false)}
-          cancelLabel="Cerrar"
-        >
-          <OfferLeadForm
-            studioSlug={studioSlug}
-            studioId={leadformData.studioId}
-            offerId={offerId}
-            offerSlug={offerSlug}
-            title={leadformData.title}
-            description={leadformData.description}
-            successMessage={leadformData.successMessage}
-            successRedirectUrl={leadformData.successRedirectUrl}
-            fieldsConfig={leadformData.fieldsConfig}
-            eventTypeId={leadformData.eventTypeId}
-            enableInterestDate={leadformData.enableInterestDate}
-            validateWithCalendar={leadformData.validateWithCalendar}
-            emailRequired={leadformData.emailRequired}
-            coverUrl={leadformData.coverUrl}
-            coverType={leadformData.coverType}
-            isPreview={isPreview}
-            onSuccess={handleFormSuccess}
-            isModal={true}
-          />
-        </ZenDialog>
-      )}
     </div>
   );
 }
@@ -383,15 +339,15 @@ function CTASection({
   onOpenLeadForm,
   isPreview = false,
 }: CTASectionProps) {
-  const handleCTAClick = (e: React.MouseEvent) => {
+  const handleCTAClick = (e: React.MouseEvent, button: CTASectionProps['buttons'][0]) => {
     // Si es preview, no hacer nada
     if (isPreview) {
       e.preventDefault();
       return;
     }
 
-    // Si hay modal disponible, usar modal en lugar de navegar
-    if (onOpenLeadForm && !buttons.find(b => b.id === buttons[0]?.id)?.href) {
+    // Si hay handler de leadform disponible y el botón no tiene href personalizado, usarlo (navega a ruta persistente)
+    if (onOpenLeadForm && !button.href) {
       e.preventDefault();
       onOpenLeadForm();
       return;
@@ -425,7 +381,7 @@ function CTASection({
         }`}
     >
       {buttons.map((button) => {
-        // Si hay modal y el botón no tiene href personalizado, usar botón con onClick
+        // Si hay handler de leadform y el botón no tiene href personalizado, usar botón con onClick
         if (onOpenLeadForm && !button.href) {
           return (
             <ZenButton
@@ -433,7 +389,7 @@ function CTASection({
               variant={button.variant}
               size={isFloating ? "md" : "lg"}
               className="min-w-[200px]"
-              onClick={handleCTAClick}
+              onClick={(e) => handleCTAClick(e, button)}
               disabled={isPreview}
             >
               {button.text}
@@ -441,12 +397,12 @@ function CTASection({
           );
         }
 
-        // Si tiene href personalizado o no hay modal, usar Link
+        // Si tiene href personalizado o no hay handler, usar Link
         return (
           <Link
             key={button.id}
             href={button.href || leadformUrl}
-            onClick={handleCTAClick}
+            onClick={(e) => handleCTAClick(e, button)}
             className={isPreview ? 'pointer-events-none' : ''}
           >
             <ZenButton

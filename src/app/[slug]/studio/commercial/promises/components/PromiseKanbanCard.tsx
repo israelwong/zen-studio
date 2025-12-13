@@ -33,10 +33,10 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
     const style = {
         transform: CSS.Transform.toString(transform),
         transition: isDragging 
-            ? 'none' // Sin transición durante drag para seguimiento suave del cursor
-            : `${transition}, all 0.2s cubic-bezier(0.18, 0.67, 0.6, 1.22)`, // Transición suave al soltar
-        opacity: isDragging ? 0 : 1, // Ocultar card original durante drag (se ve en DragOverlay)
-        cursor: isDragging ? 'grabbing' : 'grab',
+            ? 'none' 
+            : `${transition}, all 0.2s cubic-bezier(0.18, 0.67, 0.6, 1.22)`,
+        opacity: isDragging ? 0 : 1,
+        cursor: isDragging ? 'grabbing' : 'pointer',
     };
 
     // Obtener fecha de evento (event_date tiene prioridad, luego defined_date, luego interested_dates)
@@ -195,6 +195,20 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
         }, 0);
     };
 
+    const handleClick = (e: React.MouseEvent) => {
+        // Si hay arrastre activo, prevenir el clic
+        if (isDragging) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+        }
+        
+        // Ejecutar onClick normalmente
+        if (onClick) {
+            onClick(promise);
+        }
+    };
+
     return (
         <>
             <div
@@ -203,21 +217,21 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                 {...attributes}
                 {...listeners}
                 data-id={promise.promise_id || promise.id}
-                onClick={() => onClick?.(promise)}
-                className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 cursor-pointer transition-all duration-200 hover:shadow-lg relative"
+                onClick={handleClick}
+                className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 hover:shadow-lg relative"
             >
                 {/* Icono de archivar en esquina superior derecha - mostrar solo si NO está archivada */}
                 {promise.promise_id && studioSlug && !isArchived && (
                     <button
                         onClick={handleArchiveClick}
-                        className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-zinc-700/50 transition-colors text-zinc-400 hover:text-zinc-300 z-10"
+                        className="absolute top-2 right-2 p-1.5 rounded-md hover:bg-zinc-700/50 transition-colors text-zinc-400 hover:text-zinc-300 z-20"
                         title="Archivar promesa"
                     >
                         <Archive className="h-4 w-4" />
                     </button>
                 )}
 
-                <div className="space-y-2.5">
+                <div className="space-y-2.5 relative z-10">
                     {/* Header: Avatar, Nombre y Tipo de evento */}
                     <div className="flex items-center gap-2.5">
                         {/* Avatar */}

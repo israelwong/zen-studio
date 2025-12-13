@@ -102,9 +102,7 @@ export function PromisesKanban({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // Reducido de 8 a 5 para activación más rápida
-        tolerance: 5,
-        delay: 0, // Sin delay para respuesta inmediata
+        distance: 8, // Activar drag después de 8px de movimiento
       },
     }),
     useSensor(KeyboardSensor, {

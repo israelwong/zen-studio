@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import Image from "next/image";
+import Link from "next/link";
 import { getPublicOffer } from "@/lib/actions/studio/offers/offers.actions";
 import { OfferLeadForm } from "@/components/offers/OfferLeadForm";
 import { TrackingScripts } from "@/components/offers/TrackingScripts";
@@ -81,27 +81,8 @@ export default async function PublicOfferLeadFormPage({
           ]}
         />
 
-        {/* Wrapper con fondo de portada + overlay */}
-        <div className="min-h-screen relative">
-          {/* Imagen de fondo con overlay */}
-          <div className="fixed inset-0 -z-10">
-            {offer.cover_media_url ? (
-              <>
-                <Image
-                  src={offer.cover_media_url}
-                  alt="Background"
-                  fill
-                  className="object-cover object-top"
-                  priority
-                />
-                {/* Overlay oscuro + blur */}
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-2xl" />
-              </>
-            ) : (
-              <div className="absolute inset-0 bg-zinc-950" />
-            )}
-          </div>
-
+        {/* Wrapper con fondo */}
+        <div className="min-h-screen relative bg-zinc-950">
           {/* Header sticky fixed en top */}
           <OfferHeader
             studioSlug={slug}
@@ -111,37 +92,36 @@ export default async function PublicOfferLeadFormPage({
           />
 
           {/* Container mobile centrado con padding-top para header */}
-          <div className="max-w-md mx-auto pt-[100px] pb-8 px-4 md:px-0 md:py-24">
-            {/* Wrapper con scroll y glassmorphism */}
-            <div className="bg-zinc-950/50 backdrop-blur-md rounded-xl overflow-hidden">
-              {/* Leadform */}
-              <OfferLeadForm
-                studioSlug={slug}
-                studioId={offer.studio_id}
-                offerId={offer.id}
-                offerSlug={offer.slug}
-                title={offer.leadform.title}
-                description={offer.leadform.description}
-                successMessage={offer.leadform.success_message}
-                successRedirectUrl={offer.leadform.success_redirect_url || undefined}
-                fieldsConfig={offer.leadform.fields_config}
-                eventTypeId={offer.leadform.event_type_id || null}
-                enableInterestDate={offer.leadform.enable_interest_date}
-                validateWithCalendar={offer.leadform.validate_with_calendar}
-                emailRequired={offer.leadform.email_required}
-                coverUrl={offer.cover_media_url}
-                coverType={offer.cover_media_type}
-              />
+          <div className="max-w-md mx-auto min-h-screen pt-[81px] px-4 md:px-0 md:py-24">
+            {/* Leadform con su propio fondo */}
+            <OfferLeadForm
+              studioSlug={slug}
+              studioId={offer.studio_id}
+              offerId={offer.id}
+              offerSlug={offer.slug}
+              title={offer.leadform.title}
+              description={offer.leadform.description}
+              successMessage={offer.leadform.success_message}
+              successRedirectUrl={offer.leadform.success_redirect_url || undefined}
+              fieldsConfig={offer.leadform.fields_config}
+              eventTypeId={offer.leadform.event_type_id || null}
+              enableInterestDate={offer.leadform.enable_interest_date}
+              validateWithCalendar={offer.leadform.validate_with_calendar}
+              emailRequired={offer.leadform.email_required}
+              coverUrl={offer.cover_media_url}
+              coverType={offer.cover_media_type}
+              isPreview={isPreview}
+              isModal={false}
+            />
 
-              {/* Footer */}
-              <div className="border-t border-zinc-800/30 p-6 text-center">
-                <p className="text-xs text-zinc-500 mb-1">
-                  Powered by <Link href="/" className="text-zinc-400 font-medium hover:text-zinc-300 transition-colors">Zen México</Link>
-                </p>
-                <p className="text-xs text-zinc-600">
-                  © {new Date().getFullYear()} Todos los derechos reservados
-                </p>
-              </div>
+            {/* Footer */}
+            <div className="border-t border-zinc-800/30 p-6 text-center">
+              <p className="text-xs text-zinc-500 mb-1">
+                Powered by <Link href="/" className="text-zinc-400 font-medium hover:text-zinc-300 transition-colors">Zen México</Link>
+              </p>
+              <p className="text-xs text-zinc-600">
+                © {new Date().getFullYear()} Todos los derechos reservados
+              </p>
             </div>
           </div>
         </div>
@@ -177,9 +157,29 @@ export async function generateMetadata({
       offer.leadform?.description ||
       `Completa el formulario para obtener más información sobre ${offer.name}`;
 
+    // Obtener logo del estudio para favicon dinámico
+    const studio = await prisma.studios.findUnique({
+      where: { slug },
+      select: { logo_url: true },
+    });
+
+    // Configurar favicon dinámico usando el logo del studio
+    const icons = studio?.logo_url ? {
+      icon: [
+        { url: studio.logo_url, type: 'image/png' },
+        { url: studio.logo_url, sizes: '32x32', type: 'image/png' },
+        { url: studio.logo_url, sizes: '16x16', type: 'image/png' },
+      ],
+      apple: [
+        { url: studio.logo_url, sizes: '180x180', type: 'image/png' },
+      ],
+      shortcut: studio.logo_url,
+    } : undefined;
+
     return {
       title,
       description,
+      icons, // ← Favicon dinámico
       robots: {
         index: false, // No indexar formularios
         follow: false,

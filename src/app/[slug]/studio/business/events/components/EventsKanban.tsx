@@ -81,7 +81,7 @@ export function EventsKanban({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // Activar drag después de 8px de movimiento
       },
     }),
     useSensor(KeyboardSensor, {
@@ -354,9 +354,17 @@ export function EventsKanban({
           )}
         </div>
 
-        <DragOverlay style={{ cursor: 'grabbing' }}>
+        <DragOverlay
+          style={{
+            cursor: 'grabbing',
+            transform: 'scale(1.05) rotate(3deg)',
+            opacity: 0.95,
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+          }}
+        >
           {activeEvent ? (
-            <div className="opacity-90 rotate-2 shadow-2xl">
+            <div className="opacity-95 scale-105 rotate-3 shadow-2xl transform-gpu will-change-transform animate-in fade-in-0 zoom-in-95 duration-200">
               <EventKanbanCard event={activeEvent} studioSlug={studioSlug} />
             </div>
           ) : null}
@@ -398,14 +406,14 @@ function KanbanColumn({
       ref={setNodeRef}
       className={`${isFlexible
         ? 'flex-1 min-w-[280px]'
-        : 'w-[280px] min-w-[280px] max-w-[280px] flex-shrink-0'
-        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-200 ${isOver ? 'bg-zinc-800/70' : 'bg-zinc-900/50 border-zinc-700'
+        : 'w-[280px] min-w-[280px] max-w-[280px] shrink-0'
+        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-200 ${isOver
+          ? 'bg-zinc-800/90 border-2 scale-[1.02]'
+          : 'bg-zinc-900/50 border-zinc-700'
         }`}
       style={{
         borderColor: isOver ? stage.color : undefined,
-        boxShadow: isOver
-          ? `0 10px 15px -3px ${stage.color}20, 0 4px 6px -2px ${stage.color}10`
-          : undefined,
+        boxShadow: isOver ? `0 0 0 2px ${stage.color}80` : undefined,
       }}
     >
       {/* Header de columna */}
@@ -447,8 +455,24 @@ function KanbanColumn({
         </SortableContext>
 
         {events.length === 0 && (
-          <div className="text-center py-8 text-zinc-500 text-sm">
-            Sin eventos
+          <div
+            className="flex flex-col items-center justify-center h-full py-12 text-center text-zinc-500 text-sm"
+            style={{ minHeight: '200px' }}
+          >
+            <div
+              className="relative flex items-center justify-center w-24 h-24 rounded-full mb-4"
+              style={{ backgroundColor: `${stage.color}20` }}
+            >
+              <div
+                className="absolute inset-3 rounded-full border-2 border-dashed"
+                style={{ borderColor: `${stage.color}80` }}
+              />
+              <span className="text-3xl" role="img" aria-label="Empty">
+                📅
+              </span>
+            </div>
+            <p className="font-semibold text-zinc-400 mb-1">Sin eventos</p>
+            <p className="text-zinc-500">Arrastra aquí para mover</p>
           </div>
         )}
       </div>

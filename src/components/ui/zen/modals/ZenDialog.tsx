@@ -96,7 +96,7 @@ export function ZenDialog({
       {/* Overlay separado - SIEMPRE bloquea clics */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200",
+          "fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0"
         )}
         style={{
@@ -124,37 +124,44 @@ export function ZenDialog({
       >
         <div
           className={cn(
-            'bg-zinc-900 rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col relative pointer-events-auto',
+            'rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col relative pointer-events-auto',
+            title ? 'bg-zinc-900' : 'bg-zinc-950/50 backdrop-blur-md border border-zinc-800/50',
             maxWidthClasses[maxWidth]
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Header */}
-          <ZenCardHeader className="flex items-center justify-between border-b border-zinc-700">
-            <div>
-              <ZenCardTitle className="text-xl font-semibold text-zinc-300">
-                {title}
-              </ZenCardTitle>
-              {description && (
-                <p className="text-sm text-zinc-400 mt-1">
-                  {description}
-                </p>
+          {/* Header - Solo mostrar si hay título */}
+          {title && (
+            <ZenCardHeader className="flex items-center justify-between border-b border-zinc-700">
+              <div>
+                <ZenCardTitle className="text-xl font-semibold text-zinc-300">
+                  {title}
+                </ZenCardTitle>
+                {description && (
+                  <p className="text-sm text-zinc-400 mt-1">
+                    {description}
+                  </p>
+                )}
+              </div>
+              {showCloseButton && (
+                <ZenButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="text-zinc-400 hover:text-zinc-300"
+                >
+                  <X className="h-5 w-5" />
+                </ZenButton>
               )}
-            </div>
-            {showCloseButton && (
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-zinc-400 hover:text-zinc-300"
-              >
-                <X className="h-5 w-5" />
-              </ZenButton>
-            )}
-          </ZenCardHeader>
+            </ZenCardHeader>
+          )}
 
           {/* Content */}
-          <ZenCardContent className="p-6 overflow-y-auto flex-1 min-h-0" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          <ZenCardContent className={cn(
+            'overflow-y-auto flex-1 min-h-0',
+            title ? 'p-6' : 'p-6',
+            title ? '' : 'border-0'
+          )} style={{ maxHeight: title ? 'calc(90vh - 140px)' : 'calc(90vh - 80px)' }}>
             {children}
           </ZenCardContent>
 

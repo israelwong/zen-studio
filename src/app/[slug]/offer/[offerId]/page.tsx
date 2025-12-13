@@ -163,7 +163,7 @@ export default async function PublicOfferPage({
                         enableInterestDate: offer.leadform.enable_interest_date,
                         validateWithCalendar: offer.leadform.validate_with_calendar,
                         emailRequired: offer.leadform.email_required,
-                        coverUrl: null, // No mostrar cover en modal
+                        coverUrl: null,
                         coverType: null,
                       }
                       : undefined
@@ -215,9 +215,29 @@ export async function generateMetadata({
       offer.description ||
       `Oferta especial`;
 
+    // Obtener logo del estudio para favicon dinámico
+    const studio = await prisma.studios.findUnique({
+      where: { slug },
+      select: { logo_url: true },
+    });
+
+    // Configurar favicon dinámico usando el logo del studio
+    const icons = studio?.logo_url ? {
+      icon: [
+        { url: studio.logo_url, type: 'image/png' },
+        { url: studio.logo_url, sizes: '32x32', type: 'image/png' },
+        { url: studio.logo_url, sizes: '16x16', type: 'image/png' },
+      ],
+      apple: [
+        { url: studio.logo_url, sizes: '180x180', type: 'image/png' },
+      ],
+      shortcut: studio.logo_url,
+    } : undefined;
+
     return {
       title,
       description,
+      icons, // ← Favicon dinámico
       openGraph: {
         title,
         description,

@@ -25,8 +25,25 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition: isDragging ? transition : `${transition}, all 0.2s ease-in-out`,
-    opacity: isDragging ? 0.5 : 1,
+    transition: isDragging
+      ? 'none'
+      : `${transition}, all 0.2s cubic-bezier(0.18, 0.67, 0.6, 1.22)`,
+    opacity: isDragging ? 0 : 1,
+    cursor: isDragging ? 'grabbing' : 'pointer',
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Si hay arrastre activo, prevenir el clic
+    if (isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // Ejecutar onClick normalmente
+    if (onClick) {
+      onClick(event);
+    }
   };
 
   const formatDate = (date: Date): string => {
@@ -62,10 +79,10 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
       {...attributes}
       {...listeners}
       data-id={event.id}
-      onClick={() => onClick?.(event)}
-      className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 cursor-pointer transition-all duration-200 hover:shadow-lg"
+      onClick={handleClick}
+      className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 hover:shadow-lg relative"
     >
-      <div className="space-y-2.5">
+      <div className="space-y-2.5 relative z-10">
         {/* Header: Avatar, Nombre y Tipo de evento */}
         <div className="flex items-center gap-2.5">
           {/* Avatar */}
