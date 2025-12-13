@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
+import { ZenBadge } from '@/components/ui/zen';
 import {
-  ZenSheet,
-  ZenSheetContent,
-  ZenSheetHeader,
-  ZenSheetTitle,
-  ZenSheetDescription,
-  ZenBadge,
-} from '@/components/ui/zen';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/shadcn/sheet';
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 import { Check } from 'lucide-react';
 
@@ -53,14 +53,14 @@ export function ComparadorSheet({
   const serviciosArray = Array.from(allServicios);
 
   return (
-    <ZenSheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <ZenSheetContent className="w-full sm:max-w-6xl overflow-y-auto">
-        <ZenSheetHeader>
-          <ZenSheetTitle className="text-2xl">Comparador de Opciones</ZenSheetTitle>
-          <ZenSheetDescription>
+    <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full sm:max-w-6xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="text-2xl">Comparador de Opciones</SheetTitle>
+          <SheetDescription>
             Compara las características y servicios de todas las opciones disponibles
-          </ZenSheetDescription>
-        </ZenSheetHeader>
+          </SheetDescription>
+        </SheetHeader>
 
         <div className="py-6">
           <div className="overflow-x-auto">
@@ -164,8 +164,8 @@ export function ComparadorSheet({
             </p>
           </div>
         </div>
-      </ZenSheetContent>
-    </ZenSheet>
+      </SheetContent>
+    </Sheet>
   );
 }
 

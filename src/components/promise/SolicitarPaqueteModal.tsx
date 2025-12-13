@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { Send, Loader2 } from 'lucide-react';
+import { ZenButton } from '@/components/ui/zen';
 import {
-  ZenModal,
-  ZenModalContent,
-  ZenModalHeader,
-  ZenModalTitle,
-  ZenModalDescription,
-  ZenButton,
-} from '@/components/ui/zen';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/shadcn/dialog';
 import type { PublicPaquete } from '@/types/public-promise';
 import { toast } from 'sonner';
 
@@ -64,14 +64,14 @@ export function SolicitarPaqueteModal({
   };
 
   return (
-    <ZenModal open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <ZenModalContent>
-        <ZenModalHeader>
-          <ZenModalTitle>Solicitar Paquete</ZenModalTitle>
-          <ZenModalDescription>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Solicitar Paquete</DialogTitle>
+          <DialogDescription>
             Confirma que deseas solicitar información sobre este paquete
-          </ZenModalDescription>
-        </ZenModalHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Resumen de paquete */}
@@ -124,8 +124,8 @@ export function SolicitarPaqueteModal({
             </ZenButton>
           </div>
         </div>
-      </ZenModalContent>
-    </ZenModal>
+      </DialogContent>
+    </Dialog>
   );
 }
 

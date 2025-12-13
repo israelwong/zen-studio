@@ -2,14 +2,14 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { ZenButton } from '@/components/ui/zen';
 import {
-  ZenModal,
-  ZenModalContent,
-  ZenModalHeader,
-  ZenModalTitle,
-  ZenModalDescription,
-  ZenButton,
-} from '@/components/ui/zen';
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/shadcn/dialog';
 import type { PublicCotizacion } from '@/types/public-promise';
 import { toast } from 'sonner';
 
@@ -69,14 +69,14 @@ export function AutorizarCotizacionModal({
   };
 
   return (
-    <ZenModal open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
-      <ZenModalContent>
-        <ZenModalHeader>
-          <ZenModalTitle>Autorizar Cotización</ZenModalTitle>
-          <ZenModalDescription>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Autorizar Cotización</DialogTitle>
+          <DialogDescription>
             Confirma que deseas autorizar esta cotización para tu evento
-          </ZenModalDescription>
-        </ZenModalHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         <div className="space-y-6 py-4">
           {/* Resumen de cotización */}
@@ -129,8 +129,8 @@ export function AutorizarCotizacionModal({
             </ZenButton>
           </div>
         </div>
-      </ZenModalContent>
-    </ZenModal>
+      </DialogContent>
+    </Dialog>
   );
 }
 

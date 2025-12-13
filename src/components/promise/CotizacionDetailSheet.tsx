@@ -1,17 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, FileCheck, CheckCircle2, AlertCircle, Tag as TagIcon } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Tag as TagIcon } from 'lucide-react';
+import { ZenButton, ZenBadge, SeparadorZen } from '@/components/ui/zen';
 import {
-  ZenSheet,
-  ZenSheetContent,
-  ZenSheetHeader,
-  ZenSheetTitle,
-  ZenSheetDescription,
-  ZenButton,
-  ZenBadge,
-  SeparadorZen,
-} from '@/components/ui/zen';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/shadcn/sheet';
 import type { PublicCotizacion } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { AutorizarCotizacionModal } from './AutorizarCotizacionModal';
@@ -52,20 +50,20 @@ export function CotizacionDetailSheet({
 
   return (
     <>
-      <ZenSheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <ZenSheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <ZenSheetHeader>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
             <div className="flex items-start justify-between pr-6">
               <div className="flex-1">
-                <ZenSheetTitle className="text-2xl">{cotizacion.name}</ZenSheetTitle>
+                <SheetTitle className="text-2xl">{cotizacion.name}</SheetTitle>
                 {cotizacion.description && (
-                  <ZenSheetDescription className="mt-2 text-base">
+                  <SheetDescription className="mt-2 text-base">
                     {cotizacion.description}
-                  </ZenSheetDescription>
+                  </SheetDescription>
                 )}
               </div>
             </div>
-          </ZenSheetHeader>
+          </SheetHeader>
 
           <div className="space-y-6 py-6">
             {/* Precio principal */}
@@ -166,8 +164,8 @@ export function CotizacionDetailSheet({
               </ZenButton>
             </div>
           </div>
-        </ZenSheetContent>
-      </ZenSheet>
+        </SheetContent>
+      </Sheet>
 
       {/* Modal de autorización */}
       {showAutorizarModal && (

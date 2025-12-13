@@ -2,16 +2,14 @@
 
 import React, { useState } from 'react';
 import { Clock, Send } from 'lucide-react';
+import { ZenButton, SeparadorZen } from '@/components/ui/zen';
 import {
-  ZenSheet,
-  ZenSheetContent,
-  ZenSheetHeader,
-  ZenSheetTitle,
-  ZenSheetDescription,
-  ZenButton,
-  ZenBadge,
-  SeparadorZen,
-} from '@/components/ui/zen';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/shadcn/sheet';
 import type { PublicPaquete } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { SolicitarPaqueteModal } from './SolicitarPaqueteModal';
@@ -44,20 +42,20 @@ export function PaqueteDetailSheet({
 
   return (
     <>
-      <ZenSheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-        <ZenSheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <ZenSheetHeader>
+      <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader>
             <div className="flex items-start justify-between pr-6">
               <div className="flex-1">
-                <ZenSheetTitle className="text-2xl">{paquete.name}</ZenSheetTitle>
+                <SheetTitle className="text-2xl">{paquete.name}</SheetTitle>
                 {paquete.description && (
-                  <ZenSheetDescription className="mt-2 text-base">
+                  <SheetDescription className="mt-2 text-base">
                     {paquete.description}
-                  </ZenSheetDescription>
+                  </SheetDescription>
                 )}
               </div>
             </div>
-          </ZenSheetHeader>
+          </SheetHeader>
 
           <div className="space-y-6 py-6">
             {/* Precio principal */}
@@ -131,8 +129,8 @@ export function PaqueteDetailSheet({
               </ZenButton>
             </div>
           </div>
-        </ZenSheetContent>
-      </ZenSheet>
+        </SheetContent>
+      </Sheet>
 
       {/* Modal de solicitud */}
       {showSolicitarModal && (
