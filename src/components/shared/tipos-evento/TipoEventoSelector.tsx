@@ -12,7 +12,7 @@ import { toast } from "sonner";
 interface TipoEventoSelectorProps {
   studioSlug: string;
   selectedEventTypeId: string | null;
-  onChange: (eventTypeId: string | null) => void;
+  onChange: (eventTypeId: string | null, eventTypeName?: string | null) => void;
   label?: string;
   hint?: string;
   showBadge?: boolean;
@@ -59,7 +59,7 @@ export function TipoEventoSelector({
 
   const handleQuickAddSuccess = (newType: TipoEventoData) => {
     setEventTypes([...eventTypes, newType]);
-    onChange(newType.id);
+    onChange(newType.id, newType.nombre);
     toast.success(`Tipo de evento "${newType.nombre}" creado`);
     setShowQuickAdd(false);
   };
@@ -137,7 +137,7 @@ export function TipoEventoSelector({
               return (
                 <div
                   key={type.id}
-                  onClick={() => onChange(type.id)}
+                  onClick={() => onChange(type.id, type.nombre)}
                   className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected
                     ? "bg-emerald-500/10 border-emerald-500/30 ring-1 ring-emerald-500/20"
                     : "bg-zinc-900 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-900/50"

@@ -25,6 +25,7 @@ interface BasicInfoEditorProps {
   isValidatingSlug: boolean;
   slugHint: string | null;
   mode?: "create" | "edit";
+  onEventTypeChange?: (eventTypeId: string | null, eventTypeName?: string | null) => void;
 }
 
 // Helper para generar slug desde nombre
@@ -43,6 +44,7 @@ export function BasicInfoEditor({
   isValidatingSlug,
   slugHint,
   mode = "create",
+  onEventTypeChange,
 }: BasicInfoEditorProps) {
   const { formData, updateFormData, savedOfferId, offerId } = useOfferEditor();
   const { uploadFiles } = useMediaUpload();
@@ -241,7 +243,12 @@ export function BasicInfoEditor({
         <TipoEventoSelector
           studioSlug={studioSlug}
           selectedEventTypeId={formData.event_type_id}
-          onChange={(eventTypeId) => updateFormData({ event_type_id: eventTypeId })}
+          onChange={(eventTypeId, eventTypeName) => {
+            updateFormData({ event_type_id: eventTypeId });
+            if (onEventTypeChange) {
+              onEventTypeChange(eventTypeId, eventTypeName);
+            }
+          }}
           label="Tipo de Evento"
           hint="Asocia esta oferta con el catálogo y promesas del tipo de evento"
           showBadge={false}

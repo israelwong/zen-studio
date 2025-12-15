@@ -7,7 +7,7 @@ import { OfferCardPreview } from "@/components/previews";
 import { useOfferEditor } from "../OfferEditorContext";
 import { checkOfferSlugExists } from "@/lib/actions/studio/offers/offers.actions";
 import { obtenerCondicionComercial } from "@/lib/actions/studio/config/condiciones-comerciales.actions";
-import { obtenerTipoEventoPorId } from "@/lib/actions/studio/negocio/tipos-evento.actions";
+import { obtenerTipoEventoPorId } from "@/lib/actions/studio/negocio/tipos-evento.actions"; // Solo para inicialización en modo edición
 
 interface BasicInfoTabProps {
   studioSlug: string;
@@ -29,6 +29,12 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
   const [slugHint, setSlugHint] = useState<string | null>(null);
   const [discountPercentage, setDiscountPercentage] = useState<number | null>(null);
   const [eventTypeName, setEventTypeName] = useState<string | null>(null);
+
+  // Callback mejorado para recibir tanto ID como nombre del tipo de evento
+  const handleEventTypeChange = (eventTypeId: string | null, eventTypeName?: string | null) => {
+    updateFormData({ event_type_id: eventTypeId });
+    setEventTypeName(eventTypeName || null);
+  };
 
   // Cargar discount_percentage cuando cambia business_term_id
   useEffect(() => {
@@ -54,29 +60,23 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
     loadDiscountPercentage();
   }, [formData.business_term_id, studioSlug]);
 
-  // Cargar nombre del tipo de evento cuando cambia event_type_id
+  // Cargar nombre del tipo de evento al inicializar (solo en modo edición)
   useEffect(() => {
-    const loadEventTypeName = async () => {
-      if (!formData.event_type_id) {
-        setEventTypeName(null);
-        return;
-      }
-
-      try {
-        const result = await obtenerTipoEventoPorId(formData.event_type_id);
-        if (result.success && result.data) {
-          setEventTypeName(result.data.nombre);
-        } else {
-          setEventTypeName(null);
+    if (mode === "edit" && formData.event_type_id && !eventTypeName) {
+      const loadEventTypeName = async () => {
+        try {
+          // Solo necesitamos el nombre, no los paquetes
+          const result = await obtenerTipoEventoPorId(formData.event_type_id!, false);
+          if (result.success && result.data) {
+            setEventTypeName(result.data.nombre);
+          }
+        } catch (error) {
+          console.error("Error loading event type on init:", error);
         }
-      } catch (error) {
-        console.error("Error loading event type:", error);
-        setEventTypeName(null);
-      }
-    };
-
-    loadEventTypeName();
-  }, [formData.event_type_id]);
+      };
+      loadEventTypeName();
+    }
+  }, [formData.event_type_id, mode, eventTypeName]);
 
   // Validar slug único cuando cambia
   useEffect(() => {
@@ -141,6 +141,7 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
               isValidatingSlug={isValidatingSlug}
               slugHint={slugHint}
               mode={mode}
+              onEventTypeChange={handleEventTypeChange}
             />
 
             {/* Botones de acción */}

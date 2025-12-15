@@ -381,12 +381,13 @@ export async function actualizarOrdenTiposEvento(
  * Obtener un tipo de evento por ID
  */
 export async function obtenerTipoEventoPorId(
-    tipoId: string
+    tipoId: string,
+    includePackages: boolean = false
 ): Promise<ActionResponse<TipoEventoData>> {
     try {
         const tipoEvento = await prisma.studio_event_types.findUnique({
             where: { id: tipoId },
-            include: {
+            include: includePackages ? {
                 packages: {
                     select: {
                         id: true,
@@ -395,7 +396,7 @@ export async function obtenerTipoEventoPorId(
                         status: true,
                     },
                 },
-            },
+            } : undefined,
         });
 
         if (!tipoEvento) {
@@ -415,12 +416,12 @@ export async function obtenerTipoEventoPorId(
                 orden: tipoEvento.order,
                 createdAt: tipoEvento.createdAt,
                 updatedAt: tipoEvento.updatedAt,
-                paquetes: tipoEvento.paquetes.map((p) => ({
+                paquetes: includePackages && tipoEvento.packages ? tipoEvento.packages.map((p) => ({
                     id: p.id,
                     nombre: p.name,
                     precio: p.precio || 0,
                     status: p.status,
-                })),
+                })) : [],
             },
         };
     } catch (error) {
