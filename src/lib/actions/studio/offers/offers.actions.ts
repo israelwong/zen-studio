@@ -1,8 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { retryDatabaseOperation } from "@/lib/actions/utils/database-retry";
+import { z } from "zod";
 import {
   CreateOfferSchema,
   UpdateOfferSchema,
@@ -350,15 +352,16 @@ export async function updateOffer(
         updateData.cover_media_url = validatedData.cover_media_url ?? null;
       if ('cover_media_type' in validatedData)
         updateData.cover_media_type = validatedData.cover_media_type ?? null;
-      if (validatedData.is_active !== undefined)
+      // Solo actualizar campos que están explícitamente presentes en data (no defaults de Zod)
+      if ('is_active' in data)
         updateData.is_active = validatedData.is_active;
-      if (validatedData.is_permanent !== undefined)
+      if ('is_permanent' in data)
         updateData.is_permanent = validatedData.is_permanent;
-      if (validatedData.has_date_range !== undefined)
+      if ('has_date_range' in data)
         updateData.has_date_range = validatedData.has_date_range;
-      if ('start_date' in validatedData)
+      if ('start_date' in data)
         updateData.start_date = validatedData.start_date ?? null;
-      if ('end_date' in validatedData)
+      if ('end_date' in data)
         updateData.end_date = validatedData.end_date ?? null;
       if ('business_term_id' in validatedData)
         updateData.business_term_id = validatedData.business_term_id ?? null;
@@ -525,10 +528,20 @@ export async function updateOffer(
           : undefined,
       };
 
+      // Revalidar perfil público y página de oferta cuando se actualiza is_active
+      if (validatedData.is_active !== undefined) {
+        revalidatePath(`/${studioSlug}`);
+        revalidatePath(`/${studioSlug}/offer/${mappedOffer.slug}`);
+      }
+
       return { success: true, data: mappedOffer };
     });
   } catch (error) {
     console.error("[updateOffer] Error:", error);
+    if (error instanceof z.ZodError) {
+      console.error("[updateOffer] Validation errors:", error.errors);
+      return { success: false, error: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') };
+    }
     if (error instanceof Error) {
       return { success: false, error: error.message };
     }
