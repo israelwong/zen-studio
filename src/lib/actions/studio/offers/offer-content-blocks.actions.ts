@@ -103,6 +103,7 @@ export async function batchUpdateOfferContentBlocks(
 
             // Eliminar bloques que ya no están en la lista
             const blocksToDelete = Array.from(existingBlockIds).filter(id => !incomingBlockIds.has(id));
+            const blocksToDeleteSet = new Set(blocksToDelete);
             if (blocksToDelete.length > 0) {
                 await tx.studio_offer_content_blocks.deleteMany({
                     where: {
@@ -114,65 +115,135 @@ export async function batchUpdateOfferContentBlocks(
 
             // Actualizar o crear bloques
             for (const block of blocks) {
-                if (block.id && existingBlockIds.has(block.id)) {
-                    // Actualizar bloque existente
-                    await tx.studio_offer_content_blocks.update({
-                        where: { id: block.id },
-                        data: {
-                            type: block.type,
-                            title: block.title || null,
-                            description: block.description || null,
-                            presentation: block.presentation,
-                            order: block.order,
-                            config: block.config || null,
-                        },
-                    });
+                if (block.id && existingBlockIds.has(block.id) && !blocksToDeleteSet.has(block.id)) {
+                    try {
+                        // Actualizar bloque existente
+                        await tx.studio_offer_content_blocks.update({
+                            where: { id: block.id },
+                            data: {
+                                type: block.type,
+                                title: block.title || null,
+                                description: block.description || null,
+                                presentation: block.presentation,
+                                order: block.order,
+                                config: block.config || null,
+                            },
+                        });
 
-                    // Actualizar relaciones con media
-                    await tx.studio_offer_content_block_media.deleteMany({
-                        where: { content_block_id: block.id },
-                    });
+                        // Actualizar relaciones con media
+                        await tx.studio_offer_content_block_media.deleteMany({
+                            where: { content_block_id: block.id },
+                        });
 
-                    if (block.media && block.media.length > 0) {
-                        for (const [index, mediaItem] of block.media.entries()) {
-                            // Buscar o crear media
-                            let existingMedia = await tx.studio_offer_media.findFirst({
-                                where: {
+                        if (block.media && block.media.length > 0) {
+                            for (const [index, mediaItem] of block.media.entries()) {
+                                // Buscar o crear media
+                                let existingMedia = await tx.studio_offer_media.findFirst({
+                                    where: {
+                                        offer_id: offerId,
+                                        file_url: mediaItem.file_url,
+                                    },
+                                });
+
+                                if (!existingMedia && mediaItem.file_url) {
+                                    // Crear nuevo media si no existe
+                                    existingMedia = await tx.studio_offer_media.create({
+                                        data: {
+                                            offer_id: offerId,
+                                            studio_id: studioId,
+                                            file_url: mediaItem.file_url,
+                                            file_type: mediaItem.file_type,
+                                            filename: mediaItem.filename,
+                                            storage_bytes: BigInt(mediaItem.storage_bytes || 0),
+                                            mime_type: mediaItem.mime_type || 'application/octet-stream',
+                                            display_order: mediaItem.display_order || index,
+                                            alt_text: mediaItem.alt_text || null,
+                                            thumbnail_url: mediaItem.thumbnail_url || null,
+                                            storage_path: mediaItem.storage_path,
+                                            dimensions: mediaItem.dimensions || null,
+                                            duration_seconds: mediaItem.duration_seconds || null,
+                                        },
+                                    });
+                                }
+
+                                if (existingMedia) {
+                                    await tx.studio_offer_content_block_media.create({
+                                        data: {
+                                            content_block_id: block.id,
+                                            media_id: existingMedia.id,
+                                            order: index,
+                                        },
+                                    });
+                                }
+                            }
+                        }
+                    } catch (error: any) {
+                        // Si el bloque no existe (fue eliminado), crear uno nuevo
+                        if (error?.code === 'P2025' || error?.message?.includes('Record to update not found')) {
+                            // Crear nuevo bloque en lugar del que no existe
+                            const lastBlock = await tx.studio_offer_content_blocks.findFirst({
+                                where: { offer_id: offerId },
+                                orderBy: { order: 'desc' },
+                                select: { order: true },
+                            });
+                            const nextOrder = (lastBlock?.order || 0) + 1;
+
+                            const newBlock = await tx.studio_offer_content_blocks.create({
+                                data: {
                                     offer_id: offerId,
-                                    file_url: mediaItem.file_url,
+                                    type: block.type,
+                                    title: block.title || null,
+                                    description: block.description || null,
+                                    presentation: block.presentation || 'block',
+                                    order: block.order ?? nextOrder,
+                                    config: block.config || null,
                                 },
                             });
 
-                            if (!existingMedia && mediaItem.file_url) {
-                                // Crear nuevo media si no existe
-                                existingMedia = await tx.studio_offer_media.create({
-                                    data: {
-                                        offer_id: offerId,
-                                        studio_id: studioId,
-                                        file_url: mediaItem.file_url,
-                                        file_type: mediaItem.file_type,
-                                        filename: mediaItem.filename,
-                                        storage_bytes: BigInt(mediaItem.storage_bytes || 0),
-                                        mime_type: mediaItem.mime_type || 'application/octet-stream',
-                                        display_order: mediaItem.display_order || index,
-                                        alt_text: mediaItem.alt_text || null,
-                                        thumbnail_url: mediaItem.thumbnail_url || null,
-                                        storage_path: mediaItem.storage_path,
-                                        dimensions: mediaItem.dimensions || null,
-                                        duration_seconds: mediaItem.duration_seconds || null,
-                                    },
-                                });
-                            }
+                            // Crear relaciones con media
+                            if (block.media && block.media.length > 0) {
+                                for (const [index, mediaItem] of block.media.entries()) {
+                                    let existingMedia = await tx.studio_offer_media.findFirst({
+                                        where: {
+                                            offer_id: offerId,
+                                            file_url: mediaItem.file_url,
+                                        },
+                                    });
 
-                            if (existingMedia) {
-                                await tx.studio_offer_content_block_media.create({
-                                    data: {
-                                        content_block_id: block.id,
-                                        media_id: existingMedia.id,
-                                        order: index,
-                                    },
-                                });
+                                    if (!existingMedia && mediaItem.file_url) {
+                                        existingMedia = await tx.studio_offer_media.create({
+                                            data: {
+                                                offer_id: offerId,
+                                                studio_id: studioId,
+                                                file_url: mediaItem.file_url,
+                                                file_type: mediaItem.file_type,
+                                                filename: mediaItem.filename,
+                                                storage_bytes: BigInt(mediaItem.storage_bytes || 0),
+                                                mime_type: mediaItem.mime_type || 'application/octet-stream',
+                                                display_order: mediaItem.display_order || index,
+                                                alt_text: mediaItem.alt_text || null,
+                                                thumbnail_url: mediaItem.thumbnail_url || null,
+                                                storage_path: mediaItem.storage_path,
+                                                dimensions: mediaItem.dimensions || null,
+                                                duration_seconds: mediaItem.duration_seconds || null,
+                                            },
+                                        });
+                                    }
+
+                                    if (existingMedia) {
+                                        await tx.studio_offer_content_block_media.create({
+                                            data: {
+                                                content_block_id: newBlock.id,
+                                                media_id: existingMedia.id,
+                                                order: index,
+                                            },
+                                        });
+                                    }
+                                }
                             }
+                        } else {
+                            // Re-lanzar otros errores
+                            throw error;
                         }
                     }
                 } else {
@@ -239,6 +310,8 @@ export async function batchUpdateOfferContentBlocks(
                     }
                 }
             }
+        }, {
+            timeout: 30000, // 30 segundos para transacciones con muchos bloques
         });
 
         // Revalidar paths

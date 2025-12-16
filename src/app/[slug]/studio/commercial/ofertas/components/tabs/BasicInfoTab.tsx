@@ -124,6 +124,10 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
 
   const showActionButtons = !savedOfferId && mode === "create";
 
+  // Validar disponibilidad para habilitar botón de crear
+  const isAvailabilityValid = formData.is_permanent || 
+    (formData.has_date_range && formData.start_date && formData.end_date);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* Col 1: Editor */}
@@ -158,7 +162,7 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
                   <ZenButton
                     onClick={onSave}
                     loading={isSaving}
-                    disabled={isSaving}
+                    disabled={isSaving || !!nameError || !isAvailabilityValid}
                     className="flex-1"
                   >
                     Crear Oferta
@@ -176,7 +180,7 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
                   <ZenButton
                     onClick={onSave}
                     loading={isSaving}
-                    disabled={isSaving || !!nameError}
+                    disabled={isSaving || !!nameError || !isAvailabilityValid}
                     className="flex-1"
                   >
                     Actualizar Oferta

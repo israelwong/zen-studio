@@ -411,8 +411,18 @@ export function BasicInfoEditor({
 
       {/* Condiciones Comerciales Especiales */}
       <div className="space-y-4 border-t border-zinc-800 pt-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-sm font-medium text-zinc-300">Condiciones Comerciales</h3>
+          <ZenButton
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCondicionesModal(true)}
+            className="h-7 text-xs"
+          >
+            <Settings className="h-3 w-3 mr-1" />
+            Gestionar
+          </ZenButton>
         </div>
 
         {/* Toggle Aplicar Condiciones Especiales */}
@@ -565,7 +575,7 @@ export function BasicInfoEditor({
       </div>
 
       {/* Modal de Gestión Completa (Manager) */}
-      {showCondicionesModal && (savedOfferId || offerId) && (
+      {showCondicionesModal && (
         <CondicionesComercialesManager
           studioSlug={studioSlug}
           isOpen={showCondicionesModal}
@@ -573,16 +583,20 @@ export function BasicInfoEditor({
           onRefresh={() => {
             loadBusinessTerms();
           }}
-          context={{
-            type: 'offer',
-            offerId: (savedOfferId || offerId) as string,
-            offerName: formData.name || 'Nueva oferta'
-          }}
+          context={
+            (savedOfferId || offerId)
+              ? {
+                type: 'offer',
+                offerId: (savedOfferId || offerId) as string,
+                offerName: formData.name || 'Nueva oferta'
+              }
+              : undefined
+          }
         />
       )}
 
       {/* Modal de Creación Simple */}
-      {showCreateModal && (savedOfferId || offerId) && (
+      {showCreateModal && (
         <CrearCondicionComercialModal
           studioSlug={studioSlug}
           isOpen={showCreateModal}
@@ -590,11 +604,15 @@ export function BasicInfoEditor({
           onSuccess={() => {
             loadBusinessTerms();
           }}
-          context={{
-            type: 'offer',
-            offerId: (savedOfferId || offerId) as string,
-            offerName: formData.name || 'Nueva oferta'
-          }}
+          context={
+            (savedOfferId || offerId)
+              ? {
+                type: 'offer',
+                offerId: (savedOfferId || offerId) as string,
+                offerName: formData.name || 'Nueva oferta'
+              }
+              : undefined
+          }
         />
       )}
     </div>

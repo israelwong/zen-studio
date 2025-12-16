@@ -41,7 +41,7 @@ export const CreateOfferSchema = z.object({
   slug: z.string().min(1, 'El slug es requerido').max(100, 'El slug es demasiado largo'),
   cover_media_url: z.string().nullable().optional().or(z.literal('')),
   cover_media_type: z.enum(['image', 'video']).nullable().optional(),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean().default(false), // Default false: solo publicar con landing page
   is_permanent: z.boolean().default(false),
   has_date_range: z.boolean().default(false),
   start_date: z.date().nullable().optional(),

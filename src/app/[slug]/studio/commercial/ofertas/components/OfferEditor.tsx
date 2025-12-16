@@ -23,6 +23,7 @@ import { useStorageRefresh } from "@/hooks/useStorageRefresh";
 import { toast } from "sonner";
 import type { StudioOffer } from "@/types/offers";
 import type { ContentBlock } from "@/types/content-blocks";
+import { obtenerCondicionComercial, actualizarCondicionComercial } from "@/lib/actions/studio/config/condiciones-comerciales.actions";
 
 interface OfferEditorProps {
   studioSlug: string;
@@ -261,6 +262,12 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   };
 
   const handleSave = async () => {
+    // Validar portada obligatoria
+    if (!formData.cover_media_url) {
+      toast.error("Debes agregar una portada antes de guardar");
+      return;
+    }
+
     // Validar disponibilidad
     if (!formData.is_permanent && !formData.has_date_range) {
       toast.error("Debes seleccionar disponibilidad: Permanente o definir rango de fechas");
@@ -323,16 +330,57 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
           triggerRefresh();
           // Actualizar savedOfferId en el contexto para habilitar pestañas
           setSavedOfferId(result.data.id);
+
+          // Asociar condición comercial especial con la oferta si existe
+          if (formData.business_term_id) {
+            try {
+              const condicionResult = await obtenerCondicionComercial(studioSlug, formData.business_term_id);
+              if (condicionResult.success && condicionResult.data) {
+                const condicion = condicionResult.data;
+                // Si es condición especial (tipo 'offer') y no tiene offer_id, asociarla
+                if (condicion.type === 'offer' && !condicion.offer_id) {
+                  await actualizarCondicionComercial(
+                    studioSlug,
+                    formData.business_term_id,
+                    {
+                      nombre: condicion.name,
+                      descripcion: condicion.description ?? null,
+                      porcentaje_descuento: condicion.discount_percentage?.toString() || '0',
+                      porcentaje_anticipo: condicion.advance_percentage?.toString() || '0',
+                      status: condicion.status === 'active' ? 'active' : 'inactive',
+                      orden: condicion.order || 0,
+                      type: 'offer',
+                      override_standard: condicion.override_standard || false,
+                    },
+                    {
+                      offerId: result.data.id,
+                      type: 'offer'
+                    }
+                  );
+                }
+              }
+            } catch (error) {
+              console.error("Error al asociar condición comercial:", error);
+              // No mostrar error al usuario, es una operación secundaria
+            }
+          }
+
           // Actualizar estado local sin recargar la página
           setCurrentOffer(result.data);
           setCurrentMode("edit");
-          // Actualizar URL sin recargar la página completa (mantener tab actual)
-          const currentTab = searchParams.get('tab') || 'basic';
-          window.history.pushState({}, '', `/${studioSlug}/studio/commercial/ofertas/${result.data.id}?tab=${currentTab}`);
+          // Cambiar automáticamente a la tab Landing Page
+          setActiveTab("landing");
+          // Actualizar URL con la tab landing
+          window.history.pushState({}, '', `/${studioSlug}/studio/commercial/ofertas/${result.data.id}?tab=landing`);
+          // Mostrar mensaje sobre crear landing page
+          setTimeout(() => {
+            toast.info("Crea los bloques de tu landing page para poder publicar la oferta");
+          }, 1000);
           // Inicializar snapshot para modo edit
           const newSnapshot = JSON.stringify({
             formData,
             contentBlocks,
+            leadformData,
           });
           setInitialData(newSnapshot);
           setIsDirty(false);
@@ -358,7 +406,10 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   };
 
   const handleDelete = async () => {
-    if (!currentOffer?.id) return;
+    if (!currentOffer?.id) {
+      setShowDeleteModal(false);
+      return;
+    }
 
     const offerId = currentOffer.id;
     setIsDeleting(true);
@@ -366,18 +417,23 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
       const result = await deleteOffer(offerId, studioSlug);
 
       if (result.success) {
+        // Cerrar modal inmediatamente
+        setShowDeleteModal(false);
+        toast.success("Oferta eliminada correctamente");
         // Actualizar storage global después de eliminar
         triggerRefresh();
-
-        toast.success("Oferta eliminada correctamente");
-        router.push(`/${studioSlug}/studio/commercial/ofertas`);
+        // Usar setTimeout para asegurar que la redirección ocurra después de cerrar el modal
+        setTimeout(() => {
+          router.replace(`/${studioSlug}/studio/commercial/ofertas`);
+        }, 100);
       } else {
         toast.error(result.error || "Error al eliminar la oferta");
+        setIsDeleting(false);
+        setShowDeleteModal(false);
       }
     } catch (error) {
       console.error("Error deleting offer:", error);
       toast.error("Error al eliminar la oferta");
-    } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
     }
@@ -427,7 +483,14 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
                 </div>
                 <ZenSwitch
                   checked={formData.is_active}
-                  onCheckedChange={(checked) => updateFormData({ is_active: checked })}
+                  onCheckedChange={(checked) => {
+                    // Validar que tenga landing page antes de publicar
+                    if (checked && contentBlocks.length === 0) {
+                      toast.error("Debes crear al menos un bloque en la landing page antes de publicar");
+                      return;
+                    }
+                    updateFormData({ is_active: checked });
+                  }}
                 />
               </div>
               {/* Botón Preview */}

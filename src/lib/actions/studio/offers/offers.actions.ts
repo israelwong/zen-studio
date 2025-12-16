@@ -101,6 +101,8 @@ export async function createOffer(
           has_date_range: validatedData.has_date_range,
           start_date: validatedData.start_date || null,
           end_date: validatedData.end_date || null,
+          business_term_id: validatedData.business_term_id || null,
+          event_type_id: validatedData.leadform.event_type_id || null,
           landing_page: {
             create: {
               cta_config: validatedData.landing_page.cta_config,
@@ -127,6 +129,8 @@ export async function createOffer(
         include: {
           landing_page: true,
           leadform: true,
+          business_term: true,
+          event_type: true,
         },
       });
 
@@ -142,9 +146,10 @@ export async function createOffer(
         }
       }
 
-      // Asociar business_term si se proporcionó
+      // Verificar que la condición comercial exista y pertenezca al studio
+      // NOTA: No modificamos la tabla de condiciones comerciales
+      // Una condición puede ser usada por múltiples ofertas simultáneamente
       if (validatedData.business_term_id) {
-        // Verificar que la condición pertenezca al mismo studio
         const businessTerm = await prisma.studio_condiciones_comerciales.findFirst({
           where: {
             id: validatedData.business_term_id,
@@ -152,23 +157,11 @@ export async function createOffer(
           },
         });
 
-        if (businessTerm) {
-          // Si la condición ya está asociada a otra oferta, desasociarla primero
-          if (businessTerm.offer_id) {
-            await prisma.studio_condiciones_comerciales.update({
-              where: { id: validatedData.business_term_id },
-              data: { offer_id: null },
-            });
-          }
-
-          // Asociar la condición a esta nueva oferta
-          await prisma.studio_condiciones_comerciales.update({
-            where: { id: validatedData.business_term_id },
-            data: {
-              offer_id: offer.id,
-              type: 'offer',
-            },
-          });
+        if (!businessTerm) {
+          return {
+            success: false,
+            error: "Condición comercial no encontrada o no pertenece a este estudio",
+          };
         }
       }
 
@@ -187,7 +180,17 @@ export async function createOffer(
         end_date: offer.end_date,
         created_at: offer.created_at,
         updated_at: offer.updated_at,
-        business_term_id: validatedData.business_term_id || null,
+        business_term_id: offer.business_term_id,
+        event_type_id: offer.event_type_id,
+        business_term: offer.business_term ? {
+          id: offer.business_term.id,
+          name: offer.business_term.name,
+          description: offer.business_term.description,
+          discount_percentage: offer.business_term.discount_percentage,
+          advance_percentage: offer.business_term.advance_percentage,
+          type: offer.business_term.type as 'standard' | 'offer',
+          override_standard: offer.business_term.override_standard,
+        } : undefined,
         landing_page: offer.landing_page
           ? {
             id: offer.landing_page.id,
@@ -311,6 +314,8 @@ export async function updateOffer(
         has_date_range?: boolean;
         start_date?: Date | null;
         end_date?: Date | null;
+        business_term_id?: string | null;
+        event_type_id?: string | null;
         landing_page?: {
           update: {
             content_blocks?: unknown;
@@ -355,6 +360,10 @@ export async function updateOffer(
         updateData.start_date = validatedData.start_date ?? null;
       if ('end_date' in validatedData)
         updateData.end_date = validatedData.end_date ?? null;
+      if ('business_term_id' in validatedData)
+        updateData.business_term_id = validatedData.business_term_id ?? null;
+      if (validatedData.leadform?.event_type_id !== undefined)
+        updateData.event_type_id = validatedData.leadform.event_type_id ?? null;
 
       if (validatedData.landing_page) {
         updateData.landing_page = {
@@ -401,62 +410,26 @@ export async function updateOffer(
               override_standard: true,
             },
           },
-        },
-      });
-
-      // Manejar business_term_id
-      let updatedBusinessTerm = offer.business_term;
-      if ('business_term_id' in validatedData) {
-        const businessTermId = validatedData.business_term_id;
-
-        // Paso 1: Desasociar cualquier condición comercial existente de esta oferta
-        await prisma.studio_condiciones_comerciales.updateMany({
-          where: { offer_id: offerId },
-          data: { offer_id: null },
-        });
-
-        // Paso 2: Si hay un business_term_id, verificar y asociarlo a esta oferta
-        if (businessTermId) {
-          // Verificar que la condición pertenezca al mismo studio
-          const businessTerm = await prisma.studio_condiciones_comerciales.findFirst({
-            where: {
-              id: businessTermId,
-              studio_id: studio.id,
-            },
-          });
-
-          if (!businessTerm) {
-            return { success: false, error: "Condición comercial no encontrada o no pertenece a este estudio" };
-          }
-
-          // Desasociar esta condición de cualquier otra oferta (por si estaba asociada)
-          if (businessTerm.offer_id && businessTerm.offer_id !== offerId) {
-            await prisma.studio_condiciones_comerciales.update({
-              where: { id: businessTermId },
-              data: { offer_id: null },
-            });
-          }
-
-          // Asociar la condición a esta oferta
-          const updated = await prisma.studio_condiciones_comerciales.update({
-            where: { id: businessTermId },
-            data: {
-              offer_id: offerId,
-              type: 'offer',
-            },
+          event_type: {
             select: {
               id: true,
               name: true,
-              description: true,
-              discount_percentage: true,
-              advance_percentage: true,
-              type: true,
-              override_standard: true,
             },
-          });
-          updatedBusinessTerm = updated;
-        } else {
-          updatedBusinessTerm = null;
+          },
+        },
+      });
+
+      // Validar business_term_id si se proporcionó
+      if ('business_term_id' in validatedData && validatedData.business_term_id) {
+        const businessTerm = await prisma.studio_condiciones_comerciales.findFirst({
+          where: {
+            id: validatedData.business_term_id,
+            studio_id: studio.id,
+          },
+        });
+
+        if (!businessTerm) {
+          return { success: false, error: "Condición comercial no encontrada o no pertenece a este estudio" };
         }
       }
 
@@ -491,15 +464,16 @@ export async function updateOffer(
         end_date: offer.end_date,
         created_at: offer.created_at,
         updated_at: offer.updated_at,
-        business_term_id: updatedBusinessTerm?.id || null,
-        business_term: updatedBusinessTerm ? {
-          id: updatedBusinessTerm.id,
-          name: updatedBusinessTerm.name,
-          description: updatedBusinessTerm.description,
-          discount_percentage: updatedBusinessTerm.discount_percentage,
-          advance_percentage: updatedBusinessTerm.advance_percentage,
-          type: updatedBusinessTerm.type as 'standard' | 'offer',
-          override_standard: updatedBusinessTerm.override_standard,
+        business_term_id: offer.business_term_id,
+        event_type_id: offer.event_type_id,
+        business_term: offer.business_term ? {
+          id: offer.business_term.id,
+          name: offer.business_term.name,
+          description: offer.business_term.description,
+          discount_percentage: offer.business_term.discount_percentage,
+          advance_percentage: offer.business_term.advance_percentage,
+          type: offer.business_term.type as 'standard' | 'offer',
+          override_standard: offer.business_term.override_standard,
         } : undefined,
         landing_page: offer.landing_page
           ? {
@@ -1426,7 +1400,7 @@ export async function getPublicActiveOffers(studioSlug: string) {
           has_date_range: offer.has_date_range,
           start_date: offer.start_date,
           valid_until: offer.end_date,
-          event_type_name: offer.leadform?.event_type_id 
+          event_type_name: offer.leadform?.event_type_id
             ? eventTypesMap.get(offer.leadform.event_type_id) ?? null
             : null,
         })),

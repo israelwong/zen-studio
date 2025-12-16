@@ -997,6 +997,7 @@ model studio_event_types {
   posts              studio_posts[]
   promises           studio_promises[]
   contract_templates studio_contract_templates[]
+  offers             studio_offers[]
 
   @@unique([studio_id, name])
   @@index([studio_id])
@@ -1816,13 +1817,14 @@ model studio_condiciones_comerciales {
   name                                String
   order                               Int?                                         @default(0)
   type                                String                                       @default("standard") // "standard" | "offer"
-  offer_id                            String?                                      @unique // Asociación a oferta si type="offer"
+  offer_id                            String?                                      @unique // Solo para type="offer": oferta a la que pertenece exclusivamente
   override_standard                   Boolean                                      @default(false) // Oculta condiciones estándar
   studio                              studios                                      @relation(fields: [studio_id], references: [id])
   condiciones_comerciales_metodo_pago studio_condiciones_comerciales_metodo_pago[]
   cotizaciones                        studio_cotizaciones[]
   pagos                               studio_pagos[]
-  offer                               studio_offers?                               @relation(fields: [offer_id], references: [id], onDelete: SetNull)
+  exclusive_offer                     studio_offers?                               @relation("offer_exclusive_terms", fields: [offer_id], references: [id], onDelete: SetNull) // Solo para type="offer"
+  used_by_offers                      studio_offers[]                              @relation("offer_business_term") // Ofertas que usan esta condición
 
   @@index([studio_id])
   @@index([studio_id, type])
@@ -2593,6 +2595,8 @@ model studio_offers {
   has_date_range         Boolean                             @default(false) // Si true: temporalidad definida
   start_date             DateTime? // Fecha inicio (si has_date_range = true)
   end_date               DateTime? // Fecha fin (si has_date_range = true)
+  business_term_id       String? // Condición comercial asociada a esta oferta
+  event_type_id          String? // Tipo de evento asociado
   created_at             DateTime                            @default(now())
   updated_at             DateTime                            @updatedAt
   order                  Int?                                @default(0)
@@ -2603,13 +2607,17 @@ model studio_offers {
   submissions            studio_offer_submissions[]
   media                  studio_offer_media[]                @relation("offer_media")
   content_blocks         studio_offer_content_blocks[]
-  business_term          studio_condiciones_comerciales?
-  promises               studio_promises[] // Promesas generadas desde esta oferta
+  business_term          studio_condiciones_comerciales?     @relation("offer_business_term", fields: [business_term_id], references: [id], onDelete: SetNull)
+  event_type             studio_event_types?                 @relation(fields: [event_type_id], references: [id], onDelete: SetNull)
+  created_by_offers      studio_condiciones_comerciales[]    @relation("offer_exclusive_terms") // Condiciones creadas exclusivamente para esta oferta
+  promises               studio_promises[]                   // Promesas generadas desde esta oferta
 
   @@unique([studio_id, slug])
   @@index([studio_id, is_active])
   @@index([studio_id, slug])
   @@index([studio_id, is_permanent, has_date_range])
+  @@index([business_term_id])
+  @@index([event_type_id])
 }
 
 model studio_offer_landing_pages {

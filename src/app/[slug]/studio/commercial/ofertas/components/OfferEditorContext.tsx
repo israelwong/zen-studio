@@ -80,7 +80,7 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     slug: initialOffer?.slug || "",
     cover_media_url: initialOffer?.cover_media_url || null,
     cover_media_type: initialOffer?.cover_media_type as "image" | "video" | null || null,
-    is_active: initialOffer?.is_active ?? true,
+    is_active: initialOffer?.is_active ?? false, // Default false: solo publicar con landing page
     is_permanent: initialOffer?.is_permanent ?? false,
     has_date_range: initialOffer?.has_date_range ?? false,
     start_date: initialOffer?.start_date ? new Date(initialOffer.start_date) : null,
