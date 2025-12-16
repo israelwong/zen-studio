@@ -156,12 +156,23 @@ export async function crearCondicionComercial(
             };
         }
 
+        // Determinar valores de anticipo según tipo
+        const tipoAnticipo = validationResult.data.tipo_anticipo || 'percentage';
+        const advancePercentage = tipoAnticipo === 'percentage' && validationResult.data.porcentaje_anticipo
+            ? parseFloat(validationResult.data.porcentaje_anticipo)
+            : null;
+        const advanceAmount = tipoAnticipo === 'fixed_amount' && validationResult.data.monto_anticipo
+            ? parseFloat(validationResult.data.monto_anticipo)
+            : null;
+
         const dataToSave = {
             studio_id: studio.id,
             name: validationResult.data.nombre,
             description: validationResult.data.descripcion,
             discount_percentage: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
-            advance_percentage: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
+            advance_percentage: advancePercentage,
+            advance_type: tipoAnticipo,
+            advance_amount: advanceAmount,
             status: validationResult.data.status,
             order: validationResult.data.orden || 0,
             type: typeToUse,
@@ -260,11 +271,22 @@ export async function actualizarCondicionComercial(
             };
         }
 
+        // Determinar valores de anticipo según tipo
+        const tipoAnticipo = validationResult.data.tipo_anticipo || condicionExistente.advance_type || 'percentage';
+        const advancePercentage = tipoAnticipo === 'percentage' && validationResult.data.porcentaje_anticipo
+            ? parseFloat(validationResult.data.porcentaje_anticipo)
+            : (tipoAnticipo === 'percentage' ? condicionExistente.advance_percentage : null);
+        const advanceAmount = tipoAnticipo === 'fixed_amount' && validationResult.data.monto_anticipo
+            ? parseFloat(validationResult.data.monto_anticipo)
+            : (tipoAnticipo === 'fixed_amount' ? condicionExistente.advance_amount : null);
+
         const dataToSave = {
             name: validationResult.data.nombre,
             description: validationResult.data.descripcion,
             discount_percentage: validationResult.data.porcentaje_descuento ? parseFloat(validationResult.data.porcentaje_descuento) : null,
-            advance_percentage: validationResult.data.porcentaje_anticipo ? parseFloat(validationResult.data.porcentaje_anticipo) : null,
+            advance_percentage: advancePercentage,
+            advance_type: tipoAnticipo,
+            advance_amount: advanceAmount,
             status: validationResult.data.status,
             order: validationResult.data.orden || 0,
             type: validationResult.data.type !== undefined ? validationResult.data.type : (context?.type === 'offer' ? 'offer' : condicionExistente.type || 'standard'),

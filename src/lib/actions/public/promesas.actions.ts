@@ -17,6 +17,8 @@ export async function obtenerCondicionesComercialesPublicas(
     name: string;
     description: string | null;
     advance_percentage: number | null;
+    advance_type?: string | null;
+    advance_amount?: number | null;
     discount_percentage: number | null;
     metodos_pago: Array<{
       id: string;
@@ -80,6 +82,8 @@ export async function obtenerCondicionesComercialesPublicas(
       name: c.name,
       description: c.description,
       advance_percentage: c.advance_percentage,
+      advance_type: c.advance_type,
+      advance_amount: c.advance_amount,
       discount_percentage: c.discount_percentage,
       metodos_pago: c.condiciones_comerciales_metodo_pago.map((mp) => ({
         id: mp.id,

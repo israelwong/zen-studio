@@ -84,6 +84,8 @@ export async function autorizarCotizacionPublica(
           name: true,
           description: true,
           advance_percentage: true,
+          advance_type: true,
+          advance_amount: true,
           discount_percentage: true,
         },
       });
@@ -130,7 +132,9 @@ export async function autorizarCotizacionPublica(
         contenidoLog += ` (M?todo de pago: ${metodoPagoInfo})`;
       }
 
-      if (condicionComercialInfo.advance_percentage) {
+      if (condicionComercialInfo.advance_type === 'fixed_amount' && condicionComercialInfo.advance_amount) {
+        mensajeNotificacion += ` - Anticipo: $${condicionComercialInfo.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      } else if (condicionComercialInfo.advance_type === 'percentage' && condicionComercialInfo.advance_percentage) {
         mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}%`;
       }
 

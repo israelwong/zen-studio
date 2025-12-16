@@ -1,11 +1,15 @@
 "use client";
 
+import { formatCurrency } from '@/lib/actions/utils/formatting';
+
 interface CondicionRadioCardProps {
   id: string;
   name: string;
   description: string | null;
   discount_percentage: number | null;
   advance_percentage: number | null;
+  advance_type?: string | null;
+  advance_amount?: number | null;
   type: 'standard' | 'offer';
   selected: boolean;
   onChange: (id: string) => void;
@@ -17,6 +21,8 @@ export function CondicionRadioCard({
   description,
   discount_percentage,
   advance_percentage,
+  advance_type,
+  advance_amount,
   type,
   selected,
   onChange,
@@ -70,9 +76,15 @@ export function CondicionRadioCard({
           )}
 
           <div className={`flex items-center gap-3 text-xs mt-1.5 ${selected ? 'text-zinc-300' : 'text-zinc-400'}`}>
-            {advance_percentage !== null && (
-              <span>Anticipo: {advance_percentage}%</span>
-            )}
+            {(() => {
+              const tipoAnticipo = advance_type || 'percentage';
+              if (tipoAnticipo === 'fixed_amount' && advance_amount) {
+                return <span>Anticipo: {formatCurrency(advance_amount)}</span>;
+              } else if (tipoAnticipo === 'percentage' && advance_percentage !== null) {
+                return <span>Anticipo: {advance_percentage}%</span>;
+              }
+              return null;
+            })()}
             <span>Descuento: {discount_percentage ?? 0}%</span>
           </div>
         </div>

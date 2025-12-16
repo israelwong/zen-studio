@@ -8,12 +8,15 @@ import { PublicServiciosTree } from './PublicServiciosTree';
 import { AutorizarCotizacionModal } from './AutorizarCotizacionModal';
 import { SolicitarPersonalizacionModal } from './SolicitarPersonalizacionModal';
 import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos } from '@/lib/actions/public/promesas.actions';
+import { formatCurrency } from '@/lib/actions/utils/formatting';
 
 interface CondicionComercial {
   id: string;
   name: string;
   description: string | null;
   advance_percentage: number | null;
+  advance_type?: string | null;
+  advance_amount?: number | null;
   discount_percentage: number | null;
   metodos_pago: Array<{
     id: string;
@@ -136,11 +139,14 @@ export function CotizacionDetailSheet({
       ? precioBase - (precioBase * descuentoCondicion) / 100
       : precioBase;
 
-    // Calcular anticipo
-    const anticipoPorcentaje = condicion.advance_percentage ?? 0;
-    const anticipo = anticipoPorcentaje > 0
-      ? (precioConDescuento * anticipoPorcentaje) / 100
-      : 0;
+    // Calcular anticipo según tipo
+    const advanceType = condicion.advance_type || 'percentage';
+    const anticipo = advanceType === 'fixed_amount' && condicion.advance_amount
+      ? condicion.advance_amount
+      : (condicion.advance_percentage ?? 0) > 0
+        ? (precioConDescuento * (condicion.advance_percentage ?? 0)) / 100
+        : 0;
+    const anticipoPorcentaje = advanceType === 'percentage' ? (condicion.advance_percentage ?? 0) : null;
 
     // Calcular diferido
     const diferido = precioConDescuento - anticipo;
@@ -320,9 +326,15 @@ export function CotizacionDetailSheet({
                             )}
 
                             <div className={`flex items-center gap-3 text-xs mt-1.5 ${isSelected ? 'text-zinc-300' : 'text-zinc-400'}`}>
-                              {condicion.advance_percentage !== null && (
-                                <span>Anticipo: {condicion.advance_percentage}%</span>
-                              )}
+                              {(() => {
+                                const advanceType = condicion.advance_type || 'percentage';
+                                if (advanceType === 'fixed_amount' && condicion.advance_amount) {
+                                  return <span>Anticipo: {formatCurrency(condicion.advance_amount)}</span>;
+                                } else if (advanceType === 'percentage' && condicion.advance_percentage !== null) {
+                                  return <span>Anticipo: {condicion.advance_percentage}%</span>;
+                                }
+                                return null;
+                              })()}
                               <span>Descuento: {condicion.discount_percentage ?? 0}%</span>
                             </div>
                           </div>
@@ -382,7 +394,15 @@ export function CotizacionDetailSheet({
 
                                 <div className={`flex items-center gap-3 text-xs mt-1.5 ${isSelected ? 'text-zinc-300' : 'text-zinc-400'}`}>
                                   {condicion.advance_percentage !== null && (
-                                    <span>Anticipo: {condicion.advance_percentage}%</span>
+                                    {(() => {
+                                      const advanceType = condicion.advance_type || 'percentage';
+                                      if (advanceType === 'fixed_amount' && condicion.advance_amount) {
+                                        return <span>Anticipo: {formatCurrency(condicion.advance_amount)}</span>;
+                                      } else if (advanceType === 'percentage' && condicion.advance_percentage !== null) {
+                                        return <span>Anticipo: {condicion.advance_percentage}%</span>;
+                                      }
+                                      return null;
+                                    })()}
                                   )}
                                   <span>Descuento: {condicion.discount_percentage ?? 0}%</span>
                                   <span className="text-emerald-400">Método: {metodo.metodo_pago_name}</span>

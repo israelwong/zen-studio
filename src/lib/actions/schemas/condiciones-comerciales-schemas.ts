@@ -9,7 +9,9 @@ export const CondicionComercialSchema = z.object({
 
     // Tratamos los números como strings para el formulario
     porcentaje_descuento: z.string().nullable().optional(),
-    porcentaje_anticipo: z.string().nullable().optional(),
+    porcentaje_anticipo: z.string().nullable().optional(), // Solo si tipo_anticipo = "percentage"
+    tipo_anticipo: z.enum(['percentage', 'fixed_amount']).optional().default('percentage'),
+    monto_anticipo: z.string().nullable().optional(), // Solo si tipo_anticipo = "fixed_amount"
 
     status: z.enum(['active', 'inactive']),
     orden: z.number(),
@@ -29,6 +31,8 @@ export const CondicionComercialWithValidationSchema = z.object({
     // Tratamos los números como strings para el formulario
     porcentaje_descuento: z.string().nullable().optional(),
     porcentaje_anticipo: z.string().nullable().optional(),
+    tipo_anticipo: z.enum(['percentage', 'fixed_amount']).optional().default('percentage'),
+    monto_anticipo: z.string().nullable().optional(),
 
     status: z.enum(['active', 'inactive']),
     orden: z.number(),
@@ -43,14 +47,22 @@ export const CondicionComercialWithValidationSchema = z.object({
     message: "El descuento debe estar entre 0 y 100%",
     path: ["porcentaje_descuento"]
 }).refine((data) => {
-    // Validar que el anticipo no sea mayor a 100%
-    if (data.porcentaje_anticipo) {
-        const anticipo = parseFloat(data.porcentaje_anticipo);
-        return anticipo >= 0 && anticipo <= 100;
+    // Validar anticipo según tipo
+    const tipoAnticipo = data.tipo_anticipo || 'percentage';
+    if (tipoAnticipo === 'percentage') {
+        if (data.porcentaje_anticipo) {
+            const anticipo = parseFloat(data.porcentaje_anticipo);
+            return anticipo >= 0 && anticipo <= 100;
+        }
+    } else if (tipoAnticipo === 'fixed_amount') {
+        if (data.monto_anticipo) {
+            const monto = parseFloat(data.monto_anticipo);
+            return monto > 0;
+        }
     }
     return true;
 }, {
-    message: "El anticipo debe estar entre 0 y 100%",
+    message: "El anticipo debe ser válido (porcentaje 0-100% o monto > 0)",
     path: ["porcentaje_anticipo"]
 });
 
@@ -63,6 +75,8 @@ export const createCondicionComercialSchema = (sobreprecio: number) => z.object(
     // Tratamos los números como strings para el formulario
     porcentaje_descuento: z.string().nullable().optional(),
     porcentaje_anticipo: z.string().nullable().optional(),
+    tipo_anticipo: z.enum(['percentage', 'fixed_amount']).optional().default('percentage'),
+    monto_anticipo: z.string().nullable().optional(),
 
     status: z.enum(['active', 'inactive']),
     orden: z.number(),
@@ -78,14 +92,22 @@ export const createCondicionComercialSchema = (sobreprecio: number) => z.object(
     message: `El descuento no puede ser mayor al ${sobreprecio > 0 ? Math.round(sobreprecio * 100) : 100}% (sobreprecio configurado)`,
     path: ["porcentaje_descuento"]
 }).refine((data) => {
-    // Validar que el anticipo no sea mayor a 100%
-    if (data.porcentaje_anticipo) {
-        const anticipo = parseFloat(data.porcentaje_anticipo);
-        return anticipo >= 0 && anticipo <= 100;
+    // Validar anticipo según tipo
+    const tipoAnticipo = data.tipo_anticipo || 'percentage';
+    if (tipoAnticipo === 'percentage') {
+        if (data.porcentaje_anticipo) {
+            const anticipo = parseFloat(data.porcentaje_anticipo);
+            return anticipo >= 0 && anticipo <= 100;
+        }
+    } else if (tipoAnticipo === 'fixed_amount') {
+        if (data.monto_anticipo) {
+            const monto = parseFloat(data.monto_anticipo);
+            return monto > 0;
+        }
     }
     return true;
 }, {
-    message: "El anticipo debe estar entre 0 y 100%",
+    message: "El anticipo debe ser válido (porcentaje 0-100% o monto > 0)",
     path: ["porcentaje_anticipo"]
 });
 

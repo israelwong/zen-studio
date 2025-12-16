@@ -1811,7 +1811,9 @@ model studio_condiciones_comerciales {
   status                              String                                       @default("active")
   created_at                          DateTime                                     @default(now())
   updated_at                          DateTime                                     @updatedAt
-  advance_percentage                  Float?                                       @default(0)
+  advance_percentage                  Float?                                       @default(0) // Porcentaje de anticipo (0-100)
+  advance_type                        String?                                      @default("percentage") // "percentage" | "fixed_amount"
+  advance_amount                      Float?                                       // Monto fijo de anticipo cuando advance_type = "fixed_amount"
   description                         String?
   discount_percentage                 Float?
   name                                String

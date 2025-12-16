@@ -41,6 +41,8 @@ interface CondicionComercial {
   description: string | null;
   discount_percentage: number | null;
   advance_percentage: number | null;
+  advance_type?: string | null;
+  advance_amount?: number | null;
   status: string;
   order: number | null;
   type?: string;
@@ -135,9 +137,15 @@ function SortableCondicionItem({
               </p>
             )}
             <div className={`flex items-center gap-4 mt-2 text-sm ${isActive ? 'text-zinc-300' : 'text-zinc-500'}`}>
-              {condicion.advance_percentage && (
-                <span>Anticipo: {condicion.advance_percentage}%</span>
-              )}
+              {(() => {
+                const advanceType = condicion.advance_type || 'percentage';
+                if (advanceType === 'fixed_amount' && condicion.advance_amount) {
+                  return <span>Anticipo: ${condicion.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>;
+                } else if (advanceType === 'percentage' && condicion.advance_percentage) {
+                  return <span>Anticipo: {condicion.advance_percentage}%</span>;
+                }
+                return null;
+              })()}
               <span>Descuento: {condicion.discount_percentage ?? 0}%</span>
             </div>
           </div>
@@ -217,7 +225,9 @@ export function CondicionesComercialesManager({
     name: '',
     description: '',
     discount_percentage: '',
+    advance_type: 'percentage' as 'percentage' | 'fixed_amount',
     advance_percentage: '',
+    advance_amount: '',
     status: true,
     is_offer: false,
   });
@@ -231,7 +241,9 @@ export function CondicionesComercialesManager({
     name: '',
     description: '',
     discount_percentage: '',
+    advance_type: 'percentage' as 'percentage' | 'fixed_amount',
     advance_percentage: '',
+    advance_amount: '',
     status: true,
     is_offer: false,
   });
@@ -244,7 +256,9 @@ export function CondicionesComercialesManager({
       formData.name !== initialFormData.name ||
       formData.description !== initialFormData.description ||
       formData.discount_percentage !== initialFormData.discount_percentage ||
+      formData.advance_type !== initialFormData.advance_type ||
       formData.advance_percentage !== initialFormData.advance_percentage ||
+      formData.advance_amount !== initialFormData.advance_amount ||
       formData.status !== initialFormData.status ||
       formData.is_offer !== initialFormData.is_offer
     );
@@ -267,7 +281,9 @@ export function CondicionesComercialesManager({
       name: '',
       description: '',
       discount_percentage: '',
+      advance_type: 'percentage' as 'percentage' | 'fixed_amount',
       advance_percentage: '',
+      advance_amount: '',
       status: true,
       is_offer: false,
     };
@@ -378,7 +394,9 @@ export function CondicionesComercialesManager({
       name: '',
       description: '',
       discount_percentage: '',
+      advance_type: 'percentage' as 'percentage' | 'fixed_amount',
       advance_percentage: '',
+      advance_amount: '',
       status: true,
       is_offer: false,
     };
@@ -391,11 +409,14 @@ export function CondicionesComercialesManager({
   const handleEdit = (condicion: CondicionComercial) => {
     setEditingId(condicion.id);
     setViewingOfferCondition(null);
+    const advanceType = condicion.advance_type || 'percentage';
     const editForm = {
       name: condicion.name,
       description: condicion.description || '',
       discount_percentage: condicion.discount_percentage?.toString() || '',
+      advance_type: advanceType as 'percentage' | 'fixed_amount',
       advance_percentage: condicion.advance_percentage?.toString() || '',
+      advance_amount: condicion.advance_amount?.toString() || '',
       status: condicion.status === 'active',
       is_offer: condicion.type === 'offer',
     };
@@ -686,7 +707,7 @@ export function CondicionesComercialesManager({
     setFormData({ ...formData, discount_percentage: cleaned });
   };
 
-  const handleAdvanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdvancePercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
 
     // Permitir solo números y punto decimal
@@ -713,6 +734,21 @@ export function CondicionesComercialesManager({
     setFormData({ ...formData, advance_percentage: cleaned });
   };
 
+  const handleAdvanceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+
+    // Permitir solo números y punto decimal
+    const onlyNumbers = value.replace(/[^0-9.]/g, '');
+
+    // Evitar múltiples puntos decimales
+    const parts = onlyNumbers.split('.');
+    const cleaned = parts.length > 2
+      ? parts[0] + '.' + parts.slice(1).join('')
+      : onlyNumbers;
+
+    setFormData({ ...formData, advance_amount: cleaned });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -735,16 +771,26 @@ export function CondicionesComercialesManager({
       }
     }
 
-    // Validar que el anticipo no exceda 100%
-    if (formData.advance_percentage) {
-      const anticipo = parseFloat(formData.advance_percentage);
-      if (isNaN(anticipo) || anticipo < 0) {
-        toast.error('El porcentaje de anticipo debe ser un número válido mayor o igual a 0');
-        return;
+    // Validar anticipo según tipo
+    if (formData.advance_type === 'percentage') {
+      if (formData.advance_percentage) {
+        const anticipo = parseFloat(formData.advance_percentage);
+        if (isNaN(anticipo) || anticipo < 0) {
+          toast.error('El porcentaje de anticipo debe ser un número válido mayor o igual a 0');
+          return;
+        }
+        if (anticipo > 100) {
+          toast.error('El porcentaje de anticipo no puede ser mayor a 100%');
+          return;
+        }
       }
-      if (anticipo > 100) {
-        toast.error('El porcentaje de anticipo no puede ser mayor a 100%');
-        return;
+    } else if (formData.advance_type === 'fixed_amount') {
+      if (formData.advance_amount) {
+        const monto = parseFloat(formData.advance_amount);
+        if (isNaN(monto) || monto <= 0) {
+          toast.error('El monto de anticipo debe ser un número válido mayor a 0');
+          return;
+        }
       }
     }
 
@@ -754,7 +800,9 @@ export function CondicionesComercialesManager({
         nombre: formData.name,
         descripcion: formData.description || null,
         porcentaje_descuento: formData.discount_percentage || null,
-        porcentaje_anticipo: formData.advance_percentage || null,
+        porcentaje_anticipo: formData.advance_type === 'percentage' ? (formData.advance_percentage || null) : null,
+        tipo_anticipo: formData.advance_type,
+        monto_anticipo: formData.advance_type === 'fixed_amount' ? (formData.advance_amount || null) : null,
         status: formData.status ? 'active' : 'inactive',
         orden: editingId ? (condicionExistente?.order || 0) : condiciones.length,
         type: formData.is_offer ? 'offer' : 'standard',
@@ -877,14 +925,29 @@ export function CondicionesComercialesManager({
                   {viewingOfferCondition.discount_percentage ?? 0}%
                 </span>
               </div>
-              {viewingOfferCondition.advance_percentage && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-zinc-400">Anticipo</span>
-                  <span className="text-sm font-medium text-white">
-                    {viewingOfferCondition.advance_percentage}%
-                  </span>
-                </div>
-              )}
+              {(() => {
+                const advanceType = viewingOfferCondition.advance_type || 'percentage';
+                if (advanceType === 'fixed_amount' && viewingOfferCondition.advance_amount) {
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-zinc-400">Anticipo</span>
+                      <span className="text-sm font-medium text-white">
+                        ${viewingOfferCondition.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  );
+                } else if (advanceType === 'percentage' && viewingOfferCondition.advance_percentage) {
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-zinc-400">Anticipo</span>
+                      <span className="text-sm font-medium text-white">
+                        {viewingOfferCondition.advance_percentage}%
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             <div className="space-y-4 pt-2">
@@ -958,16 +1021,52 @@ export function CondicionesComercialesManager({
               rows={3}
             />
 
-            <ZenInput
-              label="Porcentaje de anticipo"
-              type="text"
-              inputMode="decimal"
-              min="0"
-              max="100"
-              value={formData.advance_percentage}
-              onChange={handleAdvanceChange}
-              placeholder="10"
-            />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium text-zinc-300">
+                    Tipo de anticipo
+                  </label>
+                  <p className="text-xs text-zinc-500">
+                    Elige si el anticipo será un porcentaje o un monto fijo
+                  </p>
+                </div>
+                <ZenSwitch
+                  checked={formData.advance_type === 'fixed_amount'}
+                  onCheckedChange={(checked) => {
+                    setFormData({
+                      ...formData,
+                      advance_type: checked ? 'fixed_amount' : 'percentage',
+                      advance_percentage: checked ? '' : formData.advance_percentage,
+                      advance_amount: checked ? formData.advance_amount : '',
+                    });
+                  }}
+                  label={formData.advance_type === 'fixed_amount' ? 'Monto fijo' : 'Porcentaje'}
+                />
+              </div>
+
+              {formData.advance_type === 'percentage' ? (
+                <ZenInput
+                  label="Porcentaje de anticipo"
+                  type="text"
+                  inputMode="decimal"
+                  min="0"
+                  max="100"
+                  value={formData.advance_percentage}
+                  onChange={handleAdvancePercentageChange}
+                  placeholder="10"
+                />
+              ) : (
+                <ZenInput
+                  label="Monto fijo de anticipo"
+                  type="text"
+                  inputMode="decimal"
+                  value={formData.advance_amount}
+                  onChange={handleAdvanceAmountChange}
+                  placeholder="1000"
+                />
+              )}
+            </div>
 
             <div className="space-y-2">
               <ZenInput

@@ -58,6 +58,8 @@ export function BasicInfoEditor({
     description: string | null;
     discount_percentage: number | null;
     advance_percentage: number | null;
+    advance_type?: string | null;
+    advance_amount?: number | null;
     type: 'standard' | 'offer';
   }>>([]);
   const [loadingTerms, setLoadingTerms] = useState(false);
@@ -507,6 +509,8 @@ export function BasicInfoEditor({
                             description={term.description}
                             discount_percentage={term.discount_percentage}
                             advance_percentage={term.advance_percentage}
+                            advance_type={term.advance_type}
+                            advance_amount={term.advance_amount}
                             type={term.type}
                             selected={formData.business_term_id === term.id}
                             onChange={(id) => updateFormData({ business_term_id: id })}
@@ -537,6 +541,8 @@ export function BasicInfoEditor({
                             description={term.description}
                             discount_percentage={term.discount_percentage}
                             advance_percentage={term.advance_percentage}
+                            advance_type={term.advance_type}
+                            advance_amount={term.advance_amount}
                             type={term.type}
                             selected={formData.business_term_id === term.id}
                             onChange={(id) => updateFormData({ business_term_id: id })}
@@ -625,14 +631,19 @@ export function BasicInfoEditor({
       if (result.success && result.data) {
         const activeTerms = result.data
           .filter(t => t.status === "active")
-          .map(t => ({
-            id: t.id,
-            name: t.name,
-            description: t.description,
-            discount_percentage: t.discount_percentage,
-            advance_percentage: t.advance_percentage,
-            type: (t.type || 'standard') as 'standard' | 'offer',
-          }));
+          .map(t => {
+            const tWithAdvance = t as typeof t & { advance_type?: string | null; advance_amount?: number | null };
+            return {
+              id: t.id,
+              name: t.name,
+              description: t.description,
+              discount_percentage: t.discount_percentage,
+              advance_percentage: t.advance_percentage,
+              advance_type: tWithAdvance.advance_type,
+              advance_amount: tWithAdvance.advance_amount,
+              type: (t.type || 'standard') as 'standard' | 'offer',
+            };
+          });
         setBusinessTerms(activeTerms);
       } else {
         toast.error("Error al cargar condiciones comerciales");

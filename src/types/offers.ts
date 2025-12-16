@@ -35,6 +35,8 @@ export interface StudioBusinessTerm {
   description: string | null;
   discount_percentage: number | null;
   advance_percentage: number | null;
+  advance_type?: string | null;
+  advance_amount?: number | null;
   type: 'standard' | 'offer';
   override_standard: boolean;
 }

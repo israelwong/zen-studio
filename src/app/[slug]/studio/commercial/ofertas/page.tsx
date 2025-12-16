@@ -221,12 +221,27 @@ function SortableOfferRow({
                             <span className="text-sm">{offer.business_term.discount_percentage}% desc.</span>
                         </div>
                     ) : null}
-                    {offer.business_term?.advance_percentage ? (
-                        <div className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-blue-400 shrink-0" />
-                            <span className="text-sm">{offer.business_term.advance_percentage}% anticipo</span>
-                        </div>
-                    ) : null}
+                    {(() => {
+                        const businessTerm = offer.business_term;
+                        if (!businessTerm) return null;
+                        const advanceType = businessTerm.advance_type || 'percentage';
+                        if (advanceType === 'fixed_amount' && businessTerm.advance_amount) {
+                            return (
+                                <div className="flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4 text-blue-400 shrink-0" />
+                                    <span className="text-sm">${businessTerm.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} anticipo</span>
+                                </div>
+                            );
+                        } else if (advanceType === 'percentage' && businessTerm.advance_percentage) {
+                            return (
+                                <div className="flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4 text-blue-400 shrink-0" />
+                                    <span className="text-sm">{businessTerm.advance_percentage}% anticipo</span>
+                                </div>
+                            );
+                        }
+                        return null;
+                    })()}
                     {!offer.business_term?.discount_percentage && !offer.business_term?.advance_percentage && (
                         <span className="text-sm text-zinc-500">Sin condiciones</span>
                     )}

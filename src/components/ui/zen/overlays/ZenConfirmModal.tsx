@@ -57,9 +57,9 @@ export function ZenConfirmModal({
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent
-                className="sm:max-w-md bg-zinc-900 border-zinc-700 !z-[10055]"
-                style={{ zIndex: 10055 }}
-                overlayZIndex={10054}
+                className="sm:max-w-md bg-zinc-900 border-zinc-700"
+                style={{ zIndex: 10060 }}
+                overlayZIndex={10059}
             >
                 <DialogHeader>
                     <div className="flex items-center space-x-3">

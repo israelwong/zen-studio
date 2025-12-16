@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { ZenDialog } from '@/components/ui/zen/modals/ZenDialog';
-import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
+import { ZenButton, ZenInput, ZenTextarea, ZenSwitch } from '@/components/ui/zen';
 import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 import {
   crearCondicionComercial,
   obtenerConfiguracionPrecios,
 } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
+import type { CondicionComercialForm } from '@/lib/actions/schemas/condiciones-comerciales-schemas';
 import { useConfiguracionPreciosUpdateListener, type ConfiguracionPreciosUpdateEventDetail } from '@/hooks/useConfiguracionPreciosRefresh';
 import { UtilidadForm } from '@/components/shared/configuracion/UtilidadForm';
 import { toast } from 'sonner';
@@ -36,7 +37,9 @@ export function CrearCondicionComercialModal({
     name: '',
     description: '',
     discount_percentage: '',
+    advance_type: 'percentage' as 'percentage' | 'fixed_amount',
     advance_percentage: '',
+    advance_amount: '',
   });
   const [formErrors, setFormErrors] = useState<{
     nombre?: string[];
@@ -45,7 +48,9 @@ export function CrearCondicionComercialModal({
     name: '',
     description: '',
     discount_percentage: '',
+    advance_type: 'percentage' as 'percentage' | 'fixed_amount',
     advance_percentage: '',
+    advance_amount: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [maxDescuento, setMaxDescuento] = useState<number | null>(null);
@@ -86,7 +91,9 @@ export function CrearCondicionComercialModal({
       formData.name !== initialFormData.name ||
       formData.description !== initialFormData.description ||
       formData.discount_percentage !== initialFormData.discount_percentage ||
-      formData.advance_percentage !== initialFormData.advance_percentage
+      formData.advance_type !== initialFormData.advance_type ||
+      formData.advance_percentage !== initialFormData.advance_percentage ||
+      formData.advance_amount !== initialFormData.advance_amount
     );
   };
 
@@ -103,14 +110,16 @@ export function CrearCondicionComercialModal({
       name: '',
       description: '',
       discount_percentage: '',
+      advance_type: 'percentage',
       advance_percentage: '',
+      advance_amount: '',
     });
     setFormErrors({});
     setShowConfirmClose(false);
     onClose();
   };
 
-  const handleAdvanceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdvancePercentageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value;
     // Permitir campo vacío
     if (value === '') {
@@ -130,6 +139,23 @@ export function CrearCondicionComercialModal({
       value = '100';
     }
     setFormData({ ...formData, advance_percentage: value });
+  };
+
+  const handleAdvanceAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    // Permitir campo vacío
+    if (value === '') {
+      setFormData({ ...formData, advance_amount: '' });
+      return;
+    }
+    // Eliminar caracteres no numéricos excepto punto decimal
+    value = value.replace(/[^0-9.]/g, '');
+    // Permitir solo un punto decimal
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    setFormData({ ...formData, advance_amount: value });
   };
 
   const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -155,20 +181,17 @@ export function CrearCondicionComercialModal({
     setIsSubmitting(true);
 
     try {
-      const data: {
-        nombre: string;
-        descripcion: string;
-        porcentaje_descuento: string;
-        porcentaje_anticipo: string;
-        status: 'active' | 'inactive';
-        orden: number;
-      } = {
+      const data: CondicionComercialForm = {
         nombre: formData.name,
         descripcion: formData.description || '',
         porcentaje_descuento: formData.discount_percentage || '0',
-        porcentaje_anticipo: formData.advance_percentage || '0',
+        porcentaje_anticipo: formData.advance_type === 'percentage' ? (formData.advance_percentage || '0') : null,
+        tipo_anticipo: formData.advance_type,
+        monto_anticipo: formData.advance_type === 'fixed_amount' ? (formData.advance_amount || null) : null,
         status: 'active',
         orden: 0,
+        type: context?.type === 'offer' ? 'offer' : 'standard',
+        override_standard: false,
       };
 
       const actionContext = context ? { offerId: context.offerId, type: context.type } : undefined;
@@ -243,15 +266,54 @@ export function CrearCondicionComercialModal({
             rows={3}
           />
 
-          <ZenInput
-            label="Porcentaje de anticipo"
-            type="text"
-            inputMode="decimal"
-            value={formData.advance_percentage}
-            onChange={handleAdvanceChange}
-            placeholder="10"
-            hint="Porcentaje que se solicita como anticipo"
-          />
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 space-y-1">
+                <label className="text-sm font-medium text-zinc-300">
+                  Tipo de anticipo
+                </label>
+                <p className="text-xs text-zinc-500">
+                  Elige si el anticipo será un porcentaje o un monto fijo
+                </p>
+              </div>
+              <div className="pt-1">
+                <ZenSwitch
+                  checked={formData.advance_type === 'fixed_amount'}
+                  onCheckedChange={(checked) => {
+                    setFormData({
+                      ...formData,
+                      advance_type: checked ? 'fixed_amount' : 'percentage',
+                      advance_percentage: checked ? '' : formData.advance_percentage,
+                      advance_amount: checked ? formData.advance_amount : '',
+                    });
+                  }}
+                  label={formData.advance_type === 'fixed_amount' ? 'Monto fijo' : 'Porcentaje'}
+                />
+              </div>
+            </div>
+
+            {formData.advance_type === 'percentage' ? (
+              <ZenInput
+                label="Porcentaje de anticipo"
+                type="text"
+                inputMode="decimal"
+                value={formData.advance_percentage}
+                onChange={handleAdvancePercentageChange}
+                placeholder="10"
+                hint="Porcentaje que se solicita como anticipo (0-100%)"
+              />
+            ) : (
+              <ZenInput
+                label="Monto fijo de anticipo"
+                type="text"
+                inputMode="decimal"
+                value={formData.advance_amount}
+                onChange={handleAdvanceAmountChange}
+                placeholder="1000"
+                hint="Monto fijo que se solicita como anticipo (ej: $1,000)"
+              />
+            )}
+          </div>
 
           <div className="space-y-2">
             <ZenInput
