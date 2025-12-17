@@ -322,26 +322,10 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
                                     <button
                                         onClick={handleClientPortal}
                                         className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-zinc-100 bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
-                                        aria-label="Portal de clientes"
+                                        aria-label="Portal cliente"
                                     >
                                         <Users className="w-3.5 h-3.5" />
-                                        <span>Clientes</span>
-                                    </button>
-
-                                    <button
-                                        onClick={handleLogin}
-                                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-zinc-100 bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
-                                        aria-label="Iniciar sesión"
-                                    >
-                                        <span>Iniciar sesión</span>
-                                    </button>
-
-                                    <button
-                                        onClick={handleSignUp}
-                                        className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 border border-emerald-600 rounded-lg transition-colors"
-                                        aria-label="Crear Studio"
-                                    >
-                                        <span>Crear Studio</span>
+                                        <span>Portal cliente</span>
                                     </button>
                                 </div>
                             </>
@@ -406,8 +390,6 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
                     isOpen={mobileGuestActionsOpen}
                     onClose={() => setMobileGuestActionsOpen(false)}
                     onClientPortal={handleClientPortal}
-                    onLogin={handleLogin}
-                    onSignUp={handleSignUp}
                 />
             )}
         </div>

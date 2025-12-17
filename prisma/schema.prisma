@@ -731,6 +731,7 @@ model studios {
   promise_share_default_min_days_to_hire          Int                              @default(30)
   promise_share_default_show_standard_conditions Boolean                          @default(true)
   promise_share_default_show_offer_conditions    Boolean                          @default(false)
+  promise_share_default_portafolios              Boolean                          @default(true)
   
   manager_pipeline_stages                         studio_manager_pipeline_stages[]
   platform_campaigns                              platform_campaigns[]
@@ -1283,6 +1284,7 @@ model studio_promises {
   share_min_days_to_hire          Int?
   share_show_standard_conditions  Boolean?
   share_show_offer_conditions     Boolean?
+  share_portafolios               Boolean?
   
   created_at                      DateTime                        @default(now())
   updated_at                      DateTime                        @updatedAt

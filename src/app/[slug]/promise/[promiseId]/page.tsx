@@ -6,6 +6,7 @@ import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
 import { CotizacionesSection } from '@/components/promise/CotizacionesSection';
 import { PaquetesSection } from '@/components/promise/PaquetesSection';
 import { ComparadorButton } from '@/components/promise/ComparadorButton';
+import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
 import { ZenButton, ZenCard } from '@/components/ui/zen';
 import { prisma } from '@/lib/prisma';
@@ -27,6 +28,7 @@ export default async function PromisePage({ params }: PromisePageProps) {
   const studio = await prisma.studios.findUnique({
     where: { slug },
     select: {
+      id: true,
       studio_name: true,
       slogan: true,
       logo_url: true,
@@ -121,7 +123,7 @@ export default async function PromisePage({ params }: PromisePageProps) {
     );
   }
 
-  const { promise, studio: studioData, cotizaciones, paquetes, condiciones_comerciales, terminos_condiciones, share_settings } = result.data;
+  const { promise, studio: studioData, cotizaciones, paquetes, condiciones_comerciales, terminos_condiciones, share_settings, portafolios } = result.data;
 
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -236,6 +238,15 @@ export default async function PromisePage({ params }: PromisePageProps) {
             showItemsPrices={share_settings.show_items_prices}
             showStandardConditions={share_settings.show_standard_conditions}
             showOfferConditions={share_settings.show_offer_conditions}
+          />
+        )}
+
+        {/* Portafolios disponibles */}
+        {share_settings.portafolios && portafolios && portafolios.length > 0 && (
+          <PortafoliosCard
+            portafolios={portafolios}
+            studioSlug={slug}
+            studioId={studio?.id}
           />
         )}
 

@@ -349,6 +349,7 @@ export async function getPublicPromiseData(
       studio_name: string;
       slogan: string | null;
       logo_url: string | null;
+      id: string;
     };
     cotizaciones: PublicCotizacion[];
     paquetes: PublicPaquete[];
@@ -380,7 +381,19 @@ export async function getPublicPromiseData(
       min_days_to_hire: number;
       show_standard_conditions: boolean;
       show_offer_conditions: boolean;
+      portafolios: boolean;
     };
+    portafolios?: Array<{
+      id: string;
+      title: string;
+      slug: string;
+      description: string | null;
+      cover_image_url: string | null;
+      event_type?: {
+        id: string;
+        name: string;
+      } | null;
+    }>;
   };
   error?: string;
 }> {
@@ -399,6 +412,7 @@ export async function getPublicPromiseData(
         promise_share_default_min_days_to_hire: true,
         promise_share_default_show_standard_conditions: true,
         promise_share_default_show_offer_conditions: true,
+        promise_share_default_portafolios: true,
       },
     });
 
@@ -506,6 +520,7 @@ export async function getPublicPromiseData(
       min_days_to_hire: promise.share_min_days_to_hire ?? studio.promise_share_default_min_days_to_hire,
       show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
       show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
+      portafolios: promise.share_portafolios ?? studio.promise_share_default_portafolios,
     };
 
     // 3. Obtener catálogo completo (incluir items inactivos para que coincidan con paquetes)
@@ -680,7 +695,60 @@ export async function getPublicPromiseData(
       };
     });
 
-    // 7. Obtener condiciones comerciales disponibles y términos y condiciones
+    // 7. Obtener portafolios según tipo de evento (si está habilitado)
+    let portafolios: Array<{
+      id: string;
+      title: string;
+      slug: string;
+      description: string | null;
+      cover_image_url: string | null;
+      event_type?: {
+        id: string;
+        name: string;
+      } | null;
+    }> = [];
+
+    if (shareSettings.portafolios && promise.event_type_id) {
+      const portafoliosData = await prisma.studio_portfolios.findMany({
+        where: {
+          studio_id: studio.id,
+          event_type_id: promise.event_type_id,
+          is_published: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          cover_image_url: true,
+          event_type: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [
+          { is_featured: 'desc' },
+          { order: 'asc' },
+        ],
+        take: 10, // Limitar a 10 portafolios
+      });
+
+      portafolios = portafoliosData.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        description: p.description,
+        cover_image_url: p.cover_image_url,
+        event_type: p.event_type ? {
+          id: p.event_type.id,
+          name: p.event_type.name,
+        } : null,
+      }));
+    }
+
+    // 8. Obtener condiciones comerciales disponibles y términos y condiciones
     const [condicionesResult, terminosResult] = await Promise.all([
       obtenerCondicionesComercialesPublicas(studioSlug),
       obtenerTerminosCondicionesPublicos(studioSlug),
@@ -718,6 +786,7 @@ export async function getPublicPromiseData(
           studio_name: studio.studio_name,
           slogan: studio.slogan,
           logo_url: studio.logo_url,
+          id: studio.id,
         },
         cotizaciones: mappedCotizaciones,
         paquetes: mappedPaquetes,
@@ -730,7 +799,9 @@ export async function getPublicPromiseData(
           min_days_to_hire: shareSettings.min_days_to_hire,
           show_standard_conditions: shareSettings.show_standard_conditions,
           show_offer_conditions: shareSettings.show_offer_conditions,
+          portafolios: shareSettings.portafolios,
         },
+        portafolios: portafolios.length > 0 ? portafolios : undefined,
       },
     };
   } catch (error) {

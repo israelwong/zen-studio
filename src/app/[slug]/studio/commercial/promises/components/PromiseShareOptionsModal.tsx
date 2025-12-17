@@ -28,6 +28,7 @@ export function PromiseShareOptionsModal({
   const [minDaysToHire, setMinDaysToHire] = useState(30);
   const [showStandardConditions, setShowStandardConditions] = useState(true); // Siempre true, no modificable
   const [showOfferConditions, setShowOfferConditions] = useState(false);
+  const [showPortafolios, setShowPortafolios] = useState(true);
 
   useEffect(() => {
     if (isOpen && promiseId) {
@@ -51,6 +52,7 @@ export function PromiseShareOptionsModal({
         setMinDaysToHire(result.data.min_days_to_hire);
         setShowStandardConditions(result.data.show_standard_conditions ?? true);
         setShowOfferConditions(result.data.show_offer_conditions ?? false);
+        setShowPortafolios(result.data.portafolios ?? true);
       } else {
         toast.error(result.error || 'Error al cargar preferencias');
       }
@@ -77,6 +79,7 @@ export function PromiseShareOptionsModal({
         min_days_to_hire: minDaysToHire,
         show_standard_conditions: showStandardConditions,
         show_offer_conditions: showOfferConditions,
+        portafolios: showPortafolios,
         remember_preferences: false, // Siempre guardar solo para esta promesa
       });
 
@@ -108,7 +111,7 @@ export function PromiseShareOptionsModal({
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {/* Skeleton switches */}
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="flex items-center justify-between py-2">
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-zinc-800 rounded w-32" />
@@ -213,6 +216,22 @@ export function PromiseShareOptionsModal({
               <ZenSwitch
                 checked={showOfferConditions}
                 onCheckedChange={setShowOfferConditions}
+              />
+            </div>
+
+            {/* Switch para mostrar portafolios */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-zinc-200">
+                  Mostrar portafolios
+                </label>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  El prospecto verá los portafolios disponibles según el tipo de evento
+                </p>
+              </div>
+              <ZenSwitch
+                checked={showPortafolios}
+                onCheckedChange={setShowPortafolios}
               />
             </div>
 

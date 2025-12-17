@@ -21,6 +21,7 @@ interface PortfolioDetailModalProps {
     hasPrev?: boolean;
     isArchived?: boolean;
     onRestore?: () => void;
+    hideShareButton?: boolean; // Ocultar botón de copiar link
 }
 
 /**
@@ -39,7 +40,8 @@ export function PortfolioDetailModal({
     hasNext = false,
     hasPrev = false,
     isArchived = false,
-    onRestore
+    onRestore,
+    hideShareButton = false
 }: PortfolioDetailModalProps) {
     const contentRef = useRef<HTMLDivElement>(null);
 
@@ -233,19 +235,21 @@ export function PortfolioDetailModal({
                                     </button>
                                 ) : (
                                     <>
-                                        {/* Share button - Solo si NO está archivado */}
-                                        <button
-                                            onClick={handleCopyLink}
-                                            className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
-                                            aria-label="Compartir"
-                                        >
-                                            <Link2 className="w-5 h-5" />
-                                        </button>
+                                        {/* Share button - Solo si NO está archivado y NO está oculto */}
+                                        {!hideShareButton && (
+                                            <button
+                                                onClick={handleCopyLink}
+                                                className="p-2 rounded-full hover:bg-zinc-800 text-zinc-400 transition-colors"
+                                                aria-label="Compartir"
+                                            >
+                                                <Link2 className="w-5 h-5" />
+                                            </button>
+                                        )}
 
                                         {/* Navigation buttons - Solo si NO está archivado */}
                                         {(hasPrev || hasNext) && (
                                             <>
-                                                <div className="h-5 w-px bg-zinc-700" />
+                                                {!hideShareButton && <div className="h-5 w-px bg-zinc-700" />}
                                                 <button
                                                     onClick={onPrev}
                                                     disabled={!hasPrev}

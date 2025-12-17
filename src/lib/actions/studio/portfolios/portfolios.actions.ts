@@ -489,6 +489,9 @@ export async function getStudioPortfolioBySlug(studioSlug: string, portfolioSlug
                 media: {
                     orderBy: { display_order: "asc" },
                 },
+                items: {
+                    orderBy: { order: "asc" },
+                },
                 content_blocks: {
                     include: {
                         block_media: {
