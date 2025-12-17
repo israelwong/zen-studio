@@ -8,6 +8,8 @@ export interface PromiseShareSettings {
   show_categories_subtotals: boolean;
   show_items_prices: boolean;
   min_days_to_hire: number;
+  show_standard_conditions: boolean;
+  show_offer_conditions: boolean;
 }
 
 /**
@@ -34,6 +36,8 @@ export async function getPromiseShareSettings(
         promise_share_default_show_categories_subtotals: true,
         promise_share_default_show_items_prices: true,
         promise_share_default_min_days_to_hire: true,
+        promise_share_default_show_standard_conditions: true,
+        promise_share_default_show_offer_conditions: true,
       },
     });
 
@@ -72,7 +76,9 @@ export async function getPromiseShareSettings(
       promise.share_show_packages === null &&
       promise.share_show_categories_subtotals === null &&
       promise.share_show_items_prices === null &&
-      promise.share_min_days_to_hire === null;
+      promise.share_min_days_to_hire === null &&
+      promise.share_show_standard_conditions === null &&
+      promise.share_show_offer_conditions === null;
 
     // Usar overrides si existen, sino usar defaults del studio
     const settings: PromiseShareSettings = {
@@ -80,6 +86,8 @@ export async function getPromiseShareSettings(
       show_categories_subtotals: promise.share_show_categories_subtotals ?? studio.promise_share_default_show_categories_subtotals,
       show_items_prices: promise.share_show_items_prices ?? studio.promise_share_default_show_items_prices,
       min_days_to_hire: promise.share_min_days_to_hire ?? studio.promise_share_default_min_days_to_hire,
+      show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
+      show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
     };
 
     return {
@@ -147,6 +155,8 @@ export async function updatePromiseShareSettings(
           promise_share_default_show_categories_subtotals: settings.show_categories_subtotals,
           promise_share_default_show_items_prices: settings.show_items_prices,
           promise_share_default_min_days_to_hire: settings.min_days_to_hire,
+          promise_share_default_show_standard_conditions: settings.show_standard_conditions,
+          promise_share_default_show_offer_conditions: settings.show_offer_conditions,
         },
       });
 
@@ -168,6 +178,8 @@ export async function updatePromiseShareSettings(
           share_show_categories_subtotals: settings.show_categories_subtotals,
           share_show_items_prices: settings.show_items_prices,
           share_min_days_to_hire: settings.min_days_to_hire,
+          share_show_standard_conditions: settings.show_standard_conditions,
+          share_show_offer_conditions: settings.show_offer_conditions,
         },
       });
     }

@@ -108,6 +108,75 @@ export async function obtenerCondicionesComercialesPublicas(
 }
 
 /**
+ * Filtrar condiciones comerciales según preferencias de tipo
+ */
+export async function filtrarCondicionesPorPreferencias(
+  studioSlug: string,
+  condiciones: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    advance_percentage: number | null;
+    advance_type?: string | null;
+    advance_amount?: number | null;
+    discount_percentage: number | null;
+    metodos_pago: Array<{
+      id: string;
+      metodo_pago_id: string;
+      metodo_pago_name: string;
+    }>;
+  }>,
+  showStandard: boolean,
+  showOffer: boolean
+): Promise<Array<{
+  id: string;
+  name: string;
+  description: string | null;
+  advance_percentage: number | null;
+  advance_type?: string | null;
+  advance_amount?: number | null;
+  discount_percentage: number | null;
+  metodos_pago: Array<{
+    id: string;
+    metodo_pago_id: string;
+    metodo_pago_name: string;
+  }>;
+}>> {
+  if (condiciones.length === 0) return [];
+
+  const studio = await prisma.studios.findUnique({
+    where: { slug: studioSlug },
+    select: { id: true },
+  });
+
+  if (!studio) return condiciones;
+
+  const condicionesConTipo = await prisma.studio_condiciones_comerciales.findMany({
+    where: {
+      studio_id: studio.id,
+      status: 'active',
+      id: { in: condiciones.map(c => c.id) },
+    },
+    select: {
+      id: true,
+      type: true,
+    },
+  });
+
+  const tipoMap = new Map(condicionesConTipo.map(c => [c.id, c.type]));
+
+  return condiciones.filter((condicion) => {
+    const tipo = tipoMap.get(condicion.id);
+    if (tipo === 'standard') {
+      return showStandard;
+    } else if (tipo === 'offer') {
+      return showOffer;
+    }
+    return false;
+  });
+}
+
+/**
  * Obtener términos y condiciones activos para promesa pública
  */
 export async function obtenerTerminosCondicionesPublicos(
@@ -289,6 +358,8 @@ export async function getPublicPromiseData(
       show_categories_subtotals: boolean;
       show_items_prices: boolean;
       min_days_to_hire: number;
+      show_standard_conditions: boolean;
+      show_offer_conditions: boolean;
     };
   };
   error?: string;
@@ -306,6 +377,8 @@ export async function getPublicPromiseData(
         promise_share_default_show_categories_subtotals: true,
         promise_share_default_show_items_prices: true,
         promise_share_default_min_days_to_hire: true,
+        promise_share_default_show_standard_conditions: true,
+        promise_share_default_show_offer_conditions: true,
       },
     });
 
@@ -331,6 +404,8 @@ export async function getPublicPromiseData(
         share_show_categories_subtotals: true,
         share_show_items_prices: true,
         share_min_days_to_hire: true,
+        share_show_standard_conditions: true,
+        share_show_offer_conditions: true,
         contact: {
           select: {
             name: true,
@@ -409,6 +484,8 @@ export async function getPublicPromiseData(
       show_categories_subtotals: promise.share_show_categories_subtotals ?? studio.promise_share_default_show_categories_subtotals,
       show_items_prices: promise.share_show_items_prices ?? studio.promise_share_default_show_items_prices,
       min_days_to_hire: promise.share_min_days_to_hire ?? studio.promise_share_default_min_days_to_hire,
+      show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
+      show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
     };
 
     // 3. Obtener catálogo completo (incluir items inactivos para que coincidan con paquetes)
@@ -589,6 +666,35 @@ export async function getPublicPromiseData(
       obtenerTerminosCondicionesPublicos(studioSlug),
     ]);
 
+    // Filtrar condiciones comerciales según preferencias
+    let condicionesFiltradas = condicionesResult.success && condicionesResult.data ? condicionesResult.data : [];
+    if (condicionesFiltradas.length > 0) {
+      // Obtener el tipo de cada condición desde la base de datos
+      const condicionesConTipo = await prisma.studio_condiciones_comerciales.findMany({
+        where: {
+          studio_id: studio.id,
+          status: 'active',
+          id: { in: condicionesFiltradas.map(c => c.id) },
+        },
+        select: {
+          id: true,
+          type: true,
+        },
+      });
+
+      const tipoMap = new Map(condicionesConTipo.map(c => [c.id, c.type]));
+
+      condicionesFiltradas = condicionesFiltradas.filter((condicion) => {
+        const tipo = tipoMap.get(condicion.id);
+        if (tipo === 'standard') {
+          return shareSettings.show_standard_conditions;
+        } else if (tipo === 'offer') {
+          return shareSettings.show_offer_conditions;
+        }
+        return false; // Si no tiene tipo, no mostrar
+      });
+    }
+
 
     return {
       success: true,
@@ -610,7 +716,7 @@ export async function getPublicPromiseData(
         },
         cotizaciones: mappedCotizaciones,
         paquetes: mappedPaquetes,
-        condiciones_comerciales: condicionesResult.success && condicionesResult.data ? condicionesResult.data : undefined,
+        condiciones_comerciales: condicionesFiltradas.length > 0 ? condicionesFiltradas : undefined,
         terminos_condiciones: terminosResult.success && terminosResult.data ? terminosResult.data : undefined,
         share_settings: {
           show_packages: shareSettings.show_packages,

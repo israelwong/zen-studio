@@ -35,6 +35,8 @@ interface CotizacionesSectionProps {
   terminosCondiciones?: TerminoCondicion[];
   showCategoriesSubtotals?: boolean;
   showItemsPrices?: boolean;
+  showStandardConditions?: boolean;
+  showOfferConditions?: boolean;
 }
 
 export function CotizacionesSection({
@@ -45,6 +47,8 @@ export function CotizacionesSection({
   terminosCondiciones,
   showCategoriesSubtotals = false,
   showItemsPrices = false,
+  showStandardConditions = true,
+  showOfferConditions = false,
 }: CotizacionesSectionProps) {
   const [selectedCotizacion, setSelectedCotizacion] = useState<PublicCotizacion | null>(null);
 
@@ -195,6 +199,8 @@ export function CotizacionesSection({
           terminosCondiciones={terminosCondiciones}
           showCategoriesSubtotals={showCategoriesSubtotals}
           showItemsPrices={showItemsPrices}
+          showStandardConditions={showStandardConditions}
+          showOfferConditions={showOfferConditions}
         />
       )}
     </>

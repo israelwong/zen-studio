@@ -26,6 +26,8 @@ export function PromiseShareOptionsModal({
   const [showCategoriesSubtotals, setShowCategoriesSubtotals] = useState(false);
   const [showItemsPrices, setShowItemsPrices] = useState(false);
   const [minDaysToHire, setMinDaysToHire] = useState(30);
+  const [showStandardConditions, setShowStandardConditions] = useState(true); // Siempre true, no modificable
+  const [showOfferConditions, setShowOfferConditions] = useState(false);
 
   useEffect(() => {
     if (isOpen && promiseId) {
@@ -43,6 +45,8 @@ export function PromiseShareOptionsModal({
         setShowCategoriesSubtotals(result.data.show_categories_subtotals);
         setShowItemsPrices(result.data.show_items_prices);
         setMinDaysToHire(result.data.min_days_to_hire);
+        setShowStandardConditions(result.data.show_standard_conditions ?? true);
+        setShowOfferConditions(result.data.show_offer_conditions ?? false);
       } else {
         toast.error(result.error || 'Error al cargar preferencias');
       }
@@ -100,7 +104,7 @@ export function PromiseShareOptionsModal({
         {loading ? (
           <div className="space-y-4 animate-pulse">
             {/* Skeleton switches */}
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between py-2">
                 <div className="flex-1 space-y-2">
                   <div className="h-4 bg-zinc-800 rounded w-32" />
@@ -172,6 +176,39 @@ export function PromiseShareOptionsModal({
               <ZenSwitch
                 checked={showItemsPrices}
                 onCheckedChange={setShowItemsPrices}
+              />
+            </div>
+
+            {/* Switch para mostrar condiciones comerciales estándar */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-zinc-200">
+                  Mostrar condiciones comerciales estándar
+                </label>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  El prospecto verá las condiciones comerciales estándar
+                </p>
+              </div>
+              <ZenSwitch
+                checked={showStandardConditions}
+                onCheckedChange={() => { }} // No modificable, siempre true
+                disabled
+              />
+            </div>
+
+            {/* Switch para mostrar condiciones comerciales de ofertas */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-zinc-200">
+                  Mostrar condiciones comerciales de ofertas
+                </label>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  El prospecto verá las condiciones comerciales de tipo oferta
+                </p>
+              </div>
+              <ZenSwitch
+                checked={showOfferConditions}
+                onCheckedChange={setShowOfferConditions}
               />
             </div>
 

@@ -217,6 +217,8 @@ export default async function PromisePage({ params }: PromisePageProps) {
             terminosCondiciones={terminos_condiciones}
             showCategoriesSubtotals={share_settings.show_categories_subtotals}
             showItemsPrices={share_settings.show_items_prices}
+            showStandardConditions={share_settings.show_standard_conditions}
+            showOfferConditions={share_settings.show_offer_conditions}
           />
         )}
 
@@ -232,6 +234,8 @@ export default async function PromisePage({ params }: PromisePageProps) {
             minDaysToHire={share_settings.min_days_to_hire}
             showCategoriesSubtotals={share_settings.show_categories_subtotals}
             showItemsPrices={share_settings.show_items_prices}
+            showStandardConditions={share_settings.show_standard_conditions}
+            showOfferConditions={share_settings.show_offer_conditions}
           />
         )}
 

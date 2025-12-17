@@ -7,7 +7,7 @@ import type { PublicPaquete } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { SolicitarPaqueteModal } from './SolicitarPaqueteModal';
 import { SolicitarPersonalizacionModal } from './SolicitarPersonalizacionModal';
-import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos } from '@/lib/actions/public/promesas.actions';
+import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos, filtrarCondicionesPorPreferencias } from '@/lib/actions/public/promesas.actions';
 import { formatCurrency } from '@/lib/actions/utils/formatting';
 
 interface CondicionComercial {
@@ -43,6 +43,8 @@ interface PaqueteDetailSheetProps {
   showCategoriesSubtotals?: boolean;
   showItemsPrices?: boolean;
   minDaysToHire?: number;
+  showStandardConditions?: boolean;
+  showOfferConditions?: boolean;
 }
 
 export function PaqueteDetailSheet({
@@ -56,6 +58,8 @@ export function PaqueteDetailSheet({
   showCategoriesSubtotals = false,
   showItemsPrices = false,
   minDaysToHire,
+  showStandardConditions = true,
+  showOfferConditions = false,
 }: PaqueteDetailSheetProps) {
   const [showSolicitarModal, setShowSolicitarModal] = useState(false);
   const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
@@ -75,7 +79,14 @@ export function PaqueteDetailSheet({
       ]);
 
       if (condicionesResult.success && condicionesResult.data) {
-        setCondicionesComerciales(condicionesResult.data);
+        // Filtrar condiciones según preferencias
+        const condicionesFiltradas = await filtrarCondicionesPorPreferencias(
+          studioSlug,
+          condicionesResult.data,
+          showStandardConditions,
+          showOfferConditions
+        );
+        setCondicionesComerciales(condicionesFiltradas);
       }
 
       if (terminosResult.success && terminosResult.data) {
@@ -86,7 +97,7 @@ export function PaqueteDetailSheet({
     } finally {
       setLoadingCondiciones(false);
     }
-  }, [studioSlug]);
+  }, [studioSlug, showStandardConditions, showOfferConditions]);
 
   useEffect(() => {
     if (isOpen) {

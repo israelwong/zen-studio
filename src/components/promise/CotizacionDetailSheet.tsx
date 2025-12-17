@@ -7,7 +7,7 @@ import type { PublicCotizacion } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { AutorizarCotizacionModal } from './AutorizarCotizacionModal';
 import { SolicitarPersonalizacionModal } from './SolicitarPersonalizacionModal';
-import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos } from '@/lib/actions/public/promesas.actions';
+import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos, filtrarCondicionesPorPreferencias } from '@/lib/actions/public/promesas.actions';
 import { formatCurrency } from '@/lib/actions/utils/formatting';
 
 interface CondicionComercial {
@@ -42,6 +42,8 @@ interface CotizacionDetailSheetProps {
   terminosCondiciones?: TerminoCondicion[];
   showCategoriesSubtotals?: boolean;
   showItemsPrices?: boolean;
+  showStandardConditions?: boolean;
+  showOfferConditions?: boolean;
 }
 
 export function CotizacionDetailSheet({
@@ -54,6 +56,8 @@ export function CotizacionDetailSheet({
   terminosCondiciones: terminosCondicionesIniciales,
   showCategoriesSubtotals = false,
   showItemsPrices = false,
+  showStandardConditions = true,
+  showOfferConditions = false,
 }: CotizacionDetailSheetProps) {
   const [showAutorizarModal, setShowAutorizarModal] = useState(false);
   const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
@@ -73,7 +77,14 @@ export function CotizacionDetailSheet({
       ]);
 
       if (condicionesResult.success && condicionesResult.data) {
-        setCondicionesComerciales(condicionesResult.data);
+        // Filtrar condiciones según preferencias
+        const condicionesFiltradas = await filtrarCondicionesPorPreferencias(
+          studioSlug,
+          condicionesResult.data,
+          showStandardConditions,
+          showOfferConditions
+        );
+        setCondicionesComerciales(condicionesFiltradas);
       }
 
       if (terminosResult.success && terminosResult.data) {
@@ -84,7 +95,7 @@ export function CotizacionDetailSheet({
     } finally {
       setLoadingCondiciones(false);
     }
-  }, [studioSlug]);
+  }, [studioSlug, showStandardConditions, showOfferConditions]);
 
   useEffect(() => {
     if (isOpen) {
