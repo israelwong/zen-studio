@@ -9,7 +9,8 @@ export async function notifyQuoteApproved(
   quoteId: string,
   contactName: string,
   amount: number,
-  eventoId?: string | null
+  eventoId?: string | null,
+  promiseId?: string | null
 ) {
   console.log('[notifyQuoteApproved] 📋 Parámetros recibidos:', {
     studioId,
@@ -17,6 +18,7 @@ export async function notifyQuoteApproved(
     contactName,
     amount,
     eventoId,
+    promiseId,
     eventoIdType: typeof eventoId,
     eventoIdTruthy: !!eventoId,
   });
@@ -25,30 +27,36 @@ export async function notifyQuoteApproved(
     where: { id: studioId },
     select: { slug: true },
   });
-  
-  // Si hay eventoId, la ruta debe apuntar al evento, sino a las promesas
-  const route = eventoId 
+
+  // Si hay eventoId, la ruta debe apuntar al evento, sino a la promesa
+  const route = eventoId
     ? '/{slug}/studio/business/events/{event_id}'
-    : '/{slug}/studio/commercial/promises';
-  
+    : promiseId
+      ? '/{slug}/studio/commercial/promises/{promise_id}'
+      : '/{slug}/studio/commercial/promises';
+
   const routeParams: Record<string, string | null | undefined> = {
     slug: studio?.slug,
   };
-  
+
   if (eventoId) {
     routeParams.event_id = eventoId;
     console.log('[notifyQuoteApproved] ✅ Usando ruta de evento con event_id:', eventoId);
+  } else if (promiseId) {
+    routeParams.promise_id = promiseId;
+    console.log('[notifyQuoteApproved] ✅ Usando ruta de promesa con promise_id:', promiseId);
   } else {
     routeParams.quote_id = quoteId;
-    console.log('[notifyQuoteApproved] ⚠️ No hay eventoId, usando ruta de promesas');
+    console.log('[notifyQuoteApproved] ⚠️ No hay eventoId ni promiseId, usando ruta de promesas');
   }
-  
+
   console.log('[notifyQuoteApproved] 🛣️ Ruta y params finales:', {
     route,
     routeParams,
     event_id: eventoId || undefined,
+    promise_id: promiseId || undefined,
   });
-  
+
   return createStudioNotification({
     scope: StudioNotificationScope.STUDIO,
     type: StudioNotificationType.QUOTE_APPROVED,
@@ -65,6 +73,7 @@ export async function notifyQuoteApproved(
     },
     quote_id: quoteId,
     event_id: eventoId || undefined,
+    promise_id: promiseId || undefined,
   });
 }
 

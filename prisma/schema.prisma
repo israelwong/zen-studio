@@ -1283,6 +1283,7 @@ model studio_promises {
   share_min_days_to_hire          Int?
   share_show_standard_conditions  Boolean?
   share_show_offer_conditions     Boolean?
+  
   created_at                      DateTime                        @default(now())
   updated_at                      DateTime                        @updatedAt
   studio                          studios                         @relation(fields: [studio_id], references: [id], onDelete: Cascade)

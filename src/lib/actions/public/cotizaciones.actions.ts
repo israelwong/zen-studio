@@ -5,7 +5,7 @@ import { createStudioNotification } from "@/lib/notifications/studio/studio-noti
 import { StudioNotificationScope, StudioNotificationType, NotificationPriority } from "@/lib/notifications/studio/types";
 
 /**
- * Autorizar cotizaci?n desde p?gina p?blica
+ * Autorizar cotización desde página pública
  */
 export async function autorizarCotizacionPublica(
   promiseId: string,
@@ -30,6 +30,7 @@ export async function autorizarCotizacionPublica(
           select: {
             id: true,
             studio_name: true,
+            slug: true,
           },
         },
       },
@@ -60,7 +61,7 @@ export async function autorizarCotizacionPublica(
     if (!cotizacion) {
       return {
         success: false,
-        error: "Cotizaci?n no encontrada o no disponible",
+        error: "Cotización no encontrada o no disponible",
       };
     }
 
@@ -68,7 +69,7 @@ export async function autorizarCotizacionPublica(
     if (cotizacion.selected_by_prospect) {
       return {
         success: false,
-        error: "Esta cotizaci?n ya ha sido autorizada previamente",
+        error: "Esta cotización ya ha sido autorizada previamente",
       };
     }
 
@@ -108,7 +109,7 @@ export async function autorizarCotizacionPublica(
       }
     }
 
-    // 4. Actualizar cotizaci?n como seleccionada
+    // 4. Actualizar cotización como seleccionada
     await prisma.studio_cotizaciones.update({
       where: { id: cotizacionId },
       data: {
@@ -143,17 +144,22 @@ export async function autorizarCotizacionPublica(
       }
     }
 
-    // 6. Crear notificaci?n para el estudio
+    // 6. Crear notificación para el estudio con route a la promesa
     await createStudioNotification({
       scope: StudioNotificationScope.STUDIO,
       studio_id: promise.studio.id,
       type: StudioNotificationType.QUOTE_APPROVED,
-      title: "Solicitud de contrataci?n de cotizaci?n",
+      title: "Solicitud de contratación de cotización",
       message: mensajeNotificacion,
       priority: NotificationPriority.HIGH,
       contact_id: promise.contact.id,
       promise_id: promiseId,
       quote_id: cotizacionId,
+      route: '/{slug}/studio/commercial/promises/{promise_id}',
+      route_params: {
+        slug: promise.studio.slug,
+        promise_id: promiseId,
+      },
       metadata: {
         cotizacion_id: cotizacionId,
         cotizacion_name: cotizacion.name,
@@ -166,7 +172,7 @@ export async function autorizarCotizacionPublica(
       },
     });
 
-    // 7. Agregar log a la promesa
+    // 8. Agregar log a la promesa
     await prisma.studio_promise_logs.create({
       data: {
         promise_id: promiseId,

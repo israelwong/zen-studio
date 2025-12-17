@@ -30,6 +30,7 @@ export async function solicitarPaquetePublico(
           select: {
             id: true,
             studio_name: true,
+            slug: true,
           },
         },
       },
@@ -124,7 +125,7 @@ export async function solicitarPaquetePublico(
       }
     }
 
-    // 5. Crear notificación para el estudio
+    // 5. Crear notificación para el estudio con route a la promesa
     await createStudioNotification({
       scope: StudioNotificationScope.STUDIO,
       studio_id: promise.studio.id,
@@ -135,6 +136,11 @@ export async function solicitarPaquetePublico(
       contact_id: promise.contact.id,
       promise_id: promiseId,
       paquete_id: paqueteId,
+      route: '/{slug}/studio/commercial/promises/{promise_id}',
+      route_params: {
+        slug: promise.studio.slug,
+        promise_id: promiseId,
+      },
       metadata: {
         paquete_id: paqueteId,
         paquete_name: paquete.name,
@@ -147,7 +153,7 @@ export async function solicitarPaquetePublico(
       },
     });
 
-    // 6. Agregar log a la promesa
+    // 7. Agregar log a la promesa
     await prisma.studio_promise_logs.create({
       data: {
         promise_id: promiseId,

@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { createStudioNotification } from "@/lib/notifications/studio/studio-notification.service";
+import { StudioNotificationScope, StudioNotificationType, NotificationPriority } from "@/lib/notifications/studio/types";
 
 /**
  * Solicitar personalización de cotización o paquete
@@ -29,6 +31,7 @@ export async function solicitarPersonalizacion(
       include: {
         contact: {
           select: {
+            id: true,
             name: true,
             phone: true,
           },
@@ -42,6 +45,7 @@ export async function solicitarPersonalizacion(
           select: {
             id: true,
             studio_name: true,
+            slug: true,
           },
         },
       },
@@ -70,17 +74,43 @@ export async function solicitarPersonalizacion(
       itemName = paquete?.name || 'Paquete';
     }
 
-    // 3. Crear notificación para el usuario del estudio
-    await prisma.studio_notifications.create({
+    // 3. Crear notificación para el estudio con route a la promesa
+    const mensajeNotificacion = `${promise.contact.name} solicita personalizar "${itemName}" para su ${promise.event_type?.name || 'evento'}${mensaje ? `: ${mensaje}` : ''}`;
+
+    await createStudioNotification({
+      scope: StudioNotificationScope.STUDIO,
+      studio_id: promise.studio.id,
+      type: StudioNotificationType.PROMISE_UPDATED,
+      title: `Solicitud de personalización - ${promise.contact.name}`,
+      message: mensajeNotificacion,
+      priority: NotificationPriority.MEDIUM,
+      contact_id: promise.contact.id,
+      promise_id: promiseId,
+      route: '/{slug}/studio/commercial/promises/{promise_id}',
+      route_params: {
+        slug: promise.studio.slug,
+        promise_id: promiseId,
+      },
+      metadata: {
+        item_id: itemId,
+        item_type: itemType,
+        item_name: itemName,
+        mensaje: mensaje || null,
+        action_type: "personalizacion_solicitada",
+      },
+    });
+
+    // 4. Agregar log a la promesa en studio_promise_logs
+    const contenidoLog = `Cliente solicitó personalización de ${itemType}: "${itemName}"${mensaje ? ` - Mensaje: ${mensaje}` : ''}`;
+
+    await prisma.studio_promise_logs.create({
       data: {
-        studio_id: promise.studio_id,
-        type: 'promise_personalizacion',
-        title: `Solicitud de personalización - ${promise.contact.name}`,
-        message: `${promise.contact.name} solicita personalizar "${itemName}" para su ${promise.event_type?.name || 'evento'}${mensaje ? `: ${mensaje}` : ''}`,
-        action_url: `/studio/${studioSlug}/manager/promises/${promiseId}`,
+        promise_id: promiseId,
+        user_id: null,
+        content: contenidoLog,
+        log_type: "system",
         metadata: {
-          promise_id: promiseId,
-          contact_name: promise.contact.name,
+          action: "personalizacion_solicitada",
           item_id: itemId,
           item_type: itemType,
           item_name: itemName,
@@ -89,32 +119,9 @@ export async function solicitarPersonalizacion(
       },
     });
 
-    // 4. Agregar log a la promesa
-    const currentLogs = (promise.logs as any[]) || [];
-    const newLog = {
-      timestamp: new Date().toISOString(),
-      action: 'personalizacion_solicitada',
-      description: `Cliente solicitó personalización de ${itemType}: "${itemName}"${mensaje ? ` - Mensaje: ${mensaje}` : ''}`,
-      user: 'Cliente',
-      metadata: {
-        item_id: itemId,
-        item_type: itemType,
-        item_name: itemName,
-        mensaje: mensaje || null,
-      },
-    };
-
-    await prisma.studio_promises.update({
-      where: { id: promiseId },
-      data: {
-        logs: [...currentLogs, newLog],
-        updated_at: new Date(),
-      },
-    });
-
     // 5. Revalidar rutas
-    revalidatePath(`/${studioSlug}/studio/manager/promises`);
-    revalidatePath(`/${studioSlug}/studio/manager/promises/${promiseId}`);
+    revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
 
     return {
       success: true,

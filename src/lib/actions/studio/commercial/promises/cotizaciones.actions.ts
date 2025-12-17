@@ -1570,7 +1570,8 @@ export async function autorizarCotizacion(
         validatedData.cotizacion_id,
         contactName,
         validatedData.monto,
-        eventoIdFinal || null
+        eventoIdFinal || null,
+        validatedData.promise_id || null
       );
     } catch (notificationError) {
       console.error('[AUTORIZACION] Error creando notificaci?n:', notificationError);
