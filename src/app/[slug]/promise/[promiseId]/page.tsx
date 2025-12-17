@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
-import { CotizacionesSection } from '@/components/promise/CotizacionesSection';
+import { CotizacionesSectionRealtime } from '@/components/promise/CotizacionesSectionRealtime';
 import { PaquetesSection } from '@/components/promise/PaquetesSection';
 import { ComparadorButton } from '@/components/promise/ComparadorButton';
 import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
@@ -211,8 +211,8 @@ export default async function PromisePage({ params }: PromisePageProps) {
 
         {/* Cotizaciones personalizadas */}
         {cotizaciones.length > 0 && (
-          <CotizacionesSection
-            cotizaciones={cotizaciones}
+          <CotizacionesSectionRealtime
+            initialCotizaciones={cotizaciones}
             promiseId={promiseId}
             studioSlug={slug}
             condicionesComerciales={condiciones_comerciales}

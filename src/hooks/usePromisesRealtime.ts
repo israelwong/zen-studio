@@ -1,102 +1,119 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface UsePromisesRealtimeProps {
-  studioId: string;
-  onPromiseInserted: (promise: PromiseWithContact) => void;
-  onPromiseUpdated: (promiseId: string) => void;
-  onPromiseDeleted: (promiseId: string) => void;
+  studioSlug: string;
+  onPromiseInserted?: () => void;
+  onPromiseUpdated?: (promiseId: string) => void;
+  onPromiseDeleted?: (promiseId: string) => void;
 }
 
 export function usePromisesRealtime({
-  studioId,
+  studioSlug,
   onPromiseInserted,
   onPromiseUpdated,
   onPromiseDeleted,
 }: UsePromisesRealtimeProps) {
   const supabase = createClient();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleInsert = useCallback(
-    async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    (payload: unknown) => {
+      if (!isMountedRef.current) return;
       console.log('[Realtime] Nueva promesa insertada:', payload);
-      
-      // Recargar promesas cuando se inserta una nueva
-      // Usamos el callback para que el componente decida cómo actualizar
-      onPromiseUpdated(payload.new.id as string);
+      const p = payload as any;
+      const promiseId = p.payload?.record?.id || p.record?.id || p.new?.id || (p.id ? p.id : null) as string;
+      if (promiseId && onPromiseUpdated) {
+        onPromiseUpdated(promiseId);
+      } else if (onPromiseInserted) {
+        onPromiseInserted();
+      }
     },
-    [onPromiseUpdated]
+    [onPromiseInserted, onPromiseUpdated]
   );
 
   const handleUpdate = useCallback(
-    async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    (payload: unknown) => {
+      if (!isMountedRef.current) return;
       console.log('[Realtime] Promesa actualizada:', payload);
-      onPromiseUpdated(payload.new.id as string);
+      const p = payload as any;
+      const promiseId = p.payload?.record?.id || p.record?.id || p.new?.id || (p.id ? p.id : null) as string;
+      if (promiseId && onPromiseUpdated) {
+        onPromiseUpdated(promiseId);
+      }
     },
     [onPromiseUpdated]
   );
 
   const handleDelete = useCallback(
-    async (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+    (payload: unknown) => {
+      if (!isMountedRef.current) return;
       console.log('[Realtime] Promesa eliminada:', payload);
-      onPromiseDeleted(payload.old.id as string);
+      const p = payload as any;
+      const promiseId = p.payload?.record?.id || p.record?.id || p.old?.id || (p.id ? p.id : null) as string;
+      if (promiseId && onPromiseDeleted) {
+        onPromiseDeleted(promiseId);
+      }
     },
     [onPromiseDeleted]
   );
 
   useEffect(() => {
-    if (!studioId) {
-      console.warn('[Realtime] No studio ID provided');
+    if (!studioSlug) {
+      console.warn('[Realtime] No studio slug provided');
       return;
     }
 
-    console.log('[Realtime] Suscribiéndose a cambios en promesas para studio:', studioId);
+    // Verificar si ya hay una conexión activa
+    if (channelRef.current?.state === 'subscribed') {
+      console.log('[Realtime] Canal ya suscrito, evitando duplicación');
+      return;
+    }
 
-    // Crear canal de Realtime
+    console.log('[Realtime] Suscribiéndose a cambios en promesas para studio:', studioSlug);
+
+    // Crear canal privado con broadcast
     const channel = supabase
-      .channel(`promises-${studioId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'studio_promises',
-          filter: `studio_id=eq.${studioId}`,
-        },
-        handleInsert
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'studio_promises',
-          filter: `studio_id=eq.${studioId}`,
-        },
-        handleUpdate
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'studio_promises',
-          filter: `studio_id=eq.${studioId}`,
-        },
-        handleDelete
-      )
-      .subscribe((status) => {
+      .channel(`studio:${studioSlug}:promises`, {
+        config: {
+          private: true,
+          broadcast: { self: true, ack: true }
+        }
+      })
+      .on('broadcast', { event: 'INSERT' }, handleInsert)
+      .on('broadcast', { event: 'UPDATE' }, handleUpdate)
+      .on('broadcast', { event: 'DELETE' }, handleDelete)
+      .subscribe((status, err) => {
+        if (!isMountedRef.current) return;
+
+        if (err) {
+          console.error('[Realtime] Error en suscripción:', err);
+          return;
+        }
+
         console.log('[Realtime] Estado de suscripción:', status);
       });
 
+    channelRef.current = channel;
+
     // Cleanup al desmontar
     return () => {
-      console.log('[Realtime] Desuscribiéndose del canal');
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        console.log('[Realtime] Desuscribiéndose del canal');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [studioId, handleInsert, handleUpdate, handleDelete, supabase]);
+  }, [studioSlug, handleInsert, handleUpdate, handleDelete, supabase]);
 }
 

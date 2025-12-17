@@ -19,7 +19,6 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [isPromiseFormModalOpen, setIsPromiseFormModalOpen] = useState(false);
-  const [studioId, setStudioId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -37,11 +36,6 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
         // Filtrar solo promesas que tengan promise_id (excluir contactos sin promesas)
         const promisesWithId = promisesResult.data.promises.filter((p) => p.promise_id !== null);
         setPromises(promisesWithId);
-        
-        // Guardar studio_id para Realtime (tomarlo de la primera promesa)
-        if (promisesWithId.length > 0 && !studioId) {
-          setStudioId(promisesWithId[0].studio_id);
-        }
       } else {
         toast.error(promisesResult.error || 'Error al cargar promesas');
       }
@@ -57,7 +51,7 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
     } finally {
       setLoading(false);
     }
-  }, [studioSlug, studioId]);
+  }, [studioSlug]);
 
   useEffect(() => {
     loadData();
@@ -99,7 +93,7 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
 
   // Suscribirse a cambios en tiempo real
   usePromisesRealtime({
-    studioId: studioId || '',
+    studioSlug,
     onPromiseInserted: handlePromiseInserted,
     onPromiseUpdated: handlePromiseUpdatedRealtime,
     onPromiseDeleted: handlePromiseDeleted,

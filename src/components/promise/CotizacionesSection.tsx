@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ChevronRight, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenBadge } from '@/components/ui/zen';
 import type { PublicCotizacion } from '@/types/public-promise';
@@ -51,6 +51,16 @@ export function CotizacionesSection({
   showOfferConditions = false,
 }: CotizacionesSectionProps) {
   const [selectedCotizacion, setSelectedCotizacion] = useState<PublicCotizacion | null>(null);
+
+  // Actualizar selectedCotizacion cuando cambia la cotización en el array
+  useEffect(() => {
+    if (selectedCotizacion) {
+      const updated = cotizaciones.find(c => c.id === selectedCotizacion.id);
+      if (updated) {
+        setSelectedCotizacion(updated);
+      }
+    }
+  }, [cotizaciones, selectedCotizacion]);
 
   if (cotizaciones.length === 0) {
     return null;

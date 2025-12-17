@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { X, CheckCircle2, AlertCircle, Tag as TagIcon, Edit } from 'lucide-react';
 import { ZenButton, ZenBadge, SeparadorZen } from '@/components/ui/zen';
 import type { PublicCotizacion } from '@/types/public-promise';
@@ -12,6 +12,7 @@ import { PrecioDesglose } from './shared/PrecioDesglose';
 import { TerminosCondiciones } from './shared/TerminosCondiciones';
 import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos, filtrarCondicionesPorPreferencias } from '@/lib/actions/public/promesas.actions';
 import { formatCurrency } from '@/lib/actions/utils/formatting';
+import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 
 interface CondicionComercial {
   id: string;
@@ -70,7 +71,13 @@ export function CotizacionDetailSheet({
   const [selectedCondicionId, setSelectedCondicionId] = useState<string | null>(null);
   const [selectedMetodoPagoId, setSelectedMetodoPagoId] = useState<string | null>(null);
   const [loadingCondiciones, setLoadingCondiciones] = useState(true);
+  const [currentCotizacion, setCurrentCotizacion] = useState(cotizacion);
   const precioDesgloseRef = useRef<HTMLDivElement>(null);
+
+  // Actualizar cotización cuando cambia la prop
+  useEffect(() => {
+    setCurrentCotizacion(cotizacion);
+  }, [cotizacion]);
 
   const loadCondicionesYTerminos = useCallback(async () => {
     setLoadingCondiciones(true);
@@ -135,13 +142,14 @@ export function CotizacionDetailSheet({
   };
 
 
-  const calculateFinalPrice = () => {
-    if (!cotizacion.discount) return cotizacion.price;
-    return cotizacion.price - (cotizacion.price * cotizacion.discount) / 100;
-  };
+  const finalPrice = useMemo(() => {
+    if (!currentCotizacion.discount) return currentCotizacion.price;
+    return currentCotizacion.price - (currentCotizacion.price * currentCotizacion.discount) / 100;
+  }, [currentCotizacion]);
 
-  const finalPrice = calculateFinalPrice();
-  const hasDiscount = cotizacion.discount && cotizacion.discount > 0;
+  const hasDiscount = useMemo(() => {
+    return currentCotizacion.discount && currentCotizacion.discount > 0;
+  }, [currentCotizacion]);
 
   // Calcular precio según condición comercial seleccionada
   const calculatePriceWithCondition = () => {
@@ -198,6 +206,66 @@ export function CotizacionDetailSheet({
     }
   }, [precioCalculado]);
 
+  // Escuchar cambios en la cotización específica usando Realtime
+  // Usar ref para mantener el ID actual sin depender del closure
+  const currentCotizacionIdRef = useRef(currentCotizacion.id);
+  const isOpenRef = useRef(isOpen);
+
+  // Actualizar refs cuando cambian
+  useEffect(() => {
+    currentCotizacionIdRef.current = currentCotizacion.id;
+  }, [currentCotizacion.id]);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
+
+  const handleCotizacionUpdated = useCallback(async (cotizacionId: string) => {
+    console.log('[CotizacionDetailSheet] Evento UPDATE recibido:', {
+      cotizacionId,
+      currentCotizacionId: currentCotizacionIdRef.current,
+      isOpen: isOpenRef.current,
+      matches: cotizacionId === currentCotizacionIdRef.current
+    });
+
+    // Solo procesar si el sheet está abierto y es la cotización actual
+    if (!isOpenRef.current) {
+      console.log('[CotizacionDetailSheet] Sheet cerrado, ignorando actualización');
+      return;
+    }
+
+    if (cotizacionId === currentCotizacionIdRef.current) {
+      console.log('[CotizacionDetailSheet] Cotización actualizada, recargando...');
+      // Recargar datos de la cotización
+      try {
+        const { getPublicPromiseData } = await import('@/lib/actions/public/promesas.actions');
+        const result = await getPublicPromiseData(studioSlug, promiseId);
+        if (result.success && result.data?.cotizaciones) {
+          const updatedCotizacion = result.data.cotizaciones.find(c => c.id === cotizacionId);
+          if (updatedCotizacion) {
+            console.log('[CotizacionDetailSheet] ✅ Cotización actualizada encontrada, actualizando estado');
+            setCurrentCotizacion(updatedCotizacion);
+          } else {
+            console.warn('[CotizacionDetailSheet] ⚠️ Cotización actualizada no encontrada en resultado');
+          }
+        } else {
+          console.warn('[CotizacionDetailSheet] ⚠️ Error al obtener datos:', result.error);
+        }
+      } catch (error) {
+        console.error('[CotizacionDetailSheet] ❌ Error recargando cotización:', error);
+      }
+    } else {
+      console.log('[CotizacionDetailSheet] Cotización actualizada no es la actual, ignorando');
+    }
+  }, [studioSlug, promiseId]);
+
+  // Suscribirse siempre (el callback verifica si el sheet está abierto usando refs)
+  useCotizacionesRealtime({
+    studioSlug,
+    promiseId,
+    onCotizacionUpdated: handleCotizacionUpdated,
+  });
+
   if (!isOpen) return null;
 
   return (
@@ -215,11 +283,11 @@ export function CotizacionDetailSheet({
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg sm:text-xl font-semibold text-zinc-100 truncate">
-                {cotizacion.name}
+                {currentCotizacion.name}
               </h2>
-              {cotizacion.description && (
+              {currentCotizacion.description && (
                 <p className="text-xs sm:text-sm text-zinc-400 mt-0.5 line-clamp-2">
-                  {cotizacion.description}
+                  {currentCotizacion.description}
                 </p>
               )}
             </div>
@@ -255,13 +323,13 @@ export function CotizacionDetailSheet({
                 </p>
               </div>
 
-              {cotizacion.paquete_origen && (
+              {currentCotizacion.paquete_origen && (
                 <div className="flex items-center gap-2 bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20 shrink-0">
                   <TagIcon className="h-4 w-4 text-blue-400 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-xs text-zinc-400">Basado en</p>
                     <p className="text-sm font-medium text-blue-300 truncate">
-                      {cotizacion.paquete_origen.name}
+                      {currentCotizacion.paquete_origen.name}
                     </p>
                   </div>
                 </div>
@@ -345,7 +413,7 @@ export function CotizacionDetailSheet({
       {/* Modal de contratación */}
       {showAutorizarModal && (
         <AutorizarCotizacionModal
-          cotizacion={cotizacion}
+          cotizacion={currentCotizacion}
           isOpen={showAutorizarModal}
           onClose={() => setShowAutorizarModal(false)}
           promiseId={promiseId}
@@ -358,9 +426,9 @@ export function CotizacionDetailSheet({
       {/* Modal de personalización */}
       {showPersonalizacionModal && (
         <SolicitarPersonalizacionModal
-          itemName={cotizacion.name}
+          itemName={currentCotizacion.name}
           itemType="cotizacion"
-          itemId={cotizacion.id}
+          itemId={currentCotizacion.id}
           isOpen={showPersonalizacionModal}
           onClose={() => setShowPersonalizacionModal(false)}
           promiseId={promiseId}

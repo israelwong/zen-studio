@@ -36,6 +36,7 @@ import {
   reorderCotizaciones,
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { PromiseQuotesPanelCard } from './PromiseQuotesPanelCard';
+import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { toast } from 'sonner';
@@ -113,48 +114,67 @@ export function PromiseQuotesPanel({
     loadPackages();
   }, [studioSlug, eventTypeId]);
 
-  useEffect(() => {
-    const loadCotizaciones = async () => {
-      if (!promiseId || !isSaved) {
+  const loadCotizaciones = React.useCallback(async () => {
+    if (!promiseId || !isSaved) {
+      setCotizaciones([]);
+      setLoadingCotizaciones(false);
+      return;
+    }
+
+    // Solo mostrar skeleton si realmente vamos a cargar datos
+    setLoadingCotizaciones(true);
+
+    try {
+      const result = await getCotizacionesByPromiseId(promiseId);
+      // result.data siempre es un array (puede estar vacío)
+      // Si success es true, usar el array (vacío o con datos)
+      if (result.success) {
+        const cotizacionesData = result.data || [];
+        // Ordenar: primero las no archivadas (por order), luego las archivadas (por order)
+        const sortedCotizaciones = [...cotizacionesData].sort((a, b) => {
+          // Si una está archivada y la otra no, la archivada va al final
+          if (a.archived && !b.archived) return 1;
+          if (!a.archived && b.archived) return -1;
+          // Si ambas tienen el mismo estado de archivado, ordenar por order
+          const orderA = a.order ?? 0;
+          const orderB = b.order ?? 0;
+          return orderA - orderB;
+        });
+        setCotizaciones(sortedCotizaciones);
+      } else {
         setCotizaciones([]);
-        setLoadingCotizaciones(false);
-        return;
       }
-
-      // Solo mostrar skeleton si realmente vamos a cargar datos
-      setLoadingCotizaciones(true);
-
-      try {
-        const result = await getCotizacionesByPromiseId(promiseId);
-        // result.data siempre es un array (puede estar vacío)
-        // Si success es true, usar el array (vacío o con datos)
-        if (result.success) {
-          const cotizacionesData = result.data || [];
-          // Ordenar: primero las no archivadas (por order), luego las archivadas (por order)
-          const sortedCotizaciones = [...cotizacionesData].sort((a, b) => {
-            // Si una está archivada y la otra no, la archivada va al final
-            if (a.archived && !b.archived) return 1;
-            if (!a.archived && b.archived) return -1;
-            // Si ambas tienen el mismo estado de archivado, ordenar por order
-            const orderA = a.order ?? 0;
-            const orderB = b.order ?? 0;
-            return orderA - orderB;
-          });
-          setCotizaciones(sortedCotizaciones);
-        } else {
-          setCotizaciones([]);
-        }
-      } catch (error) {
-        console.error('[PromiseQuotesPanel] Error loading cotizaciones:', error);
-        setCotizaciones([]);
-      } finally {
-        // Ocultar skeleton inmediatamente después de recibir respuesta
-        setLoadingCotizaciones(false);
-      }
-    };
-
-    loadCotizaciones();
+    } catch (error) {
+      console.error('[PromiseQuotesPanel] Error loading cotizaciones:', error);
+      setCotizaciones([]);
+    } finally {
+      // Ocultar skeleton inmediatamente después de recibir respuesta
+      setLoadingCotizaciones(false);
+    }
   }, [promiseId, isSaved]);
+
+  useEffect(() => {
+    loadCotizaciones();
+  }, [loadCotizaciones]);
+
+  // Suscribirse a cambios en tiempo real de cotizaciones
+  useCotizacionesRealtime({
+    studioSlug,
+    promiseId: promiseId || null,
+    onCotizacionInserted: () => {
+      console.log('[PromiseQuotesPanel] Nueva cotización detectada, recargando...');
+      loadCotizaciones();
+    },
+    onCotizacionUpdated: (cotizacionId) => {
+      console.log('[PromiseQuotesPanel] Cotización actualizada:', cotizacionId);
+      loadCotizaciones();
+    },
+    onCotizacionDeleted: (cotizacionId) => {
+      console.log('[PromiseQuotesPanel] Cotización eliminada:', cotizacionId);
+      // Actualización optimista: remover del estado local
+      setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
+    },
+  });
 
   const handleCreateFromPackage = (packageId: string) => {
     if (!promiseId) {
