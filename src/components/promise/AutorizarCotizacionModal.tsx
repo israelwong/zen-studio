@@ -15,6 +15,17 @@ import { toast } from 'sonner';
 import { autorizarCotizacionPublica } from '@/lib/actions/public/cotizaciones.actions';
 import { getTotalServicios } from '@/lib/utils/public-promise';
 
+interface PrecioCalculado {
+  precioBase: number;
+  descuentoCondicion: number;
+  precioConDescuento: number;
+  advanceType: 'percentage' | 'fixed_amount';
+  anticipoPorcentaje: number | null;
+  anticipoMontoFijo: number | null;
+  anticipo: number;
+  diferido: number;
+}
+
 interface AutorizarCotizacionModalProps {
   cotizacion: PublicCotizacion;
   isOpen: boolean;
@@ -23,6 +34,7 @@ interface AutorizarCotizacionModalProps {
   studioSlug: string;
   condicionesComercialesId?: string | null;
   condicionesComercialesMetodoPagoId?: string | null;
+  precioCalculado?: PrecioCalculado | null;
 }
 
 export function AutorizarCotizacionModal({
@@ -33,6 +45,7 @@ export function AutorizarCotizacionModal({
   studioSlug,
   condicionesComercialesId,
   condicionesComercialesMetodoPagoId,
+  precioCalculado,
 }: AutorizarCotizacionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -78,10 +91,12 @@ export function AutorizarCotizacionModal({
     }).format(price);
   };
 
-  const calculateFinalPrice = () => {
-    if (!cotizacion.discount) return cotizacion.price;
-    return cotizacion.price - (cotizacion.price * cotizacion.discount) / 100;
-  };
+  // Usar precio calculado si está disponible, sino calcular básico
+  const precioFinal = precioCalculado
+    ? precioCalculado.precioConDescuento
+    : (cotizacion.discount
+      ? cotizacion.price - (cotizacion.price * cotizacion.discount) / 100
+      : cotizacion.price);
 
   const handleCloseSuccess = () => {
     setShowSuccessModal(false);
@@ -102,14 +117,68 @@ export function AutorizarCotizacionModal({
           <div className="space-y-6 py-4">
             {/* Resumen de cotización */}
             <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
-              <h4 className="font-semibold text-white mb-2">{cotizacion.name}</h4>
-              <p className="text-2xl font-bold text-emerald-400">
-                {formatPrice(calculateFinalPrice())}
-              </p>
-              <p className="text-sm text-zinc-400 mt-1">
-                Incluye {getTotalServicios(cotizacion.servicios)} servicio
-                {getTotalServicios(cotizacion.servicios) !== 1 ? 's' : ''}
-              </p>
+              <h4 className="font-semibold text-white mb-3">{cotizacion.name}</h4>
+
+              {precioCalculado ? (
+                // Mostrar resumen completo con condiciones comerciales
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Precio base</span>
+                    <span className="text-sm font-medium text-zinc-300">
+                      {formatPrice(precioCalculado.precioBase)}
+                    </span>
+                  </div>
+                  {precioCalculado.descuentoCondicion > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-zinc-400">Descuento adicional</span>
+                      <span className="text-sm font-medium text-red-400">
+                        -{precioCalculado.descuentoCondicion}%
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-zinc-700">
+                    <span className="text-sm font-semibold text-white">Total a pagar</span>
+                    <span className="text-2xl font-bold text-emerald-400">
+                      {formatPrice(precioCalculado.precioConDescuento)}
+                    </span>
+                  </div>
+                  {precioCalculado.anticipo > 0 && (
+                    <div className="pt-2 space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-zinc-500">
+                          {precioCalculado.advanceType === 'fixed_amount'
+                            ? 'Anticipo'
+                            : `Anticipo (${precioCalculado.anticipoPorcentaje ?? 0}%)`}
+                        </span>
+                        <span className="text-sm font-medium text-blue-400">
+                          {formatPrice(precioCalculado.anticipo)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs text-zinc-500">Diferido</span>
+                        <span className="text-sm font-medium text-zinc-300">
+                          {formatPrice(precioCalculado.diferido)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-zinc-500 mt-2 pt-2 border-t border-zinc-700">
+                    Incluye {getTotalServicios(cotizacion.servicios)} servicio
+                    {getTotalServicios(cotizacion.servicios) !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              ) : (
+                // Fallback: mostrar precio básico
+                <>
+                  <p className="text-2xl font-bold text-emerald-400">
+                    {formatPrice(precioFinal)}
+                  </p>
+                  <p className="text-sm text-zinc-400 mt-1">
+                    Incluye {getTotalServicios(cotizacion.servicios)} servicio
+                    {getTotalServicios(cotizacion.servicios) !== 1 ? 's' : ''}
+                  </p>
+                </>
+              )}
             </div>
 
             {/* Información importante */}

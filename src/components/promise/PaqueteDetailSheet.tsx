@@ -325,6 +325,7 @@ export function PaqueteDetailSheet({
           studioSlug={studioSlug}
           condicionesComercialesId={selectedCondicionId}
           condicionesComercialesMetodoPagoId={selectedMetodoPagoId}
+          precioCalculado={precioCalculado}
         />
       )}
 

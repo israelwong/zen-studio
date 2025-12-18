@@ -224,8 +224,7 @@ export async function solicitarPaquetePublico(
       });
 
       // Calcular y guardar precios de los items
-      await calcularYGuardarPreciosCotizacion(cotizacion.id, studioSlug).catch((error) => {
-        console.error('[solicitarPaquetePublico] Error calculando precios:', error);
+      await calcularYGuardarPreciosCotizacion(cotizacion.id, studioSlug).catch(() => {
         // No fallar la creación si el cálculo de precios falla
       });
     }
@@ -234,9 +233,41 @@ export async function solicitarPaquetePublico(
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
-    // 8. Construir mensaje con información de condición comercial
+    // 8. Calcular precio final con descuentos y anticipos
+    const formatPrice = (price: number) => {
+      return new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(price);
+    };
+
+    // Precio base del paquete
+    const precioBase = paquete.precio || 0;
+
+    // Precio con descuento de condición comercial
+    const descuentoCondicion = condicionComercialInfo?.discount_percentage ?? 0;
+    const precioConDescuento = descuentoCondicion > 0
+      ? precioBase - (precioBase * descuentoCondicion) / 100
+      : precioBase;
+
+    // Calcular anticipo
+    const advanceType = condicionComercialInfo?.advance_type || 'percentage';
+    const anticipo = advanceType === 'fixed_amount' && condicionComercialInfo?.advance_amount
+      ? condicionComercialInfo.advance_amount
+      : (condicionComercialInfo?.advance_percentage ?? 0) > 0
+        ? (precioConDescuento * (condicionComercialInfo.advance_percentage ?? 0)) / 100
+        : 0;
+    const diferido = precioConDescuento - anticipo;
+
+    // 9. Construir mensaje con información completa de precio y condición comercial
     let mensajeNotificacion = `${promise.contact.name} pre-autorizó el paquete "${paquete.name}" (cotización creada)`;
     let contenidoLog = `Cliente pre-autorizó el paquete: "${paquete.name}" - Cotización creada automáticamente`;
+
+    // Agregar información de precio
+    mensajeNotificacion += ` - Total: ${formatPrice(precioConDescuento)}`;
+    contenidoLog += ` - Total: ${formatPrice(precioConDescuento)}`;
 
     if (condicionComercialInfo) {
       mensajeNotificacion += ` con condición comercial: "${condicionComercialInfo.name}"`;
@@ -247,14 +278,21 @@ export async function solicitarPaquetePublico(
         contenidoLog += ` (Método de pago: ${metodoPagoInfo})`;
       }
 
-      if (condicionComercialInfo.advance_type === 'fixed_amount' && condicionComercialInfo.advance_amount) {
-        mensajeNotificacion += ` - Anticipo: $${condicionComercialInfo.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      } else if (condicionComercialInfo.advance_type === 'percentage' && condicionComercialInfo.advance_percentage) {
-        mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}%`;
+      if (descuentoCondicion > 0) {
+        mensajeNotificacion += ` - Descuento adicional: ${descuentoCondicion}%`;
+        contenidoLog += ` - Descuento adicional: ${descuentoCondicion}%`;
       }
 
-      if (condicionComercialInfo.discount_percentage) {
-        mensajeNotificacion += ` - Descuento: ${condicionComercialInfo.discount_percentage}%`;
+      if (anticipo > 0) {
+        if (advanceType === 'fixed_amount') {
+          mensajeNotificacion += ` - Anticipo: ${formatPrice(anticipo)}`;
+          contenidoLog += ` - Anticipo: ${formatPrice(anticipo)}`;
+        } else {
+          mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
+          contenidoLog += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
+        }
+        mensajeNotificacion += ` - Diferido: ${formatPrice(diferido)}`;
+        contenidoLog += ` - Diferido: ${formatPrice(diferido)}`;
       }
     }
 
@@ -290,7 +328,7 @@ export async function solicitarPaquetePublico(
       },
     });
 
-    // 10. Agregar log a la promesa
+    // 11. Agregar log a la promesa
     await prisma.studio_promise_logs.create({
       data: {
         promise_id: promiseId,
@@ -305,6 +343,10 @@ export async function solicitarPaquetePublico(
           paquete_id: paqueteId,
           paquete_name: paquete.name,
           paquete_price: paquete.precio ?? null,
+          precio_base: precioBase,
+          precio_con_descuento: precioConDescuento,
+          anticipo: anticipo,
+          diferido: diferido,
           condiciones_comerciales_id: condicionesComercialesId || null,
           condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
           condicion_comercial_name: condicionComercialInfo?.name || null,

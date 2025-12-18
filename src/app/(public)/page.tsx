@@ -1,12 +1,24 @@
+import Link from 'next/link';
+import { ZenButton } from '@/components/ui/zen';
+
 export default function HomePage() {
     return (
         <div className="min-h-screen bg-zinc-900 text-white">
+            {/* Header con botón de iniciar sesión */}
+            <header className="sticky top-0 z-50 flex items-center justify-end px-4 py-4 md:px-8">
+                <Link href="/login">
+                    <ZenButton variant="outline" size="sm">
+                        Iniciar Sesión
+                    </ZenButton>
+                </Link>
+            </header>
+
             {/* Hero Section */}
             <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900">
                 <div className="absolute inset-0 bg-black/20"></div>
                 <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
                     <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                        zen.pro
+                        Zen Studio
                     </h1>
                     <p className="text-xl md:text-2xl text-gray-300 mb-8">
                         Plataforma integral para estudios creativos

@@ -231,13 +231,6 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                     </Link>
                 </ZenDropdownMenuItem>
 
-                <ZenDropdownMenuItem className="cursor-pointer" asChild>
-                    <Link href={menuRoutes.suscripcion}>
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        <span>Suscripción</span>
-                    </Link>
-                </ZenDropdownMenuItem>
-
                 <ZenDropdownMenuSeparator />
 
                 <ZenDropdownMenuItem

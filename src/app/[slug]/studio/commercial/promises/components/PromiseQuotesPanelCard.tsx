@@ -508,8 +508,8 @@ export function PromiseQuotesPanelCard({
                 <ZenBadge
                   variant={getStatusVariant(cotizacion.status, cotizacion.revision_status, cotizacion.selected_by_prospect)}
                   className={`text-[10px] px-1.5 py-0.5 rounded-full ${cotizacion.selected_by_prospect && (cotizacion.status === 'pendiente' || cotizacion.status === 'pending')
-                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                      : ''
+                    ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                    : ''
                     }`}
                 >
                   {getStatusLabel(cotizacion.status, cotizacion.revision_status, cotizacion.selected_by_prospect)}
@@ -518,6 +518,33 @@ export function PromiseQuotesPanelCard({
                   )}
                 </ZenBadge>
               </div>
+              {/* Mostrar precio final calculado si está pre-autorizada con condiciones comerciales */}
+              {cotizacion.selected_by_prospect && cotizacion.condiciones_comerciales && (() => {
+                // Precio base (con descuento de cotización si aplica)
+                const precioBase = cotizacion.discount
+                  ? cotizacion.price - (cotizacion.price * cotizacion.discount) / 100
+                  : cotizacion.price;
+
+                // Precio con descuento de condición comercial
+                const descuentoCondicion = cotizacion.condiciones_comerciales.discount_percentage ?? 0;
+                const precioConDescuento = descuentoCondicion > 0
+                  ? precioBase - (precioBase * descuentoCondicion) / 100
+                  : precioBase;
+
+                // Solo mostrar si hay diferencia con el precio original
+                if (precioConDescuento !== cotizacion.price) {
+                  return (
+                    <div className="mt-0.5">
+                      <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-blue-400'}`}>
+                        A pagar: <span className="font-semibold">
+                          ${precioConDescuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
                 Actualizado: {new Date(cotizacion.updated_at).toLocaleDateString('es-MX', {
                   year: 'numeric',

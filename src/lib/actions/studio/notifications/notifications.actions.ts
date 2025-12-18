@@ -170,6 +170,7 @@ export async function getCurrentUserId(studioSlug: string) {
       return { success: false, error: 'Studio no encontrado' };
     }
 
+
     // Buscar studio_user_profiles directamente por supabase_id (más eficiente)
     let userProfile = await prisma.studio_user_profiles.findFirst({
       where: {
@@ -177,7 +178,7 @@ export async function getCurrentUserId(studioSlug: string) {
         studio_id: studio.id,
         is_active: true,
       },
-      select: { id: true, studio_id: true, email: true },
+      select: { id: true, studio_id: true, email: true, supabase_id: true },
     });
 
     // Si no existe, buscar usuario en users para obtener email y crear perfil
@@ -207,16 +208,54 @@ export async function getCurrentUserId(studioSlug: string) {
       }
 
       // Crear studio_user_profiles con supabase_id
+      // IMPORTANTE: Asegurar que supabase_id sea string (no UUID)
       userProfile = await prisma.studio_user_profiles.create({
         data: {
           email: user.email,
-          supabase_id: authUser.id,
+          supabase_id: authUser.id, // Ya es string desde Supabase
           studio_id: studio.id,
           role: 'SUSCRIPTOR',
           is_active: true,
         },
-        select: { id: true, studio_id: true, email: true },
+        select: { id: true, studio_id: true, email: true, supabase_id: true },
       });
+
+      console.log('[getCurrentUserId] ✅ Perfil creado:', {
+        id: userProfile.id,
+        email: user.email,
+        supabase_id: userProfile.supabase_id,
+        studio_id: studio.id,
+      });
+    } else {
+      // Verificar que el perfil existente tenga supabase_id correcto
+      if (!userProfile.supabase_id || userProfile.supabase_id !== authUser.id) {
+        // Actualizar supabase_id si no coincide
+        await prisma.studio_user_profiles.update({
+          where: { id: userProfile.id },
+          data: { supabase_id: authUser.id },
+        });
+      }
+    }
+
+    // Verificar que el perfil tenga todos los campos necesarios
+    const fullProfile = await prisma.studio_user_profiles.findUnique({
+      where: { id: userProfile.id },
+      select: { id: true, supabase_id: true, studio_id: true, is_active: true, email: true },
+    });
+
+    if (!fullProfile || !fullProfile.supabase_id || !fullProfile.is_active) {
+      return {
+        success: false,
+        error: `Perfil incompleto: supabase_id=${!!fullProfile?.supabase_id}, is_active=${fullProfile?.is_active}`
+      };
+    }
+
+    // Verificación final: asegurar que supabase_id coincide exactamente
+    if (fullProfile.supabase_id !== authUser.id) {
+      return {
+        success: false,
+        error: `supabase_id no coincide: perfil=${fullProfile.supabase_id}, auth=${authUser.id}`
+      };
     }
 
     return {

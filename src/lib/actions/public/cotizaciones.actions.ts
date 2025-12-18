@@ -64,6 +64,7 @@ export async function autorizarCotizacionPublica(
         id: true,
         name: true,
         price: true,
+        discount: true,
       },
     });
 
@@ -125,9 +126,43 @@ export async function autorizarCotizacionPublica(
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
 
-    // 4. Construir mensaje con información de condición comercial
+    // 4. Calcular precio final con descuentos y anticipos
+    const formatPrice = (price: number) => {
+      return new Intl.NumberFormat('es-MX', {
+        style: 'currency',
+        currency: 'MXN',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(price);
+    };
+
+    // Precio base (con descuento de cotización si aplica)
+    const precioBase = cotizacion.discount
+      ? cotizacion.price - (cotizacion.price * cotizacion.discount) / 100
+      : cotizacion.price;
+
+    // Precio con descuento de condición comercial
+    const descuentoCondicion = condicionComercialInfo?.discount_percentage ?? 0;
+    const precioConDescuento = descuentoCondicion > 0
+      ? precioBase - (precioBase * descuentoCondicion) / 100
+      : precioBase;
+
+    // Calcular anticipo
+    const advanceType = condicionComercialInfo?.advance_type || 'percentage';
+    const anticipo = advanceType === 'fixed_amount' && condicionComercialInfo?.advance_amount
+      ? condicionComercialInfo.advance_amount
+      : (condicionComercialInfo?.advance_percentage ?? 0) > 0
+        ? (precioConDescuento * (condicionComercialInfo.advance_percentage ?? 0)) / 100
+        : 0;
+    const diferido = precioConDescuento - anticipo;
+
+    // 5. Construir mensaje con información completa de precio y condición comercial
     let mensajeNotificacion = `${promise.contact.name} pre-autorizó la cotización "${cotizacion.name}"`;
     let contenidoLog = `Cliente pre-autorizó la cotización: "${cotizacion.name}"`;
+
+    // Agregar información de precio
+    mensajeNotificacion += ` - Total: ${formatPrice(precioConDescuento)}`;
+    contenidoLog += ` - Total: ${formatPrice(precioConDescuento)}`;
 
     if (condicionComercialInfo) {
       mensajeNotificacion += ` con condición comercial: "${condicionComercialInfo.name}"`;
@@ -138,18 +173,25 @@ export async function autorizarCotizacionPublica(
         contenidoLog += ` (Método de pago: ${metodoPagoInfo})`;
       }
 
-      if (condicionComercialInfo.advance_type === 'fixed_amount' && condicionComercialInfo.advance_amount) {
-        mensajeNotificacion += ` - Anticipo: $${condicionComercialInfo.advance_amount.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-      } else if (condicionComercialInfo.advance_type === 'percentage' && condicionComercialInfo.advance_percentage) {
-        mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}%`;
+      if (descuentoCondicion > 0) {
+        mensajeNotificacion += ` - Descuento adicional: ${descuentoCondicion}%`;
+        contenidoLog += ` - Descuento adicional: ${descuentoCondicion}%`;
       }
 
-      if (condicionComercialInfo.discount_percentage) {
-        mensajeNotificacion += ` - Descuento: ${condicionComercialInfo.discount_percentage}%`;
+      if (anticipo > 0) {
+        if (advanceType === 'fixed_amount') {
+          mensajeNotificacion += ` - Anticipo: ${formatPrice(anticipo)}`;
+          contenidoLog += ` - Anticipo: ${formatPrice(anticipo)}`;
+        } else {
+          mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
+          contenidoLog += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
+        }
+        mensajeNotificacion += ` - Diferido: ${formatPrice(diferido)}`;
+        contenidoLog += ` - Diferido: ${formatPrice(diferido)}`;
       }
     }
 
-    // 5. Crear notificación para el estudio con route a la promesa
+    // 6. Crear notificación para el estudio con route a la promesa
     await createStudioNotification({
       scope: StudioNotificationScope.STUDIO,
       studio_id: promise.studio.id,
@@ -169,6 +211,10 @@ export async function autorizarCotizacionPublica(
         cotizacion_id: cotizacionId,
         cotizacion_name: cotizacion.name,
         cotizacion_price: cotizacion.price ?? 0,
+        precio_base: precioBase,
+        precio_con_descuento: precioConDescuento,
+        anticipo: anticipo,
+        diferido: diferido,
         condiciones_comerciales_id: condicionesComercialesId || null,
         condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
         condicion_comercial_name: condicionComercialInfo?.name || null,
@@ -177,7 +223,7 @@ export async function autorizarCotizacionPublica(
       },
     });
 
-    // 6. Agregar log a la promesa
+    // 7. Agregar log a la promesa
     await prisma.studio_promise_logs.create({
       data: {
         promise_id: promiseId,
@@ -189,6 +235,10 @@ export async function autorizarCotizacionPublica(
           cotizacion_id: cotizacionId,
           cotizacion_name: cotizacion.name,
           cotizacion_price: cotizacion.price ?? 0,
+          precio_base: precioBase,
+          precio_con_descuento: precioConDescuento,
+          anticipo: anticipo,
+          diferido: diferido,
           condiciones_comerciales_id: condicionesComercialesId || null,
           condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
           condicion_comercial_name: condicionComercialInfo?.name || null,

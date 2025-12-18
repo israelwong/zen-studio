@@ -33,6 +33,16 @@ export interface CotizacionListItem {
   revision_status?: string | null;
   selected_by_prospect?: boolean;
   selected_at?: Date | null;
+  discount?: number | null;
+  condiciones_comerciales_id?: string | null;
+  condiciones_comerciales?: {
+    id: string;
+    name: string;
+    discount_percentage: number | null;
+    advance_percentage: number | null;
+    advance_type: string | null;
+    advance_amount: number | null;
+  } | null;
 }
 
 export interface CotizacionesListResponse {
@@ -220,6 +230,18 @@ export async function getCotizacionesByPromiseId(
         revision_status: true,
         selected_by_prospect: true,
         selected_at: true,
+        discount: true,
+        condiciones_comerciales_id: true,
+        condiciones_comerciales: {
+          select: {
+            id: true,
+            name: true,
+            discount_percentage: true,
+            advance_percentage: true,
+            advance_type: true,
+            advance_amount: true,
+          },
+        },
       },
       orderBy: [
         { archived: 'asc' }, // No archivadas primero
@@ -245,6 +267,9 @@ export async function getCotizacionesByPromiseId(
         revision_status: cot.revision_status,
         selected_by_prospect: cot.selected_by_prospect,
         selected_at: cot.selected_at,
+        discount: cot.discount,
+        condiciones_comerciales_id: cot.condiciones_comerciales_id,
+        condiciones_comerciales: cot.condiciones_comerciales,
       })),
     };
   } catch (error) {

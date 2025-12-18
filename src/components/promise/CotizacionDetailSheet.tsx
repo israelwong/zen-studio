@@ -221,21 +221,12 @@ export function CotizacionDetailSheet({
   }, [isOpen]);
 
   const handleCotizacionUpdated = useCallback(async (cotizacionId: string) => {
-    console.log('[CotizacionDetailSheet] Evento UPDATE recibido:', {
-      cotizacionId,
-      currentCotizacionId: currentCotizacionIdRef.current,
-      isOpen: isOpenRef.current,
-      matches: cotizacionId === currentCotizacionIdRef.current
-    });
-
     // Solo procesar si el sheet está abierto y es la cotización actual
     if (!isOpenRef.current) {
-      console.log('[CotizacionDetailSheet] Sheet cerrado, ignorando actualización');
       return;
     }
 
     if (cotizacionId === currentCotizacionIdRef.current) {
-      console.log('[CotizacionDetailSheet] Cotización actualizada, recargando...');
       // Recargar datos de la cotización
       try {
         const { getPublicPromiseData } = await import('@/lib/actions/public/promesas.actions');
@@ -243,19 +234,12 @@ export function CotizacionDetailSheet({
         if (result.success && result.data?.cotizaciones) {
           const updatedCotizacion = result.data.cotizaciones.find(c => c.id === cotizacionId);
           if (updatedCotizacion) {
-            console.log('[CotizacionDetailSheet] ✅ Cotización actualizada encontrada, actualizando estado');
             setCurrentCotizacion(updatedCotizacion);
-          } else {
-            console.warn('[CotizacionDetailSheet] ⚠️ Cotización actualizada no encontrada en resultado');
           }
-        } else {
-          console.warn('[CotizacionDetailSheet] ⚠️ Error al obtener datos:', result.error);
         }
       } catch (error) {
-        console.error('[CotizacionDetailSheet] ❌ Error recargando cotización:', error);
+        // Error silencioso - no afecta la UX
       }
-    } else {
-      console.log('[CotizacionDetailSheet] Cotización actualizada no es la actual, ignorando');
     }
   }, [studioSlug, promiseId]);
 
@@ -420,6 +404,7 @@ export function CotizacionDetailSheet({
           studioSlug={studioSlug}
           condicionesComercialesId={selectedCondicionId}
           condicionesComercialesMetodoPagoId={selectedMetodoPagoId}
+          precioCalculado={precioCalculado}
         />
       )}
 

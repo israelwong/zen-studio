@@ -162,15 +162,12 @@ export function PromiseQuotesPanel({
     studioSlug,
     promiseId: promiseId || null,
     onCotizacionInserted: () => {
-      console.log('[PromiseQuotesPanel] Nueva cotización detectada, recargando...');
       loadCotizaciones();
     },
-    onCotizacionUpdated: (cotizacionId) => {
-      console.log('[PromiseQuotesPanel] Cotización actualizada:', cotizacionId);
+    onCotizacionUpdated: () => {
       loadCotizaciones();
     },
     onCotizacionDeleted: (cotizacionId) => {
-      console.log('[PromiseQuotesPanel] Cotización eliminada:', cotizacionId);
       // Actualización optimista: remover del estado local
       setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
     },

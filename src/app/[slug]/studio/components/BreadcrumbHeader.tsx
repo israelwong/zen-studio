@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { ZenSidebarTrigger } from '@/components/ui/zen';
 import Link from 'next/link';
 
 interface BreadcrumbItem {
@@ -116,7 +115,6 @@ export function BreadcrumbHeader({ className, studioSlug }: BreadcrumbHeaderProp
 
     return (
         <div className={`flex items-center gap-4 ${className}`}>
-            <ZenSidebarTrigger />
             <div className="flex items-center gap-2 text-sm text-zinc-400">
                 {breadcrumbItems.map((item, index) => (
                     <React.Fragment key={`${index}-${item.href || item.label}`}>

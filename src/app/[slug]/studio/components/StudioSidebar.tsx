@@ -5,6 +5,7 @@ import {
     ZenSidebar, ZenSidebarContent, ZenSidebarFooter, ZenSidebarMenu,
     ZenSidebarMenuItem, useZenSidebar
 } from '@/components/ui/zen';
+import { ZenButton } from '@/components/ui/zen';
 import { ActiveLink } from './ActiveLink';
 import { LogoutButton } from '@/components/auth/logout-button';
 import {
@@ -16,6 +17,7 @@ import {
     Bell,
     BarChart3,
     User,
+    X,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -103,6 +105,17 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
     return (
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'} w-60 lg:w-60 sm:w-60`}>
             <ZenSidebarContent className="px-4">
+                {/* Botón de cerrar - Solo visible en mobile */}
+                <div className="flex justify-end pt-4 pb-2 lg:hidden">
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleSidebar}
+                        className="text-zinc-400 hover:text-white"
+                    >
+                        <X className="h-5 w-5" />
+                    </ZenButton>
+                </div>
                 <ZenSidebarMenu className="pt-4">
                     {/* Sección Studio */}
                     {builderNavItems.map(group => (

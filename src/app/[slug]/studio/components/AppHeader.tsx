@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Inbox, Zap, Menu } from 'lucide-react';
+import { Search, Inbox, Zap, Menu, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
 import { UserAvatar } from '@/components/auth/user-avatar';
@@ -9,6 +9,7 @@ import { StorageBadge } from './StorageBadge';
 import { NotificationsDropdown } from '@/components/shared/notifications/NotificationsDropdown';
 import { ZenButton, useZenSidebar } from '@/components/ui/zen';
 import { useStudioData } from '@/hooks/useStudioData';
+import { SubscriptionPopover } from './SubscriptionPopover';
 
 interface AppHeaderProps {
     studioSlug: string;
@@ -52,16 +53,34 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                 {/* Divider */}
                 <div className="h-6 w-px bg-zinc-700 flex-shrink-0 hidden sm:block" />
 
-                {/* Studio Name + Plan Badge */}
-                <div className="flex items-center gap-2 flex-shrink-0 hidden sm:flex">
-                    <span className="text-sm font-medium text-zinc-300 truncate">
-                        {identidadData?.studio_name || studioSlug}
-                    </span>
-                    {/* Plan Badge */}
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                        PRO
-                    </span>
-                </div>
+                {/* Studio Icon + Name + Plan Badge with Popover */}
+                {isMounted ? (
+                    <SubscriptionPopover studioSlug={studioSlug}>
+                        <button className="hidden sm:flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity">
+                            {/* Studio Icon - Three stacked cubes */}
+
+                            {/* Studio Name */}
+                            <span className="text-sm font-medium text-zinc-300 truncate">
+                                {identidadData?.studio_name || studioSlug}
+                            </span>
+                            {/* Plan Badge */}
+                            <span className="inline-flex items-center px-2.5 rounded-full text-[10px] font-bold bg-emerald-900/20 text-emerald-500 border border-emerald-500/50 shadow-sm shadow-emerald-600/20">
+                                PRO
+                            </span>
+                            {/* Chevron Icon */}
+                            <ChevronDown className="h-4 w-4 text-zinc-400" />
+                        </button>
+                    </SubscriptionPopover>
+                ) : (
+                    <div className="hidden sm:flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-medium text-zinc-300 truncate">
+                            {identidadData?.studio_name || studioSlug}
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border border-emerald-500/50 shadow-sm shadow-emerald-600/20">
+                            PRO
+                        </span>
+                    </div>
+                )}
 
                 {/* Breadcrumb - Hidden on mobile */}
                 <div className="hidden md:block ml-4">

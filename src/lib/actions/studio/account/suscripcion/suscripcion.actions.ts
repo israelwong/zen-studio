@@ -20,13 +20,13 @@ interface SubscriptionWithRelations {
         id: string;
         name: string;
         slug: string;
-        description: string;
-        price_monthly: number;
-        price_yearly: number;
-        features: { highlights: string[]; modules: string[] };
+        description: string | null;
+        price_monthly: number | null;
+        price_yearly: number | null;
+        features: unknown;
         popular: boolean;
         active: boolean;
-        orden: number;
+        order: number;
     };
     items: Array<{
         id: string;
@@ -56,10 +56,16 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
     try {
         console.log('🔍 Obteniendo datos de suscripción para studio:', studioSlug);
 
-        // Buscar el studio por slug
+        // Buscar el studio por slug con plan
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
-            select: { id: true }
+            select: {
+                id: true,
+                plan_id: true,
+                subscription_status: true,
+                subscription_start: true,
+                subscription_end: true
+            }
         });
 
         if (!studio) {
@@ -84,12 +90,103 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
             orderBy: { created_at: 'desc' }
         });
 
+        // Si no hay suscripción en la tabla subscriptions, intentar obtener el plan desde studios.plan_id
         if (!subscription) {
+            console.log('⚠️ No se encontró suscripción activa en tabla subscriptions, intentando obtener plan desde studio');
+
+            if (!studio.plan_id) {
+                return {
+                    success: false,
+                    error: 'No se encontró suscripción activa para este studio'
+                };
+            }
+
+            // Obtener el plan directamente desde studios.plan_id
+            const plan = await prisma.platform_plans.findUnique({
+                where: { id: studio.plan_id }
+            });
+
+            if (!plan) {
+                return {
+                    success: false,
+                    error: 'No se encontró el plan asociado al studio'
+                };
+            }
+
+            // Construir datos de suscripción desde el plan del studio
+            const features = plan.features
+                ? (typeof plan.features === 'string'
+                    ? JSON.parse(plan.features)
+                    : plan.features)
+                : { highlights: [], modules: [] };
+
+            const limits = await prisma.plan_limits.findMany({
+                where: { plan_id: plan.id }
+            });
+
+            const suscripcionData: SuscripcionData = {
+                subscription: {
+                    id: `studio-${studio.id}`,
+                    studio_id: studio.id,
+                    stripe_subscription_id: '',
+                    stripe_customer_id: '',
+                    plan_id: plan.id,
+                    status: studio.subscription_status as 'TRIAL' | 'ACTIVE' | 'CANCELLED' | 'PAUSED' | 'EXPIRED',
+                    current_period_start: studio.subscription_start || new Date(),
+                    current_period_end: studio.subscription_end || new Date(),
+                    billing_cycle_anchor: studio.subscription_start || new Date(),
+                    created_at: new Date(),
+                    updated_at: new Date(),
+                    plan: {
+                        id: plan.id,
+                        name: plan.name,
+                        slug: plan.slug,
+                        description: plan.description || '',
+                        price_monthly: Number(plan.price_monthly || 0),
+                        price_yearly: Number(plan.price_yearly || 0),
+                        features: features as { highlights: string[]; modules: string[] },
+                        popular: plan.popular,
+                        active: plan.active,
+                        orden: plan.order || 0
+                    }
+                },
+                plan: {
+                    id: plan.id,
+                    name: plan.name,
+                    slug: plan.slug,
+                    description: plan.description || '',
+                    price_monthly: Number(plan.price_monthly || 0),
+                    price_yearly: Number(plan.price_yearly || 0),
+                    features: features as { highlights: string[]; modules: string[] },
+                    popular: plan.popular,
+                    active: plan.active,
+                    orden: plan.order || 0
+                },
+                limits: limits.map(limit => ({
+                    id: limit.id,
+                    plan_id: limit.plan_id,
+                    limit_type: limit.limit_type,
+                    limit_value: limit.limit_value,
+                    unit: limit.unit || 'unlimited'
+                })),
+                items: [],
+                billing_history: []
+            };
+
+            console.log('✅ Datos de suscripción obtenidos desde studio.plan_id');
+
             return {
-                success: false,
-                error: 'No se encontró suscripción activa para este studio'
+                success: true,
+                data: suscripcionData
             };
         }
+
+        console.log('✅ Suscripción encontrada:', {
+            id: subscription.id,
+            status: subscription.status,
+            plan_id: subscription.plan_id,
+            has_plan: !!subscription.plans
+        });
 
         // Obtener los límites del plan
         const limits = await prisma.plan_limits.findMany({
@@ -104,6 +201,21 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
         });
 
         const subscriptionWithRelations = subscription as unknown as SubscriptionWithRelations;
+
+        console.log('📦 Plan data:', {
+            id: subscriptionWithRelations.plans.id,
+            name: subscriptionWithRelations.plans.name,
+            price_monthly: subscriptionWithRelations.plans.price_monthly,
+            price_yearly: subscriptionWithRelations.plans.price_yearly,
+            order: (subscriptionWithRelations.plans as any).order
+        });
+
+        // Parsear features si es Json
+        const features = subscriptionWithRelations.plans.features
+            ? (typeof subscriptionWithRelations.plans.features === 'string'
+                ? JSON.parse(subscriptionWithRelations.plans.features)
+                : subscriptionWithRelations.plans.features)
+            : { highlights: [], modules: [] };
 
         const suscripcionData: SuscripcionData = {
             subscription: {
@@ -122,26 +234,26 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                     id: subscriptionWithRelations.plans.id,
                     name: subscriptionWithRelations.plans.name,
                     slug: subscriptionWithRelations.plans.slug,
-                    description: subscriptionWithRelations.plans.description,
-                    price_monthly: Number(subscriptionWithRelations.plans.price_monthly),
-                    price_yearly: Number(subscriptionWithRelations.plans.price_yearly),
-                    features: subscriptionWithRelations.plans.features,
+                    description: subscriptionWithRelations.plans.description || '',
+                    price_monthly: Number(subscriptionWithRelations.plans.price_monthly || 0),
+                    price_yearly: Number(subscriptionWithRelations.plans.price_yearly || 0),
+                    features: features as { highlights: string[]; modules: string[] },
                     popular: subscriptionWithRelations.plans.popular,
                     active: subscriptionWithRelations.plans.active,
-                    orden: subscriptionWithRelations.plans.orden
+                    orden: (subscriptionWithRelations.plans as any).order || 0
                 }
             },
             plan: {
                 id: subscriptionWithRelations.plans.id,
                 name: subscriptionWithRelations.plans.name,
                 slug: subscriptionWithRelations.plans.slug,
-                description: subscriptionWithRelations.plans.description,
-                price_monthly: Number(subscriptionWithRelations.plans.price_monthly),
-                price_yearly: Number(subscriptionWithRelations.plans.price_yearly),
-                features: subscriptionWithRelations.plans.features,
+                description: subscriptionWithRelations.plans.description || '',
+                price_monthly: Number(subscriptionWithRelations.plans.price_monthly || 0),
+                price_yearly: Number(subscriptionWithRelations.plans.price_yearly || 0),
+                features: features as { highlights: string[]; modules: string[] },
                 popular: subscriptionWithRelations.plans.popular,
                 active: subscriptionWithRelations.plans.active,
-                orden: subscriptionWithRelations.plans.orden
+                orden: (subscriptionWithRelations.plans as any).order || 0
             },
             limits: limits.map(limit => ({
                 id: limit.id,

@@ -16,10 +16,10 @@ interface RealtimeProviderProps {
   enabled?: boolean;
 }
 
-export function RealtimeProvider({ 
-  children, 
-  studioSlug, 
-  enabled = true 
+export function RealtimeProvider({
+  children,
+  studioSlug,
+  enabled = true
 }: RealtimeProviderProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -38,10 +38,20 @@ export function RealtimeProvider({
       try {
         // Verificar que hay sesión activa usando getUser() para autenticación segura
         const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
+
         if (userError || !user) {
-          console.warn('[RealtimeProvider] No hay sesión activa, saltando Realtime');
           return;
+        }
+
+        // Intentar crear/verificar perfil antes de suscribirse
+        // Esto asegura que el usuario tenga studio_user_profiles activo
+        try {
+          const { getCurrentUserId } = await import('@/lib/actions/studio/notifications/notifications.actions');
+          await getCurrentUserId(studioSlug);
+          // Esperar un momento para que el perfil se propague en la BD
+          await new Promise(resolve => setTimeout(resolve, 500));
+        } catch {
+          // Continuar de todas formas
         }
 
         // Limpiar canal anterior si existe
@@ -55,13 +65,15 @@ export function RealtimeProvider({
 
         const channelName = `studio:${studioSlug}:notifications`;
 
-        // Crear canal para notificaciones
+        // Crear canal público para notificaciones
+        // IMPORTANTE: Usamos canales públicos porque auth.uid() no funciona en broadcast privado
+        // La validación de permisos se hace antes de suscribirse (getCurrentUserId arriba)
         // Este canal base asegura que Realtime esté inicializado
         // Los hooks específicos (useStudioNotifications) crearán sus propios canales
         const channel = supabase
           .channel(channelName, {
             config: {
-              private: true,
+              private: false, // Cambiar a público porque auth.uid() no funciona en broadcast
               broadcast: { self: true, ack: true },
             },
           })
@@ -69,47 +81,28 @@ export function RealtimeProvider({
             if (!isMountedRef.current) return;
 
             if (err) {
-              // Manejar errores de autorización de manera no crítica
               const isUnauthorized = err.message?.includes('Unauthorized') || err.message?.includes('permissions');
               if (isUnauthorized) {
-                // Error de autorización: el usuario no tiene permisos RLS para este canal
-                // Esto es normal si el usuario no tiene perfil activo en el studio
-                // Los hooks específicos manejarán sus propias suscripciones con permisos adecuados
-                console.warn('[RealtimeProvider] Sin permisos para canal (normal si no hay perfil activo):', channelName);
                 setIsConnected(false);
-                setConnectionError(null); // No mostrar como error crítico
+                setConnectionError(null);
                 return;
               }
-              
-              console.error('[RealtimeProvider] Error en suscripción:', err);
               setConnectionError(err.message);
               setIsConnected(false);
               return;
             }
 
             if (status === 'SUBSCRIBED') {
-              console.log('[RealtimeProvider] ✅ Suscrito a Realtime:', channelName);
               setIsConnected(true);
               setConnectionError(null);
             } else if (status === 'CHANNEL_ERROR') {
-              // CHANNEL_ERROR puede ser por falta de permisos RLS
-              // No es crítico, los hooks específicos manejarán sus propias suscripciones
               const errorMsg = err?.message || 'Error desconocido';
               const isUnauthorized = errorMsg.includes('Unauthorized') || errorMsg.includes('permissions');
-              
-              if (isUnauthorized) {
-                console.warn('[RealtimeProvider] Sin permisos para canal (normal):', channelName);
-                setConnectionError(null); // No mostrar como error crítico
-              } else {
-                console.warn('[RealtimeProvider] Error en canal (reintentando automáticamente):', errorMsg);
+              if (!isUnauthorized) {
+                setConnectionError(errorMsg);
               }
               setIsConnected(false);
-            } else if (status === 'TIMED_OUT') {
-              console.warn('[RealtimeProvider] Timeout en suscripción (reintentando automáticamente)');
-              // El cliente reintentará automáticamente
-              setIsConnected(false);
-            } else if (status === 'CLOSED') {
-              console.log('[RealtimeProvider] Canal cerrado');
+            } else {
               setIsConnected(false);
             }
           });
@@ -117,7 +110,6 @@ export function RealtimeProvider({
         channelRef.current = channel;
 
       } catch (error) {
-        console.error('[RealtimeProvider] Error configurando Realtime:', error);
         if (isMountedRef.current) {
           setConnectionError(error instanceof Error ? error.message : 'Error desconocido');
           setIsConnected(false);

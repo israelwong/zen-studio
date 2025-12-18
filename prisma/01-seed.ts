@@ -368,9 +368,21 @@ async function seedPlans() {
 async function seedDemoStudio() {
     console.log('🏢 Seeding demo studio...');
 
+    // Obtener el plan Pro para asignarlo al demo studio
+    const planPro = await prisma.platform_plans.findUnique({
+        where: { slug: 'pro' }
+    });
+
+    if (!planPro) {
+        throw new Error('Plan Pro no encontrado. Ejecuta seedPlans() primero.');
+    }
+
     const demoStudio = await prisma.studios.upsert({
         where: { slug: DEMO_STUDIO_SLUG },
-        update: { updated_at: new Date() },
+        update: {
+            plan_id: planPro.id,
+            updated_at: new Date()
+        },
         create: {
             id: DEMO_STUDIO_ID,
             studio_name: 'Demo Studio',
@@ -389,13 +401,16 @@ async function seedDemoStudio() {
             slogan: 'Capturamos tus momentos inolvidables',
             presentation: 'Estudio fotográfico profesional especializado en bodas, XV años y eventos sociales',
             keywords: 'fotografía, bodas, eventos, Guadalajara',
+            plan_id: planPro.id,
             subscription_status: 'TRIAL',
+            subscription_start: new Date(),
+            subscription_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 días desde ahora
             is_active: true,
             created_at: new Date(),
             updated_at: new Date(),
         },
     });
-    console.log(`  ✅ ${demoStudio.studio_name}`);
+    console.log(`  ✅ ${demoStudio.studio_name} (Plan: ${planPro.name})`);
 
     // Configuración del studio (valores en decimal: 0.30 = 30%)
     await prisma.studio_configuraciones.create({
