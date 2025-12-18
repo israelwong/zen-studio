@@ -62,10 +62,11 @@ export default function NuevaPromesaPage() {
             {contactData && (
               <PromiseQuickActions
                 studioSlug={studioSlug}
-                contactId={contactData.contactId}
+                contactId={contactData.contactId || ''}
                 contactName={contactData.contactName}
                 phone={contactData.phone}
                 email={contactData.email}
+                promiseId={contactData.promiseId}
               />
             )}
           </div>

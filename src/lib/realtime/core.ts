@@ -66,7 +66,6 @@ export async function setupRealtimeAuth(
     }
 
     if (sessionError) {
-      console.warn('[Realtime Core] ⚠️ Error obteniendo sesión:', sessionError);
       // Si no requiere auth, continuar sin sesión
       if (!requiresAuth) {
         await supabase.realtime.setAuth(null);
@@ -105,14 +104,6 @@ export async function setupRealtimeAuth(
 
     const hasSession = !!accessToken;
 
-    console.log('[Realtime Core] 🔐 Auth configurado:', {
-      hasSession,
-      requiresAuth,
-      userId: user?.id,
-      hasToken: !!accessToken,
-      timestamp: new Date().toISOString(),
-    });
-
     // Si requiere auth pero no hay sesión, retornar error
     if (requiresAuth && !hasSession) {
       return {
@@ -125,15 +116,13 @@ export async function setupRealtimeAuth(
     // IMPORTANTE: Esperar más tiempo para asegurar que el token se propaga completamente
     // Realtime necesita tiempo para procesar el token antes de suscribirse
     if (hasSession) {
-      console.log('[Realtime Core] ⏳ Esperando propagación del token...');
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log('[Realtime Core] ✅ Espera completada');
     }
 
     return { success: true, hasSession };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
-    console.error('[Realtime Core] ❌ Error configurando auth:', error);
+    console.error('[Realtime Core] Error configurando auth:', error);
 
     // Si no requiere auth, continuar de todas formas
     if (!requiresAuth) {

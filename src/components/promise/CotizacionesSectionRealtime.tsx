@@ -47,63 +47,25 @@ export function CotizacionesSectionRealtime({
   showStandardConditions = true,
   showOfferConditions = false,
 }: CotizacionesSectionRealtimeProps) {
-  console.log('[CotizacionesSectionRealtime] 🚀 Componente montado/actualizado:', {
-    promiseId,
-    studioSlug,
-    initialCotizacionesCount: initialCotizaciones.length,
-    timestamp: new Date().toISOString(),
-  });
-
   const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
-
-  console.log('[CotizacionesSectionRealtime] 📊 Estado inicial de cotizaciones:', {
-    count: cotizaciones.length,
-    ids: cotizaciones.map((c) => c.id),
-  });
 
   // Función para recargar cotizaciones desde el servidor
   const reloadCotizaciones = useCallback(async () => {
-    console.log('[CotizacionesSectionRealtime] 🔄 reloadCotizaciones llamado:', {
-      promiseId,
-      studioSlug,
-      timestamp: new Date().toISOString(),
-    });
-
     try {
       const { getPublicPromiseData } = await import('@/lib/actions/public/promesas.actions');
-      console.log('[CotizacionesSectionRealtime] 📡 Obteniendo datos de promesa pública...');
-
       const result = await getPublicPromiseData(studioSlug, promiseId);
 
-      console.log('[CotizacionesSectionRealtime] 📥 Resultado de getPublicPromiseData:', {
-        success: result.success,
-        cotizacionesCount: result.data?.cotizaciones?.length || 0,
-        error: result.error,
-      });
-
       if (result.success && result.data?.cotizaciones) {
-        console.log('[CotizacionesSectionRealtime] ✅ Actualizando estado con nuevas cotizaciones:', {
-          count: result.data.cotizaciones.length,
-          ids: result.data.cotizaciones.map((c) => c.id),
-        });
         setCotizaciones(result.data.cotizaciones);
-      } else {
-        console.warn('[CotizacionesSectionRealtime] ⚠️ No se pudieron obtener cotizaciones:', result.error);
       }
     } catch (error) {
-      console.error('[CotizacionesSectionRealtime] ❌ Error en reloadCotizaciones:', error);
+      console.error('[CotizacionesSectionRealtime] Error en reloadCotizaciones:', error);
     }
   }, [promiseId, studioSlug]);
 
   useEffect(() => {
     // Actualizar estado cuando cambian las cotizaciones iniciales (SSR)
-    console.log('[CotizacionesSectionRealtime] 🔄 initialCotizaciones cambió:', {
-      count: initialCotizaciones.length,
-      ids: initialCotizaciones.map((c) => c.id),
-      timestamp: new Date().toISOString(),
-    });
     setCotizaciones(initialCotizaciones);
-    console.log('[CotizacionesSectionRealtime] ✅ Estado actualizado con initialCotizaciones');
   }, [initialCotizaciones]);
 
   // Usar el hook de Realtime (sin polling)
@@ -111,49 +73,14 @@ export function CotizacionesSectionRealtime({
     studioSlug,
     promiseId,
     onCotizacionInserted: () => {
-      console.log('[CotizacionesSectionRealtime] 🔵 Callback onCotizacionInserted ejecutado');
       reloadCotizaciones();
     },
     onCotizacionUpdated: () => {
-      console.log('[CotizacionesSectionRealtime] 🟢 Callback onCotizacionUpdated ejecutado');
       reloadCotizaciones();
     },
     onCotizacionDeleted: (cotizacionId) => {
-      console.log('[CotizacionesSectionRealtime] 🔴 Callback onCotizacionDeleted ejecutado:', {
-        cotizacionId,
-        timestamp: new Date().toISOString(),
-      });
-
-      setCotizaciones((prev) => {
-        const beforeCount = prev.length;
-        const filtered = prev.filter((c) => c.id !== cotizacionId);
-        const afterCount = filtered.length;
-
-        console.log('[CotizacionesSectionRealtime] 🗑️ Eliminando cotización del estado:', {
-          cotizacionId,
-          beforeCount,
-          afterCount,
-          removed: beforeCount > afterCount,
-        });
-
-        return filtered;
-      });
+      setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
     },
-  });
-
-  // Log cuando cambia el estado de cotizaciones
-  useEffect(() => {
-    console.log('[CotizacionesSectionRealtime] 📊 Estado de cotizaciones actualizado:', {
-      count: cotizaciones.length,
-      ids: cotizaciones.map((c) => c.id),
-      timestamp: new Date().toISOString(),
-    });
-  }, [cotizaciones]);
-
-  console.log('[CotizacionesSectionRealtime] 🎨 Renderizando con:', {
-    cotizacionesCount: cotizaciones.length,
-    promiseId,
-    studioSlug,
   });
 
   return (

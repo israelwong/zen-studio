@@ -350,6 +350,13 @@ export async function getPublicPromiseData(
       slogan: string | null;
       logo_url: string | null;
       id: string;
+      promise_share_default_show_packages: boolean;
+      promise_share_default_show_categories_subtotals: boolean;
+      promise_share_default_show_items_prices: boolean;
+      promise_share_default_min_days_to_hire: number;
+      promise_share_default_show_standard_conditions: boolean;
+      promise_share_default_show_offer_conditions: boolean;
+      promise_share_default_portafolios: boolean;
     };
     cotizaciones: PublicCotizacion[];
     paquetes: PublicPaquete[];
@@ -508,9 +515,12 @@ export async function getPublicPromiseData(
     if (!promise) {
       return {
         success: false,
-        error: "Promesa no encontrada",
+        error: "Promesa no encontrada o no tienes acceso a esta información",
       };
     }
+
+    // Validar que la promesa tenga al menos cotizaciones o paquetes disponibles
+    // Esto se verifica después de obtener las cotizaciones y paquetes
 
     // Obtener preferencias de compartir (combinar defaults del studio con overrides de la promesa)
     const shareSettings = {
@@ -748,7 +758,15 @@ export async function getPublicPromiseData(
       }));
     }
 
-    // 8. Obtener condiciones comerciales disponibles y términos y condiciones
+    // 8. Validar que haya contenido disponible (cotizaciones o paquetes)
+    if (mappedCotizaciones.length === 0 && mappedPaquetes.length === 0) {
+      return {
+        success: false,
+        error: "No hay cotizaciones ni paquetes disponibles para mostrar",
+      };
+    }
+
+    // 9. Obtener condiciones comerciales disponibles y términos y condiciones
     const [condicionesResult, terminosResult] = await Promise.all([
       obtenerCondicionesComercialesPublicas(studioSlug),
       obtenerTerminosCondicionesPublicos(studioSlug),
@@ -768,7 +786,6 @@ export async function getPublicPromiseData(
       });
     }
 
-
     return {
       success: true,
       data: {
@@ -787,6 +804,13 @@ export async function getPublicPromiseData(
           slogan: studio.slogan,
           logo_url: studio.logo_url,
           id: studio.id,
+          promise_share_default_show_packages: studio.promise_share_default_show_packages,
+          promise_share_default_show_categories_subtotals: studio.promise_share_default_show_categories_subtotals,
+          promise_share_default_show_items_prices: studio.promise_share_default_show_items_prices,
+          promise_share_default_min_days_to_hire: studio.promise_share_default_min_days_to_hire,
+          promise_share_default_show_standard_conditions: studio.promise_share_default_show_standard_conditions,
+          promise_share_default_show_offer_conditions: studio.promise_share_default_show_offer_conditions,
+          promise_share_default_portafolios: studio.promise_share_default_portafolios,
         },
         cotizaciones: mappedCotizaciones,
         paquetes: mappedPaquetes,

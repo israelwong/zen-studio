@@ -59,6 +59,7 @@ export async function getPromiseShareSettings(
         share_min_days_to_hire: true,
         share_show_standard_conditions: true,
         share_show_offer_conditions: true,
+        share_portafolios: true,
         quotes: {
           where: {
             archived: false,
@@ -166,6 +167,7 @@ export async function updatePromiseShareSettings(
           promise_share_default_min_days_to_hire: settings.min_days_to_hire,
           promise_share_default_show_standard_conditions: settings.show_standard_conditions,
           promise_share_default_show_offer_conditions: settings.show_offer_conditions,
+          promise_share_default_portafolios: settings.portafolios,
         },
       });
 
