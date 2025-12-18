@@ -11,12 +11,6 @@ async function createStudioScopeNotification(
   input: CreateStudioNotificationInput,
   route: string | null
 ) {
-  console.log('[STUDIO_NOTIFICATION] Creando notificación de scope STUDIO:', {
-    studio_id: input.studio_id,
-    title: input.title,
-    message: input.message,
-  });
-
   // Obtener todos los usuarios activos del estudio
   const users = await prisma.studio_user_profiles.findMany({
     where: {
@@ -26,13 +20,7 @@ async function createStudioScopeNotification(
     select: { id: true },
   });
 
-  console.log('[STUDIO_NOTIFICATION] Usuarios activos encontrados:', {
-    count: users.length,
-    user_ids: users.map(u => u.id),
-  });
-
   if (users.length === 0) {
-    console.warn('[STUDIO_NOTIFICATION] ⚠️ No hay usuarios activos en el estudio, no se crearán notificaciones');
     return [];
   }
 
@@ -64,13 +52,6 @@ async function createStudioScopeNotification(
       })
     )
   );
-
-  console.log('[STUDIO_NOTIFICATION] ✅ Notificaciones creadas (STUDIO scope):', {
-    count: notifications.length,
-    notification_ids: notifications.map(n => n.id),
-  });
-
-  // El trigger de base de datos maneja el broadcast automáticamente
 
   return notifications;
 }

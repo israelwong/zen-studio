@@ -20,12 +20,6 @@ export function ZenHeader({ className }: ZenHeaderProps) {
         loading: notificationsLoading
     } = useRealtimeNotifications({
         studioSlug,
-        onNotification: (notification) => {
-            console.log('🔔 [ZEN_HEADER] Nueva notificación:', notification);
-        },
-        onNotificationRead: (notificationId) => {
-            console.log('🔔 [ZEN_HEADER] Notificación leída:', notificationId);
-        }
     });
 
 

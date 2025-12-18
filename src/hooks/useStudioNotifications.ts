@@ -138,45 +138,28 @@ export function useStudioNotifications({
       channelRef.current = null;
     }
 
-    // Configurar Realtime usando solución centralizada (idéntico a useCotizacionesRealtime)
+    // Configurar Realtime usando solución centralizada
     const setupRealtime = async () => {
       try {
-        console.log('[NOTIFICACIONES] 🚀 Setup iniciado:', { studioSlug, userId });
-
-        // Configurar autenticación (canales públicos - igual que cotizaciones)
+        // Configurar autenticación (canales públicos)
         const requiresAuth = false;
         const authResult = await setupRealtimeAuth(supabase, requiresAuth);
 
         if (!authResult.success && requiresAuth) {
-          console.error('[NOTIFICACIONES] ❌ Error configurando auth:', authResult.error);
+          console.error('[NOTIFICACIONES] Error configurando auth:', authResult.error);
           return;
         }
 
-        console.log('[NOTIFICACIONES] 🔐 Auth configurado:', {
-          success: authResult.success,
-          hasSession: authResult.hasSession,
-          requiresAuth,
-        });
-
-        // Crear canal público (igual que cotizaciones)
+        // Crear canal público
         const channelConfig = RealtimeChannelPresets.notifications(studioSlug, true);
-
-        console.log('[NOTIFICACIONES] 🔌 Configurando canal:', {
-          channelName: channelConfig.channelName,
-          studioSlug,
-          userId,
-          hasSession: authResult.hasSession,
-        });
-
         const channel = createRealtimeChannel(supabase, channelConfig);
 
-        // Agregar listeners (solo específicos para evitar duplicación)
+        // Agregar listeners
         channel
           .on('broadcast', { event: 'INSERT' }, (payload: unknown) => {
             const p = payload as any;
             const notification = p.record || p.payload?.record || p.new;
             if (notification && notification.user_id === userId) {
-              console.log('[NOTIFICACIONES] ✅ INSERT:', notification.id);
               setNotifications((prev) => {
                 if (prev.some((n) => n.id === notification.id)) return prev;
                 return [notification, ...prev];
@@ -188,7 +171,6 @@ export function useStudioNotifications({
             const p = payload as any;
             const notification = p.record || p.payload?.record || p.new;
             if (notification && notification.user_id === userId) {
-              console.log('[NOTIFICACIONES] ✅ UPDATE:', notification.id);
               if (!notification.is_active) {
                 setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
                 if (!notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -204,23 +186,21 @@ export function useStudioNotifications({
             const p = payload as any;
             const notification = p.old_record || p.payload?.old_record || p.old;
             if (notification && notification.user_id === userId) {
-              console.log('[NOTIFICACIONES] ✅ DELETE:', notification.id);
               setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
               if (!notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
             }
           });
 
-        // Suscribirse usando utilidad centralizada (igual que cotizaciones)
+        // Suscribirse
         await subscribeToChannel(channel, (status, err) => {
           if (err) {
-            console.error('[NOTIFICACIONES] ❌ Error en suscripción:', err);
+            console.error('[NOTIFICACIONES] Error en suscripción:', err);
           }
         });
 
         channelRef.current = channel;
-        console.log('[NOTIFICACIONES] ✅ Canal configurado y suscrito exitosamente');
       } catch (error) {
-        console.error('[NOTIFICACIONES] ❌ Error en setupRealtime:', error);
+        console.error('[NOTIFICACIONES] Error en setupRealtime:', error);
       }
     };
 
@@ -229,7 +209,6 @@ export function useStudioNotifications({
     return () => {
       isMountedRef.current = false;
       if (channelRef.current) {
-        console.log('[NOTIFICACIONES] 🧹 Limpiando canal');
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
@@ -321,11 +300,9 @@ export function useStudioNotifications({
   // Cleanup
   useEffect(() => {
     return () => {
-      console.log('[useStudioNotifications] 🧹 Cleanup final, desmontando componente');
       isMountedRef.current = false;
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
-        console.log('[useStudioNotifications] ✅ Canal removido en cleanup final');
       }
     };
   }, []);

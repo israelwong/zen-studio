@@ -63,23 +63,12 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
   const handleNotificationClick = async (
     notification: typeof notifications[0]
   ) => {
-    console.log('[NotificationsDropdown] 🔔 Click en notificación:', {
-      id: notification.id,
-      route: notification.route,
-      route_params: notification.route_params,
-      event_id: notification.event_id,
-      quote_id: notification.quote_id,
-      promise_id: notification.promise_id,
-    });
-
     const route = buildRoute(
       notification.route,
       notification.route_params as Record<string, string | null | undefined> | null,
       studioSlug,
       notification
     );
-
-    console.log('[NotificationsDropdown] 🛣️ Ruta construida:', route);
 
     // Marcar como clickeada
     await markAsClicked(notification.id, route);
