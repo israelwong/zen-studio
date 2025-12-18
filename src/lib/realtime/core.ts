@@ -188,6 +188,15 @@ export const RealtimeChannelPresets = {
     self: true,
     ack: true,
   }),
+
+  /** Canal para logs de promesas */
+  promiseLogs: (studioSlug: string, usePublicChannel: boolean = true): RealtimeChannelConfig => ({
+    channelName: `studio:${studioSlug}:promise-logs`,
+    isPrivate: !usePublicChannel,
+    requiresAuth: !usePublicChannel,
+    self: true,
+    ack: true,
+  }),
 };
 
 /**

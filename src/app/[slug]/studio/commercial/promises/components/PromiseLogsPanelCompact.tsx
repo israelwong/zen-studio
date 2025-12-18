@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { MessageSquare, ChevronRight } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton } from '@/components/ui/zen';
 import { formatDateTime } from '@/lib/actions/utils/formatting';
 import { usePromiseLogs } from '@/hooks/usePromiseLogs';
+import { usePromiseLogsRealtime } from '@/hooks/usePromiseLogsRealtime';
 import { BitacoraSheet } from '@/components/shared/bitacora';
+import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 
 interface PromiseLogsPanelCompactProps {
   studioSlug: string;
@@ -21,9 +23,38 @@ export function PromiseLogsPanelCompact({
   isSaved,
 }: PromiseLogsPanelCompactProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const { logsRecentFirst, loading, addLog, removeLog } = usePromiseLogs({
+  const { logsRecentFirst, loading, addLog, removeLog, refetch } = usePromiseLogs({
     promiseId: isSaved && promiseId ? promiseId : null,
     enabled: isSaved,
+  });
+
+  // Callbacks para realtime
+  const handleLogInserted = useCallback((log: PromiseLog) => {
+    addLog(log);
+  }, [addLog]);
+
+  const handleLogUpdated = useCallback((log: PromiseLog) => {
+    // Para actualizar, recargamos los logs
+    refetch();
+  }, [refetch]);
+
+  const handleLogDeleted = useCallback((logId: string) => {
+    removeLog(logId);
+  }, [removeLog]);
+
+  const handleLogsReload = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Suscribirse a cambios en tiempo real
+  usePromiseLogsRealtime({
+    studioSlug,
+    promiseId: isSaved && promiseId ? promiseId : null,
+    onLogInserted: handleLogInserted,
+    onLogUpdated: handleLogUpdated,
+    onLogDeleted: handleLogDeleted,
+    onLogsReload: handleLogsReload,
+    enabled: isSaved && !!promiseId,
   });
 
   if (!isSaved || !promiseId) {

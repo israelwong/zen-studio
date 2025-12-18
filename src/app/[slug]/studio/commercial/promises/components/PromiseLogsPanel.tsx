@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Send } from 'lucide-react';
 import { ZenInput, ZenButton } from '@/components/ui/zen';
 import { toast } from 'sonner';
 import { getPromiseLogs, createPromiseLog } from '@/lib/actions/studio/commercial/promises';
 import { formatDateTime } from '@/lib/actions/utils/formatting';
+import { usePromiseLogsRealtime } from '@/hooks/usePromiseLogsRealtime';
 import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 
 interface PromiseLogsPanelProps {
@@ -32,7 +33,7 @@ export function PromiseLogsPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (!promiseId) {
       setIsInitialLoading(false);
       return;
@@ -53,16 +54,52 @@ export function PromiseLogsPanel({
       setLoading(false);
       setIsInitialLoading(false);
     }
-  };
+  }, [promiseId]);
 
   useEffect(() => {
     loadLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [promiseId]);
+  }, [loadLogs]);
 
   useEffect(() => {
     scrollToBottom();
   }, [logs]);
+
+  // Callback para recargar logs cuando se recibe un nuevo log vía realtime
+  const handleLogsReload = useCallback(() => {
+    loadLogs();
+  }, [loadLogs]);
+
+  // Callbacks para realtime
+  const handleLogInserted = useCallback((log: PromiseLog) => {
+    setLogs((prev) => {
+      // Evitar duplicados
+      if (prev.some((l) => l.id === log.id)) {
+        return prev;
+      }
+      return [log, ...prev];
+    });
+  }, []);
+
+  const handleLogUpdated = useCallback((log: PromiseLog) => {
+    setLogs((prev) =>
+      prev.map((l) => (l.id === log.id ? log : l))
+    );
+  }, []);
+
+  const handleLogDeleted = useCallback((logId: string) => {
+    setLogs((prev) => prev.filter((l) => l.id !== logId));
+  }, []);
+
+  // Suscribirse a cambios en tiempo real
+  usePromiseLogsRealtime({
+    studioSlug,
+    promiseId,
+    onLogInserted: handleLogInserted,
+    onLogUpdated: handleLogUpdated,
+    onLogDeleted: handleLogDeleted,
+    onLogsReload: handleLogsReload,
+    enabled: isSaved && !!promiseId,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +117,14 @@ export function PromiseLogsPanel({
       });
 
       if (result.success && result.data) {
-        setLogs((prev) => [result.data!, ...prev]);
+        // El log se agregará automáticamente vía realtime
+        // Solo agregar optimísticamente si realtime no está activo
+        setLogs((prev) => {
+          if (prev.some((l) => l.id === result.data!.id)) {
+            return prev;
+          }
+          return [result.data!, ...prev];
+        });
         toast.success('Nota agregada');
       } else {
         toast.error(result.error || 'Error al agregar nota');
