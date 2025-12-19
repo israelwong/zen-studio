@@ -34,6 +34,7 @@ interface CotizacionesSectionRealtimeProps {
   showItemsPrices?: boolean;
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
+  showPackages?: boolean;
 }
 
 export function CotizacionesSectionRealtime({
@@ -46,6 +47,7 @@ export function CotizacionesSectionRealtime({
   showItemsPrices = false,
   showStandardConditions = true,
   showOfferConditions = false,
+  showPackages = false,
 }: CotizacionesSectionRealtimeProps) {
   const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
 
@@ -94,6 +96,7 @@ export function CotizacionesSectionRealtime({
       showItemsPrices={showItemsPrices}
       showStandardConditions={showStandardConditions}
       showOfferConditions={showOfferConditions}
+      showPackages={showPackages}
     />
   );
 }

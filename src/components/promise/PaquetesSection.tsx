@@ -41,6 +41,7 @@ interface PaquetesSectionProps {
     showItemsPrices?: boolean;
     showStandardConditions?: boolean;
     showOfferConditions?: boolean;
+    showPackages?: boolean;
 }
 
 export function PaquetesSection({
@@ -55,6 +56,7 @@ export function PaquetesSection({
     showItemsPrices = false,
     showStandardConditions = true,
     showOfferConditions = false,
+    showPackages = false,
 }: PaquetesSectionProps) {
     const [selectedPaquete, setSelectedPaquete] = useState<PublicPaquete | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
@@ -267,6 +269,7 @@ export function PaquetesSection({
                     showCategoriesSubtotals={false}
                     showItemsPrices={false}
                     minDaysToHire={minDaysToHire}
+                    showPackages={showPackages}
                 />
             )}
         </>

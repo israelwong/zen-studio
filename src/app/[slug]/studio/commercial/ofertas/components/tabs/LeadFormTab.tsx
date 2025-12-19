@@ -11,11 +11,13 @@ import { getStudioIdBySlug } from "@/lib/actions/studio/offers/offers.actions";
 interface LeadFormTabProps {
   studioSlug: string;
   studioId?: string;
+  onSave?: () => void | Promise<void>;
+  onCancel?: () => void;
 }
 
-export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormTabProps) {
+export function LeadFormTab({ studioSlug, studioId: initialStudioId, onSave, onCancel }: LeadFormTabProps) {
   const [studioId, setStudioId] = useState<string>(initialStudioId || "");
-  const { formData, leadformData, updateLeadformData } = useOfferEditor();
+  const { formData, leadformData, updateLeadformData, isSaving } = useOfferEditor();
 
   useEffect(() => {
     if (!initialStudioId) {
@@ -46,6 +48,9 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId }: LeadFormT
               onUpdate={updateLeadformData}
               mode="single"
               eventTypeId={formData.event_type_id}
+              onSave={onSave}
+              onCancel={onCancel}
+              isSaving={isSaving}
             />
           </ZenCardContent>
         </ZenCard>

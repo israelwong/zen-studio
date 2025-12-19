@@ -53,6 +53,7 @@ interface OfferLeadFormProps {
   onSuccess?: () => void; // Callback cuando se envía exitosamente (para cerrar modal)
   isModal?: boolean; // Indica si está dentro de un modal
   isEditMode?: boolean; // Modo edición: deshabilita botón cancelar
+  showPackagesAfterSubmit?: boolean; // Si true, redirigir a página de promesa después del submit
 }
 
 /**
@@ -78,10 +79,12 @@ export function OfferLeadForm({
   onSuccess,
   isModal = false,
   isEditMode = false,
+  showPackagesAfterSubmit = false,
 }: OfferLeadFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPreparingPackages, setIsPreparingPackages] = useState(false);
 
   // Verificar si viene de éxito
   const isSuccess = searchParams.get("success") === "true";
@@ -236,17 +239,26 @@ export function OfferLeadForm({
         }
       }
 
-      // Mensaje de éxito diferenciado para preview vs producción
+      const promiseId = result.data?.promise_id || undefined;
+
+      // Si showPackagesAfterSubmit está activado y hay promise_id
+      if (showPackagesAfterSubmit && promiseId) {
+        // Ocultar botones y mostrar mensaje de preparación
+        setIsPreparingPackages(true);
+        // Redirigir después de un breve delay
+        setTimeout(() => {
+          router.push(`/${studioSlug}/promise/${promiseId}`);
+        }, 500);
+        return;
+      }
+
+      // Si NO mostrar paquetes, mostrar modal de éxito
       if (effectiveIsPreview) {
         toast.success("🧪 Promesa de prueba creada correctamente. Revisa la notificación arriba ↗");
-
-        // Llamar onSuccess para que el componente padre maneje el éxito
         if (onSuccess) {
           onSuccess();
         }
         return;
-      } else {
-        toast.success(successMessage);
       }
 
       // Si hay callback onSuccess (modal), usarlo en lugar de redirigir
@@ -288,11 +300,14 @@ export function OfferLeadForm({
     router.push(`/${studioSlug}`);
   };
 
+  // Mostrar modal solo si NO se están preparando paquetes
+  const shouldShowSuccessModal = isSuccess && !isPreparingPackages;
+
   return (
     <>
-      {/* Modal de éxito */}
+      {/* Modal de éxito - Solo si NO se están preparando paquetes */}
       <ZenDialog
-        isOpen={isSuccess}
+        isOpen={shouldShowSuccessModal}
         onClose={handleCloseSuccessModal}
         title=""
         description=""
@@ -315,7 +330,7 @@ export function OfferLeadForm({
           {/* Mensaje */}
           <div className="space-y-3">
             <p className="text-white text-xl md:text-2xl leading-relaxed font-semibold">
-              {successMessage}
+              {successMessage || "Te contactaremos lo antes posible"}
             </p>
           </div>
 
@@ -384,8 +399,10 @@ export function OfferLeadForm({
                 isPreview={effectiveIsPreview}
                 onSubmit={handleFormSubmit}
                 submitLabel="Enviar solicitud"
+                isPreparingPackages={isPreparingPackages}
+                preparingMessage="Preparando información de paquetes disponibles para tu revisión..."
               />
-              {!isModal && (
+              {!isModal && !isPreparingPackages && (
                 <div className="mt-4">
                   <ZenButton
                     variant="ghost"

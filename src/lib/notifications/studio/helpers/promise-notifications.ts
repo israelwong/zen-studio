@@ -10,7 +10,8 @@ export async function notifyPromiseCreated(
   contactName: string,
   eventType: string | null,
   eventDate: string | null,
-  isTest: boolean = false
+  isTest: boolean = false,
+  showPackages: boolean = false
 ) {
   const studio = await prisma.studios.findUnique({
     where: { id: studioId },
@@ -43,6 +44,11 @@ export async function notifyPromiseCreated(
     message += ` (${formattedDate})`;
   }
 
+  // Agregar información sobre paquetes si aplica
+  if (showPackages) {
+    message += `. Se mostrarán paquetes disponibles al prospecto.`;
+  }
+
   return createStudioNotification({
     scope: StudioNotificationScope.STUDIO,
     type: StudioNotificationType.PROMISE_CREATED,
@@ -61,6 +67,7 @@ export async function notifyPromiseCreated(
       event_type: eventType,
       event_date: eventDate,
       is_test: isTest,
+      show_packages: showPackages,
     },
     promise_id: promiseId,
   });

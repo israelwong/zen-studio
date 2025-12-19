@@ -49,6 +49,7 @@ interface PaqueteDetailSheetProps {
   minDaysToHire?: number;
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
+  showPackages?: boolean;
 }
 
 export function PaqueteDetailSheet({
@@ -64,6 +65,7 @@ export function PaqueteDetailSheet({
   minDaysToHire,
   showStandardConditions = true,
   showOfferConditions = false,
+  showPackages = false,
 }: PaqueteDetailSheetProps) {
   const [showSolicitarModal, setShowSolicitarModal] = useState(false);
   const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
@@ -326,6 +328,7 @@ export function PaqueteDetailSheet({
           condicionesComercialesId={selectedCondicionId}
           condicionesComercialesMetodoPagoId={selectedMetodoPagoId}
           precioCalculado={precioCalculado}
+          showPackages={showPackages}
         />
       )}
 
@@ -339,6 +342,7 @@ export function PaqueteDetailSheet({
           onClose={() => setShowPersonalizacionModal(false)}
           promiseId={promiseId}
           studioSlug={studioSlug}
+          showPackages={showPackages}
         />
       )}
     </>

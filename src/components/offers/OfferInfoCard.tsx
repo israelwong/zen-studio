@@ -4,6 +4,8 @@ import { Percent, Calendar, Coins } from 'lucide-react';
 interface OfferInfoCardProps {
   discountPercentage: number | null;
   advancePercentage: number | null;
+  advanceType?: string | null; // "percentage" | "fixed_amount"
+  advanceAmount?: number | null; // Monto fijo cuando advanceType = "fixed_amount"
   startDate: Date | null;
   endDate: Date | null;
   isPermanent: boolean;
@@ -13,13 +15,24 @@ interface OfferInfoCardProps {
 export function OfferInfoCard({
   discountPercentage,
   advancePercentage,
+  advanceType = 'percentage',
+  advanceAmount = null,
   startDate,
   endDate,
   isPermanent,
   hasDateRange,
 }: OfferInfoCardProps) {
-  // Calcular diferido si hay anticipo
-  const diferidoPercentage = advancePercentage !== null && advancePercentage > 0
+  // Determinar si el anticipo es monto fijo o porcentaje
+  const isFixedAmount = advanceType === 'fixed_amount' && advanceAmount !== null && advanceAmount > 0;
+  // Para porcentaje: mostrar si hay advance_type='percentage' con valor > 0, o si hay advance_percentage > 0 (retrocompatibilidad)
+  const isPercentage = (advanceType === 'percentage' && advancePercentage !== null && advancePercentage > 0) ||
+    (advanceType !== 'fixed_amount' && advancePercentage !== null && advancePercentage > 0);
+
+  // Mostrar anticipo si hay tipo definido y valor válido
+  const hasAdvance = isFixedAmount || isPercentage;
+
+  // Calcular diferido si hay anticipo porcentual
+  const diferidoPercentage = isPercentage && advancePercentage !== null && advancePercentage > 0
     ? 100 - advancePercentage
     : null;
 
@@ -49,45 +62,50 @@ export function OfferInfoCard({
   const validityText = getValidityText();
 
   return (
-    <div className="mb-4 rounded-xl bg-zinc-900/50 border border-zinc-800/50 overflow-hidden backdrop-blur-sm">
-      {/* Descuento principal */}
-      {discountPercentage !== null && discountPercentage > 0 && (
-        <div className="px-4 py-4 bg-zinc-800/30">
+    <div className="mb-4 rounded-lg bg-zinc-900 border border-zinc-800 shadow-lg shadow-black/20 overflow-hidden">
+      {/* Anticipo - Primero */}
+      {hasAdvance && (
+        <div className="px-6 py-4 border-b border-zinc-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-              <Percent className="h-5 w-5 text-purple-400" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-white">
-                {discountPercentage}% descuento
-              </p>
-              <p className="text-xs text-zinc-400">Oferta válida</p>
+            <Coins className="h-4 w-4 text-zinc-400 shrink-0" strokeWidth={2} />
+            <div className="flex-1">
+              {isFixedAmount ? (
+                <span className="text-sm text-zinc-300">
+                  Anticipo <span className="font-semibold text-white">${advanceAmount?.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </span>
+              ) : (
+                <span className="text-sm text-zinc-300">
+                  Anticipo <span className="font-semibold text-white">{advancePercentage}%</span>
+                  {diferidoPercentage !== null && diferidoPercentage > 0 && (
+                    <> · Diferido <span className="text-zinc-400">{diferidoPercentage}%</span></>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Condiciones comerciales */}
-      {advancePercentage !== null && advancePercentage > 0 && (
-        <div className="px-4 py-3.5 border-t border-zinc-800/50">
-          <div className="flex items-center gap-2.5 text-sm text-zinc-300">
-            <Coins className="h-4 w-4 text-purple-400 shrink-0" />
-            <span>
-              Anticipo <span className="font-semibold text-white">{advancePercentage}%</span>
-              {diferidoPercentage !== null && diferidoPercentage > 0 && (
-                <> + Diferido <span className="font-semibold text-white">{diferidoPercentage}%</span></>
-              )}
-            </span>
+      {/* Descuento */}
+      {discountPercentage !== null && discountPercentage > 0 && (
+        <div className="px-6 py-4 border-b border-zinc-800">
+          <div className="flex items-center gap-3">
+            <Percent className="h-4 w-4 text-zinc-400 shrink-0" strokeWidth={2} />
+            <div className="flex-1">
+              <span className="text-sm text-zinc-300">
+                <span className="font-semibold text-white">{discountPercentage}%</span> descuento
+              </span>
+            </div>
           </div>
         </div>
       )}
 
       {/* Vigencia */}
       {validityText && (
-        <div className="px-4 py-3 border-t border-zinc-800/50 bg-zinc-950/30">
-          <div className="flex items-center gap-2.5 text-xs text-zinc-400">
-            <Calendar className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-            <span>{validityText}</span>
+        <div className="px-6 py-4">
+          <div className="flex items-center gap-3">
+            <Calendar className="h-4 w-4 text-zinc-400 shrink-0" strokeWidth={2} />
+            <span className="text-sm text-zinc-400">{validityText}</span>
           </div>
         </div>
       )}

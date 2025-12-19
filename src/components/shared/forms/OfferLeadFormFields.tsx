@@ -38,6 +38,8 @@ export interface OfferLeadFormFieldsProps {
   onSuccess?: () => void; // Callback opcional después de submit exitoso
   initialData?: Record<string, string>;
   submitLabel?: string;
+  isPreparingPackages?: boolean;
+  preparingMessage?: string;
 }
 
 /**
@@ -57,6 +59,8 @@ export function OfferLeadFormFields({
   onSuccess,
   initialData = {},
   submitLabel = "Enviar solicitud",
+  isPreparingPackages = false,
+  preparingMessage = "Preparando información de paquetes disponibles para tu revisión...",
 }: OfferLeadFormFieldsProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>(initialData);
@@ -554,21 +558,31 @@ export function OfferLeadFormFields({
         </div>
       ))}
 
-      <ZenButton
-        type="submit"
-        className="w-full"
-        loading={!!isSubmitting}
-        disabled={
-          !!isSubmitting ||
-          !!dateAvailability.checking ||
-          !!(validateWithCalendar &&
-            enableInterestDate &&
-            formData.interest_date &&
-            dateAvailability.available === false)
-        }
-      >
-        {submitLabel}
-      </ZenButton>
+      {isPreparingPackages && (
+        <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+            <p className="text-sm text-blue-300">{preparingMessage}</p>
+          </div>
+        </div>
+      )}
+      {!isPreparingPackages && (
+        <ZenButton
+          type="submit"
+          className="w-full"
+          loading={!!isSubmitting}
+          disabled={
+            !!isSubmitting ||
+            !!dateAvailability.checking ||
+            !!(validateWithCalendar &&
+              enableInterestDate &&
+              formData.interest_date &&
+              dateAvailability.available === false)
+          }
+        >
+          {submitLabel}
+        </ZenButton>
+      )}
     </form>
   );
 }

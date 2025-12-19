@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { ZenButton } from "@/components/ui/zen";
 import { ContentBlocksEditor } from "@/components/shared/content-blocks";
 import { CategorizedComponentSelector, ComponentOption } from "@/app/[slug]/profile/portfolio/components/CategorizedComponentSelector";
@@ -11,6 +12,8 @@ interface LandingEditorProps {
   studioSlug: string;
   offerSlug?: string;
   offerId?: string;
+  onSave?: () => void | Promise<void>;
+  onCancel?: () => void;
 }
 
 // Componente para inyectar botones entre cada bloque renderizado por ContentBlocksEditor
@@ -120,8 +123,9 @@ function InjectAddButtons({
   return null;
 }
 
-export function LandingEditor({ studioSlug, offerSlug, offerId }: LandingEditorProps) {
-  const { contentBlocks, updateContentBlocks, formData } = useOfferEditor();
+export function LandingEditor({ studioSlug, offerSlug, offerId, onSave, onCancel }: LandingEditorProps) {
+  const { contentBlocks, updateContentBlocks, formData, isSaving } = useOfferEditor();
+  const router = useRouter();
 
   const [showComponentSelector, setShowComponentSelector] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | undefined>(undefined);
@@ -351,6 +355,38 @@ export function LandingEditor({ studioSlug, offerSlug, offerId }: LandingEditorP
         onSelect={handleAddComponentFromSelector}
         context="offer"
       />
+
+      {/* Botones de acción en la parte inferior */}
+      <div className="mt-6 pt-6 border-t border-zinc-800 flex items-center justify-end gap-2">
+        <ZenButton
+          variant="ghost"
+          size="md"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else {
+              router.back();
+            }
+          }}
+          disabled={isSaving}
+        >
+          Cancelar
+        </ZenButton>
+        <ZenButton
+          variant="primary"
+          size="md"
+          fullWidth
+          onClick={async () => {
+            if (onSave) {
+              await onSave();
+            }
+          }}
+          loading={isSaving}
+          disabled={isSaving}
+        >
+          Actualizar landing page
+        </ZenButton>
+      </div>
     </div>
   );
 }

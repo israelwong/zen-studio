@@ -10,9 +10,11 @@ interface LandingPageTabProps {
   studioSlug: string;
   offerSlug?: string;
   offerId?: string;
+  onSave?: () => void | Promise<void>;
+  onCancel?: () => void;
 }
 
-export function LandingPageTab({ studioSlug, offerSlug, offerId }: LandingPageTabProps) {
+export function LandingPageTab({ studioSlug, offerSlug, offerId, onSave, onCancel }: LandingPageTabProps) {
   const { formData, contentBlocks } = useOfferEditor();
 
   // CTA vacío para preview - sin botones hardcodeados
@@ -35,6 +37,8 @@ export function LandingPageTab({ studioSlug, offerSlug, offerId }: LandingPageTa
               studioSlug={studioSlug}
               offerSlug={offerSlug}
               offerId={offerId}
+              onSave={onSave}
+              onCancel={onCancel}
             />
           </ZenCardContent>
         </ZenCard>

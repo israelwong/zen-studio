@@ -35,6 +35,7 @@ interface AutorizarCotizacionModalProps {
   condicionesComercialesId?: string | null;
   condicionesComercialesMetodoPagoId?: string | null;
   precioCalculado?: PrecioCalculado | null;
+  showPackages?: boolean;
 }
 
 export function AutorizarCotizacionModal({
@@ -46,6 +47,7 @@ export function AutorizarCotizacionModal({
   condicionesComercialesId,
   condicionesComercialesMetodoPagoId,
   precioCalculado,
+  showPackages = false,
 }: AutorizarCotizacionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -191,33 +193,36 @@ export function AutorizarCotizacionModal({
             </div>
 
             {/* Botones */}
-            <div className="flex flex-col-reverse sm:flex-row gap-3">
-              <ZenButton
-                variant="outline"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                Cancelar
-              </ZenButton>
-              <ZenButton
-                onClick={handleAutorizar}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Confirmar Solicitud
-                  </>
+            {!(isSubmitting && showPackages) && (
+              <div className="flex flex-col-reverse sm:flex-row gap-3">
+                {!isSubmitting && (
+                  <ZenButton
+                    variant="outline"
+                    onClick={onClose}
+                    className="flex-1"
+                  >
+                    Cancelar
+                  </ZenButton>
                 )}
-              </ZenButton>
-            </div>
+                <ZenButton
+                  onClick={handleAutorizar}
+                  disabled={isSubmitting}
+                  className={isSubmitting ? "flex-1" : "flex-1"}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Confirmar Solicitud
+                    </>
+                  )}
+                </ZenButton>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

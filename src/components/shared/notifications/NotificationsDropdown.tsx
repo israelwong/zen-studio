@@ -14,8 +14,7 @@ import {
 } from '@/components/ui/zen/overlays/ZenDropdownMenu';
 import { useStudioNotifications } from '@/hooks/useStudioNotifications';
 import { buildRoute } from '@/lib/notifications/studio';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatRelativeTime } from '@/lib/actions/utils/formatting';
 import { NotificationsHistorySheet } from './NotificationsHistorySheet';
 
 interface NotificationsDropdownProps {
@@ -92,10 +91,7 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
   const formatTime = (date: Date | null) => {
     if (!date) return '';
     try {
-      return formatDistanceToNow(new Date(date), {
-        addSuffix: true,
-        locale: es,
-      });
+      return formatRelativeTime(date);
     } catch {
       return '';
     }

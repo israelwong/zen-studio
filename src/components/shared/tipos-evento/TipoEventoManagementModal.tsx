@@ -219,9 +219,14 @@ export function TipoEventoManagementModal({
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-100">
-              Gestionar Tipos de Evento
-            </h2>
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Gestionar Tipos de Evento
+              </h2>
+              <p className="text-sm text-zinc-400 mt-1">
+                Usado en paquetes y leadform de promesas
+              </p>
+            </div>
             <button
               onClick={() => {
                 onUpdate?.(eventTypes); // Pasar lista actualizada
@@ -457,15 +462,8 @@ export function TipoEventoManagementModal({
           }
           confirmText={deleteConfirm.hasEvents ? "Entendido" : "Eliminar"}
           cancelText={deleteConfirm.hasEvents ? undefined : "Cancelar"}
-          variant={deleteConfirm.hasEvents ? "warning" : "danger"}
-          icon={
-            deleteConfirm.hasEvents ? (
-              <AlertTriangle className="h-6 w-6" />
-            ) : (
-              <Trash2 className="h-6 w-6" />
-            )
-          }
-          showCancel={!deleteConfirm.hasEvents}
+          variant={deleteConfirm.hasEvents ? "default" : "destructive"}
+          hideConfirmButton={deleteConfirm.hasEvents}
         />
       )}
     </>

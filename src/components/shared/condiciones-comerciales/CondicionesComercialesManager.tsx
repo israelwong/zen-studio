@@ -462,12 +462,19 @@ export function CondicionesComercialesManager({
     if (!viewingOfferCondition) return;
 
     try {
+      const tipoAnticipo: 'percentage' | 'fixed_amount' =
+        (viewingOfferCondition.advance_type === 'percentage' || viewingOfferCondition.advance_type === 'fixed_amount')
+          ? viewingOfferCondition.advance_type
+          : 'percentage';
+
       const data = {
         nombre: viewingOfferCondition.name,
         descripcion: viewingOfferCondition.description || null,
         porcentaje_descuento: viewingOfferCondition.discount_percentage?.toString() || null,
         porcentaje_anticipo: viewingOfferCondition.advance_percentage?.toString() || null,
-        status: viewingOfferCondition.status,
+        tipo_anticipo: tipoAnticipo,
+        monto_anticipo: viewingOfferCondition.advance_amount?.toString() || null,
+        status: (viewingOfferCondition.status === 'active' ? 'active' : 'inactive') as 'active' | 'inactive',
         orden: viewingOfferCondition.order || 0,
         type: 'standard' as const,
         offer_id: null,
@@ -519,15 +526,23 @@ export function CondicionesComercialesManager({
       const condicion = condiciones.find(c => c.id === id);
       if (!condicion) return;
 
+      const tipoAnticipo: 'percentage' | 'fixed_amount' =
+        (condicion.advance_type === 'percentage' || condicion.advance_type === 'fixed_amount')
+          ? condicion.advance_type
+          : 'percentage';
+
       const data = {
         nombre: condicion.name,
         descripcion: condicion.description || null,
         porcentaje_descuento: condicion.discount_percentage?.toString() || null,
         porcentaje_anticipo: condicion.advance_percentage?.toString() || null,
-        status: newStatus ? 'active' : 'inactive',
+        tipo_anticipo: tipoAnticipo,
+        monto_anticipo: condicion.advance_amount?.toString() || null,
+        status: (newStatus ? 'active' : 'inactive') as 'active' | 'inactive',
         orden: condicion.order || 0,
-        type: condicion.type || 'standard',
+        type: (condicion.type === 'standard' || condicion.type === 'offer' ? condicion.type : 'standard') as 'standard' | 'offer',
         offer_id: condicion.offer_id || null,
+        override_standard: condicion.override_standard || false,
       } satisfies CondicionComercialForm;
 
       const result = await actualizarCondicionComercial(studioSlug, id, data);
@@ -803,10 +818,11 @@ export function CondicionesComercialesManager({
         porcentaje_anticipo: formData.advance_type === 'percentage' ? (formData.advance_percentage || null) : null,
         tipo_anticipo: formData.advance_type,
         monto_anticipo: formData.advance_type === 'fixed_amount' ? (formData.advance_amount || null) : null,
-        status: formData.status ? 'active' : 'inactive',
+        status: (formData.status ? 'active' : 'inactive') as 'active' | 'inactive',
         orden: editingId ? (condicionExistente?.order || 0) : condiciones.length,
-        type: formData.is_offer ? 'offer' : 'standard',
+        type: (formData.is_offer ? 'offer' : 'standard') as 'standard' | 'offer',
         offer_id: formData.is_offer && context?.offerId ? context.offerId : (editingId && !formData.is_offer ? null : condicionExistente?.offer_id || null),
+        override_standard: editingId ? (condicionExistente?.override_standard || false) : false,
       } satisfies CondicionComercialForm;
 
       let result;
@@ -884,21 +900,6 @@ export function CondicionesComercialesManager({
         description="Crea y gestiona condiciones comerciales reutilizables"
         maxWidth="xl"
       >
-        {/* Banner de contexto de oferta */}
-        {context && (
-          <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-            <div className="flex items-center gap-2 text-purple-300">
-              <span className="text-lg">📦</span>
-              <div>
-                <p className="text-sm font-medium">Condiciones para oferta específica</p>
-                <p className="text-xs text-purple-400 mt-0.5">
-                  {context.offerName}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
         {viewingOfferCondition ? (
           <div className="space-y-4">
             <div className="flex items-start justify-between">

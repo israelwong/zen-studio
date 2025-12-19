@@ -1,11 +1,16 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 import {
   ZenInput,
   ZenTextarea,
   ZenSwitch,
+  ZenButton,
 } from "@/components/ui/zen";
 import { EventTypesManager, TipoEventoSelector } from "@/components/shared/tipos-evento";
+import { verificarPaquetesPorTipoEvento } from "@/lib/actions/studio/negocio/paquetes.actions";
 
 export interface LeadFormConfig {
   title: string;
@@ -25,6 +30,9 @@ interface LeadFormEditorProps {
   onUpdate: (updates: Partial<LeadFormConfig>) => void;
   mode?: "single" | "multiple"; // single: ofertas (UN tipo), multiple: leadforms genéricos (múltiples)
   eventTypeId?: string | null; // Para modo single (ofertas): viene de formData del context padre
+  onSave?: () => void | Promise<void>;
+  onCancel?: () => void;
+  isSaving?: boolean;
 }
 
 export function LeadFormEditor({
@@ -32,8 +40,28 @@ export function LeadFormEditor({
   formData,
   onUpdate,
   mode = "single", // Default: ofertas (un tipo de evento)
-  eventTypeId = null
+  eventTypeId = null,
+  onSave,
+  onCancel,
+  isSaving = false,
 }: LeadFormEditorProps) {
+  const router = useRouter();
+  const [hasPackages, setHasPackages] = useState<boolean | null>(null);
+  const [packagesCount, setPackagesCount] = useState<number>(0);
+
+  // Verificar si el tipo de evento tiene paquetes
+  useEffect(() => {
+    if (mode === "single" && eventTypeId) {
+      verificarPaquetesPorTipoEvento(studioSlug, eventTypeId).then((result) => {
+        setHasPackages(result.hasPackages);
+        setPackagesCount(result.count);
+      });
+    } else {
+      setHasPackages(null);
+      setPackagesCount(0);
+    }
+  }, [mode, eventTypeId, studioSlug]);
+
   return (
     <div className="space-y-6">
       {/* Campos básicos info */}
@@ -206,10 +234,27 @@ export function LeadFormEditor({
 
               {formData.show_packages_after_submit && (
                 <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/30 rounded">
-                  <p className="text-xs text-blue-300">
-                    ℹ️ El prospecto verá los paquetes disponibles del tipo de evento asociado.
-                    Si no hay paquetes, se mostrará un mensaje indicándolo.
-                  </p>
+                  <div className="flex items-start gap-2">
+                    {hasPackages === null ? (
+                      <p className="text-xs text-blue-300">
+                        ℹ️ Verificando paquetes disponibles...
+                      </p>
+                    ) : hasPackages ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-blue-300">
+                          El prospecto verá {packagesCount} paquete{packagesCount !== 1 ? 's' : ''} disponible{packagesCount !== 1 ? 's' : ''} del tipo de evento asociado después de registrarse.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-blue-300">
+                          Este tipo de evento no tiene paquetes asociados. El prospecto verá un mensaje indicando que no hay paquetes disponibles.
+                        </p>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -227,6 +272,38 @@ export function LeadFormEditor({
           }
           rows={2}
         />
+      </div>
+
+      {/* Botones de acción en la parte inferior */}
+      <div className="mt-6 pt-6 border-t border-zinc-800 flex items-center justify-end gap-2">
+        <ZenButton
+          variant="ghost"
+          size="md"
+          onClick={() => {
+            if (onCancel) {
+              onCancel();
+            } else {
+              router.back();
+            }
+          }}
+          disabled={isSaving}
+        >
+          Cancelar
+        </ZenButton>
+        <ZenButton
+          variant="primary"
+          size="md"
+          fullWidth
+          onClick={async () => {
+            if (onSave) {
+              await onSave();
+            }
+          }}
+          loading={isSaving}
+          disabled={isSaving}
+        >
+          Actualizar leadform
+        </ZenButton>
       </div>
     </div>
   );

@@ -37,6 +37,7 @@ interface CotizacionesSectionProps {
   showItemsPrices?: boolean;
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
+  showPackages?: boolean;
 }
 
 export function CotizacionesSection({
@@ -49,6 +50,7 @@ export function CotizacionesSection({
   showItemsPrices = false,
   showStandardConditions = true,
   showOfferConditions = false,
+  showPackages = false,
 }: CotizacionesSectionProps) {
   const [selectedCotizacion, setSelectedCotizacion] = useState<PublicCotizacion | null>(null);
 
@@ -222,6 +224,7 @@ export function CotizacionesSection({
           showItemsPrices={showItemsPrices}
           showStandardConditions={showStandardConditions}
           showOfferConditions={showOfferConditions}
+          showPackages={showPackages}
         />
       )}
     </>

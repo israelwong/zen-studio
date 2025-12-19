@@ -389,13 +389,15 @@ export async function submitOfferLeadform(
 
       // ✅ Crear notificación de nueva promesa (incluyendo pruebas con badge especial)
       try {
+        const showPackages = offer?.leadform?.show_packages_after_submit || false;
         await notifyPromiseCreated(
           studio.id,
           promise.id,
           validatedData.name,
           eventTypeName,
           validatedData.interest_date || null,
-          isTest // ← Pasar flag para diferenciar en notificación
+          isTest, // ← Pasar flag para diferenciar en notificación
+          showPackages // ← Pasar flag si se mostrarán paquetes
         );
       } catch (notifError) {
         console.error("[submitOfferLeadform] Error creando notificación:", notifError);

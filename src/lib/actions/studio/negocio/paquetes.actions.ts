@@ -170,6 +170,34 @@ function calcularDiferenciaPrecio(
 // =====================================================
 
 /**
+ * Verificar si un tipo de evento tiene paquetes activos
+ */
+export async function verificarPaquetesPorTipoEvento(
+    studioSlug: string,
+    eventTypeId: string
+): Promise<{ hasPackages: boolean; count: number }> {
+    try {
+        const studio_id = await getStudioIdFromSlug(studioSlug);
+        if (!studio_id || !eventTypeId) {
+            return { hasPackages: false, count: 0 };
+        }
+
+        const count = await prisma.studio_paquetes.count({
+            where: {
+                studio_id,
+                event_type_id: eventTypeId,
+                status: 'active',
+            },
+        });
+
+        return { hasPackages: count > 0, count };
+    } catch (error) {
+        console.error('Error verificando paquetes:', error);
+        return { hasPackages: false, count: 0 };
+    }
+}
+
+/**
  * Obtener todos los paquetes de un tipo de evento
  */
 export async function obtenerPaquetesPorTipo(

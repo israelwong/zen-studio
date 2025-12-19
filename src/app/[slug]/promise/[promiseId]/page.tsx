@@ -108,8 +108,8 @@ export default async function PromisePage({ params }: PromisePageProps) {
                   {result.error || 'Información no disponible'}
                 </h2>
                 <p className="text-sm text-zinc-400">
-                  {result.error === 'Promesa no encontrada o no tienes acceso a esta información'
-                    ? 'La promesa solicitada no existe o no tienes permiso para acceder a ella.'
+                  {result.error === 'Promesa no encontrada'
+                    ? 'Lo sentimos, la promesa solicitada ya no está disponible.'
                     : result.error === 'No hay cotizaciones ni paquetes disponibles para mostrar'
                       ? 'Esta promesa aún no tiene cotizaciones o paquetes disponibles para compartir.'
                       : 'Esta información ya no se encuentra disponible.'}

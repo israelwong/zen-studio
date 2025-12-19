@@ -13,8 +13,7 @@ import { ZenButton, ZenSelect } from '@/components/ui/zen';
 import { cn } from '@/lib/utils';
 import { useNotificationsHistory } from '@/hooks/useNotificationsHistory';
 import { buildRoute } from '@/lib/notifications/studio';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { formatRelativeTime } from '@/lib/actions/utils/formatting';
 import type { studio_notifications } from '@prisma/client';
 
 interface NotificationsHistorySheetProps {
@@ -108,10 +107,7 @@ export function NotificationsHistorySheet({
   const formatTime = (date: Date | null) => {
     if (!date) return '';
     try {
-      return formatDistanceToNow(new Date(date), {
-        addSuffix: true,
-        locale: es,
-      });
+      return formatRelativeTime(date);
     } catch {
       return '';
     }

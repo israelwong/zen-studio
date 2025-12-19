@@ -49,6 +49,7 @@ interface CotizacionDetailSheetProps {
   showItemsPrices?: boolean;
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
+  showPackages?: boolean;
 }
 
 export function CotizacionDetailSheet({
@@ -63,6 +64,7 @@ export function CotizacionDetailSheet({
   showItemsPrices = false,
   showStandardConditions = true,
   showOfferConditions = false,
+  showPackages = false,
 }: CotizacionDetailSheetProps) {
   const [showAutorizarModal, setShowAutorizarModal] = useState(false);
   const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
@@ -405,6 +407,7 @@ export function CotizacionDetailSheet({
           condicionesComercialesId={selectedCondicionId}
           condicionesComercialesMetodoPagoId={selectedMetodoPagoId}
           precioCalculado={precioCalculado}
+          showPackages={showPackages}
         />
       )}
 
@@ -418,6 +421,7 @@ export function CotizacionDetailSheet({
           onClose={() => setShowPersonalizacionModal(false)}
           promiseId={promiseId}
           studioSlug={studioSlug}
+          showPackages={showPackages}
         />
       )}
     </>

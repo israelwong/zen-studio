@@ -339,6 +339,11 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
                 const condicion = condicionResult.data;
                 // Si es condición especial (tipo 'offer') y no tiene offer_id, asociarla
                 if (condicion.type === 'offer' && !condicion.offer_id) {
+                  const tipoAnticipo: 'percentage' | 'fixed_amount' =
+                    (condicion.advance_type === 'percentage' || condicion.advance_type === 'fixed_amount')
+                      ? condicion.advance_type
+                      : 'percentage';
+
                   await actualizarCondicionComercial(
                     studioSlug,
                     formData.business_term_id,
@@ -347,6 +352,8 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
                       descripcion: condicion.description ?? null,
                       porcentaje_descuento: condicion.discount_percentage?.toString() || '0',
                       porcentaje_anticipo: condicion.advance_percentage?.toString() || '0',
+                      tipo_anticipo: tipoAnticipo,
+                      monto_anticipo: condicion.advance_amount?.toString() || null,
                       status: condicion.status === 'active' ? 'active' : 'inactive',
                       orden: condicion.order || 0,
                       type: 'offer',
@@ -625,12 +632,16 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
           studioSlug={studioSlug}
           offerSlug={currentOffer?.slug}
           offerId={currentOffer?.id}
+          onSave={handleSave}
+          onCancel={() => router.back()}
         />
       )}
       {activeTab === "leadform" && (
         <LeadFormTab
           studioSlug={studioSlug}
           studioId={studioId || offer?.studio_id || ""}
+          onSave={handleSave}
+          onCancel={() => router.back()}
         />
       )}
 

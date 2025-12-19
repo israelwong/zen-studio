@@ -100,6 +100,8 @@ export default async function PublicOfferLeadFormPage({
                 <OfferInfoCard
                   discountPercentage={offer.business_term?.discount_percentage ?? null}
                   advancePercentage={offer.business_term?.advance_percentage ?? null}
+                  advanceType={offer.business_term?.advance_type ?? 'percentage'}
+                  advanceAmount={offer.business_term?.advance_amount ?? null}
                   startDate={offer.start_date ?? null}
                   endDate={offer.end_date ?? null}
                   isPermanent={offer.is_permanent || false}
@@ -127,6 +129,7 @@ export default async function PublicOfferLeadFormPage({
               coverType={offer.cover_media_type}
               isPreview={isPreview}
               isModal={false}
+              showPackagesAfterSubmit={offer.leadform.show_packages_after_submit || false}
             />
 
             {/* Footer */}

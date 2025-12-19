@@ -718,6 +718,8 @@ export async function getPublicOffer(
               description: true,
               discount_percentage: true,
               advance_percentage: true,
+              advance_type: true,
+              advance_amount: true,
             },
           },
         },
@@ -741,6 +743,8 @@ export async function getPublicOffer(
                 description: true,
                 discount_percentage: true,
                 advance_percentage: true,
+                advance_type: true,
+                advance_amount: true,
               },
             },
           },
@@ -776,6 +780,8 @@ export async function getPublicOffer(
           description: offer.business_term.description,
           discount_percentage: offer.business_term.discount_percentage,
           advance_percentage: offer.business_term.advance_percentage,
+          advance_type: (offer.business_term as any).advance_type || 'percentage',
+          advance_amount: (offer.business_term as any).advance_amount || null,
           type: 'offer' as const,
           override_standard: false,
         } : undefined,
@@ -973,6 +979,55 @@ export async function listOffers(
 }
 
 /**
+ * Archivar oferta (desactivar)
+ */
+export async function archiveOffer(
+  offerId: string,
+  studioSlug: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      const offer = await prisma.studio_offers.findFirst({
+        where: {
+          id: offerId,
+          studio_id: studio.id,
+        },
+      });
+
+      if (!offer) {
+        return { success: false, error: "Oferta no encontrada" };
+      }
+
+      await prisma.studio_offers.update({
+        where: { id: offerId },
+        data: { is_active: false },
+      });
+
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidatePath(`/${studioSlug}`);
+      revalidatePath(`/${studioSlug}/offer/${offer.slug}`);
+
+      return { success: true };
+    });
+  } catch (error) {
+    console.error("[archiveOffer] Error:", error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Error al archivar la oferta" };
+  }
+}
+
+/**
  * Eliminar oferta
  */
 export async function deleteOffer(
@@ -999,11 +1054,26 @@ export async function deleteOffer(
         select: {
           id: true,
           cover_media_url: true,
+          slug: true,
         },
       });
 
       if (!offer) {
         return { success: false, error: "Oferta no encontrada" };
+      }
+
+      // Verificar si tiene promesas asociadas
+      const promisesCount = await prisma.studio_promises.count({
+        where: {
+          offer_id: offerId,
+        },
+      });
+
+      if (promisesCount > 0) {
+        return {
+          success: false,
+          error: `No se puede eliminar la oferta porque tiene ${promisesCount} promesa${promisesCount > 1 ? 's' : ''} asociada${promisesCount > 1 ? 's' : ''}. Puedes archivarla en su lugar.`,
+        };
       }
 
       // Obtener todos los media asociados antes de eliminar
@@ -1063,6 +1133,10 @@ export async function deleteOffer(
       await prisma.studio_offers.delete({
         where: { id: offerId },
       });
+
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidatePath(`/${studioSlug}`);
+      revalidatePath(`/${studioSlug}/offer/${offer.slug}`);
 
       return { success: true };
     });

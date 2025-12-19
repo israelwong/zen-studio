@@ -229,6 +229,7 @@ export function PromisePageClient({
             showItemsPrices={shareSettings.show_items_prices}
             showStandardConditions={shareSettings.show_standard_conditions}
             showOfferConditions={shareSettings.show_offer_conditions}
+            showPackages={shareSettings.show_packages}
           />
         )}
 
@@ -246,6 +247,7 @@ export function PromisePageClient({
             showItemsPrices={shareSettings.show_items_prices}
             showStandardConditions={shareSettings.show_standard_conditions}
             showOfferConditions={shareSettings.show_offer_conditions}
+            showPackages={shareSettings.show_packages}
           />
         )}
 
