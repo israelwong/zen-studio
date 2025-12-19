@@ -1682,6 +1682,7 @@ export async function cancelarCotizacion(
       data: {
         status: 'cancelada',
         evento_id: null, // Liberar relaci?n con evento
+        discount: null, // Limpiar descuento al cancelar
         updated_at: new Date(),
       },
     });
@@ -1753,6 +1754,7 @@ export async function cancelarCotizacionYEvento(
         data: {
           status: 'cancelada',
           evento_id: null,
+          discount: null, // Limpiar descuento al cancelar
           updated_at: new Date(),
         },
       });

@@ -1238,6 +1238,7 @@ export async function cancelarEvento(
           data: {
             status: 'cancelada',
             evento_id: null, // Liberar relación con evento
+            discount: null, // Limpiar descuento al cancelar
             updated_at: new Date(),
           },
         });

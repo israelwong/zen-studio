@@ -518,25 +518,32 @@ export function PromiseQuotesPanelCard({
                   )}
                 </ZenBadge>
               </div>
-              {/* Mostrar precio final calculado si está pre-autorizada o cancelada y tiene condición comercial con descuento */}
+              {/* Mostrar precio final calculado si está pre-autorizada, aprobada o cancelada (con condición comercial/descuento) */}
               {(() => {
-                const esPreAutorizadaOCancelada = cotizacion.selected_by_prospect || cotizacion.status === 'cancelada';
+                const esPreAutorizadaOAprobada = cotizacion.selected_by_prospect ||
+                  (cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada');
+                const estaCancelada = cotizacion.status === 'cancelada';
                 const tieneCondicionComercial = !!cotizacion.condiciones_comerciales;
+                const tieneDescuentoCotizacion = cotizacion.discount && cotizacion.discount > 0;
 
-                if (esPreAutorizadaOCancelada && tieneCondicionComercial) {
+                // Mostrar si está pre-autorizada/aprobada O si está cancelada pero tiene condición comercial/descuento
+                if (esPreAutorizadaOAprobada || (estaCancelada && (tieneCondicionComercial || tieneDescuentoCotizacion))) {
                   // Precio base (con descuento de cotización si aplica - discount es monto fijo, no porcentaje)
-                  const precioBase = cotizacion.discount && cotizacion.discount > 0
+                  const precioBase = tieneDescuentoCotizacion
                     ? cotizacion.price - cotizacion.discount
                     : cotizacion.price;
 
-                  // Precio con descuento de condición comercial (porcentaje)
-                  const descuentoCondicion = cotizacion.condiciones_comerciales.discount_percentage ?? 0;
+                  // Precio con descuento de condición comercial (porcentaje) si existe
+                  const descuentoCondicion = tieneCondicionComercial
+                    ? (cotizacion.condiciones_comerciales.discount_percentage ?? 0)
+                    : 0;
                   const precioConDescuento = descuentoCondicion > 0
                     ? precioBase - (precioBase * descuentoCondicion) / 100
                     : precioBase;
 
-                  // Mostrar si hay descuento de condición comercial y el precio es válido (positivo)
-                  if (descuentoCondicion > 0 && precioConDescuento > 0) {
+                  // Mostrar si hay algún descuento aplicado (de cotización o condición comercial) y el precio es válido (positivo y diferente al original)
+                  const tieneDescuento = tieneDescuentoCotizacion || descuentoCondicion > 0;
+                  if (tieneDescuento && precioConDescuento > 0 && precioConDescuento !== cotizacion.price) {
                     return (
                       <div className="mt-0.5">
                         <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-blue-400'}`}>

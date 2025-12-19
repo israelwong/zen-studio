@@ -520,7 +520,7 @@ export function PromiseTags({
                     return (
                       <div
                         key={tag.tempId || tag.id}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-opacity ${isPending ? 'opacity-70 animate-pulse' : ''
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-opacity ${isPending ? 'opacity-70 animate-pulse' : ''
                           }`}
                         style={{
                           backgroundColor: `${tag.color}20`,
@@ -529,7 +529,7 @@ export function PromiseTags({
                         }}
                       >
                         {isPending && (
-                          <div className="animate-spin rounded-full h-3 w-3 border-2 border-current border-t-transparent mr-0.5" />
+                          <div className="animate-spin rounded-full h-2.5 w-2.5 border-2 border-current border-t-transparent mr-0.5" />
                         )}
                         <span>{tag.name}</span>
                         {!isPending && (
@@ -540,7 +540,7 @@ export function PromiseTags({
                             aria-label={`Eliminar etiqueta ${tag.name}`}
                             disabled={isAddingTags}
                           >
-                            <X className="h-3.5 w-3.5" />
+                            <X className="h-3 w-3" />
                           </button>
                         )}
                       </div>
