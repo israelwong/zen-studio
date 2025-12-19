@@ -2,44 +2,77 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Calendar, Home, LogOut, X } from 'lucide-react';
+import { FileText, Receipt, Mail, X, LayoutDashboard, ArrowLeft, Image, Video, Download, Gift } from 'lucide-react';
 import {
   ZenSidebar,
   ZenSidebarContent,
-  ZenSidebarFooter,
   ZenSidebarMenu,
   ZenSidebarMenuItem,
   ZenSidebarMenuButton,
   useZenSidebar,
 } from '@/components/ui/zen';
 import { ZenButton } from '@/components/ui/zen';
-import { logoutCliente } from '@/lib/actions/public/cliente';
-import type { ClientEvent } from '@/types/client';
 
 interface ClientSidebarProps {
   slug: string;
   clientId: string;
-  eventos: ClientEvent[];
-  clienteName: string;
+  eventId: string;
+  eventoName: string | null;
 }
 
-export function ClientSidebar({ slug, clientId, eventos, clienteName }: ClientSidebarProps) {
+export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, toggleSidebar } = useZenSidebar();
 
-  const handleLogout = async () => {
-    try {
-      await logoutCliente(slug);
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
-      router.push(`/${slug}/cliente/login`);
-    }
-  };
-
   const isActive = (path: string) => {
     return pathname === path;
   };
+
+  const entregaDigitalItems = [
+    {
+      id: 'fotografias',
+      name: 'Fotografías',
+      href: `/${slug}/cliente/${clientId}/${eventId}/fotografias`,
+      icon: Image,
+    },
+    {
+      id: 'video',
+      name: 'Video',
+      href: `/${slug}/cliente/${clientId}/${eventId}/video`,
+      icon: Video,
+    },
+  ];
+
+  const serviciosAdicionalesItems = [
+    {
+      id: 'invitacion',
+      name: 'Invitación Digital',
+      href: `/${slug}/cliente/${clientId}/${eventId}/invitacion`,
+      icon: Gift,
+    },
+  ];
+
+  const menuItems = [
+    {
+      id: 'evento',
+      name: 'Mi evento',
+      href: `/${slug}/cliente/${clientId}/${eventId}`,
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'cotizaciones',
+      name: 'Cotizaciones',
+      href: `/${slug}/cliente/${clientId}/${eventId}/cotizaciones`,
+      icon: FileText,
+    },
+    {
+      id: 'pagos',
+      name: 'Historial de pagos',
+      href: `/${slug}/cliente/${clientId}/${eventId}/pagos`,
+      icon: Receipt,
+    },
+  ];
 
   return (
     <ZenSidebar className={`${isOpen ? '' : 'hidden lg:block'} w-60 lg:w-60 sm:w-60`}>
@@ -56,69 +89,77 @@ export function ClientSidebar({ slug, clientId, eventos, clienteName }: ClientSi
           </ZenButton>
         </div>
 
-        {/* User Info */}
-        <div className="px-3 py-4 border-b border-zinc-800 mb-4">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 bg-emerald-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-xs font-semibold text-white">
-                {clienteName.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-zinc-100 truncate">{clienteName}</p>
-              <p className="text-xs text-zinc-400">Cliente</p>
-            </div>
-          </div>
-        </div>
-
         {/* Navigation */}
         <ZenSidebarMenu className="pt-4">
-          {/* Dashboard */}
-          <ZenSidebarMenuItem>
-            <ZenSidebarMenuButton
-              isActive={isActive(`/${slug}/cliente/${clientId}`)}
+          {/* Volver a eventos */}
+          <div className="px-3 mb-4">
+            <button
               onClick={() => router.push(`/${slug}/cliente/${clientId}`)}
+              className="flex items-center gap-2 text-sm text-zinc-300 hover:text-zinc-100 transition-colors w-full py-2 px-2 rounded-md hover:bg-zinc-800/40"
             >
-              <Home className="h-4 w-4" />
-              <span>Mis Eventos</span>
-            </ZenSidebarMenuButton>
-          </ZenSidebarMenuItem>
-
-          {/* Eventos */}
-          {eventos.length > 0 && (
-            <>
-              <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-6">
-                Eventos
+              <ArrowLeft className="h-4 w-4 flex-shrink-0" />
+              <div className="flex flex-col items-start">
+                <span className="font-medium">Eventos</span>
+                <span className="text-xs text-zinc-500">Gestionar eventos</span>
               </div>
-              {eventos.map((evento) => (
-                <ZenSidebarMenuItem key={evento.id}>
-                  <ZenSidebarMenuButton
-                    isActive={isActive(`/${slug}/cliente/${clientId}/${evento.id}`)}
-                    onClick={() => router.push(`/${slug}/cliente/${clientId}/${evento.id}`)}
-                  >
-                    <Calendar className="h-4 w-4" />
-                    <span className="truncate">{evento.name || 'Evento sin nombre'}</span>
-                  </ZenSidebarMenuButton>
-                </ZenSidebarMenuItem>
-              ))}
-            </>
-          )}
+            </button>
+          </div>
+
+          {/* Divisor */}
+          <div className="px-3 mb-4">
+            <div className="h-px bg-zinc-800" />
+          </div>
+
+          {/* Secciones del evento */}
+          <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+            Secciones
+          </div>
+          {menuItems.map((item) => (
+            <ZenSidebarMenuItem key={item.id}>
+              <ZenSidebarMenuButton
+                isActive={isActive(item.href)}
+                onClick={() => router.push(item.href)}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.name}</span>
+              </ZenSidebarMenuButton>
+            </ZenSidebarMenuItem>
+          ))}
+
+          {/* Entrega Digital */}
+          <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-6">
+            Entrega Digital
+          </div>
+          {entregaDigitalItems.map((item) => (
+            <ZenSidebarMenuItem key={item.id}>
+              <ZenSidebarMenuButton
+                isActive={isActive(item.href)}
+                onClick={() => router.push(item.href)}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.name}</span>
+              </ZenSidebarMenuButton>
+            </ZenSidebarMenuItem>
+          ))}
+
+          {/* Servicios Adicionales */}
+          <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-6">
+            Servicios Adicionales
+          </div>
+          {serviciosAdicionalesItems.map((item) => (
+            <ZenSidebarMenuItem key={item.id}>
+              <ZenSidebarMenuButton
+                isActive={isActive(item.href)}
+                onClick={() => router.push(item.href)}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.name}</span>
+              </ZenSidebarMenuButton>
+            </ZenSidebarMenuItem>
+          ))}
         </ZenSidebarMenu>
       </ZenSidebarContent>
 
-      <ZenSidebarFooter>
-        <ZenSidebarMenu>
-          <ZenSidebarMenuItem>
-            <ZenSidebarMenuButton
-              onClick={handleLogout}
-              className="text-zinc-400 hover:text-zinc-100"
-            >
-              <LogOut className="h-4 w-4" />
-              <span>Cerrar Sesión</span>
-            </ZenSidebarMenuButton>
-          </ZenSidebarMenuItem>
-        </ZenSidebarMenu>
-      </ZenSidebarFooter>
     </ZenSidebar>
   );
 }

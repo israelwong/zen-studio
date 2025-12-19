@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { ZenButton, ZenCard } from '@/components/ui/zen';
+import { ZenCard } from '@/components/ui/zen';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { useToast } from '@/hooks/useToast';
 import { obtenerPagosEvento, obtenerInfoBancariaStudio } from '@/lib/actions/public/cliente';
@@ -106,40 +105,28 @@ export default function EventoPagosPage() {
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
-      {/* Header */}
-      <div className="bg-zinc-900 border-b border-zinc-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
-          <ZenButton
-            variant="ghost"
-            onClick={() => router.push(`/${slug}/cliente/${clientId}/${eventId}`)}
-            className="text-zinc-300 hover:text-zinc-100"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver al evento
-          </ZenButton>
-
-          <h1 className="text-3xl font-bold text-zinc-100">Historial de Pagos</h1>
-        </div>
+      {/* Page Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-zinc-100 mb-2">Historial de Pagos</h1>
+        <p className="text-zinc-400">Consulta tus pagos e información bancaria</p>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* Historial de pagos */}
-          <div>
-            <HistorialPagosTable pagos={pagos} />
-          </div>
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* Historial de pagos */}
+        <div>
+          <HistorialPagosTable pagos={pagos} />
+        </div>
 
-          {/* Información bancaria */}
-          <div>
-            {bankInfo ? (
-              <BankInfoCard bankInfo={bankInfo} />
-            ) : (
-              <div className="text-zinc-400 text-center py-8">
-                Información bancaria no disponible
-              </div>
-            )}
-          </div>
+        {/* Información bancaria */}
+        <div>
+          {bankInfo ? (
+            <BankInfoCard bankInfo={bankInfo} />
+          ) : (
+            <div className="text-zinc-400 text-center py-8">
+              Información bancaria no disponible
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { useFavicon } from '@/hooks/useFavicon';
-import { obtenerStudioPublicInfo } from '@/lib/actions/public/cliente';
-import { ClientHeaderSimple } from './components/ClientHeaderSimple';
+import { obtenerEventoDetalle, obtenerStudioPublicInfo } from '@/lib/actions/public/cliente';
+import { ZenSidebarProvider } from '@/components/ui/zen';
+import { ClientLayoutWrapper } from '../components/ClientLayoutWrapper';
 import { Loader2 } from 'lucide-react';
+import type { ClientEventDetail } from '@/types/client';
 import type { StudioPublicInfo } from '@/lib/actions/public/cliente';
 
-export default function ClienteLayout({
+export default function EventoLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -18,7 +20,9 @@ export default function ClienteLayout({
   const router = useRouter();
   const slug = params?.slug as string;
   const clientId = params?.clientId as string;
+  const eventId = params?.eventId as string;
   const { cliente, isAuthenticated, isLoading } = useClientAuth();
+  const [evento, setEvento] = useState<ClientEventDetail | null>(null);
   const [studioInfo, setStudioInfo] = useState<StudioPublicInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,30 +43,42 @@ export default function ClienteLayout({
     }
   }, [isLoading, isAuthenticated, cliente, clientId, router, slug]);
 
-  // Cargar datos del studio
+  // Cargar datos del evento
   useEffect(() => {
     const fetchData = async () => {
-      if (!isAuthenticated || !cliente || clientId !== cliente.id) {
+      if (!isAuthenticated || !cliente || clientId !== cliente.id || !eventId) {
         return;
       }
 
       try {
         setLoading(true);
-        const studioInfoData = await obtenerStudioPublicInfo(slug);
+        const [eventoResponse, studioInfoData] = await Promise.all([
+          obtenerEventoDetalle(eventId, cliente.id),
+          obtenerStudioPublicInfo(slug),
+        ]);
+
+        if (eventoResponse.success && eventoResponse.data) {
+          setEvento(eventoResponse.data);
+        } else {
+          router.push(`/${slug}/cliente/${clientId}`);
+          return;
+        }
+
         if (studioInfoData) {
           setStudioInfo(studioInfoData);
         }
       } catch (error) {
         console.error('Error loading data:', error);
+        router.push(`/${slug}/cliente/${clientId}`);
       } finally {
         setLoading(false);
       }
     };
 
-    if (isAuthenticated && cliente && clientId === cliente.id) {
+    if (isAuthenticated && cliente && clientId === cliente.id && eventId) {
       fetchData();
     }
-  }, [isAuthenticated, cliente, clientId, slug]);
+  }, [isAuthenticated, cliente, clientId, eventId, router, slug]);
 
   // Mostrar loading simple mientras verifica sesión
   if (isLoading || loading) {
@@ -76,8 +92,8 @@ export default function ClienteLayout({
     );
   }
 
-  // Si no hay sesión, mostrar loading mientras redirige
-  if (!isAuthenticated || !cliente || clientId !== cliente.id) {
+  // Si no hay sesión o evento, mostrar loading mientras redirige
+  if (!isAuthenticated || !cliente || clientId !== cliente.id || !evento) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -89,16 +105,15 @@ export default function ClienteLayout({
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col overflow-hidden">
-      {/* Header */}
-      <ClientHeaderSimple slug={slug} cliente={cliente} studioInfo={studioInfo} />
-
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden bg-zinc-900/40">
-        <div className="w-full pr-4 md:pr-6 lg:pr-8 pb-4 md:pb-6 lg:pb-8">
-          {children}
-        </div>
-      </main>
-    </div>
+    <ZenSidebarProvider>
+      <ClientLayoutWrapper
+        slug={slug}
+        cliente={cliente}
+        evento={evento}
+        studioInfo={studioInfo}
+      >
+        {children}
+      </ClientLayoutWrapper>
+    </ZenSidebarProvider>
   );
 }
