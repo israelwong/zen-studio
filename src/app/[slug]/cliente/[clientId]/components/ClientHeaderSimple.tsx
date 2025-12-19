@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LogOut, User } from 'lucide-react';
 import Image from 'next/image';
 import { ZenButton } from '@/components/ui/zen';
+import { useFavicon } from '@/hooks/useFavicon';
 import { logoutCliente } from '@/lib/actions/public/cliente';
 import type { ClientSession } from '@/types/client';
 import type { StudioPublicInfo } from '@/lib/actions/public/cliente';
@@ -18,6 +19,9 @@ interface ClientHeaderSimpleProps {
 export function ClientHeaderSimple({ slug, cliente, studioInfo }: ClientHeaderSimpleProps) {
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
+
+  // Actualizar favicon dinámicamente
+  useFavicon(studioInfo?.isotipo_url || studioInfo?.logo_url, studioInfo?.studio_name);
 
   useEffect(() => {
     setIsMounted(true);

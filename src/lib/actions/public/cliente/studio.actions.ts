@@ -4,6 +4,7 @@
  * Server Actions para información pública del studio
  */
 
+import { cache } from 'react';
 import { prisma } from '@/lib/prisma';
 
 export interface StudioPublicInfo {
@@ -15,8 +16,9 @@ export interface StudioPublicInfo {
 
 /**
  * Obtiene información pública del studio por slug
+ * Usa React.cache para memoizar llamadas repetidas en el mismo request
  */
-export async function obtenerStudioPublicInfo(slug: string): Promise<StudioPublicInfo | null> {
+export const obtenerStudioPublicInfo = cache(async (slug: string): Promise<StudioPublicInfo | null> => {
   try {
     const studio = await prisma.studios.findUnique({
       where: { slug },
@@ -33,5 +35,5 @@ export async function obtenerStudioPublicInfo(slug: string): Promise<StudioPubli
     console.error('[obtenerStudioPublicInfo] Error:', error);
     return null;
   }
-}
+});
 

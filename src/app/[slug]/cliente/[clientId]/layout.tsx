@@ -1,103 +1,36 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useClientAuth } from '@/hooks/useClientAuth';
-import { useFavicon } from '@/hooks/useFavicon';
-import { obtenerStudioPublicInfo } from '@/lib/actions/public/cliente';
+import { redirect } from 'next/navigation';
+import { getClienteSession, obtenerStudioPublicInfo } from '@/lib/actions/public/cliente';
 import { ClientHeaderSimple } from './components/ClientHeaderSimple';
-import { Loader2 } from 'lucide-react';
 import type { StudioPublicInfo } from '@/lib/actions/public/cliente';
 
-export default function ClienteLayout({
-  children,
-}: {
+interface ClienteLayoutProps {
   children: React.ReactNode;
-}) {
-  const params = useParams();
-  const router = useRouter();
-  const slug = params?.slug as string;
-  const clientId = params?.clientId as string;
-  const { cliente, isAuthenticated, isLoading } = useClientAuth();
-  const [studioInfo, setStudioInfo] = useState<StudioPublicInfo | null>(null);
-  const [loading, setLoading] = useState(true);
+  params: Promise<{ slug: string; clientId: string }>;
+}
 
-  // Actualizar favicon dinámicamente
-  useFavicon(studioInfo?.isotipo_url || studioInfo?.logo_url, studioInfo?.studio_name);
+export default async function ClienteLayout({ children, params }: ClienteLayoutProps) {
+  const { slug, clientId } = await params;
 
-  // Redirigir a login si no hay sesión
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push(`/${slug}/cliente/login`);
-    }
-  }, [isLoading, isAuthenticated, router, slug]);
+  // Autenticación en servidor
+  const cliente = await getClienteSession();
+
+  if (!cliente) {
+    redirect(`/${slug}/cliente/login`);
+  }
 
   // Verificar que el clientId coincida con el cliente autenticado
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && cliente && clientId !== cliente.id) {
-      router.push(`/${slug}/cliente/${cliente.id}`);
-    }
-  }, [isLoading, isAuthenticated, cliente, clientId, router, slug]);
-
-  // Cargar datos del studio
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!isAuthenticated || !cliente || clientId !== cliente.id) {
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const studioInfoData = await obtenerStudioPublicInfo(slug);
-        if (studioInfoData) {
-          setStudioInfo(studioInfoData);
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (isAuthenticated && cliente && clientId === cliente.id) {
-      fetchData();
-    }
-  }, [isAuthenticated, cliente, clientId, slug]);
-
-  // Mostrar loading simple mientras verifica sesión
-  if (isLoading || loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
-          <p className="text-zinc-400 text-sm">Cargando...</p>
-        </div>
-      </div>
-    );
+  if (clientId !== cliente.id) {
+    redirect(`/${slug}/cliente/${cliente.id}`);
   }
 
-  // Si no hay sesión, mostrar loading mientras redirige
-  if (!isAuthenticated || !cliente || clientId !== cliente.id) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
-          <p className="text-zinc-400 text-sm">Redirigiendo...</p>
-        </div>
-      </div>
-    );
-  }
+  // Cargar datos del studio (memoizado con React.cache)
+  const studioInfo: StudioPublicInfo | null = await obtenerStudioPublicInfo(slug);
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col overflow-hidden">
-      {/* Header */}
       <ClientHeaderSimple slug={slug} cliente={cliente} studioInfo={studioInfo} />
-
-      {/* Content */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden bg-zinc-900/40">
-        <div className="w-full pr-4 md:pr-6 lg:pr-8 pb-4 md:pb-6 lg:pb-8">
-          {children}
-        </div>
+        {children}
       </main>
     </div>
   );

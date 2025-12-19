@@ -80,7 +80,7 @@ export async function obtenerInfoBancariaStudio(studioId: string): Promise<ApiRe
       where: { id: studioId },
       select: {
         id: true,
-        clabe_interbancaria: true,
+        clabe_number: true,
         bank_name: true,
         account_holder: true,
       },
@@ -97,7 +97,7 @@ export async function obtenerInfoBancariaStudio(studioId: string): Promise<ApiRe
       success: true,
       data: {
         studio_id: studio.id,
-        clabe: studio.clabe_interbancaria,
+        clabe: studio.clabe_number,
         banco: studio.bank_name,
         titular: studio.account_holder,
       },
