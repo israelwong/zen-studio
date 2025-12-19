@@ -57,12 +57,15 @@ export function EventsKanban({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Sincronizar estado local cuando cambian los eventos desde el padre
+  // Evitar sincronización durante drag and drop para prevenir parpadeos
   useEffect(() => {
+    // Si estamos arrastrando, no sincronizar
     if (isDraggingRef.current) {
       prevEventsRef.current = events;
       return;
     }
 
+    // Comparar con la referencia anterior para detectar cambios reales
     const prevIds = new Set(prevEventsRef.current.map(e => e.id));
     const newIds = new Set(events.map(e => e.id));
 
@@ -71,12 +74,15 @@ export function EventsKanban({
       [...prevIds].some(id => !newIds.has(id)) ||
       [...newIds].some(id => !prevIds.has(id));
 
+    // Solo sincronizar si hay cambios en IDs (nuevos/eliminados eventos)
+    // No sincronizar por cambios de stage_id ya que se manejan con actualización optimista
     if (hasIdChanges || localEvents.length === 0) {
       setLocalEvents(events);
     }
 
     prevEventsRef.current = events;
-  }, [events, localEvents.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -176,25 +182,31 @@ export function EventsKanban({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
-    isDraggingRef.current = false;
 
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      isDraggingRef.current = false;
+      return;
+    }
 
     const eventId = active.id as string;
     const newStageId = over.id as string;
 
     const stage = pipelineStages.find((s: EventPipelineStage) => s.id === newStageId);
-    if (!stage) return;
+    if (!stage) {
+      isDraggingRef.current = false;
+      return;
+    }
 
     const evento = localEvents.find((e: EventWithContact) => e.id === eventId);
     if (!evento) {
       toast.error('No se pudo encontrar el evento');
+      isDraggingRef.current = false;
       return;
     }
 
     const originalStage = evento.stage;
 
-    // Actualización optimista local
+    // Actualización optimista local - actualizar tanto el ID como el objeto completo del stage
     setLocalEvents((prev) =>
       prev.map((e) =>
         e.id === eventId
@@ -214,6 +226,11 @@ export function EventsKanban({
       )
     );
 
+    // Permitir sincronización después de un breve delay para que la actualización optimista se complete
+    setTimeout(() => {
+      isDraggingRef.current = false;
+    }, 100);
+
     try {
       const result = await moveEvent(studioSlug, {
         event_id: eventId,
@@ -221,8 +238,9 @@ export function EventsKanban({
       });
 
       if (result.success) {
+        // No llamar onEventMoved() para evitar recargar todo el kanban
+        // La actualización optimista local ya maneja el cambio visual
         toast.success('Evento movido exitosamente');
-        onEventMoved();
       } else {
         // Revertir actualización optimista
         setLocalEvents((prev) =>
@@ -272,7 +290,7 @@ export function EventsKanban({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-4 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center mb-4 shrink-0">
         <div className="flex-1 w-full relative">
           <div className="relative">
             <ZenInput
@@ -355,12 +373,10 @@ export function EventsKanban({
         </div>
 
         <DragOverlay
-          style={{
-            cursor: 'grabbing',
-            transform: 'scale(1.05) rotate(3deg)',
-            opacity: 0.95,
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            transition: 'transform 0.2s ease-out, opacity 0.2s ease-out',
+          style={{ cursor: 'grabbing' }}
+          dropAnimation={{
+            duration: 200,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
           }}
         >
           {activeEvent ? (
@@ -407,8 +423,8 @@ function KanbanColumn({
       className={`${isFlexible
         ? 'flex-1 min-w-[280px]'
         : 'w-[280px] min-w-[280px] max-w-[280px] shrink-0'
-        } flex flex-col rounded-lg border p-4 h-full overflow-hidden transition-all duration-200 ${isOver
-          ? 'bg-zinc-800/90 border-2 scale-[1.02]'
+        } flex flex-col rounded-lg border p-4 h-full min-h-[400px] overflow-hidden transition-all duration-200 ${isOver
+          ? 'bg-zinc-800/90 border-2'
           : 'bg-zinc-900/50 border-zinc-700'
         }`}
       style={{
@@ -459,18 +475,6 @@ function KanbanColumn({
             className="flex flex-col items-center justify-center h-full py-12 text-center text-zinc-500 text-sm"
             style={{ minHeight: '200px' }}
           >
-            <div
-              className="relative flex items-center justify-center w-24 h-24 rounded-full mb-4"
-              style={{ backgroundColor: `${stage.color}20` }}
-            >
-              <div
-                className="absolute inset-3 rounded-full border-2 border-dashed"
-                style={{ borderColor: `${stage.color}80` }}
-              />
-              <span className="text-3xl" role="img" aria-label="Empty">
-                📅
-              </span>
-            </div>
             <p className="font-semibold text-zinc-400 mb-1">Sin eventos</p>
             <p className="text-zinc-500">Arrastra aquí para mover</p>
           </div>

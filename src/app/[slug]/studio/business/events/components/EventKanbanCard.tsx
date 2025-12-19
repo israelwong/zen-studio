@@ -2,7 +2,6 @@
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MapPin, CreditCard } from 'lucide-react';
 import type { EventWithContact } from '@/lib/actions/schemas/events-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
 import { ZenAvatar, ZenAvatarFallback } from '@/components/ui/zen';
@@ -30,6 +29,7 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
       : `${transition}, all 0.2s cubic-bezier(0.18, 0.67, 0.6, 1.22)`,
     opacity: isDragging ? 0 : 1,
     cursor: isDragging ? 'grabbing' : 'pointer',
+    pointerEvents: isDragging ? 'none' : 'auto',
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -86,7 +86,7 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
         {/* Header: Avatar, Nombre y Tipo de evento */}
         <div className="flex items-center gap-2.5">
           {/* Avatar */}
-          <ZenAvatar className="h-12 w-12 flex-shrink-0">
+          <ZenAvatar className="h-12 w-12 shrink-0">
             <ZenAvatarFallback>
               {formatInitials(contact?.name || event.name || 'E')}
             </ZenAvatarFallback>
@@ -109,9 +109,8 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
         </div>
 
         {/* Fecha del evento */}
-        <div className={`flex items-center gap-1.5 text-xs ${isExpired ? 'text-red-400' : isToday ? 'text-blue-400' : 'text-zinc-400'
+        <div className={`text-xs ${isExpired ? 'text-red-400' : isToday ? 'text-blue-400' : 'text-zinc-400'
           }`}>
-          <Calendar className="h-3 w-3 flex-shrink-0" />
           <span>
             {formatDate(event.event_date)}
             {daysRemaining !== null && (
@@ -132,16 +131,14 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
 
         {/* Dirección */}
         {event.address && (
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <MapPin className="h-3 w-3 flex-shrink-0" />
+          <div className="text-xs text-zinc-400">
             <span className="truncate">{event.address}</span>
           </div>
         )}
 
         {/* Monto contratado */}
         {event.contract_value && (
-          <div className="flex items-center gap-1.5 text-xs text-zinc-400">
-            <CreditCard className="h-3 w-3 flex-shrink-0" />
+          <div className="text-xs text-zinc-400">
             <span>
               ${event.contract_value.toLocaleString('es-MX', {
                 minimumFractionDigits: 0,
@@ -158,8 +155,7 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
 
         {/* Última actualización */}
         {event.updated_at && (
-          <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <Calendar className="h-3 w-3 flex-shrink-0" />
+          <div className="text-xs text-zinc-500">
             <span>
               Actualizado: {formatRelativeTime(event.updated_at)}
             </span>

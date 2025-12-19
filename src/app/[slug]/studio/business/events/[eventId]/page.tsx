@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MoreVertical, Loader2, Phone, MessageCircle, MessageSquare, FileText } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Loader2, MessageSquare } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
 import { obtenerEventoDetalle, cancelarEvento, getEventPipelineStages, moveEvent, obtenerCotizacionesAutorizadasCount, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import type { EventPipelineStage } from '@/lib/actions/schemas/events-schemas';
@@ -154,13 +154,6 @@ export default function EventDetailPage() {
     window.location.href = `tel:+${phoneWithCountry}`;
   };
 
-  const handleContratos = () => {
-    router.push(`/${studioSlug}/studio/business/events/${eventId}/contrato`);
-  };
-
-  const contactPhone = eventData?.promise?.contact?.phone;
-  const hasContactPhone = !!contactPhone;
-
   if (loading) {
     return (
       <div className="w-full max-w-7xl mx-auto">
@@ -215,31 +208,6 @@ export default function EventDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {/* Botones de acciones rápidas */}
-              {hasContactPhone && (
-                <>
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleWhatsApp}
-                    className="gap-2 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20 px-3"
-                  >
-                    <MessageCircle className="h-4 w-4" />
-                    <span className="text-xs font-medium">WhatsApp</span>
-                  </ZenButton>
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleCall}
-                    className="gap-2 text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 px-3"
-                  >
-                    <Phone className="h-4 w-4" />
-                    <span className="text-xs font-medium">Llamar</span>
-                  </ZenButton>
-                  <div className="h-6 w-px bg-zinc-700 mx-1" />
-                </>
-              )}
-
               {/* Botón de bitácora */}
               {eventData?.promise?.id && (
                 <>
@@ -290,16 +258,6 @@ export default function EventDetailPage() {
                       </div>
                     )}
                   </div>
-                  <div className="h-6 w-px bg-zinc-700 mx-1" />
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleContratos}
-                    className="gap-2 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-950/50 px-3"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="text-xs font-medium">Contratos</span>
-                  </ZenButton>
                 </>
               )}
               <ZenDropdownMenu>

@@ -310,7 +310,7 @@ export function EventCotizacionesCard({
 
   return (
     <ZenCard>
-      <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
+      <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
         <div className="flex items-center justify-between">
           <ZenCardTitle className="text-sm font-medium flex items-center pt-1">
             Cotizaciones
@@ -358,7 +358,7 @@ export function EventCotizacionesCard({
                               <span className="text-zinc-500">Total:</span>
                               <span className="text-zinc-300">{formatAmount(cotizacion.price)}</span>
                             </div>
-                            {cotizacion.discount > 0 && (
+                            {cotizacion.discount && cotizacion.discount > 0 && (
                               <div className="flex justify-between">
                                 <span className="text-zinc-500">Descuento:</span>
                                 <span className="text-red-400">-{formatAmount(cotizacion.discount)}</span>
@@ -426,6 +426,19 @@ export function EventCotizacionesCard({
                             </ZenDropdownMenuContent>
                           </ZenDropdownMenu>
                         </div>
+                      </div>
+
+                      {/* Footer con botón de cronograma */}
+                      <div className="mt-3 pt-3 border-t border-zinc-800">
+                        <ZenButton
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleGestionarScheduler(cotizacion.id)}
+                          className="w-full h-7 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 gap-1.5"
+                        >
+                          <Calendar className="h-3.5 w-3.5" />
+                          Cronograma
+                        </ZenButton>
                       </div>
 
                       {/* Spinner de carga */}
@@ -615,10 +628,29 @@ export function EventCotizacionesCard({
                   description: null, // No disponible en EventoDetalle
                   price: cotizacionCompleta.price,
                   status: cotizacionCompleta.status,
-                  items: cotizacionCompleta.cotizacion_items?.map((item) => ({
+                  items: (cotizacionCompleta.cotizacion_items?.map((item) => ({
                     item_id: item.item_id || '',
                     quantity: item.quantity,
-                  })) || [],
+                    unit_price: item.unit_price,
+                    subtotal: item.subtotal,
+                    cost: item.cost,
+                    expense: 0, // No disponible en EventoDetalle
+                    name: item.name,
+                    description: item.description,
+                    category_name: item.category_name,
+                    seccion_name: item.seccion_name,
+                  })) || []) as Array<{
+                    item_id: string;
+                    quantity: number;
+                    unit_price: number;
+                    subtotal: number;
+                    cost: number;
+                    expense: number;
+                    name: string | null;
+                    description: string | null;
+                    category_name: string | null;
+                    seccion_name: string | null;
+                  }>,
                 }}
                 studioSlug={studioSlug}
                 promiseId={cotizacionCompleta.promise_id || undefined}
