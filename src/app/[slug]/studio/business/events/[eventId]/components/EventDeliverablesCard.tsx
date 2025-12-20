@@ -115,8 +115,8 @@ export function EventDeliverablesCard({
       if (editingId) {
         // Optimistic update para edición
         const originalEntregables = [...entregables];
-        setEntregables(prev => prev.map(item => 
-          item.id === editingId 
+        setEntregables(prev => prev.map(item =>
+          item.id === editingId
             ? { ...item, name: formData.name, description: formData.description || null, file_url: formData.file_url || null }
             : item
         ));
@@ -127,10 +127,10 @@ export function EventDeliverablesCard({
           description: formData.description || undefined,
           file_url: formData.file_url || undefined,
         });
-        
+
         if (result.success && result.data) {
           // Actualizar con los datos del servidor
-          setEntregables(prev => prev.map(item => 
+          setEntregables(prev => prev.map(item =>
             item.id === editingId ? result.data! : item
           ));
           toast.success('Entregable actualizado');
@@ -149,7 +149,7 @@ export function EventDeliverablesCard({
           description: formData.description || undefined,
           file_url: formData.file_url || undefined,
         });
-        
+
         if (result.success && result.data) {
           // Agregar el nuevo entregable al estado local
           setEntregables(prev => [...prev, result.data!]);
@@ -170,14 +170,14 @@ export function EventDeliverablesCard({
 
   const handleDelete = async () => {
     if (!deletingId) return;
-    
+
     // Optimistic update para eliminación
     const originalEntregables = [...entregables];
     setEntregables(prev => prev.filter(item => item.id !== deletingId));
     setIsDeleteModalOpen(false);
     const idToDelete = deletingId;
     setDeletingId(null);
-    
+
     setIsDeleting(true);
     try {
       const result = await eliminarEntregable(studioSlug, idToDelete);
@@ -203,11 +203,22 @@ export function EventDeliverablesCard({
   if (loading) {
     return (
       <ZenCard>
-        <ZenCardHeader>
-          <ZenCardTitle>Entregables</ZenCardTitle>
+        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
+          <div className="flex items-center justify-between animate-pulse">
+            <div className="h-4 w-20 bg-zinc-800 rounded" />
+            <div className="h-6 w-20 bg-zinc-800 rounded" />
+          </div>
         </ZenCardHeader>
-        <ZenCardContent>
-          <div className="text-center py-8 text-zinc-400">Cargando...</div>
+        <ZenCardContent className="p-4">
+          <div className="space-y-3 animate-pulse">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-800">
+                <div className="h-4 w-32 bg-zinc-800 rounded mb-2" />
+                <div className="h-3 w-full bg-zinc-800 rounded mb-1.5" />
+                <div className="h-3 w-24 bg-zinc-800 rounded" />
+              </div>
+            ))}
+          </div>
         </ZenCardContent>
       </ZenCard>
     );
@@ -235,12 +246,7 @@ export function EventDeliverablesCard({
           </div>
         </ZenCardHeader>
         <ZenCardContent className="p-4">
-          {loading ? (
-            <div className="space-y-3">
-              <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
-              <div className="h-32 w-full bg-zinc-800 rounded animate-pulse" />
-            </div>
-          ) : totalEntregables === 0 ? (
+          {totalEntregables === 0 ? (
             <div className="text-center py-4">
               <p className="text-xs text-zinc-500 mb-2">
                 No hay entregables registrados

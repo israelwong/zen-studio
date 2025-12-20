@@ -26,6 +26,7 @@ export interface ZenDialogProps {
   showDeleteButton?: boolean;
   zIndex?: number;
   headerActions?: React.ReactNode;
+  fullScreen?: boolean;
 }
 
 const maxWidthClasses = {
@@ -59,7 +60,8 @@ export function ZenDialog({
   deleteLabel = 'Eliminar',
   showDeleteButton = false,
   zIndex = 10050,
-  headerActions
+  headerActions,
+  fullScreen = false
 }: ZenDialogProps) {
   const [mounted, setMounted] = React.useState(false);
   const [isAnimating, setIsAnimating] = React.useState(false);
@@ -116,7 +118,8 @@ export function ZenDialog({
       {/* Contenido del modal */}
       <div
         className={cn(
-          "fixed inset-0 flex items-center justify-center p-4 transition-all duration-200",
+          "fixed inset-0 flex items-center justify-center transition-all duration-200",
+          fullScreen ? "p-0" : "p-4",
           isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95"
         )}
         style={{
@@ -126,9 +129,12 @@ export function ZenDialog({
       >
         <div
           className={cn(
-            'rounded-lg shadow-xl w-full max-h-[90vh] flex flex-col relative pointer-events-auto',
+            'shadow-xl w-full flex flex-col relative pointer-events-auto',
+            fullScreen
+              ? 'h-screen rounded-none'
+              : 'rounded-lg max-h-[90vh]',
             title ? 'bg-zinc-900' : 'bg-zinc-950/50 backdrop-blur-md border border-zinc-800/50',
-            maxWidthClasses[maxWidth]
+            !fullScreen && maxWidthClasses[maxWidth]
           )}
           onClick={(e) => e.stopPropagation()}
         >
@@ -166,7 +172,11 @@ export function ZenDialog({
             'overflow-y-auto flex-1 min-h-0',
             title ? 'p-6' : 'p-6',
             title ? '' : 'border-0'
-          )} style={{ maxHeight: title ? 'calc(90vh - 140px)' : 'calc(90vh - 80px)' }}>
+          )} style={{
+            maxHeight: fullScreen
+              ? (title ? 'calc(100vh - 140px)' : 'calc(100vh - 80px)')
+              : (title ? 'calc(90vh - 140px)' : 'calc(90vh - 80px)')
+          }}>
             {children}
           </ZenCardContent>
 

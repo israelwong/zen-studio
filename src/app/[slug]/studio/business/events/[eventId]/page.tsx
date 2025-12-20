@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MoreVertical, Loader2, MessageSquare } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
+import { ZenCard, ZenCardContent, ZenConfirmModal } from '@/components/ui/zen';
 import { obtenerEventoDetalle, cancelarEvento, getEventPipelineStages, moveEvent, obtenerCotizacionesAutorizadasCount, type EventoDetalle } from '@/lib/actions/studio/business/events';
 import type { EventPipelineStage } from '@/lib/actions/schemas/events-schemas';
 import { EventPanel } from '../components/EventPanel';
 import { BitacoraSheet } from '@/components/shared/bitacora';
+import { EventDetailSkeleton } from './components/EventDetailSkeleton';
+import { EventDetailHeader } from './components/EventDetailHeader';
 import { toast } from 'sonner';
 
 export default function EventDetailPage() {
@@ -155,138 +156,27 @@ export default function EventDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="w-full max-w-7xl mx-auto">
-        <ZenCard variant="default" padding="none">
-          <ZenCardHeader className="border-b border-zinc-800">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-zinc-800 rounded animate-pulse" />
-                <div className="space-y-2">
-                  <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
-                  <div className="h-4 w-64 bg-zinc-800 rounded animate-pulse" />
-                </div>
-              </div>
-            </div>
-          </ZenCardHeader>
-          <ZenCardContent className="p-6">
-            <div className="text-center py-12 text-zinc-400">
-              Cargando evento...
-            </div>
-          </ZenCardContent>
-        </ZenCard>
-      </div>
-    );
+    return <EventDetailSkeleton />;
   }
 
   if (!eventData) {
     return null;
   }
 
-  const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
-  const isArchived = currentStage?.slug === 'archivado';
-
   return (
     <div className="w-full max-w-7xl mx-auto">
       <ZenCard variant="default" padding="none">
-        <ZenCardHeader className="border-b border-zinc-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(`/${studioSlug}/studio/business/events`)}
-                className="p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </ZenButton>
-              <div>
-                <ZenCardTitle>{eventData.name || 'Evento sin nombre'}</ZenCardTitle>
-                <ZenCardDescription>
-                  Detalle del evento
-                </ZenCardDescription>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Botón de bitácora */}
-              {eventData?.promise?.id && (
-                <>
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setLogsSheetOpen(true)}
-                    className="gap-2 text-zinc-400 hover:text-zinc-300 hover:bg-zinc-950/50 px-3"
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    <span className="text-xs font-medium">Bitácora</span>
-                  </ZenButton>
-                  <div className="h-6 w-px bg-zinc-700 mx-1" />
-                </>
-              )}
-
-              {pipelineStages.length > 0 && currentPipelineStageId && (
-                <>
-                  <div className="relative flex items-center">
-                    <select
-                      value={currentPipelineStageId}
-                      onChange={(e) => handlePipelineStageChange(e.target.value)}
-                      disabled={isChangingStage || loading}
-                      className={`pl-3 pr-8 py-1.5 text-sm bg-zinc-900 border rounded-lg text-zinc-100 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed appearance-none ${isChangingStage
-                        ? "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
-                        : isArchived
-                          ? "border-amber-500 focus:ring-amber-500/50 focus:border-amber-500"
-                          : "border-zinc-700 focus:ring-blue-500/50 focus:border-blue-500"
-                        }`}
-                    >
-                      {isChangingStage ? (
-                        <option value={currentPipelineStageId}>Actualizando estado...</option>
-                      ) : (
-                        pipelineStages.map((stage) => (
-                          <option key={stage.id} value={stage.id}>
-                            {stage.name}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    {isChangingStage ? (
-                      <Loader2 className="absolute right-2 h-4 w-4 animate-spin text-zinc-400 pointer-events-none" />
-                    ) : (
-                      <div className="absolute right-2 pointer-events-none">
-                        <svg className="h-4 w-4 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-              <ZenDropdownMenu>
-                <ZenDropdownMenuTrigger asChild>
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </ZenButton>
-                </ZenDropdownMenuTrigger>
-                <ZenDropdownMenuContent align="end">
-                  {eventData.status !== 'CANCELLED' && (
-                    <>
-                      <ZenDropdownMenuItem
-                        onClick={handleCancelClick}
-                        className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
-                      >
-                        Cancelar evento
-                      </ZenDropdownMenuItem>
-                      <ZenDropdownMenuSeparator />
-                    </>
-                  )}
-                </ZenDropdownMenuContent>
-              </ZenDropdownMenu>
-            </div>
-          </div>
-        </ZenCardHeader>
+        <EventDetailHeader
+          studioSlug={studioSlug}
+          eventData={eventData}
+          pipelineStages={pipelineStages}
+          currentPipelineStageId={currentPipelineStageId}
+          isChangingStage={isChangingStage}
+          loading={loading}
+          onPipelineStageChange={handlePipelineStageChange}
+          onCancelClick={handleCancelClick}
+          onLogsClick={() => setLogsSheetOpen(true)}
+        />
         <ZenCardContent className="p-6">
           <EventPanel
             studioSlug={studioSlug}

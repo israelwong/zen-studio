@@ -2,11 +2,13 @@
 
 import React from 'react';
 import { ContactEventInfoCard } from '@/components/shared/contact-info';
-import { EventCotizacionesCard } from './EventCotizacionesCard';
-import { EventPaymentsCard } from './EventPaymentsCard';
-import { EventAgendamiento } from './EventAgendamiento';
-import { EventTodoCard } from './EventTodoCard';
-// import { EventItinerarioCard } from './EventItinerarioCard';
+import { EventCotizacionesCard } from '../[eventId]/components/EventCotizacionesCard';
+import { EventPaymentsCard } from '../[eventId]/components/EventPaymentsCard';
+import { EventContractCard } from '../[eventId]/components/EventContractCard';
+import { EventAgendamiento } from '../[eventId]/components/EventAgendamiento';
+import { EventDeliverablesCard } from '../[eventId]/components/EventDeliverablesCard';
+// import { EventTodoCard } from '../[eventId]/components/EventTodoCard';
+// import { EventItinerarioCard } from '../[eventId]/components/EventItinerarioCard';
 
 import type { EventoDetalle } from '@/lib/actions/studio/business/events';
 
@@ -28,7 +30,7 @@ export function EventPanel({
       {/* Layout de 3 columnas */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Columna 1: Información */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <ContactEventInfoCard
             studioSlug={studioSlug}
             contactId={eventData.contact_id}
@@ -105,7 +107,7 @@ export function EventPanel({
           />
         </div>
 
-        {/* Columna 3: Agenda + TODO */}
+        {/* Columna 3: Agenda + Contrato + Entregables + TODO */}
         <div className="lg:col-span-1 space-y-6">
           <EventAgendamiento
             studioSlug={studioSlug}
@@ -114,10 +116,25 @@ export function EventPanel({
             onAgendaUpdated={onEventUpdated}
           />
 
+          <EventContractCard
+            studioSlug={studioSlug}
+            eventId={eventId}
+            eventTypeId={eventData.event_type_id || undefined}
+            onContractUpdated={onEventUpdated}
+          />
+
+          <EventDeliverablesCard
+            studioSlug={studioSlug}
+            eventId={eventId}
+            onUpdated={onEventUpdated}
+          />
+
+          {/* TODO: Funcionalidad futura - EventTodoCard
           <EventTodoCard
             studioSlug={studioSlug}
             eventId={eventId}
           />
+          */}
 
           {/* TODO: Funcionalidad futura - EventItinerarioCard
           <EventItinerarioCard

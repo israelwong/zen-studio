@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { ZenTextarea, ZenCard, ZenCardContent } from "@/components/ui/zen";
+import { cn } from "@/lib/utils";
+import { ZenCard, ZenCardContent } from "@/components/ui/zen";
 
 export interface ContractEditorProps {
   content: string;
@@ -23,19 +24,26 @@ export function ContractEditor({
   placeholder = "Escribe el contenido del contrato...",
   className = "",
 }: ContractEditorProps) {
+  const isFullHeight = className.includes('h-full');
+
   return (
-    <ZenCard variant="default" className={className}>
-      <ZenCardContent className="p-0">
-        <ZenTextarea
+    <ZenCard variant="default" className={cn(className, isFullHeight && 'h-full flex flex-col')}>
+      <ZenCardContent className={cn('p-0 flex flex-col', isFullHeight && 'flex-1 min-h-0')}>
+        <textarea
           value={content}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => onChange(e.target.value)}
           disabled={readonly}
           placeholder={placeholder}
-          className="min-h-[600px] font-mono text-sm border-0 rounded-none focus-visible:ring-0"
+          className={cn(
+            'w-full font-mono text-sm bg-zinc-950 text-zinc-300 placeholder-zinc-600',
+            'border-0 rounded-none focus-visible:ring-0 focus-visible:outline-none',
+            'resize-y p-4',
+            isFullHeight ? 'flex-1 min-h-0' : 'min-h-[1000px]'
+          )}
         />
 
         {!readonly && (
-          <div className="px-4 py-3 bg-zinc-900/50 border-t border-zinc-800">
+          <div className="px-4 py-3 bg-zinc-900/50 border-t border-zinc-800 shrink-0">
             <div className="flex items-center justify-between text-xs text-zinc-600">
               <div className="flex items-center gap-4">
                 <span>{content.length} caracteres</span>

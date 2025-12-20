@@ -18,6 +18,7 @@ import {
     BarChart3,
     User,
     X,
+    Calendar,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -51,6 +52,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             icon: Briefcase,
             items: [
                 { id: 'events', name: 'Eventos', href: `/business/events`, icon: FileText },
+                { id: 'scheduler', name: 'Cronograma', href: `/business/scheduler`, icon: Calendar },
+
                 { id: 'finanzas', name: 'Finanzas', href: `/business/finanzas`, icon: DollarSign },
                 // { id: 'reportes', name: 'Reportes', href: `/business/reportes`, icon: BarChart3 },
             ],
