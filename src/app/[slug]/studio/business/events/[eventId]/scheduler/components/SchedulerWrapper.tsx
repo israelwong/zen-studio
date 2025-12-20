@@ -56,6 +56,10 @@ export function SchedulerWrapper({
       return true; // Sin restricciones si no hay rango o datos
     }
 
+    // Extraer fechas después de la verificación para que TypeScript las reconozca como definidas
+    const rangeFrom = newRange.from;
+    const rangeTo = newRange.to;
+
     // Buscar todas las tareas con scheduler_task asignado (solo de la cotización filtrada)
     const allItems = filteredCotizaciones.flatMap(cot => cot.cotizacion_items || []);
     const itemsWithTasks = allItems.filter(item => item.scheduler_task);
@@ -73,8 +77,8 @@ export function SchedulerWrapper({
       taskStart.setHours(0, 0, 0, 0);
       taskEnd.setHours(0, 0, 0, 0);
 
-      const rangeStart = new Date(newRange.from);
-      const rangeEnd = new Date(newRange.to);
+      const rangeStart = new Date(rangeFrom);
+      const rangeEnd = new Date(rangeTo);
       rangeStart.setHours(0, 0, 0, 0);
       rangeEnd.setHours(0, 0, 0, 0);
 
@@ -85,7 +89,7 @@ export function SchedulerWrapper({
     if (tasksOutsideRange.length > 0) {
       // Hay conflictos, mostrar modal
       setConflictCount(tasksOutsideRange.length);
-      setProposedRange({ from: newRange.from, to: newRange.to });
+      setProposedRange({ from: rangeFrom, to: rangeTo });
       // Usar requestAnimationFrame para asegurar que el estado se actualice en el próximo frame
       requestAnimationFrame(() => {
         setConflictModalOpen(true);
@@ -106,7 +110,7 @@ export function SchedulerWrapper({
 
   // Calcular progreso y estadísticas de tareas
   const taskStats = useMemo(() => {
-    if (!filteredCotizaciones || !dateRange) {
+    if (!filteredCotizaciones) {
       return {
         completed: 0,
         total: 0,
@@ -115,7 +119,7 @@ export function SchedulerWrapper({
         inProcess: 0,
         pending: 0,
         unassigned: 0,
-        pendingWithoutCrew: 0
+        withoutCrew: 0
       };
     }
 
@@ -160,83 +164,81 @@ export function SchedulerWrapper({
     });
 
     return { completed, total, percentage, delayed, inProcess, pending, unassigned, withoutCrew };
-  }, [filteredCotizaciones, dateRange]);
+  }, [filteredCotizaciones]);
 
   return (
     <>
       {/* Barra unificada: Progreso + Tareas + Rango */}
-      {taskStats.total > 0 && (
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 mb-4">
-          <div className="flex items-center justify-between gap-6">
-            {/* Progreso */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-500 font-medium">Progreso:</span>
-              <ZenBadge
-                variant="outline"
-                className="gap-1.5 px-2.5 py-1 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
-              >
-                <CheckCircle2 className="h-3 w-3" />
-                <span className="text-xs font-medium">
-                  {taskStats.completed}/{taskStats.total} ({taskStats.percentage}%)
-                </span>
-              </ZenBadge>
-            </div>
-
-            {/* Separador */}
-            <div className="h-6 w-px bg-zinc-700" />
-
-            {/* Tareas por estado - Compacto */}
-            <div className="flex items-center gap-2 flex-1">
-              <span className="text-xs text-zinc-500 font-medium">Tareas:</span>
-
-              {taskStats.unassigned > 0 && (
-                <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-900 text-zinc-500 border-zinc-800">
-                  <span className="text-xs">{taskStats.unassigned} Sin asignar</span>
-                </ZenBadge>
-              )}
-
-              {taskStats.withoutCrew > 0 && (
-                <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-amber-950/30 text-amber-400 border-amber-800/50">
-                  <Users className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.withoutCrew} Sin personal</span>
-                </ZenBadge>
-              )}
-
-              {taskStats.pending > 0 && (
-                <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-800 text-zinc-400 border-zinc-700">
-                  <span className="text-xs">{taskStats.pending} Programadas</span>
-                </ZenBadge>
-              )}
-
-              {taskStats.inProcess > 0 && (
-                <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-blue-950/30 text-blue-400 border-blue-800/50">
-                  <Clock className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.inProcess} En proceso</span>
-                </ZenBadge>
-              )}
-
-              {taskStats.delayed > 0 && (
-                <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-red-950/30 text-red-400 border-red-800/50">
-                  <AlertCircle className="h-3 w-3" />
-                  <span className="text-xs">{taskStats.delayed} Atrasadas</span>
-                </ZenBadge>
-              )}
-            </div>
-
-            {/* Separador */}
-            <div className="h-6 w-px bg-zinc-700" />
-
-            {/* Rango de fechas */}
-            <SchedulerDateRangeConfig
-              dateRange={dateRange}
-              onDateRangeChange={handleDateRangeChange}
-              onValidate={validateDateRangeChange}
-              studioSlug={studioSlug}
-              eventId={eventId}
-            />
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg px-4 py-3 mb-4">
+        <div className="flex items-center justify-between gap-6">
+          {/* Progreso */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-500 font-medium">Progreso:</span>
+            <ZenBadge
+              variant="outline"
+              className="gap-1.5 px-2.5 py-1 bg-emerald-950/30 text-emerald-400 border-emerald-800/50"
+            >
+              <CheckCircle2 className="h-3 w-3" />
+              <span className="text-xs font-medium">
+                {taskStats.completed}/{taskStats.total} ({taskStats.percentage}%)
+              </span>
+            </ZenBadge>
           </div>
+
+          {/* Separador */}
+          <div className="h-6 w-px bg-zinc-700" />
+
+          {/* Tareas por estado - Compacto */}
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-xs text-zinc-500 font-medium">Tareas:</span>
+
+            {taskStats.unassigned > 0 && (
+              <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-900 text-zinc-500 border-zinc-800">
+                <span className="text-xs">{taskStats.unassigned} Sin asignar</span>
+              </ZenBadge>
+            )}
+
+            {taskStats.withoutCrew !== undefined && taskStats.withoutCrew > 0 && (
+              <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-amber-950/30 text-amber-400 border-amber-800/50">
+                <Users className="h-3 w-3" />
+                <span className="text-xs">{taskStats.withoutCrew} Sin personal</span>
+              </ZenBadge>
+            )}
+
+            {taskStats.pending > 0 && (
+              <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-zinc-800 text-zinc-400 border-zinc-700">
+                <span className="text-xs">{taskStats.pending} Programadas</span>
+              </ZenBadge>
+            )}
+
+            {taskStats.inProcess > 0 && (
+              <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-blue-950/30 text-blue-400 border-blue-800/50">
+                <Clock className="h-3 w-3" />
+                <span className="text-xs">{taskStats.inProcess} En proceso</span>
+              </ZenBadge>
+            )}
+
+            {taskStats.delayed > 0 && (
+              <ZenBadge variant="outline" className="gap-1 px-2 py-0.5 bg-red-950/30 text-red-400 border-red-800/50">
+                <AlertCircle className="h-3 w-3" />
+                <span className="text-xs">{taskStats.delayed} Atrasadas</span>
+              </ZenBadge>
+            )}
+          </div>
+
+          {/* Separador */}
+          <div className="h-6 w-px bg-zinc-700" />
+
+          {/* Rango de fechas */}
+          <SchedulerDateRangeConfig
+            dateRange={dateRange}
+            onDateRangeChange={handleDateRangeChange}
+            onValidate={validateDateRangeChange}
+            studioSlug={studioSlug}
+            eventId={eventId}
+          />
         </div>
-      )}
+      </div>
 
       {/* Scheduler */}
       <EventSchedulerView

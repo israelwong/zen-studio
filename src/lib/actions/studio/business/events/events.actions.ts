@@ -910,6 +910,44 @@ export async function obtenerEventoDetalle(
                 category_name: true,
                 seccion_name_snapshot: true,
                 category_name_snapshot: true,
+                order: true,
+                items: {
+                  select: {
+                    id: true,
+                    service_categories: {
+                      select: {
+                        id: true,
+                        order: true,
+                        section_categories: {
+                          select: {
+                            service_sections: {
+                              select: {
+                                id: true,
+                                order: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                service_categories: {
+                  select: {
+                    id: true,
+                    order: true,
+                    section_categories: {
+                      select: {
+                        service_sections: {
+                          select: {
+                            id: true,
+                            order: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
                 assigned_to_crew_member: {
                   select: {
                     id: true,
@@ -1084,20 +1122,56 @@ export async function obtenerEventoDetalle(
           subtotal: item.subtotal ? Number(item.subtotal) : 0,
         })),
       } : null,
-      cotizaciones: evento.cotizaciones.map(cot => ({
-        ...cot,
-        price: Number(cot.price),
-        discount: cot.discount ? Number(cot.discount) : null,
-        cotizacion_items: cot.cotizacion_items.map(item => ({
-          ...item,
-          unit_price: item.unit_price ? Number(item.unit_price) : 0,
-          subtotal: item.subtotal ? Number(item.subtotal) : 0,
-          cost: item.cost ? Number(item.cost) : 0,
-          cost_snapshot: item.cost_snapshot ? Number(item.cost_snapshot) : 0,
-          internal_delivery_days: item.internal_delivery_days ? Number(item.internal_delivery_days) : null,
-          client_delivery_days: item.client_delivery_days ? Number(item.client_delivery_days) : null,
-        })),
-      })),
+      cotizaciones: evento.cotizaciones.map(cot => {
+        // Ordenar items por orden de sección, categoría y order del item
+        const itemsOrdenados = cot.cotizacion_items
+          .map((item) => {
+            // Obtener orden de sección y categoría desde las relaciones
+            const seccionOrden =
+              item.items?.service_categories?.section_categories?.service_sections?.order ??
+              item.service_categories?.section_categories?.service_sections?.order ??
+              999;
+            const categoriaOrden =
+              item.items?.service_categories?.order ??
+              item.service_categories?.order ??
+              999;
+
+            return {
+              item: {
+                ...item,
+                unit_price: item.unit_price ? Number(item.unit_price) : 0,
+                subtotal: item.subtotal ? Number(item.subtotal) : 0,
+                cost: item.cost ? Number(item.cost) : 0,
+                cost_snapshot: item.cost_snapshot ? Number(item.cost_snapshot) : 0,
+                internal_delivery_days: item.internal_delivery_days ? Number(item.internal_delivery_days) : null,
+                client_delivery_days: item.client_delivery_days ? Number(item.client_delivery_days) : null,
+              },
+              seccionOrden,
+              categoriaOrden,
+              itemOrder: item.order ?? 999,
+            };
+          })
+          .sort((a, b) => {
+            // Primero por orden de sección
+            if (a.seccionOrden !== b.seccionOrden) {
+              return a.seccionOrden - b.seccionOrden;
+            }
+            // Luego por orden de categoría
+            if (a.categoriaOrden !== b.categoriaOrden) {
+              return a.categoriaOrden - b.categoriaOrden;
+            }
+            // Finalmente por order (orden dentro de la cotización)
+            return a.itemOrder - b.itemOrder;
+          })
+          .map(({ item }) => item);
+
+        return {
+          ...cot,
+          price: Number(cot.price),
+          discount: cot.discount ? Number(cot.discount) : null,
+          cotizacion_items: itemsOrdenados,
+        };
+      }),
       payments: pagos.map(pago => ({
         id: pago.id,
         amount: Number(pago.amount),

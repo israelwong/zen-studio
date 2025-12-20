@@ -100,14 +100,22 @@ export function PaymentForm({
     }
 
     // Validar contra monto pendiente si se proporciona
-    if (montoPendiente !== undefined && parseFloat(amount) > montoPendiente) {
-      const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('es-MX', {
-          style: 'currency',
-          currency: 'MXN',
-        }).format(value);
-      };
-      newErrors.amount = `El monto no puede ser mayor a ${formatCurrency(montoPendiente)}`;
+    if (montoPendiente !== undefined) {
+      const amountValue = parseFloat(amount);
+      // Si es edición, permitir el monto actual del pago + el monto pendiente
+      const maxAllowed = initialData
+        ? montoPendiente + initialData.amount
+        : montoPendiente;
+
+      if (amountValue > maxAllowed) {
+        const formatCurrency = (value: number) => {
+          return new Intl.NumberFormat('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          }).format(value);
+        };
+        newErrors.amount = `El monto no puede ser mayor a ${formatCurrency(maxAllowed)}`;
+      }
     }
 
     if (!metodoPago) {
@@ -148,11 +156,16 @@ export function PaymentForm({
             Monto *
           </span>
           {montoPendiente !== undefined && (
-            <span className="text-xs text-zinc-400">
-              Pendiente: {new Intl.NumberFormat('es-MX', {
-                style: 'currency',
-                currency: 'MXN',
-              }).format(montoPendiente)}
+            <span className="text-xs text-amber-400 font-medium">
+              {initialData
+                ? `Disponible: ${new Intl.NumberFormat('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN',
+                }).format(montoPendiente)}`
+                : `Pendiente: ${new Intl.NumberFormat('es-MX', {
+                  style: 'currency',
+                  currency: 'MXN',
+                }).format(montoPendiente)}`}
             </span>
           )}
         </label>
@@ -160,7 +173,6 @@ export function PaymentForm({
           type="number"
           step="0.01"
           min="0.01"
-          max={montoPendiente?.toString()}
           value={amount}
           onChange={(e) => {
             setAmount(e.target.value);

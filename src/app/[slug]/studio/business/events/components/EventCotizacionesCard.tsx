@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, MoreVertical, Eye, Edit, X, Loader2, CheckCircle2, Users } from 'lucide-react';
+import { Plus, Calendar, MoreVertical, Eye, Edit, X, Loader2, CheckCircle2, Users, Download } from 'lucide-react';
 import {
   ZenCard,
   ZenCardHeader,
@@ -150,6 +150,8 @@ export function EventCotizacionesCard({
   const [cotizacionParaRevision, setCotizacionParaRevision] = useState<CotizacionAprobada | null>(null);
   const [showAutorizarRevisionModal, setShowAutorizarRevisionModal] = useState(false);
   const [revisionParaAutorizar, setRevisionParaAutorizar] = useState<CotizacionAprobada | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const printableRef = useRef<HTMLDivElement>(null);
 
   const cotizacionesAprobadas = (cotizaciones || []).filter(
     (c) => c.status === 'autorizada' || c.status === 'aprobada' || c.status === 'approved'
@@ -239,6 +241,183 @@ export function EventCotizacionesCard({
     if (cotizacion && cotizacion.promise_id) {
       setShowViewModal(false);
       handleEditar(cotizacion);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!cotizacionCompleta || !printableRef.current) return;
+
+    setGeneratingPdf(true);
+    try {
+      const { jsPDF } = await import('jspdf');
+      const html2canvas = (await import('html2canvas')).default;
+
+      // Clonar el contenido
+      const clone = printableRef.current.cloneNode(true) as HTMLElement;
+
+      // Expandir todos los acordeones: remover botones y mostrar contenido
+      const acordeonButtons = clone.querySelectorAll('button[class*="hover:bg-zinc-800"]');
+      acordeonButtons.forEach(button => {
+        const parent = button.parentElement;
+        if (parent) {
+          // Buscar el contenido colapsado (div con border-t que está oculto)
+          const contenidoColapsado = parent.querySelector('div[class*="border-t"]');
+          if (contenidoColapsado) {
+            // Remover el botón del acordeón
+            button.remove();
+            // Asegurar que el contenido esté visible
+            (contenidoColapsado as HTMLElement).style.display = 'block';
+          }
+        }
+      });
+
+      // Remover todos los chevrons (iconos SVG)
+      const svgs = clone.querySelectorAll('svg');
+      svgs.forEach(svg => {
+        // Remover chevrons (ChevronDown, ChevronRight)
+        const path = svg.querySelector('path');
+        if (path && (path.getAttribute('d')?.includes('M9 18l6-6-6-6') || path.getAttribute('d')?.includes('M6 9l6 6 6-6'))) {
+          svg.remove();
+        }
+      });
+
+      // Remover todos los botones restantes
+      const remainingButtons = clone.querySelectorAll('button');
+      remainingButtons.forEach(btn => btn.remove());
+
+      // Remover clases de Tailwind
+      const allElements = clone.querySelectorAll('*');
+      allElements.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.removeAttribute('class');
+        htmlEl.removeAttribute('data-tailwind');
+      });
+
+      // Aplicar estilos profesionales para PDF
+      // 1. Estilizar secciones (divs principales que contienen secciones)
+      const seccionesDivs = clone.querySelectorAll('div');
+      seccionesDivs.forEach((div, index) => {
+        const htmlDiv = div as HTMLElement;
+        const text = htmlDiv.textContent || '';
+
+        // Detectar secciones por estructura (divs que contienen otros divs con texto corto)
+        const childDivs = htmlDiv.querySelectorAll('div');
+        if (childDivs.length > 0 && text.length < 100 && !htmlDiv.querySelector('span[style*="color"]')) {
+          htmlDiv.style.marginTop = '20px';
+          htmlDiv.style.marginBottom = '12px';
+          htmlDiv.style.padding = '12px';
+          htmlDiv.style.border = '1px solid #e5e7eb';
+          htmlDiv.style.borderRadius = '4px';
+          htmlDiv.style.backgroundColor = '#f9fafb';
+        }
+      });
+
+      // 2. Estilizar spans (nombres, cantidades, precios)
+      const spans = clone.querySelectorAll('span');
+      spans.forEach(span => {
+        const htmlSpan = span as HTMLElement;
+        const text = htmlSpan.textContent || '';
+
+        // Cantidades (x2, x3, etc)
+        if (text.startsWith('x') && /^x\d+$/.test(text)) {
+          htmlSpan.style.fontSize = '12px';
+          htmlSpan.style.color = '#6b7280';
+          htmlSpan.style.fontWeight = '500';
+        }
+        // Precios (contienen $)
+        else if (text.includes('$')) {
+          htmlSpan.style.fontSize = '13px';
+          htmlSpan.style.color = '#111827';
+          htmlSpan.style.fontWeight = '600';
+        }
+        // Nombres de items (texto largo)
+        else if (text.length > 10 && !text.includes('$') && !text.startsWith('x')) {
+          htmlSpan.style.fontSize = '13px';
+          htmlSpan.style.color = '#111827';
+        }
+        // Títulos de sección/categoría (texto corto, sin números)
+        else if (text.length < 50 && !/\d/.test(text)) {
+          htmlSpan.style.fontSize = '14px';
+          htmlSpan.style.fontWeight = '600';
+          htmlSpan.style.color = '#374151';
+        }
+      });
+
+      // 3. Remover cualquier color esmeralda restante
+      allElements.forEach(el => {
+        const htmlEl = el as HTMLElement;
+        const color = htmlEl.style.color;
+        if (color && (color.includes('emerald') || color === 'rgb(16, 185, 129)' || color === '#10b981')) {
+          htmlEl.style.color = '#111827';
+        }
+      });
+
+      // Crear iframe aislado
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'absolute';
+      iframe.style.left = '-9999px';
+      iframe.style.width = '210mm';
+      iframe.style.height = '297mm';
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error('Cannot access iframe document');
+
+      // Escribir HTML con estilos profesionales (similar a PaymentReceipt)
+      iframeDoc.open();
+      iframeDoc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+        </head>
+        <body style="margin: 0; padding: 32px; width: 210mm; min-height: 297mm; background: white; color: #111827; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 12pt; line-height: 1.6;">
+          <div style="max-width: 100%;">
+            <h1 style="font-size: 20px; font-weight: 700; color: #111827; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb;">
+              ${cotizacionCompleta.name || 'Cotización'}
+            </h1>
+            ${clone.innerHTML}
+          </div>
+        </body>
+        </html>
+      `);
+      iframeDoc.close();
+
+      // Esperar a que el iframe se renderice
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const canvas = await html2canvas(iframeDoc.body, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false
+      });
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const imgWidth = pageWidth - 20;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
+
+      const filename = `cotizacion-${cotizacionCompleta.name.replace(/[^a-z0-9]/gi, '-').toLowerCase()}-${cotizacionCompleta.id.slice(0, 8)}.pdf`;
+      pdf.save(filename);
+
+      toast.success('PDF generado correctamente');
+      document.body.removeChild(iframe);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Error al generar PDF');
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -347,7 +526,10 @@ export function EventCotizacionesCard({
                       className="p-3 bg-zinc-900 rounded border border-zinc-800 relative group hover:border-zinc-700 transition-colors"
                     >
                       <div className="flex items-start justify-between gap-3 pr-8">
-                        <div className="flex-1 min-w-0">
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onClick={() => handleVer(cotizacion)}
+                        >
                           <p className="text-sm font-medium text-zinc-100 truncate mb-1">
                             {cotizacion.name}
                           </p>
@@ -430,15 +612,20 @@ export function EventCotizacionesCard({
 
                       {/* Footer con botón de cronograma */}
                       <div className="mt-3 pt-3 border-t border-zinc-800">
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleGestionarScheduler(cotizacion.id)}
-                          className="w-full h-7 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 gap-1.5"
-                        >
-                          <Calendar className="h-3.5 w-3.5" />
-                          Cronograma
-                        </ZenButton>
+                        <div className="flex items-center justify-between gap-2">
+                          <ZenButton
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleGestionarScheduler(cotizacion.id)}
+                            className="flex-1 h-7 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-950/20 gap-1.5"
+                          >
+                            <Calendar className="h-3.5 w-3.5" />
+                            Gestionar cronograma
+                          </ZenButton>
+                          <span className="text-xs text-zinc-500 shrink-0">
+                            ({stats.totalTasks} de {stats.totalItems})
+                          </span>
+                        </div>
                       </div>
 
                       {/* Spinner de carga */}
@@ -454,19 +641,6 @@ export function EventCotizacionesCard({
                   );
                 })}
               </div>
-
-              {/* Botón Scheduler global (si hay tareas) */}
-              {cotizacionesAprobadas.some(c => calculateCotizacionStats(c).totalTasks > 0) && (
-                <ZenButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => handleGestionarScheduler()}
-                  className="w-full gap-2 text-xs"
-                >
-                  <Calendar className="h-3 w-3" />
-                  Ver cronograma
-                </ZenButton>
-              )}
 
               {/* Revisiones pendientes */}
               {revisionesPendientes.length > 0 && (
@@ -603,60 +777,62 @@ export function EventCotizacionesCard({
             title="Resumen de Cotización"
             maxWidth="5xl"
           >
-            {cotizacionCompleta.cotizacion_items && cotizacionCompleta.cotizacion_items.length > 0 ? (
-              // Cotización autorizada: mostrar datos guardados
-              <ResumenCotizacionAutorizada
-                cotizacion={{
-                  id: cotizacionCompleta.id,
-                  name: cotizacionCompleta.name,
-                  description: null, // Los items tienen su propia descripción
-                  price: cotizacionCompleta.price,
-                  discount: cotizacionCompleta.discount,
-                  status: cotizacionCompleta.status,
-                  cotizacion_items: cotizacionCompleta.cotizacion_items as ResumenCotizacionItem[],
-                }}
-                studioSlug={studioSlug}
-                promiseId={cotizacionCompleta.promise_id || undefined}
-                onEditar={handleEditarDesdeModal}
-              />
-            ) : (
-              // Cotización no autorizada: usar componente original que carga catálogo
-              <ResumenCotizacion
-                cotizacion={{
-                  id: cotizacionCompleta.id,
-                  name: cotizacionCompleta.name,
-                  description: null, // No disponible en EventoDetalle
-                  price: cotizacionCompleta.price,
-                  status: cotizacionCompleta.status,
-                  items: (cotizacionCompleta.cotizacion_items?.map((item) => ({
-                    item_id: item.item_id || '',
-                    quantity: item.quantity,
-                    unit_price: item.unit_price,
-                    subtotal: item.subtotal,
-                    cost: item.cost,
-                    expense: 0, // No disponible en EventoDetalle
-                    name: item.name,
-                    description: item.description,
-                    category_name: item.category_name,
-                    seccion_name: item.seccion_name,
-                  })) || []) as Array<{
-                    item_id: string;
-                    quantity: number;
-                    unit_price: number;
-                    subtotal: number;
-                    cost: number;
-                    expense: number;
-                    name: string | null;
-                    description: string | null;
-                    category_name: string | null;
-                    seccion_name: string | null;
-                  }>,
-                }}
-                studioSlug={studioSlug}
-                promiseId={cotizacionCompleta.promise_id || undefined}
-                onEditar={handleEditarDesdeModal}
-              />
-            )}
+            <div ref={printableRef}>
+              {cotizacionCompleta.cotizacion_items && cotizacionCompleta.cotizacion_items.length > 0 ? (
+                // Cotización autorizada: mostrar datos guardados
+                <ResumenCotizacionAutorizada
+                  cotizacion={{
+                    id: cotizacionCompleta.id,
+                    name: cotizacionCompleta.name,
+                    description: null, // Los items tienen su propia descripción
+                    price: cotizacionCompleta.price,
+                    discount: cotizacionCompleta.discount,
+                    status: cotizacionCompleta.status,
+                    cotizacion_items: cotizacionCompleta.cotizacion_items as ResumenCotizacionItem[],
+                  }}
+                  studioSlug={studioSlug}
+                  promiseId={cotizacionCompleta.promise_id || undefined}
+                  onEditar={undefined}
+                />
+              ) : (
+                // Cotización no autorizada: usar componente original que carga catálogo
+                <ResumenCotizacion
+                  cotizacion={{
+                    id: cotizacionCompleta.id,
+                    name: cotizacionCompleta.name,
+                    description: null, // No disponible en EventoDetalle
+                    price: cotizacionCompleta.price,
+                    status: cotizacionCompleta.status,
+                    items: (cotizacionCompleta.cotizacion_items?.map((item) => ({
+                      item_id: item.item_id || '',
+                      quantity: item.quantity,
+                      unit_price: item.unit_price,
+                      subtotal: item.subtotal,
+                      cost: item.cost,
+                      expense: 0, // No disponible en EventoDetalle
+                      name: item.name,
+                      description: item.description,
+                      category_name: item.category_name,
+                      seccion_name: item.seccion_name,
+                    })) || []) as Array<{
+                      item_id: string;
+                      quantity: number;
+                      unit_price: number;
+                      subtotal: number;
+                      cost: number;
+                      expense: number;
+                      name: string | null;
+                      description: string | null;
+                      category_name: string | null;
+                      seccion_name: string | null;
+                    }>,
+                  }}
+                  studioSlug={studioSlug}
+                  promiseId={cotizacionCompleta.promise_id || undefined}
+                  onEditar={undefined}
+                />
+              )}
+            </div>
           </ZenDialog>
         )
       }

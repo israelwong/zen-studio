@@ -107,7 +107,7 @@ export default function EventSchedulerPage() {
               <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950">
                 <div className="flex">
                   {/* Sidebar Skeleton */}
-                  <div className="w-[360px] border-r border-zinc-800 flex-shrink-0">
+                  <div className="w-[360px] border-r border-zinc-800 shrink-0">
                     {/* Header */}
                     <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center px-4">
                       <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
@@ -135,7 +135,7 @@ export default function EventSchedulerPage() {
                     {/* Header con fechas */}
                     <div className="h-[60px] bg-zinc-900/95 border-b border-zinc-800 flex items-center gap-1 px-2">
                       {[...Array(12)].map((_, i) => (
-                        <div key={i} className="w-[60px] h-10 bg-zinc-800/50 rounded animate-pulse flex-shrink-0" />
+                        <div key={i} className="w-[60px] h-10 bg-zinc-800/50 rounded animate-pulse shrink-0" />
                       ))}
                     </div>
                     {/* Rows con TaskBars */}

@@ -101,16 +101,17 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
       categoriasMap.get(categoria)!.push(item);
     });
 
-    // Convertir a array de ItemAgrupado
+    // Convertir a array de ItemAgrupado manteniendo el orden original del servidor
     const resultado: ItemAgrupado[] = [];
     agrupados.forEach((categoriasMap, seccion) => {
       categoriasMap.forEach((items, categoria) => {
+        // Mantener el orden original de los items (ya vienen ordenados desde el servidor)
         resultado.push({ seccion, categoria, items });
       });
     });
 
-    // Los items ya vienen ordenados desde la consulta (por orden de sección y categoría)
-    // Solo agrupamos, no necesitamos reordenar
+    // Los items ya vienen ordenados desde el servidor (por sección, categoría y order)
+    // Solo agrupamos, no reordenamos
     return resultado;
   }, [cotizacion.items]);
 
@@ -177,14 +178,16 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
       <ZenCardHeader>
         <div className="flex items-center justify-between">
           <ZenCardTitle className="text-xl">{cotizacion.name}</ZenCardTitle>
-          <ZenButton
-            variant="ghost"
-            size="sm"
-            onClick={handleEditarCotizacion}
-            className="h-8 px-2 text-zinc-400 hover:text-white"
-          >
-            <Pencil className="h-4 w-4" />
-          </ZenButton>
+          {propOnEditar && (
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={handleEditarCotizacion}
+              className="h-8 px-2 text-zinc-400 hover:text-white"
+            >
+              <Pencil className="h-4 w-4" />
+            </ZenButton>
+          )}
         </div>
       </ZenCardHeader>
       <ZenCardContent className="space-y-4">

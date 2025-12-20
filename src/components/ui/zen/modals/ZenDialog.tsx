@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 export interface ZenDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: string | React.ReactNode;
   description?: string;
   children: React.ReactNode;
   onSave?: () => void;
@@ -25,6 +25,7 @@ export interface ZenDialogProps {
   deleteLabel?: string;
   showDeleteButton?: boolean;
   zIndex?: number;
+  headerActions?: React.ReactNode;
 }
 
 const maxWidthClasses = {
@@ -57,7 +58,8 @@ export function ZenDialog({
   onDelete,
   deleteLabel = 'Eliminar',
   showDeleteButton = false,
-  zIndex = 10050
+  zIndex = 10050,
+  headerActions
 }: ZenDialogProps) {
   const [mounted, setMounted] = React.useState(false);
   const [isAnimating, setIsAnimating] = React.useState(false);
@@ -143,16 +145,19 @@ export function ZenDialog({
                   </p>
                 )}
               </div>
-              {showCloseButton && (
-                <ZenButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={onClose}
-                  className="text-zinc-400 hover:text-zinc-300"
-                >
-                  <X className="h-5 w-5" />
-                </ZenButton>
-              )}
+              <div className="flex items-center gap-2">
+                {headerActions}
+                {showCloseButton && (
+                  <ZenButton
+                    variant="ghost"
+                    size="sm"
+                    onClick={onClose}
+                    className="text-zinc-400 hover:text-zinc-300"
+                  >
+                    <X className="h-5 w-5" />
+                  </ZenButton>
+                )}
+              </div>
             </ZenCardHeader>
           )}
 

@@ -116,21 +116,18 @@ export function ResumenCotizacionAutorizada({
       categoriasMap.get(categoria)!.push(item);
     });
 
-    // Convertir a array de ItemAgrupado
+    // Convertir a array de ItemAgrupado manteniendo el orden original del servidor
     const resultado: ItemAgrupado[] = [];
     agrupados.forEach((categoriasMap, seccion) => {
       categoriasMap.forEach((items, categoria) => {
+        // Mantener el orden original de los items (ya vienen ordenados desde el servidor)
         resultado.push({ seccion, categoria, items });
       });
     });
 
-    // Ordenar por sección y categoría
-    return resultado.sort((a, b) => {
-      if (a.seccion !== b.seccion) {
-        return a.seccion.localeCompare(b.seccion);
-      }
-      return a.categoria.localeCompare(b.categoria);
-    });
+    // Los items ya vienen ordenados desde el servidor (por sección, categoría y order)
+    // Solo agrupamos, no reordenamos
+    return resultado;
   }, [cotizacion.cotizacion_items]);
 
   // Expandir todas las secciones y categorías por defecto
