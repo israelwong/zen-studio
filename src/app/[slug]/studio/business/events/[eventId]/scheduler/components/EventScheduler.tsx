@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { SchedulerAgrupacionCell } from './SchedulerAgrupacionCell';
 import { AssignCrewBeforeCompleteModal } from './AssignCrewBeforeCompleteModal';
+import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 
 type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
 
@@ -63,6 +64,12 @@ export const EventScheduler = React.memo(function EventScheduler({
     itemId: string;
     itemName: string;
     costoTotal: number;
+  } | null>(null);
+  const [showFixedSalaryConfirmModal, setShowFixedSalaryConfirmModal] = useState(false);
+  const [pendingFixedSalaryTask, setPendingFixedSalaryTask] = useState<{
+    taskId: string;
+    itemId: string;
+    skipPayment: boolean;
   } | null>(null);
 
   // Sincronizar localEventData solo cuando eventData cambia desde el padre
@@ -474,6 +481,33 @@ export const EventScheduler = React.memo(function EventScheduler({
       const costoTotal = costoUnitario * (itemFound.quantity || 1);
       const itemName = itemFound.name || itemFound.name_snapshot || 'Tarea sin nombre';
 
+      // Si tiene personal asignado, verificar si tiene sueldo fijo
+      if (itemFound.assigned_to_crew_member_id) {
+        try {
+          const { obtenerCrewMembers } = await import('@/lib/actions/studio/business/events');
+          const crewResult = await obtenerCrewMembers(studioSlug);
+          const assignedMember = crewResult.success && crewResult.data
+            ? crewResult.data.find(m => m.id === itemFound.assigned_to_crew_member_id)
+            : null;
+
+          const hasFixedSalary = assignedMember && assignedMember.fixed_salary !== null && assignedMember.fixed_salary > 0;
+
+          if (hasFixedSalary) {
+            // Mostrar modal de confirmación para sueldo fijo
+            setPendingFixedSalaryTask({
+              taskId,
+              itemId: itemFound.id,
+              skipPayment: false,
+            });
+            setShowFixedSalaryConfirmModal(true);
+            return;
+          }
+        } catch (error) {
+          console.error('Error al verificar tipo de salario:', error);
+          // Continuar con el flujo normal si hay error
+        }
+      }
+
       // Si no hay personal asignado y tiene costo
       if (!itemFound.assigned_to_crew_member_id && costoTotal > 0) {
         // Si has_crew === false, completar directamente sin mostrar modal
@@ -539,10 +573,19 @@ export const EventScheduler = React.memo(function EventScheduler({
         return;
       }
 
-      // Si hay personal o no tiene costo, proceder normalmente
+      // Si hay personal o no tiene costo, proceder normalmente (sin verificar sueldo fijo aquí, ya se verificó arriba)
+      await completeTaskWithSkipPayment(taskId, false);
+    },
+    [studioSlug, eventId, router, onDataChange, localEventData]
+  );
+
+  // Función helper para completar tarea con opción de omitir nómina
+  const completeTaskWithSkipPayment = useCallback(
+    async (taskId: string, skipPayment: boolean) => {
       try {
         const result = await actualizarSchedulerTask(studioSlug, eventId, taskId, {
           isCompleted: true,
+          skipPayroll: skipPayment,
         });
 
         if (!result.success) {
@@ -563,9 +606,9 @@ export const EventScheduler = React.memo(function EventScheduler({
                     ...item,
                     scheduler_task: item.scheduler_task ? {
                       ...item.scheduler_task,
-                      completed_at: isCompleted ? new Date().toISOString() : null,
-                      status: isCompleted ? 'COMPLETED' : 'PENDING',
-                      progress_percent: isCompleted ? 100 : (item.scheduler_task.progress_percent || 0),
+                      completed_at: new Date().toISOString(),
+                      status: 'COMPLETED',
+                      progress_percent: 100,
                     } : null,
                   };
                 }
@@ -582,15 +625,12 @@ export const EventScheduler = React.memo(function EventScheduler({
           onDataChange(updatedData);
         }
 
-        // Mostrar toast según resultado de nómina
-        if (result.payrollResult) {
-          if (result.payrollResult.success && result.payrollResult.personalNombre) {
-            toast.success(`Tarea completada. Se generó pago de nómina para ${result.payrollResult.personalNombre}`);
-          } else {
-            toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult.error || 'Sin personal asignado'}`);
-          }
-        } else if (!itemFound.assigned_to_crew_member_id) {
-          toast.warning('Tarea completada. No se generó pago porque no hay personal asignado.');
+        if (skipPayment) {
+          toast.success('Tarea completada (sin generar pago de nómina)');
+        } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
+          toast.success(`Tarea completada. Pago de nómina generado para ${result.payrollResult.personalNombre}`);
+        } else if (result.payrollResult?.error) {
+          toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult.error || 'Sin personal asignado'}`);
         } else {
           toast.success('Tarea completada');
         }
@@ -598,7 +638,7 @@ export const EventScheduler = React.memo(function EventScheduler({
         toast.error('Error al actualizar el estado');
       }
     },
-    [studioSlug, eventId, router, onDataChange, localEventData]
+    [studioSlug, eventId, onDataChange]
   );
 
   // Handler para asignar y completar desde el modal
@@ -649,9 +689,10 @@ export const EventScheduler = React.memo(function EventScheduler({
           })),
         }));
 
-        // Completar la tarea (esto creará la nómina automáticamente)
+        // Completar la tarea (creará nómina automáticamente a menos que skipPayment sea true)
         const result = await actualizarSchedulerTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
           isCompleted: true,
+          skipPayroll: skipPayment,
         });
 
         if (!result.success) {
@@ -692,7 +733,9 @@ export const EventScheduler = React.memo(function EventScheduler({
         }
 
         // Mostrar toast con información de nómina
-        if (result.payrollResult?.success && result.payrollResult.personalNombre) {
+        if (skipPayment) {
+          toast.success('Personal asignado y tarea completada (sin generar pago de nómina)');
+        } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
           toast.success(`Personal asignado y tarea completada. Se generó pago de nómina para ${result.payrollResult.personalNombre}`);
         } else {
           toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult?.error || 'Error desconocido'}`);
@@ -843,6 +886,43 @@ export const EventScheduler = React.memo(function EventScheduler({
           costoTotal={pendingTaskCompletion.costoTotal}
         />
       )}
+
+      {/* Modal de confirmación para sueldo fijo (cuando ya tiene personal asignado) */}
+      <ZenConfirmModal
+        isOpen={showFixedSalaryConfirmModal}
+        onClose={async () => {
+          if (!pendingFixedSalaryTask) {
+            setShowFixedSalaryConfirmModal(false);
+            setPendingFixedSalaryTask(null);
+            return;
+          }
+          // Al cerrar con el botón cancelar, completar sin pasar a pago
+          await completeTaskWithSkipPayment(pendingFixedSalaryTask.taskId, true);
+          setShowFixedSalaryConfirmModal(false);
+          setPendingFixedSalaryTask(null);
+        }}
+        onConfirm={async () => {
+          if (!pendingFixedSalaryTask) return;
+          // Pasar a pago (skipPayment = false)
+          await completeTaskWithSkipPayment(pendingFixedSalaryTask.taskId, false);
+          setShowFixedSalaryConfirmModal(false);
+          setPendingFixedSalaryTask(null);
+        }}
+        title="¿Deseas pasar a pago?"
+        description={
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-300">
+              Este miembro del equipo cuenta con <strong className="text-amber-400">sueldo fijo</strong>.
+            </p>
+            <p className="text-sm text-zinc-400">
+              ¿Deseas generar el pago de nómina para esta tarea?
+            </p>
+          </div>
+        }
+        confirmText="Sí, pasar a pago"
+        cancelText="No, solo completar"
+        variant="default"
+      />
     </div>
   );
 }, (prevProps, nextProps) => {

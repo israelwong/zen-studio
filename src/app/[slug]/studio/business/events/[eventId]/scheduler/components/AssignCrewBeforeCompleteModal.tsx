@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ZenDialog } from '@/components/ui/zen/modals/ZenDialog';
 import { ZenInput, ZenButton, ZenAvatar, ZenAvatarFallback, ZenSwitch } from '@/components/ui/zen';
+import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 import { obtenerCrewMembers } from '@/lib/actions/studio/business/events';
 import { actualizarPreferenciaCrew } from '@/lib/actions/studio/crew/crew.actions';
 import { toast } from 'sonner';
@@ -25,7 +26,7 @@ interface AssignCrewBeforeCompleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCompleteWithoutPayment: () => void;
-  onAssignAndComplete: (crewMemberId: string) => Promise<void>;
+  onAssignAndComplete: (crewMemberId: string, skipPayment?: boolean) => Promise<void>;
   studioSlug: string;
   itemId: string;
   itemName: string;
@@ -39,6 +40,16 @@ function getInitials(name: string) {
     .join('')
     .toUpperCase()
     .slice(0, 2);
+}
+
+function getSalaryType(member: CrewMember): 'fixed' | 'variable' | null {
+  if (member.fixed_salary !== null && member.fixed_salary > 0) {
+    return 'fixed';
+  }
+  if (member.variable_salary !== null && member.variable_salary > 0) {
+    return 'variable';
+  }
+  return null;
 }
 
 export function AssignCrewBeforeCompleteModal({
@@ -58,6 +69,8 @@ export function AssignCrewBeforeCompleteModal({
   const [isAssigning, setIsAssigning] = useState(false);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
   const [rememberPreference, setRememberPreference] = useState(false);
+  const [showFixedSalaryConfirmModal, setShowFixedSalaryConfirmModal] = useState(false);
+  const [pendingCrewMemberId, setPendingCrewMemberId] = useState<string | null>(null);
 
   // Cargar miembros cuando se abre el modal
   useEffect(() => {
@@ -104,13 +117,58 @@ export function AssignCrewBeforeCompleteModal({
       return;
     }
 
+    // Verificar si el miembro tiene sueldo fijo
+    const selectedMember = members.find(m => m.id === selectedMemberId);
+    const hasFixedSalary = selectedMember && getSalaryType(selectedMember) === 'fixed';
+
+    if (hasFixedSalary) {
+      // Mostrar modal de confirmación para sueldo fijo
+      setPendingCrewMemberId(selectedMemberId);
+      setShowFixedSalaryConfirmModal(true);
+      return;
+    }
+
+    // Si tiene honorarios variables, proceder normalmente (skipPayment = false por defecto)
     setIsAssigning(true);
     try {
-      // El handler del padre se encargará de asignar y completar
-      await onAssignAndComplete(selectedMemberId);
+      await onAssignAndComplete(selectedMemberId, false);
       onClose();
     } catch (error) {
       toast.error('Error al asignar y completar');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleConfirmFixedSalary = async () => {
+    if (!pendingCrewMemberId) return;
+
+    setIsAssigning(true);
+    try {
+      // Pasar a pago (comportamiento normal, skipPayment = false)
+      await onAssignAndComplete(pendingCrewMemberId, false);
+      setShowFixedSalaryConfirmModal(false);
+      setPendingCrewMemberId(null);
+      onClose();
+    } catch (error) {
+      toast.error('Error al asignar y completar');
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const handleSkipPayment = async () => {
+    if (!pendingCrewMemberId) return;
+
+    setIsAssigning(true);
+    try {
+      // Completar sin pasar a pago (skipPayment = true)
+      await onAssignAndComplete(pendingCrewMemberId, true);
+      setShowFixedSalaryConfirmModal(false);
+      setPendingCrewMemberId(null);
+      onClose();
+    } catch (error) {
+      toast.error('Error al procesar');
     } finally {
       setIsAssigning(false);
     }
@@ -232,14 +290,14 @@ export function AssignCrewBeforeCompleteModal({
                         )}
                       >
                         {/* Avatar */}
-                        <ZenAvatar className="h-6 w-6 flex-shrink-0">
+                        <ZenAvatar className="h-6 w-6 shrink-0">
                           <ZenAvatarFallback className="bg-blue-600/20 text-blue-400 text-[10px]">
                             {getInitials(member.name)}
                           </ZenAvatarFallback>
                         </ZenAvatar>
 
                         {/* Check indicator */}
-                        <div className="h-3 w-3 flex items-center justify-center flex-shrink-0">
+                        <div className="h-3 w-3 flex items-center justify-center shrink-0">
                           {selectedMemberId === member.id && (
                             <Check className="h-3 w-3 text-emerald-400" />
                           )}
@@ -248,7 +306,16 @@ export function AssignCrewBeforeCompleteModal({
                         {/* Información */}
                         <div className="flex-1 min-w-0">
                           <div className="text-zinc-300 truncate">{member.name}</div>
-                          <div className="text-[10px] text-zinc-500 truncate">{member.tipo}</div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 truncate">
+                            {getSalaryType(member) === 'fixed' && (
+                              <span className="text-amber-400 font-medium">Sueldo fijo</span>
+                            )}
+                            {getSalaryType(member) === 'variable' && (
+                              <span className="text-blue-400 font-medium">Honorarios variables</span>
+                            )}
+                            {getSalaryType(member) && <span>•</span>}
+                            <span className="truncate">{member.tipo}</span>
+                          </div>
                         </div>
                       </button>
                     ))
@@ -311,6 +378,32 @@ export function AssignCrewBeforeCompleteModal({
         onClose={() => setShowQuickAddModal(false)}
         onCrewCreated={handleCrewCreated}
         studioSlug={studioSlug}
+      />
+
+      {/* Modal de confirmación para sueldo fijo */}
+      <ZenConfirmModal
+        isOpen={showFixedSalaryConfirmModal}
+        onClose={() => {
+          setShowFixedSalaryConfirmModal(false);
+          setPendingCrewMemberId(null);
+        }}
+        onConfirm={handleConfirmFixedSalary}
+        title="¿Deseas pasar a pago?"
+        description={
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-300">
+              Este miembro del equipo cuenta con <strong className="text-amber-400">sueldo fijo</strong>.
+            </p>
+            <p className="text-sm text-zinc-400">
+              ¿Deseas generar el pago de nómina para esta tarea?
+            </p>
+          </div>
+        }
+        confirmText="Sí, pasar a pago"
+        cancelText="No, solo completar"
+        variant="default"
+        loading={isAssigning}
+        loadingText="Procesando..."
       />
     </>
   );

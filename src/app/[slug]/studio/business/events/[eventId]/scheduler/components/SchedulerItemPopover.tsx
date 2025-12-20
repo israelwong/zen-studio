@@ -14,6 +14,7 @@ import { es } from 'date-fns/locale';
 import { AssignCrewBeforeCompleteModal } from './AssignCrewBeforeCompleteModal';
 import { useSchedulerItemSync } from '../hooks/useSchedulerItemSync';
 import { SelectCrewModal } from './SelectCrewModal';
+import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 
 interface CrewMember {
     id: string;
@@ -50,6 +51,17 @@ function getInitials(name: string) {
         .slice(0, 2);
 }
 
+function getSalaryType(member: CrewMember | undefined): 'fixed' | 'variable' | null {
+    if (!member) return null;
+    if (member.fixed_salary !== null && member.fixed_salary > 0) {
+        return 'fixed';
+    }
+    if (member.variable_salary !== null && member.variable_salary > 0) {
+        return 'variable';
+    }
+    return null;
+}
+
 export function SchedulerItemPopover({ item, studioSlug, eventId, children, onItemUpdate }: SchedulerItemPopoverProps) {
     // Hook de sincronización (optimista + servidor)
     const { localItem, updateCrewMember, updateCompletionStatus } = useSchedulerItemSync(item, onItemUpdate);
@@ -60,6 +72,7 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
     const [selectCrewModalOpen, setSelectCrewModalOpen] = useState(false);
     const [isUpdatingCompletion, setIsUpdatingCompletion] = useState(false);
     const [assignCrewModalOpen, setAssignCrewModalOpen] = useState(false);
+    const [showFixedSalaryConfirmModal, setShowFixedSalaryConfirmModal] = useState(false);
 
     // Usar localItem (sincronizado con servidor)
     const selectedMemberId = localItem.assigned_to_crew_member_id;
@@ -151,6 +164,23 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
             return;
         }
 
+        // Si se intenta completar y tiene personal asignado, verificar si tiene sueldo fijo
+        if (checked && localItem.assigned_to_crew_member_id) {
+            const assignedMember = members.find(m => m.id === localItem.assigned_to_crew_member_id);
+            const hasFixedSalary = assignedMember && getSalaryType(assignedMember) === 'fixed';
+
+            if (hasFixedSalary) {
+                // Mostrar modal de confirmación para sueldo fijo
+                setShowFixedSalaryConfirmModal(true);
+                return;
+            }
+        }
+
+        // Si tiene honorarios variables o se está desmarcando, proceder normalmente
+        await completeTask(checked, false);
+    };
+
+    const completeTask = async (checked: boolean, skipPayment: boolean) => {
         setIsUpdatingCompletion(true);
 
         try {
@@ -162,11 +192,14 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                     {
                         isCompleted: checked,
                         assignedToCrewMemberId: localItem.assigned_to_crew_member_id || undefined,
+                        skipPayroll: skipPayment,
                     }
                 );
 
                 if (result.success) {
-                    if (result.payrollResult?.success && result.payrollResult.personalNombre) {
+                    if (skipPayment && checked) {
+                        toast.success('Tarea completada (sin generar pago de nómina)');
+                    } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
                         toast.success(`Tarea ${checked ? 'completada' : 'marcada como pendiente'}. ${checked ? `Pago de nómina generado para ${result.payrollResult.personalNombre}` : 'Pago de nómina eliminado'}.`);
                     } else if (checked && result.payrollResult?.error) {
                         toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult.error}`);
@@ -184,7 +217,17 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
         setIsUpdatingCompletion(false);
     };
 
-    const handleAssignAndComplete = async (crewMemberId: string) => {
+    const handleConfirmFixedSalary = async () => {
+        setShowFixedSalaryConfirmModal(false);
+        await completeTask(true, false);
+    };
+
+    const handleSkipPayment = async () => {
+        setShowFixedSalaryConfirmModal(false);
+        await completeTask(true, true);
+    };
+
+    const handleAssignAndComplete = async (crewMemberId: string, skipPayment: boolean = false) => {
         if (!localItem.scheduler_task?.id) return;
 
         setIsUpdatingCompletion(true);
@@ -222,13 +265,16 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                     {
                         isCompleted: true,
                         assignedToCrewMemberId: crewMemberId,
+                        skipPayroll: skipPayment,
                     }
                 );
 
                 if (result.success) {
                     setAssignCrewModalOpen(false);
 
-                    if (result.payrollResult?.success && result.payrollResult.personalNombre) {
+                    if (skipPayment) {
+                        toast.success('Personal asignado y tarea completada (sin generar pago de nómina)');
+                    } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
                         toast.success(`Personal asignado y tarea completada. Se generó pago de nómina para ${result.payrollResult.personalNombre}`);
                     } else {
                         toast.warning(`Tarea completada y personal asignado. No se generó pago de nómina: ${result.payrollResult?.error || 'Error desconocido'}`);
@@ -443,6 +489,32 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                     costoTotal={costoTotal}
                 />
             )}
+
+            {/* Modal de confirmación para sueldo fijo */}
+            <ZenConfirmModal
+                isOpen={showFixedSalaryConfirmModal}
+                onClose={async () => {
+                    // Al cerrar con el botón cancelar, completar sin pasar a pago
+                    await handleSkipPayment();
+                }}
+                onConfirm={handleConfirmFixedSalary}
+                title="¿Deseas pasar a pago?"
+                description={
+                    <div className="space-y-2">
+                        <p className="text-sm text-zinc-300">
+                            Este miembro del equipo cuenta con <strong className="text-amber-400">sueldo fijo</strong>.
+                        </p>
+                        <p className="text-sm text-zinc-400">
+                            ¿Deseas generar el pago de nómina para esta tarea?
+                        </p>
+                    </div>
+                }
+                confirmText="Sí, pasar a pago"
+                cancelText="No, solo completar"
+                variant="default"
+                loading={isUpdatingCompletion}
+                loadingText="Procesando..."
+            />
         </>
     );
 }

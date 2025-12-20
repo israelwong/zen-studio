@@ -2245,6 +2245,7 @@ export async function actualizarSchedulerTask(
     assignedToCrewMemberId?: string | null;
     notes?: string;
     isCompleted?: boolean;
+    skipPayroll?: boolean; // Si es true, no crear nómina automáticamente
     itemData?: {
       itemId: string;
       personalId: string;
@@ -2329,10 +2330,11 @@ export async function actualizarSchedulerTask(
     let payrollResult: { success: boolean; personalNombre?: string; error?: string } | null = null;
     console.log('[SCHEDULER] 🔍 Verificando si debe crear nómina:', {
       isCompleted: data.isCompleted,
+      skipPayroll: data.skipPayroll,
       cotizacion_item_id: task.cotizacion_item_id,
       taskId,
     });
-    if (data.isCompleted === true && task.cotizacion_item_id) {
+    if (data.isCompleted === true && task.cotizacion_item_id && !data.skipPayroll) {
       console.log('[SCHEDULER] ✅ Condiciones cumplidas, creando nómina...');
       // Importar dinámicamente para evitar dependencias circulares
       const { crearNominaDesdeTareaCompletada } = await import('./payroll-actions');

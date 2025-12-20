@@ -38,6 +38,16 @@ function getInitials(name: string) {
     .slice(0, 2);
 }
 
+function getSalaryType(member: CrewMember): 'fixed' | 'variable' | null {
+  if (member.fixed_salary !== null && member.fixed_salary > 0) {
+    return 'fixed';
+  }
+  if (member.variable_salary !== null && member.variable_salary > 0) {
+    return 'variable';
+  }
+  return null;
+}
+
 export function SelectCrewModal({
   isOpen,
   onClose,
@@ -230,7 +240,16 @@ export function SelectCrewModal({
                         {/* Información */}
                         <div className="flex-1 min-w-0">
                           <div className="text-zinc-300 truncate">{member.name}</div>
-                          <div className="text-[10px] text-zinc-500 truncate">{member.tipo}</div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 truncate">
+                            {getSalaryType(member) === 'fixed' && (
+                              <span className="text-amber-400 font-medium">Sueldo fijo</span>
+                            )}
+                            {getSalaryType(member) === 'variable' && (
+                              <span className="text-blue-400 font-medium">Honorarios variables</span>
+                            )}
+                            {getSalaryType(member) && <span>•</span>}
+                            <span className="truncate">{member.tipo}</span>
+                          </div>
                         </div>
                       </button>
                     ))
