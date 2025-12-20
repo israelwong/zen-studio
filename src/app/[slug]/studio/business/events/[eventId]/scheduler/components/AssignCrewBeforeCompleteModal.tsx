@@ -194,15 +194,35 @@ export function AssignCrewBeforeCompleteModal({
 
               {/* Lista de miembros */}
               {loadingMembers ? (
-                <div className="text-xs text-zinc-500 py-4 text-center">Cargando...</div>
+                <div className="space-y-1 border border-zinc-800 rounded-lg p-2">
+                  {/* Skeleton: mostrar 5 items placeholder */}
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="w-full flex items-center gap-2 px-2 py-2 animate-pulse"
+                    >
+                      {/* Avatar skeleton */}
+                      <div className="h-6 w-6 shrink-0 rounded-full bg-zinc-800" />
+
+                      {/* Check indicator skeleton */}
+                      <div className="h-3 w-3 shrink-0 bg-zinc-800 rounded" />
+
+                      {/* Información skeleton */}
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="h-3 bg-zinc-800 rounded w-3/4" />
+                        <div className="h-2 bg-zinc-800/50 rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <div className="space-y-1 max-h-[200px] overflow-y-auto border border-zinc-800 rounded-lg p-2">
+                <div className="space-y-1 max-h-[280px] overflow-y-auto border border-zinc-800 rounded-lg p-2">
                   {filteredMembers.length === 0 ? (
                     <div className="text-xs text-zinc-500 py-4 text-center">
                       {searchTerm.trim() ? 'No se encontraron resultados' : 'No hay personal disponible'}
                     </div>
                   ) : (
-                    filteredMembers.slice(0, 5).map((member) => (
+                    filteredMembers.map((member) => (
                       <button
                         key={member.id}
                         onClick={() => setSelectedMemberId(member.id)}

@@ -69,13 +69,19 @@ export function ZenConfirmModal({
                             }`}>
                             <AlertTriangle className="h-5 w-5" />
                         </div>
-                        <div>
+                        <div className="flex-1">
                             <DialogTitle className="text-white">
                                 {title}
                             </DialogTitle>
-                            <DialogDescription className="text-zinc-400">
-                                {description}
-                            </DialogDescription>
+                            {typeof description === 'string' ? (
+                                <DialogDescription className="text-zinc-400">
+                                    {description}
+                                </DialogDescription>
+                            ) : (
+                                <div className="text-sm text-zinc-400 mt-1.5">
+                                    {description}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </DialogHeader>
