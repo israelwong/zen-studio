@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, ExternalLink, Image, Video, FileText, Package, Download, Trash2, Edit2, CheckCircle2, Clock, Link2 } from 'lucide-react';
+import { Plus, ExternalLink, Link2, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
   ZenCard,
   ZenCardHeader,
@@ -9,8 +9,12 @@ import {
   ZenCardContent,
   ZenButton,
   ZenInput,
-  ZenSelect,
   ZenConfirmModal,
+  ZenDropdownMenu,
+  ZenDropdownMenuTrigger,
+  ZenDropdownMenuContent,
+  ZenDropdownMenuItem,
+  ZenDropdownMenuSeparator,
 } from '@/components/ui/zen';
 import {
   obtenerEntregables,
@@ -19,34 +23,13 @@ import {
   eliminarEntregable,
   type Deliverable,
 } from '@/lib/actions/studio/business/events/deliverables.actions';
-import { DeliverableType } from '@prisma/client';
 import { toast } from 'sonner';
-import { formatDateTime } from '@/lib/actions/utils/formatting';
 
 interface EventDeliverablesCardProps {
   studioSlug: string;
   eventId: string;
   onUpdated?: () => void;
 }
-
-const DELIVERABLE_TYPE_LABELS: Record<DeliverableType, string> = {
-  PHOTO_GALLERY: 'Galería de Fotos',
-  VIDEO_HIGHLIGHTS: 'Video Highlights',
-  FULL_VIDEO: 'Video Completo',
-  ALBUM: 'Álbum',
-  DIGITAL_DOWNLOAD: 'Descarga Digital',
-  OTHER: 'Otro',
-};
-
-const DELIVERABLE_TYPE_ICONS: Record<DeliverableType, React.ComponentType<{ className?: string }>> = {
-  PHOTO_GALLERY: Image,
-  VIDEO_HIGHLIGHTS: Video,
-  FULL_VIDEO: Video,
-  ALBUM: Package,
-  DIGITAL_DOWNLOAD: Download,
-  OTHER: FileText,
-};
-
 
 export function EventDeliverablesCard({
   studioSlug,
@@ -57,6 +40,7 @@ export function EventDeliverablesCard({
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -64,7 +48,6 @@ export function EventDeliverablesCard({
 
   // Form state
   const [formData, setFormData] = useState({
-    type: 'PHOTO_GALLERY' as DeliverableType,
     name: '',
     description: '',
     file_url: '',
@@ -95,7 +78,6 @@ export function EventDeliverablesCard({
     if (entregable) {
       setEditingId(entregable.id);
       setFormData({
-        type: entregable.type,
         name: entregable.name,
         description: entregable.description || '',
         file_url: entregable.file_url || '',
@@ -103,7 +85,6 @@ export function EventDeliverablesCard({
     } else {
       setEditingId(null);
       setFormData({
-        type: 'PHOTO_GALLERY',
         name: '',
         description: '',
         file_url: '',
@@ -116,7 +97,6 @@ export function EventDeliverablesCard({
     setIsFormOpen(false);
     setEditingId(null);
     setFormData({
-      type: 'PHOTO_GALLERY',
       name: '',
       description: '',
       file_url: '',
@@ -133,32 +113,48 @@ export function EventDeliverablesCard({
     setIsSaving(true);
     try {
       if (editingId) {
+        // Optimistic update para edición
+        const originalEntregables = [...entregables];
+        setEntregables(prev => prev.map(item => 
+          item.id === editingId 
+            ? { ...item, name: formData.name, description: formData.description || null, file_url: formData.file_url || null }
+            : item
+        ));
+
         const result = await actualizarEntregable(studioSlug, {
           id: editingId,
           name: formData.name,
           description: formData.description || undefined,
           file_url: formData.file_url || undefined,
         });
-        if (result.success) {
+        
+        if (result.success && result.data) {
+          // Actualizar con los datos del servidor
+          setEntregables(prev => prev.map(item => 
+            item.id === editingId ? result.data! : item
+          ));
           toast.success('Entregable actualizado');
           handleCloseForm();
-          loadEntregables();
           onUpdated?.();
         } else {
+          // Rollback en caso de error
+          setEntregables(originalEntregables);
           toast.error(result.error || 'Error al actualizar entregable');
         }
       } else {
         const result = await crearEntregable(studioSlug, {
           event_id: eventId,
-          type: formData.type,
+          type: 'OTHER',
           name: formData.name,
           description: formData.description || undefined,
           file_url: formData.file_url || undefined,
         });
-        if (result.success) {
+        
+        if (result.success && result.data) {
+          // Agregar el nuevo entregable al estado local
+          setEntregables(prev => [...prev, result.data!]);
           toast.success('Entregable creado');
           handleCloseForm();
-          loadEntregables();
           onUpdated?.();
         } else {
           toast.error(result.error || 'Error al crear entregable');
@@ -174,44 +170,35 @@ export function EventDeliverablesCard({
 
   const handleDelete = async () => {
     if (!deletingId) return;
+    
+    // Optimistic update para eliminación
+    const originalEntregables = [...entregables];
+    setEntregables(prev => prev.filter(item => item.id !== deletingId));
+    setIsDeleteModalOpen(false);
+    const idToDelete = deletingId;
+    setDeletingId(null);
+    
     setIsDeleting(true);
     try {
-      const result = await eliminarEntregable(studioSlug, deletingId);
+      const result = await eliminarEntregable(studioSlug, idToDelete);
       if (result.success) {
         toast.success('Entregable eliminado');
-        setIsDeleteModalOpen(false);
-        setDeletingId(null);
-        loadEntregables();
         onUpdated?.();
       } else {
+        // Rollback en caso de error
+        setEntregables(originalEntregables);
         toast.error(result.error || 'Error al eliminar entregable');
       }
     } catch (error) {
       console.error('Error deleting entregable:', error);
+      // Rollback en caso de error
+      setEntregables(originalEntregables);
       toast.error('Error al eliminar entregable');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  const handleMarkDelivered = async (id: string) => {
-    try {
-      const result = await actualizarEntregable(studioSlug, {
-        id,
-        delivered_at: new Date(),
-      });
-      if (result.success) {
-        toast.success('Marcado como entregado');
-        loadEntregables();
-        onUpdated?.();
-      } else {
-        toast.error(result.error || 'Error al actualizar');
-      }
-    } catch (error) {
-      console.error('Error marking delivered:', error);
-      toast.error('Error al marcar como entregado');
-    }
-  };
 
   if (loading) {
     return (
@@ -226,103 +213,111 @@ export function EventDeliverablesCard({
     );
   }
 
+  const totalEntregables = entregables.length;
+
   return (
     <>
       <ZenCard>
-        <ZenCardHeader>
+        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
           <div className="flex items-center justify-between">
-            <ZenCardTitle className="text-base">Entregables</ZenCardTitle>
-            {entregables.length === 0 && (
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                onClick={() => handleOpenForm()}
-                className="gap-1.5 h-7"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span className="text-xs">Agregar</span>
-              </ZenButton>
-            )}
+            <ZenCardTitle className="text-sm font-medium flex items-center pt-1">
+              Entregables
+            </ZenCardTitle>
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={() => handleOpenForm()}
+              className="h-6 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Agregar
+            </ZenButton>
           </div>
         </ZenCardHeader>
-        <ZenCardContent className="py-3">
-          {entregables.length === 0 ? (
+        <ZenCardContent className="p-4">
+          {loading ? (
+            <div className="space-y-3">
+              <div className="h-4 w-24 bg-zinc-800 rounded animate-pulse" />
+              <div className="h-32 w-full bg-zinc-800 rounded animate-pulse" />
+            </div>
+          ) : totalEntregables === 0 ? (
             <div className="text-center py-4">
-              <Package className="h-8 w-8 text-zinc-600 mx-auto mb-2" />
-              <p className="text-xs text-zinc-500 mb-1">No hay entregable</p>
+              <p className="text-xs text-zinc-500 mb-2">
+                No hay entregables registrados
+              </p>
               <p className="text-xs text-zinc-600">
                 Agrega un enlace a tus entregables
               </p>
             </div>
           ) : (
-            <div>
-              {entregables.slice(0, 1).map((entregable) => {
-                const TypeIcon = DELIVERABLE_TYPE_ICONS[entregable.type];
-
+            <div className={`space-y-2 ${totalEntregables > 5 ? 'max-h-[400px] overflow-y-auto' : ''}`}>
+              {entregables.map((entregable) => {
                 return (
                   <div
                     key={entregable.id}
                     className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-800"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-start gap-2 flex-1 min-w-0">
-                        <div className="p-1.5 bg-blue-600/20 rounded flex-shrink-0">
-                          <TypeIcon className="h-4 w-4 text-blue-400" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <h4 className="font-medium text-zinc-200 text-xs truncate">
-                              {entregable.name}
-                            </h4>
-                            {entregable.delivered_at && (
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />
-                            )}
-                          </div>
-                          {entregable.file_url && (
-                            <a
-                              href={entregable.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                            >
-                              <Link2 className="h-3 w-3" />
-                              <span>Ver enlace</span>
-                              <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
-                        {!entregable.delivered_at && (
-                          <ZenButton
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleMarkDelivered(entregable.id)}
-                            className="h-7 w-7 p-0"
-                            title="Marcar como entregado"
-                          >
-                            <Clock className="h-3.5 w-3.5 text-zinc-400" />
-                          </ZenButton>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-zinc-200 text-xs truncate mb-1">
+                          {entregable.name}
+                        </h4>
+                        {entregable.description && (
+                          <p className="text-xs text-zinc-400 mb-1.5 line-clamp-2">
+                            {entregable.description}
+                          </p>
                         )}
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenForm(entregable)}
-                          className="h-7 w-7 p-0"
+                        {entregable.file_url && (
+                          <a
+                            href={entregable.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                          >
+                            <Link2 className="h-3 w-3" />
+                            <span>Ver enlace</span>
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        )}
+                      </div>
+                      <div className="shrink-0">
+                        <ZenDropdownMenu
+                          open={openMenuId === entregable.id}
+                          onOpenChange={(open) => setOpenMenuId(open ? entregable.id : null)}
                         >
-                          <Edit2 className="h-3.5 w-3.5 text-zinc-400" />
-                        </ZenButton>
-                        <ZenButton
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setDeletingId(entregable.id);
-                            setIsDeleteModalOpen(true);
-                          }}
-                          className="h-7 w-7 p-0 text-zinc-400 hover:text-red-400"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </ZenButton>
+                          <ZenDropdownMenuTrigger asChild>
+                            <ZenButton
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </ZenButton>
+                          </ZenDropdownMenuTrigger>
+                          <ZenDropdownMenuContent align="end">
+                            <ZenDropdownMenuItem
+                              onClick={() => {
+                                handleOpenForm(entregable);
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Editar
+                            </ZenDropdownMenuItem>
+                            <ZenDropdownMenuSeparator />
+                            <ZenDropdownMenuItem
+                              onClick={() => {
+                                setDeletingId(entregable.id);
+                                setIsDeleteModalOpen(true);
+                                setOpenMenuId(null);
+                              }}
+                              className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Eliminar
+                            </ZenDropdownMenuItem>
+                          </ZenDropdownMenuContent>
+                        </ZenDropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -341,23 +336,6 @@ export function EventDeliverablesCard({
               {editingId ? 'Editar Entregable' : 'Nuevo Entregable'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {!editingId && (
-                <div>
-                  <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
-                    Tipo
-                  </label>
-                  <ZenSelect
-                    value={formData.type}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, type: value as DeliverableType })
-                    }
-                    options={Object.entries(DELIVERABLE_TYPE_LABELS).map(([value, label]) => ({
-                      value,
-                      label,
-                    }))}
-                  />
-                </div>
-              )}
               <div>
                 <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
                   Nombre *
