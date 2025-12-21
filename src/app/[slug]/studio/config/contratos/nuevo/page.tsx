@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Eye, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Eye } from 'lucide-react';
 import {
   ZenCard,
   ZenCardContent,
@@ -12,65 +12,29 @@ import {
   ZenButton,
   ZenInput,
   ZenLabel,
+  ZenTextarea,
   ZenSwitch,
   ContractEditor,
   ContractVariables,
   ContractPreview,
 } from '@/components/ui/zen';
-import {
-  getContractTemplate,
-  updateContractTemplate,
-} from '@/lib/actions/studio/business/contracts';
-import type { ContractTemplate } from '@/types/contracts';
+import { createContractTemplate } from '@/lib/actions/studio/business/contracts';
 import { toast } from 'sonner';
+import { DEFAULT_CONTRACT_TEMPLATE } from './default-template';
 
-export default function EditarContratoPage() {
+export default function NuevoContratoPage() {
   const params = useParams();
   const router = useRouter();
   const studioSlug = params.slug as string;
-  const templateId = params.templateId as string;
 
-  const [template, setTemplate] = useState<ContractTemplate | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    content: '',
-    is_active: true,
+    content: DEFAULT_CONTRACT_TEMPLATE,
     is_default: false,
   });
   const [showPreview, setShowPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadTemplate();
-  }, [templateId]);
-
-  const loadTemplate = async () => {
-    setLoading(true);
-    try {
-      const result = await getContractTemplate(studioSlug, templateId);
-      if (result.success && result.data) {
-        setTemplate(result.data);
-        setFormData({
-          name: result.data.name,
-          description: result.data.description || '',
-          content: result.data.content,
-          is_active: result.data.is_active,
-          is_default: result.data.is_default,
-        });
-      } else {
-        toast.error(result.error || 'Plantilla no encontrada');
-        router.push(`/${studioSlug}/studio/contratos`);
-      }
-    } catch (error) {
-      console.error('Error loading template:', error);
-      toast.error('Error al cargar plantilla');
-      router.push(`/${studioSlug}/studio/contratos`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,17 +51,17 @@ export default function EditarContratoPage() {
 
     setIsSaving(true);
     try {
-      const result = await updateContractTemplate(studioSlug, templateId, formData);
+      const result = await createContractTemplate(studioSlug, formData);
 
       if (result.success) {
-        toast.success('Plantilla actualizada correctamente');
-        router.push(`/${studioSlug}/studio/contratos`);
+        toast.success('Plantilla creada correctamente');
+        router.push(`/${studioSlug}/studio/config/contratos`);
       } else {
-        toast.error(result.error || 'Error al actualizar plantilla');
+        toast.error(result.error || 'Error al crear plantilla');
       }
     } catch (error) {
-      console.error('Error updating template:', error);
-      toast.error('Error al actualizar plantilla');
+      console.error('Error creating template:', error);
+      toast.error('Error al crear plantilla');
     } finally {
       setIsSaving(false);
     }
@@ -112,36 +76,6 @@ export default function EditarContratoPage() {
     toast.success('Variable insertada');
   };
 
-  if (loading) {
-    return (
-      <div className="w-full max-w-7xl mx-auto">
-        <ZenCard variant="default" padding="none">
-          <ZenCardHeader className="border-b border-zinc-800">
-            <div className="flex items-center gap-3">
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push(`/${studioSlug}/studio/contratos`)}
-                className="p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </ZenButton>
-              <div>
-                <ZenCardTitle>Editar Plantilla</ZenCardTitle>
-                <ZenCardDescription>Cargando plantilla...</ZenCardDescription>
-              </div>
-            </div>
-          </ZenCardHeader>
-          <ZenCardContent className="p-6">
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-zinc-600" />
-            </div>
-          </ZenCardContent>
-        </ZenCard>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full max-w-7xl mx-auto">
       <ZenCard variant="default" padding="none">
@@ -151,15 +85,15 @@ export default function EditarContratoPage() {
               <ZenButton
                 variant="ghost"
                 size="sm"
-                onClick={() => router.push(`/${studioSlug}/studio/contratos`)}
+                onClick={() => router.push(`/${studioSlug}/studio/config/contratos`)}
                 className="p-2"
               >
                 <ArrowLeft className="h-4 w-4" />
               </ZenButton>
               <div>
-                <ZenCardTitle>Editar Plantilla: {template?.name}</ZenCardTitle>
+                <ZenCardTitle>Nueva Plantilla de Contrato</ZenCardTitle>
                 <ZenCardDescription>
-                  Versión {template?.version}
+                  Crea una plantilla maestra para generar contratos
                 </ZenCardDescription>
               </div>
             </div>
@@ -179,7 +113,7 @@ export default function EditarContratoPage() {
                 disabled={isSaving}
               >
                 <Save className="h-4 w-4 mr-2" />
-                {isSaving ? 'Guardando...' : 'Guardar Cambios'}
+                {isSaving ? 'Guardando...' : 'Guardar Plantilla'}
               </ZenButton>
             </div>
           </div>
@@ -213,36 +147,20 @@ export default function EditarContratoPage() {
               </div>
             </div>
 
-            {/* Configuración */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-                <div>
-                  <p className="font-medium text-zinc-200">Plantilla activa</p>
-                  <p className="text-sm text-zinc-500">
-                    Disponible para generar contratos
-                  </p>
-                </div>
-                <ZenSwitch
-                  checked={formData.is_active}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, is_active: checked }))
-                  }
-                />
+            {/* Plantilla por defecto */}
+            <div className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
+              <div>
+                <p className="font-medium text-zinc-200">Plantilla por defecto</p>
+                <p className="text-sm text-zinc-500">
+                  Se usará automáticamente si no se especifica otra
+                </p>
               </div>
-              <div className="flex items-center justify-between p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-                <div>
-                  <p className="font-medium text-zinc-200">Plantilla por defecto</p>
-                  <p className="text-sm text-zinc-500">
-                    Se usará automáticamente si no se especifica otra
-                  </p>
-                </div>
-                <ZenSwitch
-                  checked={formData.is_default}
-                  onCheckedChange={(checked) =>
-                    setFormData((prev) => ({ ...prev, is_default: checked }))
-                  }
-                />
-              </div>
+              <ZenSwitch
+                checked={formData.is_default}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, is_default: checked }))
+                }
+              />
             </div>
 
             {/* Editor y Variables */}

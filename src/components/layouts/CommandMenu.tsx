@@ -143,7 +143,7 @@ export function CommandMenu({
         {
           label: 'Contratos',
           icon: FileText,
-          href: `/${studioSlug}/studio/contratos`,
+          href: `/${studioSlug}/studio/config/contratos`,
         },
         {
           label: 'Finanzas',

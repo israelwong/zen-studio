@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/prisma';
 import { PasswordChangeSchema, SecuritySettingsSchema } from '@/lib/actions/schemas/seguridad/seguridad-schemas';
 import { revalidatePath } from 'next/cache';
-import type { SecuritySettings, AccessLog, SecurityFormData } from '@/app/[slug]/studio/configuracion/cuenta/seguridad/types';
+import type { SecuritySettings, AccessLog, SecurityFormData } from '@/app/[slug]/studio/config/account/seguridad/types';
 
 // ========================================
 // TIPOS DE SEGURIDAD
@@ -98,7 +98,7 @@ export async function cambiarPassword(
             user_agent: 'N/A'
         });
 
-        revalidatePath(`/${studioSlug}/studio/account/seguridad`);
+        revalidatePath(`/${studioSlug}/studio/config/account/seguridad`);
 
         return {
             success: true,
@@ -272,7 +272,7 @@ export async function actualizarConfiguracionesSeguridad(
             settings: validatedData
         });
 
-        revalidatePath(`/${studioSlug}/studio/account/seguridad`);
+        revalidatePath(`/${studioSlug}/studio/config/account/seguridad`);
 
         return {
             success: true,

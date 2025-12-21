@@ -55,7 +55,7 @@ export default function ContratosPage() {
   };
 
   const handleEdit = (templateId: string) => {
-    router.push(`/${studioSlug}/studio/contratos/${templateId}/editar`);
+    router.push(`/${studioSlug}/studio/config/contratos/${templateId}/editar`);
   };
 
   const handleDuplicate = async (templateId: string) => {
@@ -168,7 +168,7 @@ export default function ContratosPage() {
             <ZenButton
               variant="default"
               size="sm"
-              onClick={() => router.push(`/${studioSlug}/studio/contratos/nuevo`)}
+              onClick={() => router.push(`/${studioSlug}/studio/config/contratos/nuevo`)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nueva Plantilla
@@ -187,7 +187,7 @@ export default function ContratosPage() {
               </p>
               <ZenButton
                 variant="default"
-                onClick={() => router.push(`/${studioSlug}/studio/contratos/nuevo`)}
+                onClick={() => router.push(`/${studioSlug}/studio/config/contratos/nuevo`)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Crear Primera Plantilla

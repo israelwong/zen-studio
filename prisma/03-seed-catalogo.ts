@@ -186,6 +186,9 @@ export async function seedStudioCatalog(studioId: string) {
     // SECCIÓN 2: Cobertura del Día del Evento
     const categoriasSeccion2 = await Promise.all([
         prisma.studio_service_categories.create({
+            data: { name: 'Cobertura de evento', order: 4 }
+        }),
+        prisma.studio_service_categories.create({
             data: { name: 'Arreglo en domicilio', order: 5 }
         }),
         prisma.studio_service_categories.create({
@@ -434,11 +437,37 @@ export async function seedStudioCatalog(studioId: string) {
             }
         }),
 
-        // ARREGLO EN DOMICILIO (6 servicios)
+        // COBERTURA DE EVENTO (3 servicios)
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
                 service_category_id: categoriasSeccion2[0].id,
+                name: 'Cobertura completa de evento (fotografía + video)',
+                cost: 5000, expense: 0, order: 0, status: 'active', type: 'SERVICIO', utility_type: 'service'
+            }
+        }),
+        prisma.studio_items.create({
+            data: {
+                studio_id: studioId,
+                service_category_id: categoriasSeccion2[0].id,
+                name: 'Cobertura básica de evento (solo fotografía)',
+                cost: 3000, expense: 0, order: 1, status: 'active', type: 'SERVICIO', utility_type: 'service'
+            }
+        }),
+        prisma.studio_items.create({
+            data: {
+                studio_id: studioId,
+                service_category_id: categoriasSeccion2[0].id,
+                name: 'Cobertura premium de evento (fotografía + video + dron)',
+                cost: 7000, expense: 0, order: 2, status: 'active', type: 'SERVICIO', utility_type: 'service'
+            }
+        }),
+
+        // ARREGLO EN DOMICILIO (6 servicios)
+        prisma.studio_items.create({
+            data: {
+                studio_id: studioId,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Fotógrafo A por servicio de 2 hrs',
                 cost: 1000, expense: 0, order: 0, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -446,7 +475,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[0].id,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Asistente de iluminación A por servicio de 2 hrs',
                 cost: 250, expense: 0, order: 1, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -454,7 +483,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[0].id,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Fotógrafo B por servicio de 2 hrs',
                 cost: 1000, expense: 0, order: 2, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -462,7 +491,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[0].id,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Asistente de iluminación B por servicio de 2 hrs',
                 cost: 250, expense: 0, order: 3, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -470,7 +499,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[0].id,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Camarógrafo A por servicio de 2 hrs',
                 cost: 1000, expense: 0, order: 4, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -478,7 +507,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[0].id,
+                service_category_id: categoriasSeccion2[1].id,
                 name: 'Camarógrafo B por servicio de 2 hrs',
                 cost: 1000, expense: 0, order: 5, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -488,7 +517,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[1].id,
+                service_category_id: categoriasSeccion2[2].id,
                 name: 'Fotógrafo A por servicio',
                 cost: 500, expense: 0, order: 0, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -496,7 +525,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[1].id,
+                service_category_id: categoriasSeccion2[2].id,
                 name: 'Asistente de iluminación A por servicio',
                 cost: 200, expense: 0, order: 1, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -504,7 +533,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[1].id,
+                service_category_id: categoriasSeccion2[2].id,
                 name: 'Camarógrafo A por servicio',
                 cost: 500, expense: 0, order: 2, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -514,7 +543,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[2].id,
+                service_category_id: categoriasSeccion2[3].id,
                 name: 'Fotógrafo A por hora (Cobertura general)',
                 cost: 300, expense: 0, order: 0, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -522,7 +551,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[2].id,
+                service_category_id: categoriasSeccion2[3].id,
                 name: 'Asistente de iluminación A por hora',
                 cost: 100, expense: 0, order: 1, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -530,7 +559,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[2].id,
+                service_category_id: categoriasSeccion2[3].id,
                 name: 'Fotógrafo B por hora (Fotografía de detalle)',
                 cost: 200, expense: 0, order: 2, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -538,7 +567,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[2].id,
+                service_category_id: categoriasSeccion2[3].id,
                 name: 'Asistente de iluminación B por hora',
                 cost: 100, expense: 0, order: 3, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -546,7 +575,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[2].id,
+                service_category_id: categoriasSeccion2[3].id,
                 name: 'Revelado ligero de todas las fotografías del evento',
                 cost: 2500, expense: 0, order: 4, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -556,7 +585,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Camarógrafo A por hora',
                 cost: 300, expense: 0, order: 0, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -564,7 +593,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Camarógrafo B por hora',
                 cost: 200, expense: 0, order: 1, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -572,7 +601,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Camarógrafo C por hora',
                 cost: 200, expense: 0, order: 2, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -580,7 +609,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Grúa con cabezal robótico de 8mts y operador',
                 cost: 5000, expense: 0, order: 3, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -588,7 +617,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Grabación con dron 4k para evento en momentos clave',
                 cost: 1500, expense: 0, order: 4, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -596,7 +625,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Asistente de producción por hora',
                 cost: 100, expense: 0, order: 5, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -604,7 +633,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Edición de video extendido de 90 min',
                 cost: 2500, expense: 0, order: 6, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -612,7 +641,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Edición de video de hasta 40min',
                 cost: 1500, expense: 0, order: 7, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }
@@ -620,7 +649,7 @@ export async function seedStudioCatalog(studioId: string) {
         prisma.studio_items.create({
             data: {
                 studio_id: studioId,
-                service_category_id: categoriasSeccion2[3].id,
+                service_category_id: categoriasSeccion2[4].id,
                 name: 'Edición de video resumen de hasta 3min',
                 cost: 1000, expense: 0, order: 8, status: 'active', type: 'SERVICIO', utility_type: 'service'
             }

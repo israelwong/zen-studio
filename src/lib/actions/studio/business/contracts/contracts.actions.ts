@@ -217,8 +217,8 @@ export async function updateEventContract(
         },
       });
 
-      revalidatePath(`/${studioSlug}/studio/contratos`);
-      revalidatePath(`/${studioSlug}/studio/contratos/${contract.template_id}/editar`);
+      revalidatePath(`/${studioSlug}/studio/config/contratos`);
+      revalidatePath(`/${studioSlug}/studio/config/contratos/${contract.template_id}/editar`);
     }
 
     revalidatePath(`/${studioSlug}/studio/business/events/${contract.event_id}`);

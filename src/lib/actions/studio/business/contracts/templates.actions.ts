@@ -195,7 +195,7 @@ export async function createContractTemplate(
       },
     });
 
-    revalidatePath(`/${studioSlug}/studio/contratos`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos`);
 
     return { success: true, data: template as ContractTemplate };
   } catch (error) {
@@ -283,8 +283,8 @@ export async function updateContractTemplate(
       },
     });
 
-    revalidatePath(`/${studioSlug}/studio/contratos`);
-    revalidatePath(`/${studioSlug}/studio/contratos/${templateId}/editar`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos/${templateId}/editar`);
 
     return { success: true, data: template as ContractTemplate };
   } catch (error) {
@@ -341,7 +341,7 @@ export async function deleteContractTemplate(
       data: { is_active: false },
     });
 
-    revalidatePath(`/${studioSlug}/studio/contratos`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos`);
 
     return { success: true };
   } catch (error) {
@@ -395,7 +395,7 @@ export async function toggleContractTemplate(
       data: { is_active: !template.is_active },
     });
 
-    revalidatePath(`/${studioSlug}/studio/contratos`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos`);
 
     return { success: true, data: updated as ContractTemplate };
   } catch (error) {
@@ -465,7 +465,7 @@ export async function duplicateContractTemplate(
       },
     });
 
-    revalidatePath(`/${studioSlug}/studio/contratos`);
+    revalidatePath(`/${studioSlug}/studio/config/contratos`);
 
     return { success: true, data: duplicate as ContractTemplate };
   } catch (error) {

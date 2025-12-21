@@ -100,7 +100,7 @@ export function ContractTemplateManagerModal({
   };
 
   const handleManageComplete = () => {
-    router.push(`/${studioSlug}/studio/contratos/nuevo`);
+    router.push(`/${studioSlug}/studio/config/contratos/nuevo`);
     onClose();
   };
 

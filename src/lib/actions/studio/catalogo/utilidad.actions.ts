@@ -25,19 +25,34 @@ export async function obtenerConfiguracionPrecios(
         }
 
         const config = await prisma.studio_configuraciones.findFirst({
-            where: { studio_id: studio.id },
+            where: { 
+                studio_id: studio.id,
+                status: 'active',
+            },
+            orderBy: { updated_at: 'desc' },
         });
 
         if (!config) {
+            console.log('[obtenerConfiguracionPrecios] No se encontró configuración para studio:', studioSlug);
             return null;
         }
 
-        return {
+        const result = {
             utilidad_servicio: config.service_margin != null ? String(config.service_margin) : undefined,
             utilidad_producto: config.product_margin != null ? String(config.product_margin) : undefined,
             comision_venta: config.sales_commission != null ? String(config.sales_commission) : undefined,
             sobreprecio: config.markup != null ? String(config.markup) : undefined,
         };
+
+        console.log('[obtenerConfiguracionPrecios] Valores desde BD:', {
+            service_margin: config.service_margin,
+            product_margin: config.product_margin,
+            sales_commission: config.sales_commission,
+            markup: config.markup,
+        });
+        console.log('[obtenerConfiguracionPrecios] Valores retornados:', result);
+
+        return result;
     } catch (error) {
         console.error("[obtenerConfiguracionPrecios] Error:", error);
         throw error;
@@ -135,40 +150,84 @@ export async function actualizarConfiguracionPrecios(
         }
 
         // Los valores ya vienen como decimales (0.0-1.0) desde el formulario
-        const servicioMargin = validatedData.utilidad_servicio ? parseFloat(validatedData.utilidad_servicio) : null;
-        const productoMargin = validatedData.utilidad_producto ? parseFloat(validatedData.utilidad_producto) : null;
-        const ventaComision = validatedData.comision_venta ? parseFloat(validatedData.comision_venta) : null;
-        const markup = validatedData.sobreprecio ? parseFloat(validatedData.sobreprecio) : null;
+        // Siempre procesar todos los valores, incluso si son "0" (campo vacío)
+        // Asegurarse de que todos los campos se procesen correctamente
+        const parseValue = (value: string | undefined): number => {
+            if (!value || value.trim() === '') return 0;
+            const parsed = parseFloat(value);
+            return isNaN(parsed) ? 0 : parsed;
+        };
 
-        // Obtener o crear configuración
-        let config = await prisma.studio_configuraciones.findFirst({
-            where: { studio_id: studio.id },
+        const servicioMargin = parseValue(validatedData.utilidad_servicio);
+        const productoMargin = parseValue(validatedData.utilidad_producto);
+        const ventaComision = parseValue(validatedData.comision_venta);
+        const markup = parseValue(validatedData.sobreprecio);
+
+        console.log('[actualizarConfiguracionPrecios] Valores recibidos:', {
+            utilidad_servicio: validatedData.utilidad_servicio,
+            utilidad_producto: validatedData.utilidad_producto,
+            comision_venta: validatedData.comision_venta,
+            sobreprecio: validatedData.sobreprecio,
         });
 
-        const updateData: {
-            service_margin?: number | null;
-            product_margin?: number | null;
-            sales_commission?: number | null;
-            markup?: number | null;
-        } = {};
+        console.log('[actualizarConfiguracionPrecios] Valores parseados:', {
+            servicioMargin,
+            productoMargin,
+            ventaComision,
+            markup,
+        });
 
-        if (servicioMargin !== null) updateData.service_margin = servicioMargin;
-        if (productoMargin !== null) updateData.product_margin = productoMargin;
-        if (ventaComision !== null) updateData.sales_commission = ventaComision;
-        if (markup !== null) updateData.markup = markup;
+        // Obtener o crear configuración
+        // Obtener la configuración activa más reciente
+        let config = await prisma.studio_configuraciones.findFirst({
+            where: { 
+                studio_id: studio.id,
+                status: 'active',
+            },
+            orderBy: { updated_at: 'desc' },
+        });
+
+        // Siempre actualizar todos los campos con los valores recibidos
+        const updateData = {
+            service_margin: servicioMargin,
+            product_margin: productoMargin,
+            sales_commission: ventaComision,
+            markup: markup,
+        };
 
         if (!config) {
             config = await prisma.studio_configuraciones.create({
                 data: {
                     studio_id: studio.id,
                     name: "Configuración de Precios",
+                    status: 'active',
                     ...updateData,
                 },
             });
+            console.log('[actualizarConfiguracionPrecios] Configuración creada:', {
+                configId: config.id,
+                updateData,
+            });
         } else {
-            await prisma.studio_configuraciones.update({
+            console.log('[actualizarConfiguracionPrecios] Actualizando configuración existente:', {
+                configId: config.id,
+                updateData,
+            });
+            
+            const updated = await prisma.studio_configuraciones.update({
                 where: { id: config.id },
-                data: updateData,
+                data: {
+                    ...updateData,
+                    status: 'active',
+                    updated_at: new Date(),
+                },
+            });
+            
+            console.log('[actualizarConfiguracionPrecios] Configuración actualizada exitosamente:', {
+                service_margin: updated.service_margin,
+                product_margin: updated.product_margin,
+                sales_commission: updated.sales_commission,
+                markup: updated.markup,
             });
         }
 

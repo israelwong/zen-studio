@@ -19,6 +19,7 @@ import {
     User,
     X,
     Calendar,
+    FolderOpen,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -40,9 +41,10 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             icon: ShoppingBagIcon,
             items: [
                 { id: 'dashboard', name: 'Dashboard', href: `/commercial/dashboard`, icon: Home },
-                { id: 'ofertas', name: 'Ofertas', href: `/commercial/ofertas`, icon: Megaphone },
-                { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },
                 { id: 'catalogo', name: 'Catálogo', href: `/commercial/catalogo`, icon: ShoppingBagIcon },
+                { id: 'ofertas', name: 'Ofertas', href: `/commercial/ofertas`, icon: Megaphone },
+                // { id: 'portafolios', name: 'Portafolios', href: `/commercial/portafolios`, icon: FolderOpen },
+                { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },
             ],
         },
 
@@ -64,9 +66,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             title: 'Configuración',
             icon: Settings,
             items: [
-                // { id: 'tipo_evento', name: 'Tipo de Evento', href: `/commercial/tipo-evento`, icon: ShoppingBagIcon },
-                { id: 'contracts', name: 'Contratos', href: `/commercial/contracts`, icon: FileText },
-                { id: 'subscriptions', name: 'Suscripción', href: `/account/suscripcion`, icon: CreditCard },
+                { id: 'contracts', name: 'Contratos', href: `/config/contratos`, icon: FileText },
+                { id: 'subscriptions', name: 'Suscripción', href: `/config/account/suscripcion`, icon: CreditCard },
                 // { id: 'integraciones', name: 'Integraciones', href: `/business/integraciones/tracking`, icon: Plug },
                 // { id: 'magic', name: 'ZEN Magic', href: `/magic`, icon: Sparkles },
             ],

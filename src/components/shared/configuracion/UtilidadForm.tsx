@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { DollarSign, Info, RotateCcw } from 'lucide-react';
+import { DollarSign, Info } from 'lucide-react';
 import {
     ZenButton,
     ZenInput,
@@ -64,35 +64,44 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
         setLoading(true);
         try {
             const result = await obtenerConfiguracionPrecios(studioSlug);
-            if (result) {
-                // Los valores vienen como decimales de BD (0.3, 0.05)
-                // Convertir a porcentajes para mostrar en UI (30, 5)
-                const configData = {
-                    utilidad_servicio: result.utilidad_servicio
-                        ? String(parseFloat(result.utilidad_servicio) * 100)
-                        : '',
-                    utilidad_producto: result.utilidad_producto
-                        ? String(parseFloat(result.utilidad_producto) * 100)
-                        : '',
-                    comision_venta: result.comision_venta
-                        ? String(parseFloat(result.comision_venta) * 100)
-                        : '',
-                    sobreprecio: result.sobreprecio
-                        ? String(parseFloat(result.sobreprecio) * 100)
-                        : ''
-                };
-                setConfig(configData);
-                setInitialConfig(configData); // Guardar valores iniciales
-            }
+            // Los valores vienen como decimales de BD (0.3, 0.05)
+            // Convertir a porcentajes para mostrar en UI (30, 5)
+            const configData = {
+                utilidad_servicio: result?.utilidad_servicio
+                    ? String(parseFloat(result.utilidad_servicio) * 100)
+                    : '',
+                utilidad_producto: result?.utilidad_producto
+                    ? String(parseFloat(result.utilidad_producto) * 100)
+                    : '',
+                comision_venta: result?.comision_venta
+                    ? String(parseFloat(result.comision_venta) * 100)
+                    : '',
+                sobreprecio: result?.sobreprecio
+                    ? String(parseFloat(result.sobreprecio) * 100)
+                    : ''
+            };
+            setConfig(configData);
+            setInitialConfig(configData); // Guardar valores iniciales
         } catch (error) {
             console.error('Error loading config:', error);
             toast.error('Error al cargar configuración');
+            // En caso de error, inicializar con valores vacíos
+            const emptyConfig = {
+                utilidad_servicio: '',
+                utilidad_producto: '',
+                comision_venta: '',
+                sobreprecio: ''
+            };
+            setConfig(emptyConfig);
+            setInitialConfig(emptyConfig);
         } finally {
             setLoading(false);
         }
     }
 
-    const handleInputChange = (field: keyof ConfiguracionPreciosForm, value: string) => {
+    type ConfigField = 'utilidad_servicio' | 'utilidad_producto' | 'comision_venta' | 'sobreprecio';
+
+    const handleInputChange = (field: ConfigField, value: string) => {
         // Permitir solo números y punto decimal
         const sanitizedValue = value.replace(/[^0-9.]/g, '');
 
@@ -108,12 +117,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
         }));
     };
 
-    const handleReset = (field: keyof ConfiguracionPreciosForm) => {
-        setConfig(prev => ({
-            ...prev,
-            [field]: initialConfig[field] || ''
-        }));
-    };
 
     const hasChanges = () => {
         return (
@@ -135,36 +138,39 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
         setSubmitting(true);
         try {
             // Convertir de porcentaje (20) a decimal (0.20) para el schema
-            const dataToSend: ConfiguracionPreciosForm = {
-                utilidad_servicio: config.utilidad_servicio
-                    ? String(parseFloat(config.utilidad_servicio) / 100)
-                    : undefined,
-                utilidad_producto: config.utilidad_producto
-                    ? String(parseFloat(config.utilidad_producto) / 100)
-                    : undefined,
-                comision_venta: config.comision_venta
-                    ? String(parseFloat(config.comision_venta) / 100)
-                    : undefined,
-                sobreprecio: config.sobreprecio
-                    ? String(parseFloat(config.sobreprecio) / 100)
-                    : undefined,
+            // Si el campo está vacío, enviar "0" para que se actualice a 0 en la BD
+            const parseAndValidate = (value: string | undefined): string => {
+                if (!value || value.trim() === '') return '0';
+                const parsed = parseFloat(value);
+                if (isNaN(parsed)) return '0';
+                return String(parsed / 100);
             };
+
+            const dataToSend: ConfiguracionPreciosForm = {
+                utilidad_servicio: parseAndValidate(config.utilidad_servicio),
+                utilidad_producto: parseAndValidate(config.utilidad_producto),
+                comision_venta: parseAndValidate(config.comision_venta),
+                sobreprecio: parseAndValidate(config.sobreprecio),
+            };
+
+            console.log('[UtilidadForm] Valores del formulario:', config);
+            console.log('[UtilidadForm] Datos a enviar:', dataToSend);
 
             const result = await actualizarConfiguracionPrecios(studioSlug, dataToSend);
 
             if (result.success) {
                 toast.success('Configuración actualizada correctamente');
 
-                // Actualizar los valores iniciales con los nuevos valores guardados
-                setInitialConfig(config);
+                // Actualizar initialConfig con los valores que acabamos de guardar
+                // Esto asegura que los botones de restaurar no aparezcan incorrectamente
+                setInitialConfig({ ...config });
 
-                // Emitir evento para notificar a otros componentes
-                // Convertir de porcentaje (35) a decimal (0.35) para el evento
+                // Emitir evento para notificar a otros componentes (valores en decimal)
                 triggerUpdate(studioSlug, {
-                    utilidad_servicio: parseFloat(config.utilidad_servicio || '0') / 100,
-                    utilidad_producto: parseFloat(config.utilidad_producto || '0') / 100,
-                    comision_venta: parseFloat(config.comision_venta || '0') / 100,
-                    sobreprecio: parseFloat(config.sobreprecio || '0') / 100,
+                    utilidad_servicio: parseFloat(dataToSend.utilidad_servicio || '0'),
+                    utilidad_producto: parseFloat(dataToSend.utilidad_producto || '0'),
+                    comision_venta: parseFloat(dataToSend.comision_venta || '0'),
+                    sobreprecio: parseFloat(dataToSend.sobreprecio || '0'),
                 });
 
                 // Cerrar modal si existe onClose
@@ -232,16 +238,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 placeholder="0"
                                 hint="% de ganancia sobre el costo del servicio"
                             />
-                            {config.utilidad_servicio !== initialConfig.utilidad_servicio && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleReset('utilidad_servicio')}
-                                    className="absolute right-2 top-2 p-1 hover:bg-zinc-700 rounded transition-colors"
-                                    title="Restaurar valor original"
-                                >
-                                    <RotateCcw className="h-4 w-4 text-zinc-400" />
-                                </button>
-                            )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">
                             Ejemplo: Si un servicio cuesta $1,000 y aplicas 30% de utilidad, el precio base será $1,300
@@ -267,16 +263,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 placeholder="0"
                                 hint="% de ganancia sobre el costo del producto"
                             />
-                            {config.utilidad_producto !== initialConfig.utilidad_producto && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleReset('utilidad_producto')}
-                                    className="absolute right-2 top-2 p-1 hover:bg-zinc-700 rounded transition-colors"
-                                    title="Restaurar valor original"
-                                >
-                                    <RotateCcw className="h-4 w-4 text-zinc-400" />
-                                </button>
-                            )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">
                             Ejemplo: Si un producto cuesta $500 y aplicas 50% de utilidad, el precio base será $750
@@ -302,16 +288,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 placeholder="0"
                                 hint="% de comisión para el vendedor"
                             />
-                            {config.comision_venta !== initialConfig.comision_venta && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleReset('comision_venta')}
-                                    className="absolute right-2 top-2 p-1 hover:bg-zinc-700 rounded transition-colors"
-                                    title="Restaurar valor original"
-                                >
-                                    <RotateCcw className="h-4 w-4 text-zinc-400" />
-                                </button>
-                            )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">
                             Ejemplo: Si el precio es $1,000 y hay 10% de comisión, se añaden $100 al precio final
@@ -337,16 +313,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 placeholder="0"
                                 hint="% de margen de seguridad adicional"
                             />
-                            {config.sobreprecio !== initialConfig.sobreprecio && (
-                                <button
-                                    type="button"
-                                    onClick={() => handleReset('sobreprecio')}
-                                    className="absolute right-2 top-2 p-1 hover:bg-zinc-700 rounded transition-colors"
-                                    title="Restaurar valor original"
-                                >
-                                    <RotateCcw className="h-4 w-4 text-zinc-400" />
-                                </button>
-                            )}
                         </div>
                         <p className="text-xs text-zinc-500 mt-2">
                             <strong className="text-amber-400">Límite de descuento:</strong> Este valor determina el descuento máximo
