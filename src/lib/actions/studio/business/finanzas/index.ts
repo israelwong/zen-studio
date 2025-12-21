@@ -13,6 +13,7 @@ export {
     cancelarNominaPagada,
     eliminarNominaPagada,
     cancelarPagoRecurrentePorGastoId,
+    obtenerAnalisisFinanciero,
 } from './finanzas.actions';
 
-export type { PorPagarPersonal } from './finanzas.actions';
+export type { PorPagarPersonal, AnalisisFinancieroData } from './finanzas.actions';

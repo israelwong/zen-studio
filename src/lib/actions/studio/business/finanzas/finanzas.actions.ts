@@ -295,13 +295,6 @@ export async function obtenerKPIsFinancieros(
             },
         });
 
-        console.log('[FINANZAS] Promesas encontradas:', promesas.length);
-        promesas.forEach(p => {
-            console.log(`[FINANZAS] Promesa ${p.id}: status=${p.status}, cotizaciones=${p.quotes.length}`);
-            p.quotes.forEach(q => {
-                console.log(`[FINANZAS]   Cotización ${q.id}: price=${q.price}, discount=${q.discount}, status=${q.status}`);
-            });
-        });
 
         let totalPorCobrar = 0;
         const cotizacionIds: string[] = [];
@@ -314,13 +307,8 @@ export async function obtenerKPIsFinancieros(
                 const totalCotizacion = cotizacion.price - (cotizacion.discount || 0);
                 cotizacionIds.push(cotizacion.id);
                 totalPorCobrar += totalCotizacion;
-                console.log(`[FINANZAS] Cotización ${cotizacion.id}: ${cotizacion.price} - ${cotizacion.discount || 0} = ${totalCotizacion}`);
             }
         }
-
-        console.log('[FINANZAS] Total cotizaciones antes de pagos:', totalPorCobrar);
-        console.log('[FINANZAS] IDs de cotizaciones:', cotizacionIds);
-        console.log('[FINANZAS] IDs de promesas:', promiseIds);
 
         // Restar pagos realizados (status paid o completed)
         // Los pagos pueden estar asociados a cotizaciones (cotizacion_id) o a promesas (promise_id)
@@ -347,10 +335,6 @@ export async function obtenerKPIsFinancieros(
                 },
             });
 
-            console.log('[FINANZAS] Pagos encontrados:', pagosDetalle.length);
-            pagosDetalle.forEach(p => {
-                console.log(`[FINANZAS]   Pago ${p.id}: promise_id=${p.promise_id}, cotizacion_id=${p.cotizacion_id}, amount=${p.amount}, status=${p.status}`);
-            });
 
             const pagosRealizados = await prisma.studio_pagos.aggregate({
                 where: {
@@ -370,13 +354,8 @@ export async function obtenerKPIsFinancieros(
             });
 
             totalPagos = pagosRealizados._sum.amount || 0;
-            console.log('[FINANZAS] Total pagos realizados:', totalPagos);
             totalPorCobrar -= totalPagos;
-        } else {
-            console.log('[FINANZAS] No hay cotizaciones ni promesas, no se buscan pagos');
         }
-
-        console.log('[FINANZAS] Total por cobrar final:', totalPorCobrar);
 
         // Asegurar que no sea negativo
         totalPorCobrar = Math.max(0, totalPorCobrar);
@@ -399,7 +378,7 @@ export async function obtenerKPIsFinancieros(
         const porCobrarTotal = totalPorCobrar;
         const porPagarTotal = porPagar._sum.net_amount ?? 0;
 
-        const result = {
+        return {
             success: true,
             data: {
                 ingresos: ingresosTotal,
@@ -408,15 +387,7 @@ export async function obtenerKPIsFinancieros(
                 porCobrar: porCobrarTotal,
                 porPagar: porPagarTotal,
             },
-            debug: {
-                promesasEncontradas: promesas.length,
-                cotizacionesEncontradas: cotizacionIds.length,
-                totalCotizaciones: totalPorCobrar + totalPagos,
-                totalPagos: totalPagos,
-            },
         };
-
-        return result;
     } catch (error) {
         console.error('Error obteniendo KPIs financieros:', error);
         return {
@@ -1034,9 +1005,6 @@ export async function obtenerPorCobrar(
         // Calcular pendiente por cotización
         const porCobrar: PendingItem[] = [];
 
-        console.log('[POR COBRAR] Promesas encontradas:', promesas.length);
-        console.log('[POR COBRAR] Total cotizaciones:', cotizacionIds.length);
-        console.log('[POR COBRAR] Total pagos encontrados:', pagosRealizados.length);
 
         for (const promesa of promesas) {
             for (const cotizacion of promesa.quotes) {
@@ -1044,7 +1012,6 @@ export async function obtenerPorCobrar(
                 const pagosDeEstaCotizacion = pagosPorCotizacion.get(cotizacion.id) || 0;
                 const pendiente = totalCotizacion - pagosDeEstaCotizacion;
 
-                console.log(`[POR COBRAR] Cotización ${cotizacion.id}: precio=${cotizacion.price}, descuento=${cotizacion.discount || 0}, total=${totalCotizacion}, pagos=${pagosDeEstaCotizacion}, pendiente=${pendiente}`);
 
                 // Solo agregar si hay pendiente por cobrar
                 if (pendiente > 0) {
@@ -1071,7 +1038,6 @@ export async function obtenerPorCobrar(
         // Ordenar por fecha descendente
         porCobrar.sort((a, b) => b.fecha.getTime() - a.fecha.getTime());
 
-        console.log('[POR COBRAR] Total items por cobrar:', porCobrar.length);
 
         return {
             success: true,
@@ -1783,13 +1749,6 @@ export async function pagarNominasPersonal(
                 timeout: 10000, // Aumentar timeout a 10 segundos
             }
         );
-
-        console.log('[FINANZAS] ✅ Nómina consolidada creada:', {
-            nominaId: resultado.id,
-            personalId,
-            totalNetAmount,
-            paymentDate: resultado.payment_date,
-        });
 
         // Revalidar todas las rutas relacionadas
         revalidatePath(`/${studioSlug}/studio/business/finanzas`);
@@ -2665,8 +2624,6 @@ export async function cancelarPagoGastoRecurrente(
                 take: 10,
             });
 
-            console.log('Gastos recurrentes encontrados:', todosLosGastos);
-            console.log('Buscando gasto con nombre:', gastoName);
 
             return { success: false, error: 'No se encontró ningún pago para cancelar' };
         }
@@ -3112,6 +3069,366 @@ export async function eliminarNominaPagada(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al eliminar nómina pagada',
+        };
+    }
+}
+
+/**
+ * Obtener datos para análisis financiero
+ */
+export interface AnalisisFinancieroData {
+    ingresosPorEvento: Array<{
+        evento: string;
+        monto: number;
+    }>;
+    egresosPorCategoria: Array<{
+        categoria: string;
+        monto: number;
+    }>;
+    balance: {
+        ingresos: number;
+        egresos: number;
+        utilidad: number;
+    };
+}
+
+export async function obtenerAnalisisFinanciero(
+    studioSlug: string,
+    month: Date
+): Promise<{ success: boolean; data?: AnalisisFinancieroData; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const { start, end } = getMonthRange(month);
+
+        // Obtener ingresos agrupados por evento
+        const pagos = await prisma.studio_pagos.findMany({
+            where: {
+                AND: [
+                    {
+                        OR: [
+                            { studio_users: { studio_id: studioId } },
+                            { promise: { studio_id: studioId } },
+                            { cotizaciones: { studio_id: studioId } },
+                        ],
+                    },
+                    {
+                        status: { in: ['paid', 'completed'] },
+                    },
+                    {
+                        OR: [
+                            {
+                                payment_date: {
+                                    gte: start,
+                                    lte: end,
+                                },
+                            },
+                            {
+                                AND: [
+                                    { payment_date: null },
+                                    {
+                                        created_at: {
+                                            gte: start,
+                                            lte: end,
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                amount: true,
+                promise: {
+                    select: {
+                        name: true,
+                        event_date: true,
+                    },
+                },
+            },
+        });
+
+        // Agrupar ingresos por evento
+        const ingresosPorEventoMap = new Map<string, number>();
+        pagos.forEach((pago) => {
+            const eventoNombre = pago.promise?.name || 'Otros ingresos';
+            const actual = ingresosPorEventoMap.get(eventoNombre) || 0;
+            ingresosPorEventoMap.set(eventoNombre, actual + pago.amount);
+        });
+
+        const ingresosPorEvento = Array.from(ingresosPorEventoMap.entries())
+            .map(([evento, monto]) => ({ evento, monto }))
+            .sort((a, b) => b.monto - a.monto);
+
+        // Obtener egresos agrupados por categoría/subcategoría
+        const gastos = await prisma.studio_gastos.findMany({
+            where: {
+                studio_id: studioId,
+                date: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            select: {
+                amount: true,
+                category: true,
+                subcategory: true,
+                concept: true,
+            },
+        });
+
+        // Función para normalizar texto (quitar acentos y convertir a lowercase)
+        const normalizarTexto = (texto: string): string => {
+            return texto
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Quitar acentos
+                .trim();
+        };
+
+        // Diccionario expandido de palabras clave por categoría
+        // Cada categoría tiene múltiples variantes y sinónimos
+        const palabrasClavePorCategoria: Record<string, string[]> = {
+            'Fotografía': [
+                'foto', 'fotografia', 'photography', 'photographer', 'fotografo',
+                'camara', 'camera', 'lente', 'lens', 'flash', 'iluminacion',
+                'iluminación', 'lighting', 'retrato', 'portrait', 'boda', 'wedding',
+                'quince', 'xv', 'evento', 'event', 'sesion', 'sesión', 'session'
+            ],
+            'Video': [
+                'video', 'videografia', 'videography', 'videografo', 'videographer',
+                'filmacion', 'filmación', 'filming', 'grabacion', 'grabación',
+                'recording', 'drone', 'gimbal', 'estabilizador', 'stabilizer',
+                'edicion video', 'video editing', 'postproduccion', 'postproducción'
+            ],
+            'Edición': [
+                'edicion', 'edición', 'editing', 'editor', 'postproduccion',
+                'postproducción', 'post production', 'retoque', 'retouch',
+                'photoshop', 'lightroom', 'premiere', 'after effects', 'final cut',
+                'color grading', 'colorizacion', 'colorización', 'montaje'
+            ],
+            'Equipo': [
+                'equipo', 'gear', 'camara', 'camera', 'lente', 'lens', 'objetivo',
+                'drone', 'gimbal', 'estabilizador', 'stabilizer', 'tripode',
+                'trípode', 'tripod', 'monopod', 'micrófono', 'microfono', 'microphone',
+                'audio', 'grabadora', 'recorder', 'bateria', 'batería', 'battery',
+                'tarjeta', 'card', 'memoria', 'memory', 'disco', 'disk', 'ssd', 'hdd'
+            ],
+            'Renta': [
+                'renta', 'alquiler', 'rental', 'alquiler de', 'renta de',
+                'locacion', 'locación', 'location', 'espacio', 'space', 'lugar',
+                'venue', 'salon', 'salón', 'hall', 'estudio', 'studio'
+            ],
+            'Transporte': [
+                'transporte', 'transport', 'gasolina', 'gas', 'combustible',
+                'fuel', 'uber', 'taxi', 'viaje', 'travel', 'vuelo', 'flight',
+                'hotel', 'hospedaje', 'lodging', 'estacionamiento', 'parking',
+                'peaje', 'toll', 'kilometraje', 'kilometrage'
+            ],
+            'Alimentación': [
+                'comida', 'food', 'alimentacion', 'alimentación', 'restaurante',
+                'restaurant', 'cena', 'dinner', 'almuerzo', 'lunch', 'desayuno',
+                'breakfast', 'bebidas', 'drinks', 'refrescos', 'snacks'
+            ],
+            'Marketing': [
+                'marketing', 'publicidad', 'advertising', 'ads', 'anuncios',
+                'redes sociales', 'social media', 'facebook', 'instagram',
+                'google ads', 'seo', 'promocion', 'promoción', 'promotion',
+                'flyer', 'volante', 'diseño grafico', 'diseño gráfico', 'graphic design'
+            ],
+            'Software': [
+                'software', 'suscripcion', 'suscripción', 'subscription', 'licencia',
+                'license', 'adobe', 'creative cloud', 'office', 'microsoft',
+                'saas', 'cloud', 'nube', 'hosting', 'dominio', 'domain'
+            ],
+            'Mantenimiento': [
+                'mantenimiento', 'maintenance', 'reparacion', 'reparación', 'repair',
+                'servicio tecnico', 'servicio técnico', 'technical service',
+                'limpieza', 'cleaning', 'calibracion', 'calibración', 'calibration'
+            ]
+        };
+
+        // Función para detectar categoría basada en palabras clave
+        const detectarCategoriaPorConcepto = (
+            concept: string,
+            subcategory: string | null,
+            category: string
+        ): string => {
+            const conceptNormalizado = normalizarTexto(concept);
+            const subcategoryNormalizado = subcategory ? normalizarTexto(subcategory) : '';
+            const categoryNormalizado = normalizarTexto(category);
+
+            // Buscar en concept primero (más descriptivo)
+            for (const [categoria, palabrasClave] of Object.entries(palabrasClavePorCategoria)) {
+                for (const palabra of palabrasClave) {
+                    const palabraNormalizada = normalizarTexto(palabra);
+                    // Buscar palabra completa (con word boundaries)
+                    const regex = new RegExp(`\\b${palabraNormalizada.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                    if (regex.test(conceptNormalizado)) {
+                        return categoria;
+                    }
+                }
+            }
+
+            // Si no se encontró en concept, buscar en subcategory
+            if (subcategoryNormalizado) {
+                for (const [categoria, palabrasClave] of Object.entries(palabrasClavePorCategoria)) {
+                    for (const palabra of palabrasClave) {
+                        const palabraNormalizada = normalizarTexto(palabra);
+                        const regex = new RegExp(`\\b${palabraNormalizada.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                        if (regex.test(subcategoryNormalizado)) {
+                            return categoria;
+                        }
+                    }
+                }
+            }
+
+            // Si no se encontró ninguna palabra clave, usar la categoría original
+            // pero normalizarla
+            if (categoryNormalizado === 'operativo' || categoryNormalizado === 'recurrente') {
+                return 'Operativo';
+            }
+
+            // Capitalizar primera letra de la categoría original
+            return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+        };
+
+        // Agrupar egresos por categoría detectada
+        const egresosPorCategoriaMap = new Map<string, number>();
+        gastos.forEach((gasto) => {
+            const categoria = detectarCategoriaPorConcepto(
+                gasto.concept,
+                gasto.subcategory,
+                gasto.category
+            );
+
+            const actual = egresosPorCategoriaMap.get(categoria) || 0;
+            egresosPorCategoriaMap.set(categoria, actual + Number(gasto.amount));
+        });
+
+        // Incluir nóminas en egresos
+        const nominas = await prisma.studio_nominas.findMany({
+            where: {
+                studio_id: studioId,
+                status: 'pagado',
+                OR: [
+                    {
+                        payment_date: {
+                            gte: start,
+                            lte: end,
+                        },
+                    },
+                    {
+                        AND: [
+                            { payment_date: null },
+                            {
+                                updated_at: {
+                                    gte: start,
+                                    lte: end,
+                                },
+                            },
+                        ],
+                    },
+                ],
+            },
+            select: {
+                net_amount: true,
+            },
+        });
+
+        const totalNominas = nominas.reduce((sum, nomina) => sum + nomina.net_amount, 0);
+        
+        // Agregar nóminas como categoría en egresos
+        if (totalNominas > 0) {
+            const actual = egresosPorCategoriaMap.get('Nóminas') || 0;
+            egresosPorCategoriaMap.set('Nóminas', actual + totalNominas);
+        }
+
+        const egresosPorCategoria = Array.from(egresosPorCategoriaMap.entries())
+            .map(([categoria, monto]) => ({ categoria, monto }))
+            .sort((a, b) => b.monto - a.monto);
+
+        // Calcular balance usando aggregate para coincidir con obtenerKPIsFinancieros
+        const ingresosAggregate = await prisma.studio_pagos.aggregate({
+            where: {
+                AND: [
+                    {
+                        OR: [
+                            { studio_users: { studio_id: studioId } },
+                            { promise: { studio_id: studioId } },
+                            { cotizaciones: { studio_id: studioId } },
+                        ],
+                    },
+                    {
+                        status: { in: ['paid', 'completed'] },
+                    },
+                    {
+                        OR: [
+                            {
+                                payment_date: {
+                                    gte: start,
+                                    lte: end,
+                                },
+                            },
+                            {
+                                AND: [
+                                    { payment_date: null },
+                                    {
+                                        created_at: {
+                                            gte: start,
+                                            lte: end,
+                                        },
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            },
+            _sum: {
+                amount: true,
+            },
+        });
+
+        const gastosAggregate = await prisma.studio_gastos.aggregate({
+            where: {
+                studio_id: studioId,
+                date: {
+                    gte: start,
+                    lte: end,
+                },
+            },
+            _sum: {
+                amount: true,
+            },
+        });
+
+        const totalIngresos = Number(ingresosAggregate._sum.amount || 0);
+        const totalEgresos = Number(gastosAggregate._sum.amount || 0);
+        const totalEgresosConNominas = totalEgresos + totalNominas;
+        const utilidadFinal = totalIngresos - totalEgresosConNominas;
+
+        return {
+            success: true,
+            data: {
+                ingresosPorEvento,
+                egresosPorCategoria,
+                balance: {
+                    ingresos: totalIngresos,
+                    egresos: totalEgresosConNominas,
+                    utilidad: utilidadFinal,
+                },
+            },
+        };
+    } catch (error) {
+        console.error('Error obteniendo análisis financiero:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error desconocido',
         };
     }
 }
