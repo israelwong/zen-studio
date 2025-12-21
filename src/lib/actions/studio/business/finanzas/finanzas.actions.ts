@@ -30,6 +30,7 @@ export interface Transaction {
     categoria: string;
     monto: number;
     nominaId?: string; // ID de la nómina si viene de "Por Pagar"
+    nominaPaymentType?: string; // Tipo de pago de nómina ('individual' | 'consolidado')
     isGastoOperativo?: boolean; // Si es gasto operativo personalizado
 }
 
@@ -39,6 +40,7 @@ interface PendingItem {
     monto: number;
     fecha: Date;
     personalName?: string | null;
+    personalId?: string | null;
     isPaid?: boolean;
     // Campos adicionales para cotizaciones por cobrar
     precioCotizacion?: number;
@@ -51,6 +53,19 @@ interface PendingItem {
     promiseContactName?: string;
     promiseContactEmail?: string | null;
     promiseContactPhone?: string | null;
+}
+
+export interface PorPagarPersonal {
+    personalId: string;
+    personalName: string;
+    totalAcumulado: number;
+    items: Array<{
+        id: string;
+        concepto: string;
+        monto: number;
+        fecha: Date;
+        nominaId: string;
+    }>;
 }
 
 interface RecurringExpense {
@@ -163,7 +178,8 @@ export async function obtenerKPIsFinancieros(
             },
         });
 
-        const nominasPagadas = await prisma.studio_nominas.aggregate({
+        // Obtener todas las nóminas pagadas para filtrar consolidadas vs individuales
+        const nominasRaw = await prisma.studio_nominas.findMany({
             where: {
                 studio_id: studioId,
                 status: 'pagado',
@@ -187,10 +203,64 @@ export async function obtenerKPIsFinancieros(
                     },
                 ],
             },
-            _sum: {
+            select: {
+                id: true,
                 net_amount: true,
+                payment_type: true,
+                consolidated_payment_id: true,
+                personal_id: true,
+                payment_date: true,
             },
         });
+
+        // Agrupar nóminas individuales que pertenecen a un pago consolidado
+        // Sumar solo el consolidado, no las individuales agrupadas
+        const nominasConsolidadas = new Map<string, typeof nominasRaw[0]>();
+        const nominasIndividuales: typeof nominasRaw = [];
+        const idsConsolidados = new Set<string>();
+
+        // Primero, identificar todos los consolidados
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'consolidado') {
+                nominasConsolidadas.set(nomina.id, nomina);
+                idsConsolidados.add(nomina.id);
+            }
+        }
+
+        // Luego, filtrar las individuales
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'individual') {
+                // Es una nómina individual
+                if (nomina.consolidated_payment_id) {
+                    // Pertenece a un consolidado
+                    if (idsConsolidados.has(nomina.consolidated_payment_id)) {
+                        // El consolidado existe en el rango, NO sumar esta individual
+                        continue;
+                    } else {
+                        // El consolidado no está en el rango, sumar la individual
+                        nominasIndividuales.push(nomina);
+                    }
+                } else {
+                    // No tiene consolidated_payment_id (nómina antigua o individual sin consolidar)
+                    // Verificar si hay un consolidado del mismo personal y fecha que podría ser su consolidado
+                    const posibleConsolidado = Array.from(nominasConsolidadas.values()).find(
+                        c => c.personal_id === nomina.personal_id &&
+                            c.payment_date && nomina.payment_date &&
+                            Math.abs(c.payment_date.getTime() - nomina.payment_date.getTime()) < 1000 // Mismo segundo
+                    );
+                    if (posibleConsolidado) {
+                        // Hay un consolidado que podría ser de esta nómina, no sumarla
+                        continue;
+                    }
+                    // No hay consolidado relacionado, sumarla
+                    nominasIndividuales.push(nomina);
+                }
+            }
+        }
+
+        // Combinar consolidadas e individuales y sumar
+        const nominasParaSumar = [...nominasConsolidadas.values(), ...nominasIndividuales];
+        const nominasTotal = nominasParaSumar.reduce((sum, nomina) => sum + Number(nomina.net_amount), 0);
 
         // Por Cobrar: Calcular desde promesas y cotizaciones
         // Estrategia: Buscar promesas que tengan cotizaciones aprobadas
@@ -322,7 +392,6 @@ export async function obtenerKPIsFinancieros(
 
         const ingresosTotal = ingresos._sum.amount ?? 0;
         const gastosTotal = gastos._sum.amount ?? 0;
-        const nominasTotal = nominasPagadas._sum.net_amount ?? 0;
         const egresosTotal = gastosTotal + nominasTotal;
         const utilidad = ingresosTotal - egresosTotal;
         const porCobrarTotal = totalPorCobrar;
@@ -430,7 +499,9 @@ export async function obtenerMovimientosPorRango(
         });
 
         // Obtener nóminas pagadas (egresos)
-        const nominas = await prisma.studio_nominas.findMany({
+        // Incluir solo nóminas consolidadas (payment_type: 'consolidado') o individuales (payment_type: 'individual')
+        // Excluir nóminas con payment_type null que fueron consolidadas
+        const nominasRaw = await prisma.studio_nominas.findMany({
             where: {
                 studio_id: studioId,
                 status: 'pagado',
@@ -460,6 +531,9 @@ export async function obtenerMovimientosPorRango(
                 updated_at: true,
                 concept: true,
                 net_amount: true,
+                payment_type: true,
+                consolidated_payment_id: true,
+                personal_id: true,
                 personal: {
                     select: {
                         name: true,
@@ -471,6 +545,54 @@ export async function obtenerMovimientosPorRango(
                 { updated_at: 'desc' },
             ],
         });
+
+        // Agrupar nóminas individuales que pertenecen a un pago consolidado
+        // Mostrar solo el consolidado, no las individuales agrupadas
+        const nominasConsolidadas = new Map<string, typeof nominasRaw[0]>();
+        const nominasIndividuales: typeof nominasRaw = [];
+        const idsConsolidados = new Set<string>();
+
+        // Primero, identificar todos los consolidados
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'consolidado') {
+                nominasConsolidadas.set(nomina.id, nomina);
+                idsConsolidados.add(nomina.id);
+            }
+        }
+
+        // Luego, filtrar las individuales
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'individual') {
+                // Es una nómina individual
+                if (nomina.consolidated_payment_id) {
+                    // Pertenece a un consolidado
+                    if (idsConsolidados.has(nomina.consolidated_payment_id)) {
+                        // El consolidado existe en el rango, NO mostrar esta individual
+                        continue;
+                    } else {
+                        // El consolidado no está en el rango, mostrar la individual
+                        nominasIndividuales.push(nomina);
+                    }
+                } else {
+                    // No tiene consolidated_payment_id (nómina antigua o individual sin consolidar)
+                    // Verificar si hay un consolidado del mismo personal y fecha que podría ser su consolidado
+                    const posibleConsolidado = Array.from(nominasConsolidadas.values()).find(
+                        c => c.personal_id === nomina.personal_id &&
+                            c.payment_date && nomina.payment_date &&
+                            Math.abs(c.payment_date.getTime() - nomina.payment_date.getTime()) < 1000 // Mismo segundo
+                    );
+                    if (posibleConsolidado) {
+                        // Hay un consolidado que podría ser de esta nómina, no mostrarla
+                        continue;
+                    }
+                    // No hay consolidado relacionado, mostrarla
+                    nominasIndividuales.push(nomina);
+                }
+            }
+        }
+
+        // Combinar consolidadas e individuales
+        const nominas = [...nominasConsolidadas.values(), ...nominasIndividuales];
 
         // Obtener gastos (egresos)
         const gastos = await prisma.studio_gastos.findMany({
@@ -512,6 +634,7 @@ export async function obtenerMovimientosPorRango(
                 categoria: 'Nómina',
                 monto: -nomina.net_amount,
                 nominaId: nomina.id,
+                nominaPaymentType: nomina.payment_type,
                 isGastoOperativo: false,
             })),
             ...gastos.map((gasto) => ({
@@ -616,8 +739,9 @@ export async function obtenerMovimientos(
         });
 
         // Obtener nóminas pagadas (egresos) del mes
-        // Incluir nóminas con status 'pagado' que fueron pagadas en el mes
-        const nominas = await prisma.studio_nominas.findMany({
+        // Incluir solo nóminas consolidadas (payment_type: 'consolidado') o individuales (payment_type: 'individual')
+        // Excluir nóminas con payment_type null que fueron consolidadas
+        const nominasRaw = await prisma.studio_nominas.findMany({
             where: {
                 studio_id: studioId,
                 status: 'pagado',
@@ -647,6 +771,9 @@ export async function obtenerMovimientos(
                 updated_at: true,
                 concept: true,
                 net_amount: true,
+                payment_type: true,
+                consolidated_payment_id: true,
+                personal_id: true,
                 personal: {
                     select: {
                         name: true,
@@ -658,6 +785,54 @@ export async function obtenerMovimientos(
                 { updated_at: 'desc' },
             ],
         });
+
+        // Agrupar nóminas individuales que pertenecen a un pago consolidado
+        // Mostrar solo el consolidado, no las individuales agrupadas
+        const nominasConsolidadas = new Map<string, typeof nominasRaw[0]>();
+        const nominasIndividuales: typeof nominasRaw = [];
+        const idsConsolidados = new Set<string>();
+
+        // Primero, identificar todos los consolidados
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'consolidado') {
+                nominasConsolidadas.set(nomina.id, nomina);
+                idsConsolidados.add(nomina.id);
+            }
+        }
+
+        // Luego, filtrar las individuales
+        for (const nomina of nominasRaw) {
+            if (nomina.payment_type === 'individual') {
+                // Es una nómina individual
+                if (nomina.consolidated_payment_id) {
+                    // Pertenece a un consolidado
+                    if (idsConsolidados.has(nomina.consolidated_payment_id)) {
+                        // El consolidado existe en el rango, NO mostrar esta individual
+                        continue;
+                    } else {
+                        // El consolidado no está en el rango, mostrar la individual
+                        nominasIndividuales.push(nomina);
+                    }
+                } else {
+                    // No tiene consolidated_payment_id (nómina antigua o individual sin consolidar)
+                    // Verificar si hay un consolidado del mismo personal y fecha que podría ser su consolidado
+                    const posibleConsolidado = Array.from(nominasConsolidadas.values()).find(
+                        c => c.personal_id === nomina.personal_id &&
+                            c.payment_date && nomina.payment_date &&
+                            Math.abs(c.payment_date.getTime() - nomina.payment_date.getTime()) < 1000 // Mismo segundo
+                    );
+                    if (posibleConsolidado) {
+                        // Hay un consolidado que podría ser de esta nómina, no mostrarla
+                        continue;
+                    }
+                    // No hay consolidado relacionado, mostrarla
+                    nominasIndividuales.push(nomina);
+                }
+            }
+        }
+
+        // Combinar consolidadas e individuales
+        const nominas = [...nominasConsolidadas.values(), ...nominasIndividuales];
 
         // Obtener gastos (egresos)
         const gastos = await prisma.studio_gastos.findMany({
@@ -699,6 +874,7 @@ export async function obtenerMovimientos(
                 categoria: 'Nómina',
                 monto: -nomina.net_amount,
                 nominaId: nomina.id, // Identificar que viene de nómina pagada
+                nominaPaymentType: nomina.payment_type, // Tipo de pago
                 isGastoOperativo: false,
             })),
             ...gastos.map((gasto) => ({
@@ -901,11 +1077,11 @@ export async function obtenerPorCobrar(
 }
 
 /**
- * Obtener pendientes por pagar (nóminas pendientes)
+ * Obtener pendientes por pagar (nóminas pendientes) - Agrupado por personal
  */
 export async function obtenerPorPagar(
     studioSlug: string
-): Promise<{ success: boolean; data?: PendingItem[]; error?: string }> {
+): Promise<{ success: boolean; data?: PorPagarPersonal[]; error?: string }> {
     try {
         const studioId = await getStudioId(studioSlug);
         if (!studioId) {
@@ -915,6 +1091,8 @@ export async function obtenerPorPagar(
         const nominas = await prisma.studio_nominas.findMany({
             where: {
                 studio_id: studioId,
+                status: 'pendiente',
+                personal_id: { not: null },
             },
             select: {
                 id: true,
@@ -922,8 +1100,10 @@ export async function obtenerPorPagar(
                 net_amount: true,
                 assignment_date: true,
                 status: true,
+                personal_id: true,
                 personal: {
                     select: {
+                        id: true,
                         name: true,
                     },
                 },
@@ -933,16 +1113,39 @@ export async function obtenerPorPagar(
             },
         });
 
-        const porPagar: PendingItem[] = nominas
-            .filter((nomina) => nomina.status === 'pendiente')
-            .map((nomina) => ({
+        // Agrupar por personal_id
+        const agrupado = new Map<string, PorPagarPersonal>();
+
+        for (const nomina of nominas) {
+            if (!nomina.personal_id || !nomina.personal) continue;
+
+            const personalId = nomina.personal_id;
+            const personalName = nomina.personal.name;
+
+            if (!agrupado.has(personalId)) {
+                agrupado.set(personalId, {
+                    personalId,
+                    personalName,
+                    totalAcumulado: 0,
+                    items: [],
+                });
+            }
+
+            const grupo = agrupado.get(personalId)!;
+            grupo.totalAcumulado += nomina.net_amount;
+            grupo.items.push({
                 id: nomina.id,
-                concepto: nomina.concept || `Nómina - ${nomina.personal?.name || 'Personal'}`,
+                concepto: nomina.concept || `Nómina - ${personalName}`,
                 monto: nomina.net_amount,
                 fecha: nomina.assignment_date,
-                personalName: nomina.personal?.name || null,
-                isPaid: nomina.status === 'pagado',
-            }));
+                nominaId: nomina.id,
+            });
+        }
+
+        // Convertir a array y ordenar por total acumulado descendente
+        const porPagar: PorPagarPersonal[] = Array.from(agrupado.values()).sort(
+            (a, b) => b.totalAcumulado - a.totalAcumulado
+        );
 
         return {
             success: true,
@@ -1316,6 +1519,7 @@ export async function marcarNominaPagada(
                 status: 'pagado',
                 paid_by: studioUser.id,
                 payment_date: new Date(),
+                payment_type: 'individual', // Marcar como pago individual
             },
         });
 
@@ -1329,6 +1533,416 @@ export async function marcarNominaPagada(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al marcar nómina como pagada',
+        };
+    }
+}
+
+/**
+ * Pagar nóminas consolidadas de un personal
+ * Crea una nómina consolidada y marca las individuales como pagadas
+ */
+export async function pagarNominasPersonal(
+    studioSlug: string,
+    personalId: string,
+    nominaIds: string[]
+): Promise<{ success: boolean; data?: { nominaConsolidadaId: string }; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Obtener usuario actual
+        const { createClient } = await import('@/lib/supabase/server');
+        const supabase = await createClient();
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+
+        if (!authUser?.id) {
+            return { success: false, error: 'Usuario no autenticado' };
+        }
+
+        const studioUserProfile = await prisma.studio_user_profiles.findFirst({
+            where: {
+                supabase_id: authUser.id,
+                studio_id: studioId,
+                is_active: true,
+            },
+            select: { id: true, email: true, full_name: true },
+        });
+
+        if (!studioUserProfile) {
+            return { success: false, error: 'Usuario no encontrado en el studio' };
+        }
+
+        let studioUser = await prisma.studio_users.findFirst({
+            where: {
+                studio_id: studioId,
+                full_name: studioUserProfile.full_name,
+                is_active: true,
+            },
+            select: { id: true },
+        });
+
+        if (!studioUser) {
+            studioUser = await prisma.studio_users.create({
+                data: {
+                    studio_id: studioId,
+                    full_name: studioUserProfile.full_name,
+                    phone: null,
+                    type: 'EMPLEADO',
+                    role: 'owner',
+                    status: 'active',
+                    is_active: true,
+                    platform_user_id: null,
+                },
+                select: { id: true },
+            });
+        }
+
+        // Obtener personal
+        const personal = await prisma.studio_crew_members.findFirst({
+            where: {
+                id: personalId,
+                studio_id: studioId,
+            },
+            select: {
+                id: true,
+                name: true,
+            },
+        });
+
+        if (!personal) {
+            return { success: false, error: 'Personal no encontrado' };
+        }
+
+        // Obtener todas las nóminas pendientes del personal
+        const nominas = await prisma.studio_nominas.findMany({
+            where: {
+                id: { in: nominaIds },
+                studio_id: studioId,
+                personal_id: personalId,
+                status: 'pendiente',
+            },
+            include: {
+                payroll_services: true,
+            },
+        });
+
+        if (nominas.length === 0) {
+            return { success: false, error: 'No hay nóminas pendientes para este personal' };
+        }
+
+        // Calcular totales
+        const totalNetAmount = nominas.reduce((sum, n) => sum + n.net_amount, 0);
+        const totalGrossAmount = nominas.reduce((sum, n) => sum + n.gross_amount, 0);
+        const totalServices = nominas.reduce((sum, n) => sum + n.services_included, 0);
+
+        // Agrupar servicios ANTES de la transacción para optimizar
+        const serviciosAgrupados = new Map<string, {
+            quote_service_id: string | null;
+            service_name: string;
+            assigned_cost: number;
+            assigned_quantity: number;
+            category_name: string | null;
+            section_name: string | null;
+        }>();
+
+        for (const nomina of nominas) {
+            for (const servicio of nomina.payroll_services) {
+                const key = servicio.quote_service_id || `manual-${servicio.service_name}`;
+
+                if (serviciosAgrupados.has(key)) {
+                    // Si ya existe, sumar costos y cantidades
+                    const existente = serviciosAgrupados.get(key)!;
+                    existente.assigned_cost += servicio.assigned_cost;
+                    existente.assigned_quantity += servicio.assigned_quantity;
+                } else {
+                    // Crear nuevo registro
+                    serviciosAgrupados.set(key, {
+                        quote_service_id: servicio.quote_service_id,
+                        service_name: servicio.service_name,
+                        assigned_cost: servicio.assigned_cost,
+                        assigned_quantity: servicio.assigned_quantity,
+                        category_name: servicio.category_name,
+                        section_name: servicio.section_name,
+                    });
+                }
+            }
+        }
+
+        // Preparar datos para operaciones en lote
+        const nominaIdsArray = nominas.map(n => n.id);
+        const serviciosParaCrear = Array.from(serviciosAgrupados.values());
+        const paymentDate = new Date();
+
+        // Crear nómina consolidada y marcar individuales como pagadas en transacción optimizada
+        const resultado = await prisma.$transaction(
+            async (tx) => {
+                // 1. Crear nómina consolidada
+                const nominaConsolidada = await tx.studio_nominas.create({
+                    data: {
+                        studio_id: studioId,
+                        personal_id: personalId,
+                        user_id: studioUser.id,
+                        status: 'pagado',
+                        concept: `Pago consolidado - ${personal.name}`,
+                        description: `Pago consolidado de ${nominas.length} servicio${nominas.length > 1 ? 's' : ''}`,
+                        gross_amount: totalGrossAmount,
+                        net_amount: totalNetAmount,
+                        total_cost_snapshot: totalGrossAmount,
+                        expense_total_snapshot: 0,
+                        deductions: 0,
+                        payment_type: 'consolidado',
+                        services_included: totalServices,
+                        assignment_date: paymentDate,
+                        payment_date: paymentDate,
+                        paid_by: studioUser.id,
+                        payment_method: 'transferencia',
+                    },
+                });
+
+                // 2. Marcar todas las nóminas individuales como pagadas en una sola operación
+                // Asignar consolidated_payment_id para agruparlas en movimientos
+                await tx.studio_nominas.updateMany({
+                    where: {
+                        id: { in: nominaIdsArray },
+                    },
+                    data: {
+                        status: 'pagado',
+                        paid_by: studioUser.id,
+                        payment_date: paymentDate,
+                        consolidated_payment_id: nominaConsolidada.id, // Relacionar con el consolidado
+                        payment_type: 'individual', // Mantener como individual para el historial
+                    },
+                });
+
+                // 3. Crear todos los servicios consolidados en una sola operación
+                if (serviciosParaCrear.length > 0) {
+                    await tx.studio_nomina_servicios.createMany({
+                        data: serviciosParaCrear.map(servicio => ({
+                            payroll_id: nominaConsolidada.id,
+                            quote_service_id: servicio.quote_service_id,
+                            service_name: servicio.service_name,
+                            assigned_cost: servicio.assigned_cost,
+                            assigned_quantity: servicio.assigned_quantity,
+                            category_name: servicio.category_name,
+                            section_name: servicio.section_name,
+                        })),
+                    });
+                }
+
+                return nominaConsolidada;
+            },
+            {
+                timeout: 10000, // Aumentar timeout a 10 segundos
+            }
+        );
+
+        console.log('[FINANZAS] ✅ Nómina consolidada creada:', {
+            nominaId: resultado.id,
+            personalId,
+            totalNetAmount,
+            paymentDate: resultado.payment_date,
+        });
+
+        // Revalidar todas las rutas relacionadas
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`, 'page');
+
+        return {
+            success: true,
+            data: { nominaConsolidadaId: resultado.id },
+        };
+    } catch (error) {
+        console.error('[FINANZAS] ❌ Error pagando nóminas consolidadas:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al pagar nóminas consolidadas',
+        };
+    }
+}
+
+/**
+ * Obtener servicios de una nómina (para mostrar desglose)
+ */
+export async function obtenerServiciosNomina(
+    studioSlug: string,
+    nominaId: string
+): Promise<{ success: boolean; data?: Array<{ service_name: string; assigned_cost: number; assigned_quantity: number }>; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const nomina = await prisma.studio_nominas.findFirst({
+            where: {
+                id: nominaId,
+                studio_id: studioId,
+            },
+            include: {
+                payroll_services: {
+                    select: {
+                        service_name: true,
+                        assigned_cost: true,
+                        assigned_quantity: true,
+                    },
+                },
+            },
+        });
+
+        if (!nomina) {
+            return { success: false, error: 'Nómina no encontrada' };
+        }
+
+        return {
+            success: true,
+            data: nomina.payroll_services,
+        };
+    } catch (error) {
+        console.error('Error obteniendo servicios de nómina:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al obtener servicios',
+        };
+    }
+}
+
+/**
+ * Editar nómina pendiente
+ */
+export async function editarNomina(
+    studioSlug: string,
+    nominaId: string,
+    data: {
+        concept: string;
+        net_amount: number;
+        assignment_date: Date;
+    }
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar que la nómina existe y está pendiente
+        const nomina = await prisma.studio_nominas.findFirst({
+            where: {
+                id: nominaId,
+                studio_id: studioId,
+                status: 'pendiente',
+            },
+            select: {
+                id: true,
+                status: true,
+            },
+        });
+
+        if (!nomina) {
+            return { success: false, error: 'Nómina no encontrada o ya está pagada' };
+        }
+
+        // Actualizar nómina
+        await prisma.studio_nominas.update({
+            where: { id: nominaId },
+            data: {
+                concept: data.concept,
+                net_amount: data.net_amount,
+                gross_amount: data.net_amount, // Mantener consistencia
+                assignment_date: data.assignment_date,
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error editando nómina:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al editar nómina',
+        };
+    }
+}
+
+/**
+ * Eliminar nómina pendiente
+ */
+export async function eliminarNomina(
+    studioSlug: string,
+    nominaId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar que la nómina existe y está pendiente
+        const nomina = await prisma.studio_nominas.findFirst({
+            where: {
+                id: nominaId,
+                studio_id: studioId,
+                status: 'pendiente',
+            },
+            select: {
+                id: true,
+                status: true,
+            },
+        });
+
+        if (!nomina) {
+            return { success: false, error: 'Nómina no encontrada o ya está pagada' };
+        }
+
+        // Eliminar nómina (los servicios se eliminan por cascade)
+        await prisma.studio_nominas.delete({
+            where: { id: nominaId },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return { success: true };
+    } catch (error) {
+        console.error('Error eliminando nómina:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al eliminar nómina',
+        };
+    }
+}
+
+/**
+ * Eliminar todas las nóminas pendientes de un personal
+ */
+export async function eliminarTodasNominasPersonal(
+    studioSlug: string,
+    personalId: string
+): Promise<{ success: boolean; error?: string; deletedCount?: number }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Eliminar todas las nóminas pendientes del personal
+        const result = await prisma.studio_nominas.deleteMany({
+            where: {
+                studio_id: studioId,
+                personal_id: personalId,
+                status: 'pendiente',
+            },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return { success: true, deletedCount: result.count };
+    } catch (error) {
+        console.error('Error eliminando nóminas:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al eliminar nóminas',
         };
     }
 }
@@ -2203,6 +2817,7 @@ export async function eliminarGastoRecurrente(
 
 /**
  * Cancelar nómina pagada (marcar como pendiente nuevamente)
+ * Si es una nómina consolidada, también restaura las nóminas individuales asociadas
  */
 export async function cancelarNominaPagada(
     studioSlug: string,
@@ -2225,6 +2840,9 @@ export async function cancelarNominaPagada(
                 id: true,
                 concept: true,
                 net_amount: true,
+                payment_type: true,
+                personal_id: true,
+                payment_date: true,
             },
         });
 
@@ -2232,18 +2850,55 @@ export async function cancelarNominaPagada(
             return { success: false, error: 'Nómina pagada no encontrada' };
         }
 
-        // Actualizar status a pendiente y limpiar campos de pago
-        await prisma.studio_nominas.update({
-            where: {
-                id: nominaId,
-            },
-            data: {
-                status: 'pendiente',
-                payment_date: null,
-                paid_by: null,
-                payment_method: null,
-            },
-        });
+        // Si es una nómina consolidada, restaurar también las nóminas individuales asociadas
+        if (nomina.payment_type === 'consolidado' && nomina.personal_id && nomina.payment_date) {
+            await prisma.$transaction(async (tx) => {
+                // 1. Eliminar la nómina consolidada
+                await tx.studio_nominas.delete({
+                    where: { id: nominaId },
+                });
+
+                // 2. Restaurar las nóminas individuales asociadas
+                // Buscar nóminas que tienen este consolidado como referencia
+                const nominasParaRestaurar = await tx.studio_nominas.findMany({
+                    where: {
+                        studio_id: studioId,
+                        consolidated_payment_id: nominaId,
+                        status: 'pagado',
+                    },
+                    select: { id: true },
+                });
+
+                // Restaurar las nóminas individuales
+                if (nominasParaRestaurar.length > 0) {
+                    await tx.studio_nominas.updateMany({
+                        where: {
+                            id: { in: nominasParaRestaurar.map(n => n.id) },
+                        },
+                        data: {
+                            status: 'pendiente',
+                            payment_date: null,
+                            paid_by: null,
+                            payment_method: null,
+                            consolidated_payment_id: null, // Limpiar la referencia al consolidado
+                        },
+                    });
+                }
+            });
+        } else {
+            // Si es una nómina individual, solo actualizar su status
+            await prisma.studio_nominas.update({
+                where: {
+                    id: nominaId,
+                },
+                data: {
+                    status: 'pendiente',
+                    payment_date: null,
+                    paid_by: null,
+                    payment_method: null,
+                },
+            });
+        }
 
         revalidatePath(`/${studioSlug}/studio/business/finanzas`);
 
@@ -2255,6 +2910,87 @@ export async function cancelarNominaPagada(
         return {
             success: false,
             error: error instanceof Error ? error.message : 'Error al cancelar nómina pagada',
+        };
+    }
+}
+
+/**
+ * Eliminar nómina pagada completamente (elimina el pago y los items asociados si es consolidada)
+ */
+export async function eliminarNominaPagada(
+    studioSlug: string,
+    nominaId: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const studioId = await getStudioId(studioSlug);
+        if (!studioId) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar que la nómina existe, pertenece al studio y está pagada
+        const nomina = await prisma.studio_nominas.findFirst({
+            where: {
+                id: nominaId,
+                studio_id: studioId,
+                status: 'pagado',
+            },
+            select: {
+                id: true,
+                payment_type: true,
+                personal_id: true,
+                payment_date: true,
+            },
+        });
+
+        if (!nomina) {
+            return { success: false, error: 'Nómina pagada no encontrada' };
+        }
+
+        // Si es una nómina consolidada, eliminar también las nóminas individuales asociadas
+        if (nomina.payment_type === 'consolidado' && nomina.personal_id && nomina.payment_date) {
+            await prisma.$transaction(async (tx) => {
+                // 1. Eliminar la nómina consolidada
+                await tx.studio_nominas.delete({
+                    where: { id: nominaId },
+                });
+
+                // 2. Buscar y eliminar las nóminas individuales asociadas
+                // Buscar nóminas que tienen este consolidado como referencia
+                const nominasParaEliminar = await tx.studio_nominas.findMany({
+                    where: {
+                        studio_id: studioId,
+                        consolidated_payment_id: nominaId,
+                        status: 'pagado',
+                    },
+                    select: { id: true },
+                });
+
+                // Eliminar las nóminas individuales
+                if (nominasParaEliminar.length > 0) {
+                    await tx.studio_nominas.deleteMany({
+                        where: {
+                            id: { in: nominasParaEliminar.map(n => n.id) },
+                        },
+                    });
+                }
+            });
+        } else {
+            // Si es una nómina individual, solo eliminarla
+            await prisma.studio_nominas.delete({
+                where: { id: nominaId },
+            });
+        }
+
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('Error eliminando nómina pagada:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al eliminar nómina pagada',
         };
     }
 }

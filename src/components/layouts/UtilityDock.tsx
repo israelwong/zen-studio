@@ -42,12 +42,12 @@ export function UtilityDock({
       label: 'Contactos',
       action: onContactsClick,
     },
-    {
-      id: 'personal',
-      icon: Users,
-      label: 'Personal',
-      action: onPersonalClick,
-    },
+    // {
+    //   id: 'personal',
+    //   icon: Users,
+    //   label: 'Personal',
+    //   action: onPersonalClick,
+    // },
     // {
     //   id: 'magic',
     //   icon: Sparkles,

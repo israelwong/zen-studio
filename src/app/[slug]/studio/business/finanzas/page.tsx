@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { DollarSign, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { FinanceKPIs } from './components/FinanceKPIs';
@@ -16,10 +16,12 @@ import {
     obtenerPorCobrar,
     obtenerPorPagar,
     obtenerGastosRecurrentes,
+    type PorPagarPersonal,
 } from '@/lib/actions/studio/business/finanzas/finanzas.actions';
 
 export default function FinanzasPage() {
     const params = useParams();
+    const router = useRouter();
     const studioSlug = params.slug as string;
 
     const [currentMonth, setCurrentMonth] = useState<Date | null>(null);
@@ -56,13 +58,7 @@ export default function FinanzasPage() {
         promiseContactEmail?: string | null;
         promiseContactPhone?: string | null;
     }>>([]);
-    const [porPagar, setPorPagar] = useState<Array<{
-        id: string;
-        concepto: string;
-        monto: number;
-        fecha: Date;
-        personalName?: string | null;
-    }>>([]);
+    const [porPagar, setPorPagar] = useState<PorPagarPersonal[]>([]);
     const [recurringExpenses, setRecurringExpenses] = useState<Array<{
         id: string;
         name: string;
@@ -512,8 +508,14 @@ export default function FinanzasPage() {
                                             studioSlug={studioSlug}
                                             onMarcarPagado={handleMarcarPagado}
                                             onPagoConfirmado={async () => {
+                                                // Forzar refresh del router para invalidar cache
+                                                router.refresh();
+
                                                 // Recargar datos después de confirmar pago
                                                 try {
+                                                    // Pequeño delay para asegurar que la transacción se complete
+                                                    await new Promise(resolve => setTimeout(resolve, 200));
+
                                                     const [kpisResult, transactionsResult, porPagarResult] = await Promise.all([
                                                         obtenerKPIsFinancieros(studioSlug, currentMonth!),
                                                         obtenerMovimientos(studioSlug, currentMonth!),

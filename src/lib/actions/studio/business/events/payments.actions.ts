@@ -510,14 +510,68 @@ export async function cancelarPago(
 }
 
 /**
- * Eliminar pago (DEPRECATED - usar cancelarPago para mantener historial)
+ * Eliminar pago completamente (elimina el registro y los items asociados)
  */
 export async function eliminarPago(
     studioSlug: string,
     pagoId: string
 ): Promise<{ success: boolean; error?: string }> {
-    // Por defecto, usar cancelación en lugar de eliminación
-    return cancelarPago(studioSlug, pagoId);
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        // Verificar que el pago existe y pertenece al studio
+        const pago = await prisma.studio_pagos.findFirst({
+            where: {
+                id: pagoId,
+                OR: [
+                    {
+                        cotizaciones: {
+                            studio_id: studio.id,
+                        },
+                    },
+                    {
+                        promise: {
+                            studio_id: studio.id,
+                        },
+                    },
+                    {
+                        studio_users: {
+                            studio_id: studio.id,
+                        },
+                    },
+                ],
+            },
+        });
+
+        if (!pago) {
+            return { success: false, error: 'Pago no encontrado' };
+        }
+
+        // Eliminar el pago completamente
+        await prisma.studio_pagos.delete({
+            where: { id: pagoId },
+        });
+
+        revalidatePath(`/${studioSlug}/studio/business/events`);
+        revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+
+        return {
+            success: true,
+        };
+    } catch (error) {
+        console.error('[PAYMENTS] Error eliminando pago:', error);
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Error al eliminar pago',
+        };
+    }
 }
 
 /**

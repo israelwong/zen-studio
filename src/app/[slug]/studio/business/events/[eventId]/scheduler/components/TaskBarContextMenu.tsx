@@ -172,6 +172,25 @@ export function TaskBarContextMenu({
 
           {/* Opciones */}
           <div className="py-1">
+            {/* Toggle completado */}
+            <ContextMenuItem
+              onClick={handleToggleComplete}
+              disabled={isTogglingComplete}
+              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer focus:bg-zinc-800 focus:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isCompleted ? (
+                <>
+                  <Circle className="h-4 w-4 text-zinc-400" />
+                  <span>Marcar como pendiente</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                  <span>Marcar como completada</span>
+                </>
+              )}
+            </ContextMenuItem>
+
             {/* Asignar/Quitar personal */}
             {itemId && studioSlug && (
               <ContextMenuItem
@@ -191,25 +210,6 @@ export function TaskBarContextMenu({
                 )}
               </ContextMenuItem>
             )}
-
-            {/* Toggle completado */}
-            <ContextMenuItem
-              onClick={handleToggleComplete}
-              disabled={isTogglingComplete}
-              className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer focus:bg-zinc-800 focus:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isCompleted ? (
-                <>
-                  <Circle className="h-4 w-4 text-zinc-400" />
-                  <span>Marcar como pendiente</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                  <span>Marcar como completada</span>
-                </>
-              )}
-            </ContextMenuItem>
 
             {/* Eliminar slot */}
             <ContextMenuItem

@@ -431,9 +431,9 @@ export async function eliminarNominaDesdeTareaDesmarcada(
       personal_id: item.assigned_to_crew_member_id,
     });
 
-    // Revalidar rutas relacionadas
-    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
-    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
+    // Revalidar solo la ruta de finanzas (no las rutas del evento para evitar conflictos)
+    // La función que llama (actualizarSchedulerTask) ya revalida las rutas del evento
+    revalidatePath(`/${studioSlug}/studio/business/finanzas`);
 
     return { success: true };
   } catch (error) {

@@ -132,9 +132,15 @@ export function AssignCrewBeforeCompleteModal({
     setIsAssigning(true);
     try {
       await onAssignAndComplete(selectedMemberId, false);
+      // Cerrar modal si la operación fue exitosa
       onClose();
     } catch (error) {
-      toast.error('Error al asignar y completar');
+      // El error ya fue manejado en onAssignAndComplete con toast específico
+      // Solo loguear para debugging, no mostrar toast adicional
+      const errorMessage = error instanceof Error ? error.message : '';
+      console.error('Error capturado en handleAssignAndComplete (ya manejado):', errorMessage);
+      // No cerrar el modal si hubo un error crítico
+      // El usuario puede intentar nuevamente
     } finally {
       setIsAssigning(false);
     }
@@ -151,7 +157,8 @@ export function AssignCrewBeforeCompleteModal({
       setPendingCrewMemberId(null);
       onClose();
     } catch (error) {
-      toast.error('Error al asignar y completar');
+      // El error ya se mostró en onAssignAndComplete, solo loguear
+      console.error('Error en handleConfirmFixedSalary:', error);
     } finally {
       setIsAssigning(false);
     }
@@ -168,7 +175,8 @@ export function AssignCrewBeforeCompleteModal({
       setPendingCrewMemberId(null);
       onClose();
     } catch (error) {
-      toast.error('Error al procesar');
+      // El error ya se mostró en onAssignAndComplete, solo loguear
+      console.error('Error en handleSkipPayment:', error);
     } finally {
       setIsAssigning(false);
     }

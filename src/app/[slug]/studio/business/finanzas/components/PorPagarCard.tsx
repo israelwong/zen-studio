@@ -3,23 +3,20 @@
 import React from 'react';
 import { CreditCard } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
-import { PorPagarItemCard } from './PorPagarItemCard';
-
-interface PendingItem {
-    id: string;
-    concepto: string;
-    monto: number;
-    fecha: Date;
-}
+import { PorPagarPersonalCard } from './PorPagarPersonalCard';
+import { PorPagarPersonal } from '@/lib/actions/studio/business/finanzas/finanzas.actions';
 
 interface PorPagarCardProps {
-    porPagar: PendingItem[];
+    porPagar: PorPagarPersonal[];
     studioSlug: string;
     onMarcarPagado: (id: string) => void;
     onPagoConfirmado?: () => void;
 }
 
 export function PorPagarCard({ porPagar, studioSlug, onMarcarPagado, onPagoConfirmado }: PorPagarCardProps) {
+    const totalPersonas = porPagar.length;
+    const totalItems = porPagar.reduce((sum, p) => sum + p.items.length, 0);
+
     return (
         <ZenCard variant="default" padding="none" className="h-full flex flex-col">
             <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0 px-4 py-3">
@@ -30,7 +27,7 @@ export function PorPagarCard({ porPagar, studioSlug, onMarcarPagado, onPagoConfi
                     <div className="flex-1">
                         <ZenCardTitle className="text-base">Por Pagar</ZenCardTitle>
                         <p className="text-xs text-zinc-400 mt-0.5">
-                            {porPagar.length} {porPagar.length === 1 ? 'pendiente' : 'pendientes'}
+                            {totalPersonas} {totalPersonas === 1 ? 'personal' : 'personales'} • {totalItems} {totalItems === 1 ? 'concepto' : 'conceptos'}
                         </p>
                     </div>
                 </div>
@@ -42,12 +39,11 @@ export function PorPagarCard({ porPagar, studioSlug, onMarcarPagado, onPagoConfi
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {porPagar.map((item) => (
-                            <PorPagarItemCard
-                                key={item.id}
-                                item={item}
+                        {porPagar.map((personal) => (
+                            <PorPagarPersonalCard
+                                key={personal.personalId}
+                                personal={personal}
                                 studioSlug={studioSlug}
-                                onMarcarPagado={onMarcarPagado}
                                 onPagoConfirmado={onPagoConfirmado}
                             />
                         ))}

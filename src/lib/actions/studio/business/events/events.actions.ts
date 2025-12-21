@@ -1262,6 +1262,38 @@ export async function cancelarEvento(
       return { success: false, error: 'El evento ya está cancelado' };
     }
 
+    // Verificar si hay nóminas pendientes asociadas al evento
+    const nominasPendientes = await prisma.studio_nominas.findMany({
+      where: {
+        evento_id: eventoId,
+        status: 'pendiente',
+      },
+      include: {
+        personal: {
+          select: {
+            name: true,
+          },
+        },
+        payroll_services: {
+          select: {
+            service_name: true,
+            assigned_cost: true,
+          },
+        },
+      },
+    });
+
+    if (nominasPendientes.length > 0) {
+      const personalConNominas = nominasPendientes.map((n) => 
+        `${n.personal?.name || 'Personal'}: ${n.payroll_services.length} concepto(s) - ${n.concept}`
+      ).join('\n');
+
+      return {
+        success: false,
+        error: `No se puede cancelar el evento. Hay ${nominasPendientes.length} nómina(s) pendiente(s) asociada(s):\n${personalConNominas}\n\nPor favor, procesa o cancela las nóminas pendientes antes de cancelar el evento.`,
+      };
+    }
+
     // Obtener etapa "pending" del pipeline de promises
     const etapaPendiente = evento.promise_id
       ? await prisma.studio_promise_pipeline_stages.findFirst({

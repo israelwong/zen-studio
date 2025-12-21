@@ -2123,6 +2123,7 @@ model studio_nominas {
   payment_date           DateTime?
   payment_method         String?                   @default("transferencia")
   payment_type           String                    @default("individual")
+  consolidated_payment_id String?                  // ID de la nómina consolidada si esta nómina fue parte de un pago consolidado
   services_included      Int                       @default(1)
   start_period           DateTime?
   total_cost_snapshot    Float                     @default(0)
@@ -2150,10 +2151,10 @@ model studio_nomina_servicios {
   section_name      String?
   service_name      String
   payroll           studio_nominas           @relation(fields: [payroll_id], references: [id], onDelete: Cascade)
-  quote_items       studio_cotizacion_items? @relation(fields: [quote_service_id], references: [id])
+  quote_items       studio_cotizacion_items? @relation(fields: [quote_service_id], references: [id], onDelete: SetNull)
 
-  @@unique([payroll_id, quote_service_id])
   @@index([payroll_id])
+  @@index([payroll_id, quote_service_id])
 }
 
 model studio_gastos {

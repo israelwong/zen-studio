@@ -34,7 +34,7 @@ export function FinanceKPIs({
                 <ZenCardContent className="p-0">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            <p className="text-sm text-zinc-400 mb-1">Ingreso Mensual</p>
+                            <p className="text-sm text-zinc-400 mb-1">Ingresos del mes</p>
                             <p className="text-2xl font-bold text-emerald-400">
                                 {formatCurrency(ingresos)}
                             </p>
@@ -51,7 +51,7 @@ export function FinanceKPIs({
                 <ZenCardContent className="p-0">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            <p className="text-sm text-zinc-400 mb-1">Egreso Mensual</p>
+                            <p className="text-sm text-zinc-400 mb-1">Egresos del mes</p>
                             <p className="text-2xl font-bold text-rose-400">
                                 {formatCurrency(egresos)}
                             </p>
@@ -68,7 +68,7 @@ export function FinanceKPIs({
                 <ZenCardContent className="p-0">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
-                            <p className="text-sm text-zinc-400 mb-1">Balance del Mes</p>
+                            <p className="text-sm text-zinc-400 mb-1">Balance del mes</p>
                             <p
                                 className={cn(
                                     'text-2xl font-bold',

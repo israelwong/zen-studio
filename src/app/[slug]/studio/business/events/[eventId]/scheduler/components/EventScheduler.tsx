@@ -643,7 +643,7 @@ export const EventScheduler = React.memo(function EventScheduler({
 
   // Handler para asignar y completar desde el modal
   const handleAssignAndComplete = useCallback(
-    async (crewMemberId: string) => {
+    async (crewMemberId: string, skipPayment: boolean = false) => {
       if (!pendingTaskCompletion) return;
 
       try {
@@ -656,8 +656,15 @@ export const EventScheduler = React.memo(function EventScheduler({
         );
 
         if (!assignResult.success) {
-          toast.error(assignResult.error || 'Error al asignar personal');
-          return;
+          const errorMessage = assignResult.error || 'Error al asignar personal';
+          toast.error(errorMessage);
+          throw new Error(errorMessage);
+        }
+
+        // Si la asignación fue exitosa pero hay un error en payrollResult, solo loguear (no crítico)
+        // La nómina se creará cuando se complete la tarea
+        if (assignResult.payrollResult && !assignResult.payrollResult.success) {
+          console.warn('Advertencia al asignar personal (nómina):', assignResult.payrollResult.error);
         }
 
         // Obtener el crew member completo para actualizar el item
@@ -696,8 +703,9 @@ export const EventScheduler = React.memo(function EventScheduler({
         });
 
         if (!result.success) {
-          toast.error(result.error || 'Error al completar la tarea');
-          return;
+          const errorMessage = result.error || 'Error al completar la tarea';
+          toast.error(errorMessage);
+          throw new Error(errorMessage);
         }
 
         // Actualización optimista
@@ -727,26 +735,50 @@ export const EventScheduler = React.memo(function EventScheduler({
           return newData;
         });
 
-        // Notificar al padre
-        if (updatedData! && onDataChange) {
-          onDataChange(updatedData);
-        }
-
-        // Mostrar toast con información de nómina
+        // Mostrar toast con información de nómina ANTES de notificar al padre
+        // Esto evita que errores en onDataChange afecten el feedback al usuario
         if (skipPayment) {
           toast.success('Personal asignado y tarea completada (sin generar pago de nómina)');
         } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
           toast.success(`Personal asignado y tarea completada. Se generó pago de nómina para ${result.payrollResult.personalNombre}`);
+        } else if (result.payrollResult?.error) {
+          // Solo mostrar warning si hay un error específico de nómina
+          toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult.error}`);
         } else {
-          toast.warning(`Tarea completada. No se generó pago de nómina: ${result.payrollResult?.error || 'Error desconocido'}`);
+          // Si no hay información de nómina, asumir éxito
+          toast.success('Personal asignado y tarea completada');
         }
+
+        // Notificar al padre (puede lanzar error, pero no es crítico)
+        // Hacerlo después de mostrar el toast para que el usuario vea el éxito
+        try {
+          if (updatedData! && onDataChange) {
+            onDataChange(updatedData);
+          }
+        } catch (dataChangeError) {
+          // Error en onDataChange no es crítico, solo loguear
+          // No afecta la operación principal que ya se completó exitosamente
+          console.warn('Error al notificar cambio de datos (no crítico):', dataChangeError);
+        }
+
         setAssignCrewModalOpen(false);
         setPendingTaskCompletion(null);
 
         // Actualizar preferencia a true cuando se asigna personal
         setHasCrewPreference(true);
       } catch (error) {
-        toast.error('Error al asignar y completar');
+        // Solo mostrar error si es un error crítico que no se manejó anteriormente
+        const errorMessage = error instanceof Error ? error.message : '';
+        // Si el error ya fue manejado con un toast específico, no mostrar otro
+        // Los errores de asignar personal y completar tarea ya muestran su propio toast
+        if (errorMessage &&
+          !errorMessage.includes('Error al asignar personal') &&
+          !errorMessage.includes('Error al completar la tarea')) {
+          toast.error('Error al asignar y completar');
+        }
+        console.error('Error en handleAssignAndComplete:', error);
+        // Re-lanzar el error para que el modal pueda manejarlo si es necesario
+        throw error;
       }
     },
     [studioSlug, eventId, router, onDataChange, pendingTaskCompletion]

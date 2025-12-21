@@ -1773,6 +1773,27 @@ export async function cancelarCotizacionYEvento(
 
         // Solo eliminar evento si no tiene otras cotizaciones autorizadas
         if (!otrasCotizacionesAutorizadas) {
+          // Verificar si hay nóminas pendientes asociadas al evento
+          const nominasPendientes = await tx.studio_nominas.findMany({
+            where: {
+              evento_id: eventoId,
+              status: 'pendiente',
+            },
+            include: {
+              personal: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          });
+
+          if (nominasPendientes.length > 0) {
+            throw new Error(
+              `No se puede eliminar el evento. Hay ${nominasPendientes.length} nómina(s) pendiente(s) asociada(s). Por favor, procesa o cancela las nóminas pendientes antes de eliminar el evento.`
+            );
+          }
+
           // Eliminar agendamiento asociado al evento
           await tx.studio_agenda.deleteMany({
             where: {
