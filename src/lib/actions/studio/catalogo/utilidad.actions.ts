@@ -33,26 +33,15 @@ export async function obtenerConfiguracionPrecios(
         });
 
         if (!config) {
-            console.log('[obtenerConfiguracionPrecios] No se encontró configuración para studio:', studioSlug);
             return null;
         }
 
-        const result = {
+        return {
             utilidad_servicio: config.service_margin != null ? String(config.service_margin) : undefined,
             utilidad_producto: config.product_margin != null ? String(config.product_margin) : undefined,
             comision_venta: config.sales_commission != null ? String(config.sales_commission) : undefined,
             sobreprecio: config.markup != null ? String(config.markup) : undefined,
         };
-
-        console.log('[obtenerConfiguracionPrecios] Valores desde BD:', {
-            service_margin: config.service_margin,
-            product_margin: config.product_margin,
-            sales_commission: config.sales_commission,
-            markup: config.markup,
-        });
-        console.log('[obtenerConfiguracionPrecios] Valores retornados:', result);
-
-        return result;
     } catch (error) {
         console.error("[obtenerConfiguracionPrecios] Error:", error);
         throw error;
@@ -163,20 +152,6 @@ export async function actualizarConfiguracionPrecios(
         const ventaComision = parseValue(validatedData.comision_venta);
         const markup = parseValue(validatedData.sobreprecio);
 
-        console.log('[actualizarConfiguracionPrecios] Valores recibidos:', {
-            utilidad_servicio: validatedData.utilidad_servicio,
-            utilidad_producto: validatedData.utilidad_producto,
-            comision_venta: validatedData.comision_venta,
-            sobreprecio: validatedData.sobreprecio,
-        });
-
-        console.log('[actualizarConfiguracionPrecios] Valores parseados:', {
-            servicioMargin,
-            productoMargin,
-            ventaComision,
-            markup,
-        });
-
         // Obtener o crear configuración
         // Obtener la configuración activa más reciente
         let config = await prisma.studio_configuraciones.findFirst({
@@ -204,30 +179,14 @@ export async function actualizarConfiguracionPrecios(
                     ...updateData,
                 },
             });
-            console.log('[actualizarConfiguracionPrecios] Configuración creada:', {
-                configId: config.id,
-                updateData,
-            });
         } else {
-            console.log('[actualizarConfiguracionPrecios] Actualizando configuración existente:', {
-                configId: config.id,
-                updateData,
-            });
-            
-            const updated = await prisma.studio_configuraciones.update({
+            await prisma.studio_configuraciones.update({
                 where: { id: config.id },
                 data: {
                     ...updateData,
                     status: 'active',
                     updated_at: new Date(),
                 },
-            });
-            
-            console.log('[actualizarConfiguracionPrecios] Configuración actualizada exitosamente:', {
-                service_margin: updated.service_margin,
-                product_margin: updated.product_margin,
-                sales_commission: updated.sales_commission,
-                markup: updated.markup,
             });
         }
 

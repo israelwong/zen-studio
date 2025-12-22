@@ -27,6 +27,26 @@ interface StudioSidebarProps {
     studioSlug: string;
 }
 
+// Componente para grupo de menú sin colapsable
+const MenuGroup = ({ group, children }: {
+    group: { id: string; title: string; icon: React.ComponentType<{ className?: string }> },
+    children: React.ReactNode
+}) => {
+    return (
+        <div className="mb-6">
+            {/* Header del grupo - sin icono */}
+            <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+                {group.title}
+            </div>
+
+            {/* Elementos del menú */}
+            <div className="space-y-1">
+                {children}
+            </div>
+        </div>
+    );
+};
+
 export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
     const { isOpen, toggleSidebar } = useZenSidebar();
 
@@ -68,32 +88,12 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             items: [
                 { id: 'contracts', name: 'Contratos', href: `/config/contratos`, icon: FileText },
                 { id: 'subscriptions', name: 'Suscripción', href: `/config/account/suscripcion`, icon: CreditCard },
-                // { id: 'integraciones', name: 'Integraciones', href: `/business/integraciones/tracking`, icon: Plug },
+                { id: 'integraciones', name: 'Integraciones', href: `/config/integraciones`, icon: Plug },
                 // { id: 'magic', name: 'ZEN Magic', href: `/magic`, icon: Sparkles },
             ],
         },
 
     ];
-
-    // Componente para grupo de menú sin colapsable
-    const MenuGroup = ({ group, children }: {
-        group: { id: string; title: string; icon: React.ComponentType<{ className?: string }> },
-        children: React.ReactNode
-    }) => {
-        return (
-            <div className="mb-6">
-                {/* Header del grupo - sin icono */}
-                <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                    {group.title}
-                </div>
-
-                {/* Elementos del menú */}
-                <div className="space-y-1">
-                    {children}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <ZenSidebar className={`${className} ${isOpen ? '' : 'hidden lg:block'} w-60 lg:w-60 sm:w-60`}>

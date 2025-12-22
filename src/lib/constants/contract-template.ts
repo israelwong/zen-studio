@@ -60,3 +60,4 @@ export const DEFAULT_CONTRACT_TEMPLATE = `<h1>CONTRATO DE PRESTACIÓN DE SERVICI
   <li>Calidad de video en alta definición.</li>
   <li>Plazo de observaciones: 30 días para comentarios y ajustes; después, se borran originales.</li>
 </ul>`;
+

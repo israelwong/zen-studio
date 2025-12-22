@@ -284,7 +284,6 @@ export async function updateContractTemplate(
     });
 
     revalidatePath(`/${studioSlug}/studio/config/contratos`);
-    revalidatePath(`/${studioSlug}/studio/config/contratos/${templateId}/editar`);
 
     return { success: true, data: template as ContractTemplate };
   } catch (error) {

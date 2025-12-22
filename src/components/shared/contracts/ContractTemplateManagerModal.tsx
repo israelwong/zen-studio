@@ -100,7 +100,7 @@ export function ContractTemplateManagerModal({
   };
 
   const handleManageComplete = () => {
-    router.push(`/${studioSlug}/studio/config/contratos/nuevo`);
+    // Cerrar modal y dejar que el usuario vaya a la página de gestión si lo desea
     onClose();
   };
 

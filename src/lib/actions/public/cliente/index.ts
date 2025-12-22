@@ -24,3 +24,11 @@ export {
 
 export type { StudioPublicInfo } from './studio.actions';
 
+export {
+  obtenerEntregablesCliente,
+  obtenerContenidoCarpetaCliente,
+  validarAccesoArchivoCliente,
+} from './deliverables.actions';
+
+export type { ClienteDeliverable, GetClienteDeliverablesResult, FolderContentResult } from './deliverables.actions';
+

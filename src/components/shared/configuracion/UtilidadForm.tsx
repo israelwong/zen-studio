@@ -153,9 +153,6 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                 sobreprecio: parseAndValidate(config.sobreprecio),
             };
 
-            console.log('[UtilidadForm] Valores del formulario:', config);
-            console.log('[UtilidadForm] Datos a enviar:', dataToSend);
-
             const result = await actualizarConfiguracionPrecios(studioSlug, dataToSend);
 
             if (result.success) {

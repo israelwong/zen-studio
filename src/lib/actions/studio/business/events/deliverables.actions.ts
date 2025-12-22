@@ -32,6 +32,10 @@ export interface Deliverable {
   delivered_at: Date | null;
   client_approved_at: Date | null;
   created_at: Date;
+  // Google Drive Integration
+  google_folder_id?: string | null;
+  delivery_mode?: 'native' | 'google_drive' | null;
+  drive_metadata_cache?: unknown;
 }
 
 export interface GetDeliverablesResult {
@@ -251,6 +255,87 @@ export async function eliminarEntregable(
     return {
       success: false,
       error: 'Error al eliminar entregable',
+    };
+  }
+}
+
+export interface VincularCarpetaDriveResult {
+  success: boolean;
+  data?: Deliverable;
+  error?: string;
+}
+
+/**
+ * Vincula una carpeta de Google Drive a un entregable
+ */
+export async function vincularCarpetaDrive(
+  studioSlug: string,
+  entregableId: string,
+  folderId: string
+): Promise<VincularCarpetaDriveResult> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true, is_google_connected: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    if (!studio.is_google_connected) {
+      return { success: false, error: 'El estudio no tiene Google Drive conectado' };
+    }
+
+    const entregable = await prisma.studio_event_deliverables.findFirst({
+      where: {
+        id: entregableId,
+        event: {
+          studio_id: studio.id,
+        },
+      },
+      select: { id: true },
+    });
+
+    if (!entregable) {
+      return { success: false, error: 'Entregable no encontrado' };
+    }
+
+    // Validar que la carpeta existe y obtener metadata inicial
+    try {
+      const { obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
+      const contenidoResult = await obtenerContenidoCarpeta(studioSlug, folderId);
+      
+      if (!contenidoResult.success) {
+        return { success: false, error: 'No se pudo acceder a la carpeta de Google Drive' };
+      }
+
+      // Actualizar entregable con google_folder_id y delivery_mode
+      const updated = await prisma.studio_event_deliverables.update({
+        where: { id: entregableId },
+        data: {
+          google_folder_id: folderId,
+          delivery_mode: 'google_drive',
+          drive_metadata_cache: contenidoResult.data ? {
+            fileCount: contenidoResult.data.length,
+            lastSync: new Date().toISOString(),
+          } : null,
+        },
+      });
+
+      return { success: true, data: updated };
+    } catch (error) {
+      console.error('Error validando carpeta:', error);
+      return {
+        success: false,
+        error: 'Error al validar carpeta de Google Drive',
+      };
+    }
+  } catch (error) {
+    console.error('Error vinculando carpeta:', error);
+    return {
+      success: false,
+      error: 'Error al vincular carpeta de Drive',
     };
   }
 }

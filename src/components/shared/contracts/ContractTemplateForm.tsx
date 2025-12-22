@@ -14,7 +14,7 @@ import {
   ContractPreview,
 } from '@/components/ui/zen';
 import type { ContractTemplate, CreateTemplateInput } from '@/types/contracts';
-import { DEFAULT_CONTRACT_TEMPLATE } from '@/app/[slug]/studio/config/contratos/nuevo/default-template';
+import { DEFAULT_CONTRACT_TEMPLATE } from '@/lib/constants/contract-template';
 import { toast } from 'sonner';
 
 interface ContractTemplateFormProps {

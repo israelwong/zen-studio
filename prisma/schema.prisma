@@ -33,6 +33,15 @@ model platform_config {
   commercial_phone      String?
   company_name          String
   support_phone         String?
+
+  // Google OAuth (genérico, reutilizable para Drive, Gmail, Calendar, etc.)
+  google_oauth_client_id       String?
+  google_oauth_client_secret   String?  // Encriptado
+  google_oauth_redirect_uri     String?
+  
+  // API Keys específicas por servicio
+  google_drive_api_key         String?  // Para Google Picker API
+  // Futuro: google_gmail_api_key, google_calendar_api_key, etc.
 }
 
 model platform_modules {
@@ -791,10 +800,18 @@ model studios {
   usage_tracking                                  usage_tracking[]
   user_studio_roles                               user_studio_roles[]
 
+  // Google OAuth Integration (genérico, puede tener múltiples scopes)
+  google_oauth_refresh_token                      String?  // Encrypted, genérico para todas las APIs
+  google_oauth_email                              String?
+  google_oauth_scopes                             String?  // JSON array: ["drive.readonly", "gmail.send"]
+  is_google_connected                             Boolean                          @default(false)
+  google_integrations_config                      Json?   // { drive: { enabled: true }, gmail: { enabled: false } }
+
   @@index([plan_id])
   @@index([slug])
   @@index([is_active])
   @@index([subscription_status])
+  @@index([is_google_connected])
 }
 
 model studio_modules {
@@ -1538,8 +1555,15 @@ model studio_event_deliverables {
   created_at         DateTime        @default(now())
   event              studio_events   @relation(fields: [event_id], references: [id], onDelete: Cascade)
 
+  // Google Drive Integration
+  google_folder_id      String?
+  delivery_mode         DeliveryMode  @default(native)
+  drive_metadata_cache  Json?
+
   @@index([event_id, type])
   @@index([delivered_at])
+  @@index([google_folder_id])
+  @@index([delivery_mode])
 }
 
 model studio_event_timeline {
@@ -1737,11 +1761,15 @@ model studio_agenda {
   studio_users     studio_users?          @relation(fields: [user_id], references: [id])
   notifications    studio_notifications[]
 
+  // Google Calendar Integration
+  google_event_id  String?
+
   @@index([studio_id])
   @@index([evento_id])
   @@index([promise_id])
   @@index([date])
   @@index([contexto, date])
+  @@index([google_event_id])
 }
 
 model studio_agenda_tipos {
@@ -3049,6 +3077,11 @@ enum DeliverableType {
   ALBUM
   DIGITAL_DOWNLOAD
   OTHER
+}
+
+enum DeliveryMode {
+  native
+  google_drive
 }
 
 enum TaskCategory {

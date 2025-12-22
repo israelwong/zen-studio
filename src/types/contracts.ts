@@ -85,14 +85,35 @@ export interface ContractVariable {
   label: string;
   description: string;
   example: string;
+  category?: "cliente" | "evento" | "comercial" | "studio" | "bloque";
 }
 
 export const CONTRACT_VARIABLES: ContractVariable[] = [
+  // Cliente
   {
     key: "@nombre_cliente",
     label: "Nombre del Cliente",
     description: "Nombre completo del cliente",
     example: "María González",
+  },
+  {
+    key: "@email_cliente",
+    label: "Email del Cliente",
+    description: "Correo electrónico del contacto",
+    example: "maria@example.com",
+  },
+  {
+    key: "@telefono_cliente",
+    label: "Teléfono del Cliente",
+    description: "Número de teléfono del contacto",
+    example: "+52 55 1234 5678",
+  },
+  // Evento
+  {
+    key: "@nombre_evento",
+    label: "Nombre del Evento",
+    description: "Nombre personalizado del evento",
+    example: "Boda Sara & Juan",
   },
   {
     key: "@fecha_evento",
@@ -106,12 +127,7 @@ export const CONTRACT_VARIABLES: ContractVariable[] = [
     description: "Categoría del evento",
     example: "Boda",
   },
-  {
-    key: "@nombre_evento",
-    label: "Nombre del Evento",
-    description: "Nombre personalizado del evento",
-    example: "Boda Sara & Juan",
-  },
+  // Comercial
   {
     key: "@total_contrato",
     label: "Total del Contrato",
@@ -125,15 +141,29 @@ export const CONTRACT_VARIABLES: ContractVariable[] = [
     example: "50% anticipo, 50% día del evento",
   },
   {
+    key: "@cotizacion_autorizada",
+    label: "Cotización Autorizada",
+    description: "BLOQUE: Cotización completa con estructura orden > sección > categoría > item",
+    example: "Block especial renderizado automáticamente",
+  },
+  {
+    key: "@condiciones_comerciales",
+    label: "Condiciones Comerciales",
+    description: "BLOQUE: Condiciones comerciales asociadas a la cotización",
+    example: "Block especial renderizado automáticamente",
+  },
+  // Studio
+  {
     key: "@nombre_studio",
     label: "Nombre del Studio",
     description: "Nombre comercial del studio",
     example: "PROSOCIALMX",
   },
+  // Legacy
   {
     key: "[SERVICIOS_INCLUIDOS]",
-    label: "Servicios Incluidos",
-    description: "Lista de servicios contratados por categoría",
+    label: "Servicios Incluidos (Legacy)",
+    description: "Lista de servicios contratados por categoría (legacy)",
     example: "Block especial renderizado automáticamente",
   },
 ];

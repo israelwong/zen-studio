@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { FileText, Receipt, Mail, X, LayoutDashboard, ArrowLeft, Image, Video, Download, Gift } from 'lucide-react';
+import { FileText, Receipt, Mail, X, LayoutDashboard, ArrowLeft, Image, Video, Download, Gift, Package } from 'lucide-react';
 import {
   ZenSidebar,
   ZenSidebarContent,
@@ -13,14 +13,14 @@ import {
 } from '@/components/ui/zen';
 import { ZenButton } from '@/components/ui/zen';
 
-interface ClientSidebarProps {
+interface EventoSidebarProps {
   slug: string;
   clientId: string;
   eventId: string;
   eventoName: string | null;
 }
 
-export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSidebarProps) {
+export function EventoSidebar({ slug, clientId, eventId, eventoName }: EventoSidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, toggleSidebar } = useZenSidebar();
@@ -29,20 +29,6 @@ export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSid
     return pathname === path;
   };
 
-  const entregaDigitalItems = [
-    {
-      id: 'fotografias',
-      name: 'Fotografías',
-      href: `/${slug}/cliente/${clientId}/${eventId}/fotografias`,
-      icon: Image,
-    },
-    {
-      id: 'video',
-      name: 'Video',
-      href: `/${slug}/cliente/${clientId}/${eventId}/video`,
-      icon: Video,
-    },
-  ];
 
   const serviciosAdicionalesItems = [
     {
@@ -62,15 +48,27 @@ export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSid
     },
     {
       id: 'cotizaciones',
-      name: 'Cotizaciones',
+      name: 'Mis Cotizaciones',
       href: `/${slug}/cliente/${clientId}/${eventId}/cotizaciones`,
       icon: FileText,
     },
     {
       id: 'pagos',
-      name: 'Historial de pagos',
+      name: 'Balance de financiero',
       href: `/${slug}/cliente/${clientId}/${eventId}/pagos`,
       icon: Receipt,
+    },
+    {
+      id: 'entrega-digital',
+      name: 'Entrega Digital',
+      href: `/${slug}/cliente/${clientId}/${eventId}/entrega-digital`,
+      icon: Package,
+    },
+    {
+      id: 'contrato',
+      name: 'Contrato',
+      href: `/${slug}/cliente/${clientId}/${eventId}/contrato`,
+      icon: Package,
     },
   ];
 
@@ -97,7 +95,7 @@ export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSid
               onClick={() => router.push(`/${slug}/cliente/${clientId}`)}
               className="flex items-center gap-2 text-sm text-zinc-300 hover:text-zinc-100 transition-colors w-full py-2 px-2 rounded-md hover:bg-zinc-800/40"
             >
-              <ArrowLeft className="h-4 w-4 flex-shrink-0" />
+              <ArrowLeft className="h-4 w-4 shrink-0" />
               <div className="flex flex-col items-start">
                 <span className="font-medium">Eventos</span>
                 <span className="text-xs text-zinc-500">Gestionar eventos</span>
@@ -126,22 +124,6 @@ export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSid
             </ZenSidebarMenuItem>
           ))}
 
-          {/* Entrega Digital */}
-          <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-6">
-            Entrega Digital
-          </div>
-          {entregaDigitalItems.map((item) => (
-            <ZenSidebarMenuItem key={item.id}>
-              <ZenSidebarMenuButton
-                isActive={isActive(item.href)}
-                onClick={() => router.push(item.href)}
-              >
-                <item.icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </ZenSidebarMenuButton>
-            </ZenSidebarMenuItem>
-          ))}
-
           {/* Servicios Adicionales */}
           <div className="px-3 py-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2 mt-6">
             Servicios Adicionales
@@ -159,7 +141,7 @@ export function ClientSidebar({ slug, clientId, eventId, eventoName }: ClientSid
           ))}
         </ZenSidebarMenu>
       </ZenSidebarContent>
-
     </ZenSidebar>
   );
 }
+

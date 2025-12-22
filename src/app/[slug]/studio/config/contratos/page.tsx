@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { FileText, Plus, Loader2 } from 'lucide-react';
+import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
+import { createContractTemplate } from '@/lib/actions/studio/business/contracts';
+import { DEFAULT_CONTRACT_TEMPLATE } from '@/lib/constants/contract-template';
 import {
   ZenCard,
   ZenCardContent,
@@ -19,6 +22,10 @@ import {
   toggleContractTemplate,
   duplicateContractTemplate,
 } from '@/lib/actions/studio/business/contracts';
+import {
+  getContractTemplate,
+  updateContractTemplate,
+} from '@/lib/actions/studio/business/contracts/templates.actions';
 import type { ContractTemplate } from '@/types/contracts';
 import { toast } from 'sonner';
 
@@ -32,6 +39,11 @@ export default function ContratosPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -54,8 +66,19 @@ export default function ContratosPage() {
     }
   };
 
-  const handleEdit = (templateId: string) => {
-    router.push(`/${studioSlug}/studio/config/contratos/${templateId}/editar`);
+  const handleEdit = async (templateId: string) => {
+    try {
+      const result = await getContractTemplate(studioSlug, templateId);
+      if (result.success && result.data) {
+        setEditingTemplate(result.data);
+        setEditModalOpen(true);
+      } else {
+        toast.error(result.error || 'Error al cargar plantilla');
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      toast.error('Error al cargar plantilla');
+    }
   };
 
   const handleDuplicate = async (templateId: string) => {
@@ -64,9 +87,10 @@ export default function ContratosPage() {
         template_id: templateId,
       });
 
-      if (result.success) {
+      if (result.success && result.data) {
         toast.success('Plantilla duplicada correctamente');
-        loadTemplates();
+        // Agregar el nuevo template al array local
+        setTemplates((prev) => [...prev, result.data!]);
       } else {
         toast.error(result.error || 'Error al duplicar plantilla');
       }
@@ -80,9 +104,14 @@ export default function ContratosPage() {
     try {
       const result = await toggleContractTemplate(studioSlug, templateId);
 
-      if (result.success) {
+      if (result.success && result.data) {
         toast.success('Estado actualizado correctamente');
-        loadTemplates();
+        // Actualizar el template en el array local
+        setTemplates((prev) =>
+          prev.map((template) =>
+            template.id === templateId ? result.data! : template
+          )
+        );
       } else {
         toast.error(result.error || 'Error al cambiar estado');
       }
@@ -106,9 +135,10 @@ export default function ContratosPage() {
 
       if (result.success) {
         toast.success('Plantilla eliminada correctamente');
+        // Remover el template del array local
+        setTemplates((prev) => prev.filter((template) => template.id !== templateToDelete));
         setDeleteModalOpen(false);
         setTemplateToDelete(null);
-        loadTemplates();
       } else {
         toast.error(result.error || 'Error al eliminar plantilla');
       }
@@ -166,9 +196,9 @@ export default function ContratosPage() {
               </div>
             </div>
             <ZenButton
-              variant="default"
+              variant="primary"
               size="sm"
-              onClick={() => router.push(`/${studioSlug}/studio/config/contratos/nuevo`)}
+              onClick={() => setCreateModalOpen(true)}
             >
               <Plus className="h-4 w-4 mr-2" />
               Nueva Plantilla
@@ -186,8 +216,8 @@ export default function ContratosPage() {
                 Crea tu primera plantilla para comenzar a generar contratos
               </p>
               <ZenButton
-                variant="default"
-                onClick={() => router.push(`/${studioSlug}/studio/config/contratos/nuevo`)}
+                variant="secondary"
+                onClick={() => setCreateModalOpen(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Crear Primera Plantilla
@@ -226,6 +256,91 @@ export default function ContratosPage() {
         variant="destructive"
         loading={isDeleting}
       />
+
+      <ContractEditorModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        mode="create-template"
+        studioSlug={studioSlug}
+        initialContent={DEFAULT_CONTRACT_TEMPLATE}
+        onSave={async (data) => {
+          setIsCreating(true);
+          try {
+            const result = await createContractTemplate(studioSlug, {
+              name: data.name || '',
+              description: data.description || '',
+              content: data.content,
+              is_default: data.is_default || false,
+            });
+
+            if (result.success && result.data) {
+              toast.success('Plantilla creada correctamente');
+              // Agregar el nuevo template al array local
+              setTemplates((prev) => [...prev, result.data!]);
+              setCreateModalOpen(false);
+            } else {
+              toast.error(result.error || 'Error al crear plantilla');
+            }
+          } catch (error) {
+            console.error('Error creating template:', error);
+            toast.error('Error al crear plantilla');
+          } finally {
+            setIsCreating(false);
+          }
+        }}
+        isLoading={isCreating}
+      />
+
+      {editingTemplate && (
+        <ContractEditorModal
+          isOpen={editModalOpen}
+          onClose={() => {
+            setEditModalOpen(false);
+            setEditingTemplate(null);
+          }}
+          mode="edit-template"
+          studioSlug={studioSlug}
+          initialContent={editingTemplate.content}
+          initialName={editingTemplate.name}
+          initialDescription={editingTemplate.description || ''}
+          initialIsDefault={editingTemplate.is_default}
+          onSave={async (data) => {
+            setIsUpdating(true);
+            try {
+              const result = await updateContractTemplate(
+                studioSlug,
+                editingTemplate.id,
+                {
+                  name: data.name || '',
+                  description: data.description || '',
+                  content: data.content,
+                  is_default: data.is_default || false,
+                }
+              );
+
+              if (result.success && result.data) {
+                toast.success('Plantilla actualizada correctamente');
+                // Actualizar el template en el array local
+                setTemplates((prev) =>
+                  prev.map((template) =>
+                    template.id === editingTemplate.id ? result.data! : template
+                  )
+                );
+                setEditModalOpen(false);
+                setEditingTemplate(null);
+              } else {
+                toast.error(result.error || 'Error al actualizar plantilla');
+              }
+            } catch (error) {
+              console.error('Error updating template:', error);
+              toast.error('Error al actualizar plantilla');
+            } finally {
+              setIsUpdating(false);
+            }
+          }}
+          isLoading={isUpdating}
+        />
+      )}
     </div>
   );
 }

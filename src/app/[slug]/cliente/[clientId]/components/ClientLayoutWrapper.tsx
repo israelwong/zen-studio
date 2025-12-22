@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ClientSidebar } from './ClientSidebar';
+import { EventoSidebar } from '../[eventId]/components/EventoSidebar';
 import { ZenSidebarOverlay } from '@/components/ui/zen';
 import type { ClientSession, ClientEventDetail } from '@/types/client';
 import type { StudioPublicInfo } from '@/lib/actions/public/cliente';
@@ -30,7 +30,7 @@ export function ClientLayoutWrapper({
           {/* Container: Sidebar + Main Content */}
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar Izquierdo (Navegación) */}
-            <ClientSidebar slug={slug} clientId={cliente.id} eventId={evento.id} eventoName={evento.name || 'Evento'} />
+            <EventoSidebar slug={slug} clientId={cliente.id} eventId={evento.id} eventoName={evento.name || 'Evento'} />
 
             {/* Main Content */}
             <main className="flex-1 overflow-y-auto overflow-x-hidden bg-zinc-900/40">

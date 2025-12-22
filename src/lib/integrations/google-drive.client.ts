@@ -1,0 +1,241 @@
+'use server';
+
+import { google } from 'googleapis';
+import { obtenerCredencialesGoogle } from '@/lib/actions/platform/integrations/google.actions';
+import { prisma } from '@/lib/prisma';
+import { decryptToken } from '@/lib/utils/encryption';
+import type { GoogleDriveFile, GoogleDriveFolder } from '@/types/google-drive';
+
+/**
+ * Obtiene un cliente autenticado de Google Drive para un estudio
+ */
+export async function getGoogleDriveClient(studioSlug: string) {
+  // Obtener credenciales OAuth compartidas
+  const credentialsResult = await obtenerCredencialesGoogle();
+  if (!credentialsResult.success || !credentialsResult.data) {
+    throw new Error(credentialsResult.error || 'Credenciales de Google no disponibles');
+  }
+
+  const { clientId, clientSecret, redirectUri } = credentialsResult.data;
+
+  // Obtener studio y su refresh token
+  const studio = await prisma.studios.findUnique({
+    where: { slug: studioSlug },
+    select: {
+      id: true,
+      google_oauth_refresh_token: true,
+      google_oauth_scopes: true,
+    },
+  });
+
+  if (!studio) {
+    throw new Error('Studio no encontrado');
+  }
+
+  if (!studio.google_oauth_refresh_token) {
+    throw new Error('Studio no tiene Google conectado');
+  }
+
+  // Desencriptar refresh token
+  let refreshToken: string;
+  try {
+    refreshToken = await decryptToken(studio.google_oauth_refresh_token);
+  } catch (error) {
+    throw new Error('Error al desencriptar refresh token');
+  }
+
+  // Crear OAuth2 client
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    redirectUri
+  );
+
+  // Configurar refresh token
+  oauth2Client.setCredentials({
+    refresh_token: refreshToken,
+  });
+
+  // Refrescar access token (googleapis maneja automáticamente si es necesario)
+  // Si el token es válido, simplemente lo devuelve; si está expirado, lo refresca
+  try {
+    const { credentials } = await oauth2Client.refreshAccessToken();
+    // Actualizar credenciales con el nuevo access_token si fue refrescado
+    oauth2Client.setCredentials(credentials);
+  } catch (error) {
+    console.error('[getGoogleDriveClient] Error refrescando token:', error);
+    // Si el refresh falla, puede ser que el refresh_token sea inválido
+    // En ese caso, el usuario necesita reconectarse
+    throw new Error('Error al refrescar access token. Por favor, reconecta tu cuenta de Google.');
+  }
+
+  // Crear cliente de Drive
+  const drive = google.drive({
+    version: 'v3',
+    auth: oauth2Client,
+  });
+
+  return { drive, oauth2Client };
+}
+
+/**
+ * Lista carpetas del usuario en Google Drive
+ * @param studioSlug - Slug del estudio
+ * @param parentFolderId - ID de la carpeta padre (opcional, si no se proporciona lista desde la raíz)
+ */
+export async function listFolders(
+  studioSlug: string,
+  parentFolderId?: string
+): Promise<GoogleDriveFolder[]> {
+  const { drive } = await getGoogleDriveClient(studioSlug);
+
+  // Construir query: si hay parentFolderId, buscar carpetas dentro de esa carpeta
+  // Si no, buscar carpetas en la raíz
+  let query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
+  if (parentFolderId) {
+    query += ` and '${parentFolderId}' in parents`;
+  } else {
+    // Carpetas en la raíz: están en 'root'
+    query += " and 'root' in parents";
+  }
+
+  const response = await drive.files.list({
+    q: query,
+    fields: 'files(id, name, mimeType, parents)',
+    orderBy: 'name',
+  });
+
+  return (response.data.files || []).map((file) => ({
+    id: file.id!,
+    name: file.name!,
+    mimeType: file.mimeType!,
+  }));
+}
+
+/**
+ * Lista contenido de una carpeta en Google Drive
+ * Filtra solo imágenes y videos
+ */
+export async function listFolderContents(
+  studioSlug: string,
+  folderId: string
+): Promise<GoogleDriveFile[]> {
+  const { drive } = await getGoogleDriveClient(studioSlug);
+
+  try {
+    // Primero verificar que la carpeta existe
+    await drive.files.get({
+      fileId: folderId,
+      fields: 'id, mimeType',
+    });
+
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/')`,
+      fields: 'files(id, name, mimeType, thumbnailLink, webContentLink, webViewLink, size, modifiedTime)',
+      orderBy: 'name',
+      pageSize: 100, // Limitar resultados por página
+    });
+
+    return (response.data.files || []).map((file) => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+      thumbnailLink: file.thumbnailLink || undefined,
+      webContentLink: file.webContentLink || undefined,
+      webViewLink: file.webViewLink || undefined,
+      size: file.size || undefined,
+      modifiedTime: file.modifiedTime || undefined,
+    }));
+  } catch (error: any) {
+    // Si el error es 404, la carpeta no existe
+    if (error?.code === 404 || error?.response?.status === 404) {
+      throw new Error('CARPETA_NO_ENCONTRADA');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Lista solo carpetas dentro de una carpeta específica
+ */
+export async function listSubfolders(
+  studioSlug: string,
+  folderId: string
+): Promise<GoogleDriveFolder[]> {
+  const { drive } = await getGoogleDriveClient(studioSlug);
+
+  try {
+    // Primero verificar que la carpeta existe
+    await drive.files.get({
+      fileId: folderId,
+      fields: 'id, mimeType',
+    });
+
+    const response = await drive.files.list({
+      q: `'${folderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+      fields: 'files(id, name, mimeType)',
+      orderBy: 'name',
+    });
+
+    return (response.data.files || []).map((file) => ({
+      id: file.id!,
+      name: file.name!,
+      mimeType: file.mimeType!,
+    }));
+  } catch (error: any) {
+    // Si el error es 404, la carpeta no existe
+    if (error?.code === 404 || error?.response?.status === 404) {
+      throw new Error('CARPETA_NO_ENCONTRADA');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Obtiene los detalles de una carpeta por su ID
+ */
+export async function getFolderById(
+  studioSlug: string,
+  folderId: string
+): Promise<GoogleDriveFolder | null> {
+  const { drive } = await getGoogleDriveClient(studioSlug);
+
+  try {
+    const response = await drive.files.get({
+      fileId: folderId,
+      fields: 'id, name, mimeType',
+    });
+
+    if (response.data.mimeType !== 'application/vnd.google-apps.folder') {
+      return null;
+    }
+
+    return {
+      id: response.data.id!,
+      name: response.data.name!,
+      mimeType: response.data.mimeType!,
+    };
+  } catch (error: any) {
+    // Si el error es 404, la carpeta no existe
+    if (error?.code === 404 || error?.response?.status === 404) {
+      throw new Error('CARPETA_NO_ENCONTRADA');
+    }
+    console.error('[getFolderById] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Obtiene un access token para usar en Google Picker (cliente)
+ */
+export async function getAccessTokenForPicker(studioSlug: string): Promise<string> {
+  const { oauth2Client } = await getGoogleDriveClient(studioSlug);
+  const credentials = oauth2Client.credentials;
+
+  if (!credentials.access_token) {
+    throw new Error('Access token no disponible');
+  }
+
+  return credentials.access_token;
+}
+

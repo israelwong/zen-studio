@@ -88,10 +88,10 @@ export {
 // =============================================================================
 // CONTRACT COMPONENTS (DISPONIBLES)
 // =============================================================================
-export { ContractEditor, ContractEditorToolbar } from './contract/ContractEditor';
-export { ContractPreview } from './contract/ContractPreview';
-export { ContractVariables } from './contract/ContractVariables';
-export { ContractTemplateCard } from './contract/ContractTemplate';
+export { ContractEditor, ContractEditorToolbar } from '@/components/contract/ContractEditor';
+export { ContractPreview } from '@/components/contract/ContractPreview';
+export { ContractVariables } from '@/components/contract/ContractVariables';
+export { ContractTemplateCard } from '@/components/contract/ContractTemplate';
 
 // =============================================================================
 // DESIGN TOKENS
@@ -125,10 +125,10 @@ export type { ZenDialogProps } from './modals/ZenDialog';
 // =============================================================================
 // CONTRACT TYPES (DISPONIBLES)
 // =============================================================================
-export type { ContractEditorProps } from './contract/ContractEditor';
-export type { ContractPreviewProps } from './contract/ContractPreview';
-export type { ContractVariablesProps } from './contract/ContractVariables';
-export type { ContractTemplateProps } from './contract/ContractTemplate';
+export type { ContractEditorProps } from '@/components/contract/ContractEditor';
+export type { ContractPreviewProps } from '@/components/contract/ContractPreview';
+export type { ContractVariablesProps } from '@/components/contract/ContractVariables';
+export type { ContractTemplateProps } from '@/components/contract/ContractTemplate';
 
 // =============================================================================
 // COMPONENTES PENDIENTES (comentados hasta implementación)

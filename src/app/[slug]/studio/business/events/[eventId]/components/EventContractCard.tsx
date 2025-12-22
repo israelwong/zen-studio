@@ -11,16 +11,13 @@ import {
   ZenButton,
   ZenBadge,
 } from '@/components/ui/zen';
-import {
-  getEventContract,
-  generateEventContract,
-} from '@/lib/actions/studio/business/contracts';
 import type { EventContract } from '@/types/contracts';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import { ContractTemplateSelectorModal } from './ContractTemplateSelectorModal';
-import { ContractPreviewModal } from './ContractPreviewModal';
+import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
+import { getEventContract, generateEventContract, updateEventContract } from '@/lib/actions/studio/business/contracts/contracts.actions';
 
 interface EventContractCardProps {
   studioSlug: string;
@@ -40,7 +37,7 @@ export function EventContractCard({
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showEditorModal, setShowEditorModal] = useState(false);
   const [selectedTemplateContent, setSelectedTemplateContent] = useState<string>('');
 
   useEffect(() => {
@@ -76,9 +73,8 @@ export function EventContractCard({
       const templateResult = await getContractTemplate(studioSlug, templateId);
 
       if (templateResult.success && templateResult.data) {
-        setSelectedTemplateId(templateId);
         setSelectedTemplateContent(templateResult.data.content);
-        setShowPreviewModal(true);
+        setShowEditorModal(true);
       } else {
         toast.error(templateResult.error || 'Error al cargar plantilla');
       }
@@ -88,11 +84,15 @@ export function EventContractCard({
     }
   };
 
-  const handleGenerateContract = async (content: string) => {
+  const handleGenerateContract = async (data: {
+    content: string;
+    name?: string;
+    description?: string;
+    is_default?: boolean;
+  }) => {
     setIsGenerating(true);
     try {
-      // Obtener template_id de la plantilla seleccionada
-      // Por ahora, generamos sin template_id ya que el contenido ya está editado
+      // Generar contrato
       const result = await generateEventContract(studioSlug, {
         event_id: eventId,
       });
@@ -100,12 +100,13 @@ export function EventContractCard({
       if (result.success && result.data) {
         // Actualizar el contenido del contrato generado con el editado
         const updateResult = await updateEventContract(studioSlug, result.data.id, {
-          content: content,
+          content: data.content,
         });
 
         if (updateResult.success) {
           toast.success('Contrato generado correctamente');
-          setShowPreviewModal(false);
+          setShowEditorModal(false);
+          setSelectedTemplateContent('');
           await loadContract();
           onContractUpdated?.();
         } else {
@@ -251,17 +252,17 @@ export function EventContractCard({
         isLoading={false}
       />
 
-      <ContractPreviewModal
-        isOpen={showPreviewModal}
+      <ContractEditorModal
+        isOpen={showEditorModal}
         onClose={() => {
-          setShowPreviewModal(false);
+          setShowEditorModal(false);
           setSelectedTemplateContent('');
-          setSelectedTemplateId(null);
         }}
-        onGenerate={handleGenerateContract}
+        mode="create-event-contract"
         studioSlug={studioSlug}
         eventId={eventId}
         templateContent={selectedTemplateContent}
+        onSave={handleGenerateContract}
         isLoading={isGenerating}
       />
     </ZenCard>
