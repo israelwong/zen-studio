@@ -6,7 +6,7 @@ import {
   ZenButton,
   ZenInput,
 } from '@/components/ui/zen';
-import { listarCarpetasDrive, listarSubcarpetas } from '@/lib/actions/studio/integrations/google-drive.actions';
+import { listarCarpetasDrive, listarSubcarpetas } from '@/lib/actions/studio/integrations';
 import { toast } from 'sonner';
 
 interface GoogleDriveFolder {

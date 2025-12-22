@@ -10,7 +10,7 @@ import {
   obtenerEstadoConexion,
   iniciarConexionGoogle,
   desconectarGoogle,
-} from '@/lib/actions/studio/integrations/google-drive.actions';
+} from '@/lib/actions/studio/integrations';
 import { toast } from 'sonner';
 
 interface GoogleDriveConnectionProps {

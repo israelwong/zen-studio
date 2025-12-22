@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { Cloud, Calendar, MessageSquare, CreditCard, Sparkles, LucideIcon } from 'lucide-react';
-import { obtenerEstadoConexion } from '@/lib/actions/studio/integrations/google-drive.actions';
+import { obtenerEstadoConexion } from '@/lib/actions/studio/integrations';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenCardContent } from '@/components/ui/zen';
 import {
   IntegrationCard,
