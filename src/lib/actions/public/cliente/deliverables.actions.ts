@@ -40,6 +40,8 @@ export interface FolderContentResult {
       id: string;
       name: string;
       itemsCount: number;
+      foldersCount: number;
+      totalCount: number;
       photosCount: number;
       videosCount: number;
     }>;

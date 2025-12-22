@@ -28,10 +28,10 @@ export function DeliverablesGallery({
 }: DeliverablesGalleryProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   // Leer carpeta actual desde URL
   const folderIdFromUrl = searchParams.get('folder');
-  
+
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -85,18 +85,22 @@ export function DeliverablesGallery({
 
   const loadFolderContent = async (folderId: string) => {
     if (!eventId || !clientId) return;
-    
+
     setLoadingFolder(true);
-    
+
     try {
       // Importación dinámica para evitar problemas de chunking
       const { obtenerContenidoCarpetaCliente } = await import('@/lib/actions/public/cliente/deliverables.actions');
       const result = await obtenerContenidoCarpetaCliente(eventId, clientId, folderId);
-      
+
       if (result.success && result.data) {
         // Los items ya vienen ordenados numéricamente del servidor
-        setCurrentFolderData(result.data);
-        
+        setCurrentFolderData({
+          folder: result.data.folder,
+          subfolders: result.data.subfolders,
+          items: result.data.items,
+        });
+
         // Reconstruir path desde la carpeta actual si no existe
         if (folderPath.length === 0 && result.data.folder) {
           // Si estamos cargando desde URL y no tenemos path, necesitamos reconstruirlo
@@ -116,24 +120,24 @@ export function DeliverablesGallery({
   // Función para ordenamiento numérico natural (1, 2, 10, 11... en lugar de 1, 10, 11, 2...)
   // Usa localeCompare con opción numeric para ordenamiento natural
   const naturalSort = (a: string, b: string): number => {
-    return a.localeCompare(b, undefined, { 
-      numeric: true, 
-      sensitivity: 'base' 
+    return a.localeCompare(b, undefined, {
+      numeric: true,
+      sensitivity: 'base'
     });
   };
 
   // Filtrar items según tipo (ya vienen ordenados del servidor)
   const filteredItems = useMemo(() => {
     if (!currentFolderData) return [];
-    
+
     let items = currentFolderData.items;
-    
+
     if (filterType === 'photos') {
       items = currentFolderData.items.filter((item) => item.mimeType.startsWith('image/'));
     } else if (filterType === 'videos') {
       items = currentFolderData.items.filter((item) => item.mimeType.startsWith('video/'));
     }
-    
+
     // Eliminar duplicados por ID (por si acaso)
     const seen = new Set<string>();
     return items.filter((item) => {
@@ -158,12 +162,12 @@ export function DeliverablesGallery({
   // Helper para convertir webContentLink al formato que funciona
   const convertToDirectDownloadUrl = (webContentLink: string | undefined, fileId: string | undefined): string | undefined => {
     if (!webContentLink || !fileId) return undefined;
-    
+
     // Si ya es el formato correcto, retornarlo
     if (webContentLink.includes('drive.usercontent.google.com')) {
       return webContentLink;
     }
-    
+
     // Convertir de formato: https://drive.google.com/uc?id=FILE_ID&export=download
     // A formato: https://drive.usercontent.google.com/download?id=FILE_ID
     try {
@@ -188,7 +192,7 @@ export function DeliverablesGallery({
       // Proxy API: sirve el archivo con autenticación del servidor
       // Usa los datos que ya tenemos (webViewLink/webContentLink) sin llamadas adicionales
       const proxyUrl = item.id ? `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}` : '';
-      
+
       if (item.mimeType.startsWith('video/')) {
         return {
           type: 'video' as const,
@@ -268,14 +272,60 @@ export function DeliverablesGallery({
     setFilterType('all');
   };
 
+  // Detectar tipos de entregables antes del bloque de loading
+  const nativeDeliverables = entregables.filter((e) => e.delivery_mode === 'native' && e.file_url);
+  const googleDriveDeliverables = entregables.filter((e) => e.delivery_mode === 'google_drive');
+  const hasNativeDeliverables = nativeDeliverables.length > 0;
+  const hasGoogleDriveDeliverables = googleDriveDeliverables.length > 0;
+
   if (loading) {
+    // Mostrar skeletons según los tipos de entregables detectados
     return (
-      <ZenCard>
-        <div className="p-12 text-center">
-          <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-zinc-400">Cargando entregables...</p>
-        </div>
-      </ZenCard>
+      <div className="space-y-6">
+        {/* Skeleton para enlaces de descarga si hay nativos o si aún no hay datos */}
+        {(hasNativeDeliverables || entregables.length === 0) && (
+          <div className="space-y-2">
+            <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse" />
+            <div className="space-y-2">
+              {[...Array(hasNativeDeliverables ? nativeDeliverables.length : 2)].map((_, i) => (
+                <ZenCard key={i} className="p-4 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="h-4 w-40 bg-zinc-700 rounded mb-2" />
+                      <div className="h-3 w-full bg-zinc-700 rounded" />
+                    </div>
+                    <div className="h-8 w-24 bg-zinc-700 rounded ml-4" />
+                  </div>
+                </ZenCard>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Skeleton para carpetas de Google Drive si hay Google Drive o si aún no hay datos */}
+        {(hasGoogleDriveDeliverables || entregables.length === 0) && (
+          <div>
+            <div className="h-4 w-40 bg-zinc-800 rounded mb-4 animate-pulse flex items-center gap-2">
+              <div className="h-4 w-4 bg-zinc-700 rounded" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {[...Array(hasGoogleDriveDeliverables ? googleDriveDeliverables.length : 3)].map((_, i) => (
+                <ZenCard key={i} className="p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-zinc-800/50 rounded-lg">
+                      <div className="h-6 w-6 bg-zinc-700 rounded" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="h-4 w-24 bg-zinc-700 rounded mb-2" />
+                      <div className="h-3 w-32 bg-zinc-700 rounded" />
+                    </div>
+                  </div>
+                </ZenCard>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -291,8 +341,6 @@ export function DeliverablesGallery({
     }
     return hasContent;
   });
-  const nativeDeliverables = entregables.filter((e) => e.delivery_mode === 'native' && e.file_url);
-  const googleDriveDeliverables = entregables.filter((e) => e.delivery_mode === 'google_drive');
   const hasGoogleDriveButNoContent = googleDriveDeliverables.length > 0 && !hasGoogleDriveContent;
 
   // Si hay entregables de Google Drive pero sin contenido, mostrar mensaje informativo
@@ -453,22 +501,22 @@ export function DeliverablesGallery({
           <div className="flex items-center gap-2 flex-wrap mb-4">
             <h4 className="text-sm font-medium text-zinc-300 mr-2">Archivos:</h4>
             <ZenButton
-              variant={filterType === 'all' ? 'default' : 'ghost'}
+              variant={filterType === 'all' ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => setFilterType('all')}
             >
               Todos ({totalAll})
             </ZenButton>
-          <ZenButton
-            variant={filterType === 'photos' ? 'default' : 'ghost'}
-            size="sm"
-            onClick={() => setFilterType('photos')}
-          >
-            <Image className="h-4 w-4 mr-1" />
-            Fotos ({photosCount} de {totalAll})
-          </ZenButton>
             <ZenButton
-              variant={filterType === 'videos' ? 'default' : 'ghost'}
+              variant={filterType === 'photos' ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={() => setFilterType('photos')}
+            >
+              <Image className="h-4 w-4 mr-1" />
+              Fotos ({photosCount} de {totalAll})
+            </ZenButton>
+            <ZenButton
+              variant={filterType === 'videos' ? 'primary' : 'ghost'}
               size="sm"
               onClick={() => setFilterType('videos')}
             >
@@ -482,112 +530,112 @@ export function DeliverablesGallery({
         {!loadingFolder && currentFolderData && (
           <>
             {filteredItems.length === 0 ? (
-          <ZenCard>
-            <div className="p-8 text-center">
-              <p className="text-sm text-zinc-400">
-                No hay {filterType === 'photos' ? 'fotos' : filterType === 'videos' ? 'videos' : 'archivos'} en esta carpeta
-              </p>
-            </div>
-          </ZenCard>
-        ) : (
-          <div 
-            ref={containerRef}
-            className="max-h-[calc(100vh-300px)] overflow-y-auto"
-          >
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {/* Renderizar todos los items cargados - el navegador maneja lazy loading */}
-              {filteredItems.map((item, index) => {
-                const isVideo = item.mimeType.startsWith('video/');
-                const isImage = item.mimeType.startsWith('image/');
-                
-                // Para thumbnails, usar thumbnailLink si está disponible
-                // Si no hay thumbnailLink, usar webViewLink como fallback para imágenes
-                const thumbnailUrl = item.thumbnailLink || (isImage ? item.webViewLink : undefined);
-
-                return (
-                  <div
-                    key={`${item.id}-${index}`}
-                    className="group relative aspect-square bg-zinc-800/50 rounded-lg border border-zinc-800 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all"
-                    onClick={() => handleItemClick(index)}
-                >
-                  {thumbnailUrl ? (
-                    <img
-                      src={thumbnailUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      crossOrigin="anonymous"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        // Si el thumbnail falla (probablemente por CORS), usar proxy API
-                        const target = e.target as HTMLImageElement;
-                        // Intentar con proxy API como fallback
-                        const proxyUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
-                        target.src = proxyUrl;
-                        // Si el proxy también falla, mostrar placeholder
-                        target.onerror = () => {
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            const placeholder = parent.querySelector('.thumbnail-placeholder') as HTMLElement;
-                            if (placeholder) placeholder.style.display = 'flex';
-                          }
-                        };
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                      <p className="text-xs text-zinc-500">Sin thumbnail</p>
-                    </div>
-                  )}
-                  
-                  {/* Placeholder si no hay thumbnail o falla */}
-                  <div className="thumbnail-placeholder w-full h-full flex items-center justify-center bg-zinc-800" style={{ display: thumbnailUrl ? 'none' : 'flex' }}>
-                    {isVideo ? (
-                      <div className="relative w-full h-full flex items-center justify-center">
-                        <Video className="h-12 w-12 text-zinc-500" />
-                        <Play className="absolute h-8 w-8 text-white/80" fill="currentColor" />
-                      </div>
-                    ) : (
-                      <Image className="h-12 w-12 text-zinc-500" />
-                    )}
-                  </div>
-
-                  {/* Overlay con acciones */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {/* Botón de descarga en el lado derecho inferior */}
-                    <div className="absolute bottom-2 right-2">
-                      <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDownload(item);
-                        }}
-                        className="text-white hover:text-emerald-400 bg-black/50 hover:bg-black/70"
-                      >
-                        <Download className="h-4 w-4" />
-                      </ZenButton>
-                    </div>
-                  </div>
-
-                  {/* Badge de tipo */}
-                  {isVideo && (
-                    <div className="absolute top-2 right-2 bg-black/70 rounded px-1.5 py-0.5">
-                      <Video className="h-3 w-3 text-white" />
-                    </div>
-                  )}
-
-                  {/* Nombre del archivo */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <p className="text-xs text-white truncate">{item.name}</p>
-                  </div>
+              <ZenCard>
+                <div className="p-8 text-center">
+                  <p className="text-sm text-zinc-400">
+                    No hay {filterType === 'photos' ? 'fotos' : filterType === 'videos' ? 'videos' : 'archivos'} en esta carpeta
+                  </p>
                 </div>
-              );
-              })}
-            
-            </div>
-          </div>
+              </ZenCard>
+            ) : (
+              <div
+                ref={containerRef}
+                className="max-h-[calc(100vh-300px)] overflow-y-auto"
+              >
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {/* Renderizar todos los items cargados - el navegador maneja lazy loading */}
+                  {filteredItems.map((item, index) => {
+                    const isVideo = item.mimeType.startsWith('video/');
+                    const isImage = item.mimeType.startsWith('image/');
+
+                    // Para thumbnails, usar thumbnailLink si está disponible
+                    // Si no hay thumbnailLink, usar webViewLink como fallback para imágenes
+                    const thumbnailUrl = item.thumbnailLink || (isImage ? item.webViewLink : undefined);
+
+                    return (
+                      <div
+                        key={`${item.id}-${index}`}
+                        className="group relative aspect-square bg-zinc-800/50 rounded-lg border border-zinc-800 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all"
+                        onClick={() => handleItemClick(index)}
+                      >
+                        {thumbnailUrl ? (
+                          <img
+                            src={thumbnailUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            crossOrigin="anonymous"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              // Si el thumbnail falla (probablemente por CORS), usar proxy API
+                              const target = e.target as HTMLImageElement;
+                              // Intentar con proxy API como fallback
+                              const proxyUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
+                              target.src = proxyUrl;
+                              // Si el proxy también falla, mostrar placeholder
+                              target.onerror = () => {
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const placeholder = parent.querySelector('.thumbnail-placeholder') as HTMLElement;
+                                  if (placeholder) placeholder.style.display = 'flex';
+                                }
+                              };
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-zinc-800">
+                            <p className="text-xs text-zinc-500">Sin thumbnail</p>
+                          </div>
+                        )}
+
+                        {/* Placeholder si no hay thumbnail o falla */}
+                        <div className="thumbnail-placeholder w-full h-full flex items-center justify-center bg-zinc-800" style={{ display: thumbnailUrl ? 'none' : 'flex' }}>
+                          {isVideo ? (
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <Video className="h-12 w-12 text-zinc-500" />
+                              <Play className="absolute h-8 w-8 text-white/80" fill="currentColor" />
+                            </div>
+                          ) : (
+                            <Image className="h-12 w-12 text-zinc-500" />
+                          )}
+                        </div>
+
+                        {/* Overlay con acciones */}
+                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Botón de descarga en el lado derecho inferior */}
+                          <div className="absolute bottom-2 right-2">
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(item);
+                              }}
+                              className="text-white hover:text-emerald-400 bg-black/50 hover:bg-black/70"
+                            >
+                              <Download className="h-4 w-4" />
+                            </ZenButton>
+                          </div>
+                        </div>
+
+                        {/* Badge de tipo */}
+                        {isVideo && (
+                          <div className="absolute top-2 right-2 bg-black/70 rounded px-1.5 py-0.5">
+                            <Video className="h-3 w-3 text-white" />
+                          </div>
+                        )}
+
+                        {/* Nombre del archivo */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-xs text-white truncate">{item.name}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                </div>
+              </div>
             )}
           </>
         )}
@@ -638,7 +686,7 @@ export function DeliverablesGallery({
   const rootFolders = allFolders.filter(f => f.isRoot);
   const subFolders = allFolders.filter(f => !f.isRoot);
   const googleDriveDeliverablesCount = googleDriveDeliverables.length;
-  
+
   // Si hay más de 1 entregable, mostrar carpetas raíz; si hay 1, mostrar subcarpetas
   const foldersToShow = googleDriveDeliverablesCount > 1 ? rootFolders : subFolders;
 
@@ -683,11 +731,23 @@ export function DeliverablesGallery({
       {/* Vista de carpetas de Google Drive */}
       {hasGoogleDriveContent && (
         <div>
-          <h3 className="text-sm font-medium text-zinc-300 mb-4">
-            {googleDriveDeliverablesCount > 1 ? 'Carpetas de entregables' : 'Carpetas de entregables'}
+          <h3 className="text-sm font-medium text-zinc-300 mb-4 flex items-center gap-2">
+            <img
+              src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+              alt="Google Drive"
+              className="h-4 w-4 object-contain brightness-0 invert"
+            />
+            {googleDriveDeliverablesCount > 1 ? 'Carpetas de Google Drive' : 'Carpetas de Google Drive'}
           </h3>
-          
-          {foldersToShow.length > 0 ? (
+
+          {loading ? (
+            <ZenCard>
+              <div className="p-12 text-center">
+                <Loader2 className="h-8 w-8 text-emerald-500 animate-spin mx-auto mb-4" />
+                <p className="text-sm text-zinc-400">Cargando carpetas de Google Drive...</p>
+              </div>
+            </ZenCard>
+          ) : foldersToShow.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {foldersToShow.map((folder) => {
                 const photosCount = folder.items.filter(i => i.mimeType.startsWith('image/')).length;
@@ -736,8 +796,8 @@ export function DeliverablesGallery({
               <div className="p-8 text-center">
                 <Folder className="h-12 w-12 text-zinc-500 mx-auto mb-4" />
                 <p className="text-sm text-zinc-400">
-                  {googleDriveDeliverablesCount > 1 
-                    ? 'No hay carpetas disponibles.' 
+                  {googleDriveDeliverablesCount > 1
+                    ? 'No hay carpetas disponibles.'
                     : 'No hay subcarpetas disponibles en este entregable.'}
                 </p>
               </div>
