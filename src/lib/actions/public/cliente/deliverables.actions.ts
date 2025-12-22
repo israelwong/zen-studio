@@ -326,7 +326,7 @@ export async function obtenerContenidoCarpetaCliente(
     const subcarpetasResult = await listarSubcarpetas(studioSlug, folderId);
     const subcarpetas = subcarpetasResult.success && subcarpetasResult.data ? subcarpetasResult.data : [];
 
-    // Obtener contenido de la carpeta
+    // Obtener TODOS los items de la carpeta (ya vienen ordenados numéricamente del servidor)
     const { obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
     const contenidoResult = await obtenerContenidoCarpeta(studioSlug, folderId);
     const items = contenidoResult.success && contenidoResult.data ? contenidoResult.data : [];

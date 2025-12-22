@@ -332,8 +332,11 @@ export async function obtenerContenidoCarpeta(
   folderId: string
 ): Promise<GoogleFolderContentsResult> {
   try {
-    const files = await listFolderContents(studioSlug, folderId);
-    return { success: true, data: files };
+    const result = await listFolderContents(studioSlug, folderId);
+    return { 
+      success: true, 
+      data: result.files,
+    };
   } catch (error) {
     console.error('[obtenerContenidoCarpeta] Error:', error);
     return {

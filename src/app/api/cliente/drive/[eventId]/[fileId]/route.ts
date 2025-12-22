@@ -127,7 +127,7 @@ export async function GET(
       fields: 'id, name, mimeType, webContentLink, size',
     });
 
-    // Obtener el contenido del archivo
+    // Obtener el contenido del archivo como stream
     const response = await drive.files.get(
       {
         fileId,
@@ -138,24 +138,35 @@ export async function GET(
       }
     );
 
-    // Convertir stream a buffer
-    const chunks: Buffer[] = [];
-    for await (const chunk of response.data) {
-      chunks.push(Buffer.from(chunk));
-    }
-    const buffer = Buffer.concat(chunks);
-
     // Determinar content type
     const contentType = file.data.mimeType || 'application/octet-stream';
 
-    // Retornar el archivo con headers apropiados
-    return new NextResponse(buffer, {
+    // Convertir Node.js stream a ReadableStream para Next.js
+    // Esto permite streaming sin cargar todo el archivo en memoria
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const chunk of response.data) {
+            controller.enqueue(new Uint8Array(chunk));
+          }
+          controller.close();
+        } catch (error) {
+          controller.error(error);
+        }
+      },
+    });
+
+    // Retornar el stream con headers de caché optimizados
+    return new NextResponse(stream, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Length': buffer.length.toString(),
-        'Content-Disposition': `inline; filename="${file.data.name || 'file'}"`,
-        'Cache-Control': 'public, max-age=3600', // Cache por 1 hora
+        'Content-Disposition': `inline; filename="${encodeURIComponent(file.data.name || 'file')}"`,
+        // Caché agresivo: 24 horas para archivos, revalidación en background
+        'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+        // Headers adicionales para Vercel Edge Cache
+        'CDN-Cache-Control': 'public, s-maxage=86400',
+        'Vercel-CDN-Cache-Control': 'public, s-maxage=86400',
       },
     });
   } catch (error: any) {

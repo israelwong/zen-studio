@@ -115,11 +115,12 @@ export async function listFolders(
 /**
  * Lista contenido de una carpeta en Google Drive
  * Filtra solo imágenes y videos
+ * Obtiene TODAS las páginas automáticamente y las ordena numéricamente
  */
 export async function listFolderContents(
   studioSlug: string,
   folderId: string
-): Promise<GoogleDriveFile[]> {
+): Promise<{ files: GoogleDriveFile[] }> {
   const { drive } = await getGoogleDriveClient(studioSlug);
 
   try {
@@ -129,23 +130,43 @@ export async function listFolderContents(
       fields: 'id, mimeType',
     });
 
-    const response = await drive.files.list({
-      q: `'${folderId}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/')`,
-      fields: 'files(id, name, mimeType, thumbnailLink, webContentLink, webViewLink, size, modifiedTime)',
-      orderBy: 'name',
-      pageSize: 100, // Limitar resultados por página
-    });
+    let allFiles: GoogleDriveFile[] = [];
+    let nextPageToken: string | undefined = undefined;
 
-    return (response.data.files || []).map((file) => ({
-      id: file.id!,
-      name: file.name!,
-      mimeType: file.mimeType!,
-      thumbnailLink: file.thumbnailLink || undefined,
-      webContentLink: file.webContentLink || undefined,
-      webViewLink: file.webViewLink || undefined,
-      size: file.size || undefined,
-      modifiedTime: file.modifiedTime || undefined,
-    }));
+    // Obtener todas las páginas automáticamente
+    do {
+      const response = await drive.files.list({
+        q: `'${folderId}' in parents and trashed=false and (mimeType contains 'image/' or mimeType contains 'video/')`,
+        fields: 'nextPageToken, files(id, name, mimeType, thumbnailLink, webContentLink, webViewLink, size, modifiedTime)',
+        orderBy: 'name', // Orden alfabético inicial (luego ordenamos numéricamente)
+        pageSize: 100,
+        pageToken: nextPageToken,
+      });
+
+      const files = (response.data.files || []).map((file) => ({
+        id: file.id!,
+        name: file.name!,
+        mimeType: file.mimeType!,
+        thumbnailLink: file.thumbnailLink || undefined,
+        webContentLink: file.webContentLink || undefined,
+        webViewLink: file.webViewLink || undefined,
+        size: file.size || undefined,
+        modifiedTime: file.modifiedTime || undefined,
+      }));
+
+      allFiles = [...allFiles, ...files];
+      nextPageToken = response.data.nextPageToken || undefined;
+    } while (nextPageToken);
+
+    // Ordenar numéricamente TODAS las imágenes en el servidor
+    // Esto asegura que 1, 2, 10, 11... se ordenen correctamente, no 1, 10, 100, 101...
+    const sortedFiles = allFiles.sort((a, b) => 
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    return {
+      files: sortedFiles,
+    };
   } catch (error: any) {
     // Si el error es 404, la carpeta no existe
     if (error?.code === 404 || error?.response?.status === 404) {

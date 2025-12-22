@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Image, Video, Download, Folder, Loader2, ArrowLeft, Play } from 'lucide-react';
 import { ZenButton, ZenCard } from '@/components/ui/zen';
@@ -43,22 +43,8 @@ export function DeliverablesGallery({
     items: GoogleDriveFile[];
   } | null>(null);
   const [loadingFolder, setLoadingFolder] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Debug: Log entregables para diagnóstico
-  useEffect(() => {
-    console.log('[DeliverablesGallery] Entregables recibidos:', {
-      total: entregables.length,
-      entregables: entregables.map(e => ({
-        id: e.id,
-        name: e.name,
-        delivery_mode: e.delivery_mode,
-        google_folder_id: e.google_folder_id,
-        hasDriveContent: !!e.driveContent,
-        driveContentFolders: e.driveContent?.folders.length || 0,
-        driveContentItems: e.driveContent?.allItems.length || 0,
-      })),
-    });
-  }, [entregables]);
 
   // Obtener todas las carpetas de todos los entregables
   const allFolders = useMemo(() => {
@@ -101,15 +87,17 @@ export function DeliverablesGallery({
     if (!eventId || !clientId) return;
     
     setLoadingFolder(true);
+    
     try {
       // Importación dinámica para evitar problemas de chunking
       const { obtenerContenidoCarpetaCliente } = await import('@/lib/actions/public/cliente/deliverables.actions');
       const result = await obtenerContenidoCarpetaCliente(eventId, clientId, folderId);
+      
       if (result.success && result.data) {
+        // Los items ya vienen ordenados numéricamente del servidor
         setCurrentFolderData(result.data);
         
         // Reconstruir path desde la carpeta actual si no existe
-        // Esto es útil cuando se carga desde URL
         if (folderPath.length === 0 && result.data.folder) {
           // Si estamos cargando desde URL y no tenemos path, necesitamos reconstruirlo
           // Por ahora, solo establecemos el folder actual
@@ -125,37 +113,47 @@ export function DeliverablesGallery({
     }
   };
 
-  // Items de la carpeta actual
-  const currentItems = useMemo(() => {
-    const items = currentFolderData?.items || [];
-    // Debug: Log items para verificar que tienen los campos necesarios
-    if (items.length > 0) {
-      console.log('[DeliverablesGallery] Items de carpeta actual:', {
-        total: items.length,
-        firstItem: items[0] ? {
-          id: items[0].id,
-          name: items[0].name,
-          mimeType: items[0].mimeType,
-          thumbnailLink: items[0].thumbnailLink,
-          webViewLink: items[0].webViewLink,
-          webContentLink: items[0].webContentLink,
-        } : null,
-      });
-    }
-    return items;
-  }, [currentFolderData]);
+  // Función para ordenamiento numérico natural (1, 2, 10, 11... en lugar de 1, 10, 11, 2...)
+  // Usa localeCompare con opción numeric para ordenamiento natural
+  const naturalSort = (a: string, b: string): number => {
+    return a.localeCompare(b, undefined, { 
+      numeric: true, 
+      sensitivity: 'base' 
+    });
+  };
 
-  // Filtrar items según tipo
+  // Filtrar items según tipo (ya vienen ordenados del servidor)
   const filteredItems = useMemo(() => {
-    if (filterType === 'all') return currentItems;
+    if (!currentFolderData) return [];
+    
+    let items = currentFolderData.items;
+    
     if (filterType === 'photos') {
-      return currentItems.filter((item) => item.mimeType.startsWith('image/'));
+      items = currentFolderData.items.filter((item) => item.mimeType.startsWith('image/'));
+    } else if (filterType === 'videos') {
+      items = currentFolderData.items.filter((item) => item.mimeType.startsWith('video/'));
     }
-    if (filterType === 'videos') {
-      return currentItems.filter((item) => item.mimeType.startsWith('video/'));
-    }
-    return currentItems;
-  }, [currentItems, filterType]);
+    
+    // Eliminar duplicados por ID (por si acaso)
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (seen.has(item.id)) {
+        return false;
+      }
+      seen.add(item.id);
+      return true;
+    });
+    // No necesitamos ordenar, ya vienen ordenados del servidor
+  }, [currentFolderData, filterType]);
+
+  // No usamos virtualización compleja - renderizamos todos los items cargados
+  // El navegador maneja el lazy loading automáticamente con loading="lazy"
+  // La paginación (100 items por vez) ya limita la cantidad de DOM
+
+  // Calcular contadores para mostrar (ya tenemos todos los items ordenados del servidor)
+  const photosCount = currentFolderData?.items.filter(i => i.mimeType.startsWith('image/')).length ?? 0;
+  const videosCount = currentFolderData?.items.filter(i => i.mimeType.startsWith('video/')).length ?? 0;
+  const totalAll = currentFolderData?.items.length ?? 0;
 
   // Helper para convertir webContentLink al formato que funciona
   const convertToDirectDownloadUrl = (webContentLink: string | undefined, fileId: string | undefined): string | undefined => {
@@ -183,21 +181,22 @@ export function DeliverablesGallery({
   };
 
   // Preparar slides para lightbox
-  // Usar proxy API (preferido) o convertir webContentLink al formato directo
+  // Usar proxy API directamente (ya tenemos webViewLink/webContentLink en los datos)
+  // El proxy API sirve los archivos con autenticación del servidor
   const lightboxSlides = useMemo(() => {
     return filteredItems.map((item) => {
-      // Generar URL del proxy API para el archivo completo
+      // Proxy API: sirve el archivo con autenticación del servidor
+      // Usa los datos que ya tenemos (webViewLink/webContentLink) sin llamadas adicionales
       const proxyUrl = item.id ? `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}` : '';
-      
-      // También generar URL directa como fallback
-      const directUrl = convertToDirectDownloadUrl(item.webContentLink, item.id);
       
       if (item.mimeType.startsWith('video/')) {
         return {
           type: 'video' as const,
           sources: [
             {
-              src: proxyUrl || directUrl || item.webViewLink || item.webContentLink || '',
+              // Usar proxy API directamente (sirve el video con autenticación)
+              // webViewLink como fallback (puede requerir autenticación del usuario)
+              src: proxyUrl || item.webViewLink || item.webContentLink || '',
               type: item.mimeType,
             },
           ],
@@ -208,16 +207,17 @@ export function DeliverablesGallery({
           playsInline: true,
         };
       }
-      // Para imágenes, priorizar proxy API, luego URL directa, luego thumbnail
+      // Para imágenes, usar proxy API directamente (sirve la imagen con autenticación)
+      // webViewLink no es una URL directa de imagen, es una página HTML
       return {
-        src: proxyUrl || directUrl || item.thumbnailLink || item.webViewLink || '',
+        src: proxyUrl || item.thumbnailLink || '',
         alt: item.name,
       };
     });
   }, [filteredItems, eventId, clientId]);
 
-  const handleItemClick = (index: number) => {
-    setLightboxIndex(index);
+  const handleItemClick = (itemIndex: number) => {
+    setLightboxIndex(itemIndex);
     setLightboxOpen(true);
   };
 
@@ -374,9 +374,6 @@ export function DeliverablesGallery({
 
   // Si hay carpeta seleccionada, mostrar su contenido
   if (currentFolderId && currentFolderData) {
-    const photosCount = currentFolderData.items.filter(i => i.mimeType.startsWith('image/')).length;
-    const videosCount = currentFolderData.items.filter(i => i.mimeType.startsWith('video/')).length;
-
     return (
       <div className="space-y-6">
         {/* Breadcrumb y botón volver */}
@@ -460,7 +457,7 @@ export function DeliverablesGallery({
               size="sm"
               onClick={() => setFilterType('all')}
             >
-              Todos ({currentFolderData.items.length})
+              Todos ({totalAll})
             </ZenButton>
           <ZenButton
             variant={filterType === 'photos' ? 'default' : 'ghost'}
@@ -468,7 +465,7 @@ export function DeliverablesGallery({
             onClick={() => setFilterType('photos')}
           >
             <Image className="h-4 w-4 mr-1" />
-            Fotos ({photosCount})
+            Fotos ({photosCount} de {totalAll})
           </ZenButton>
             <ZenButton
               variant={filterType === 'videos' ? 'default' : 'ghost'}
@@ -476,7 +473,7 @@ export function DeliverablesGallery({
               onClick={() => setFilterType('videos')}
             >
               <Video className="h-4 w-4 mr-1" />
-              Videos ({videosCount})
+              Videos ({videosCount} de {totalAll})
             </ZenButton>
           </div>
         )}
@@ -493,35 +490,25 @@ export function DeliverablesGallery({
             </div>
           </ZenCard>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filteredItems.map((item, index) => {
-              const isVideo = item.mimeType.startsWith('video/');
-              const isImage = item.mimeType.startsWith('image/');
-              
-              // Para thumbnails, usar thumbnailLink si está disponible
-              // Si no hay thumbnailLink, usar webViewLink como fallback para imágenes
-              const thumbnailUrl = item.thumbnailLink || (isImage ? item.webViewLink : undefined);
-              
-              // Debug: Log para ver qué está pasando con los thumbnails
-              if (index === 0) {
-                console.log('[DeliverablesGallery] Primer item:', {
-                  id: item.id,
-                  name: item.name,
-                  mimeType: item.mimeType,
-                  thumbnailLink: item.thumbnailLink,
-                  webViewLink: item.webViewLink,
-                  webContentLink: item.webContentLink,
-                  thumbnailUrl,
-                  isImage,
-                  isVideo,
-                });
-              }
+          <div 
+            ref={containerRef}
+            className="max-h-[calc(100vh-300px)] overflow-y-auto"
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {/* Renderizar todos los items cargados - el navegador maneja lazy loading */}
+              {filteredItems.map((item, index) => {
+                const isVideo = item.mimeType.startsWith('video/');
+                const isImage = item.mimeType.startsWith('image/');
+                
+                // Para thumbnails, usar thumbnailLink si está disponible
+                // Si no hay thumbnailLink, usar webViewLink como fallback para imágenes
+                const thumbnailUrl = item.thumbnailLink || (isImage ? item.webViewLink : undefined);
 
-              return (
-                <div
-                  key={item.id}
-                  className="group relative aspect-square bg-zinc-800/50 rounded-lg border border-zinc-800 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all"
-                  onClick={() => handleItemClick(index)}
+                return (
+                  <div
+                    key={`${item.id}-${index}`}
+                    className="group relative aspect-square bg-zinc-800/50 rounded-lg border border-zinc-800 overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all"
+                    onClick={() => handleItemClick(index)}
                 >
                   {thumbnailUrl ? (
                     <img
@@ -533,11 +520,6 @@ export function DeliverablesGallery({
                       referrerPolicy="no-referrer"
                       onError={(e) => {
                         // Si el thumbnail falla (probablemente por CORS), usar proxy API
-                        console.warn('[DeliverablesGallery] Thumbnail falló, usando proxy API:', {
-                          url: thumbnailUrl,
-                          itemId: item.id,
-                          itemName: item.name,
-                        });
                         const target = e.target as HTMLImageElement;
                         // Intentar con proxy API como fallback
                         const proxyUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
@@ -551,12 +533,6 @@ export function DeliverablesGallery({
                             if (placeholder) placeholder.style.display = 'flex';
                           }
                         };
-                      }}
-                      onLoad={() => {
-                        console.log('[DeliverablesGallery] Thumbnail cargado exitosamente:', {
-                          url: thumbnailUrl,
-                          itemId: item.id,
-                        });
                       }}
                     />
                   ) : (
@@ -608,7 +584,9 @@ export function DeliverablesGallery({
                   </div>
                 </div>
               );
-            })}
+              })}
+            
+            </div>
           </div>
             )}
           </>
