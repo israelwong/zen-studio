@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Cloud, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import {
   ZenButton,
   ZenBadge,
@@ -147,14 +147,21 @@ export function GoogleDriveConnection({
       <div className="bg-blue-950/20 rounded-lg p-4 border border-blue-800/50">
         <div className="flex items-start gap-3 mb-3">
           <div className="p-1.5 bg-blue-600/20 rounded">
-            <Cloud className="h-4 w-4 text-blue-400" />
+            <img 
+              src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg" 
+              alt="Google Drive" 
+              className="h-4 w-4 object-contain brightness-0 invert"
+            />
           </div>
           <div className="flex-1">
             <h4 className="text-sm font-medium text-zinc-200 mb-1">
               Conecta Google Drive
             </h4>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-zinc-400 mb-2">
               Vincula carpetas directamente desde tu Google Drive.
+            </p>
+            <p className="text-xs text-blue-300/80">
+              Tu cliente verá las carpetas y archivos multimedia directamente en su portal como galería interactiva.
             </p>
           </div>
         </div>
@@ -172,7 +179,11 @@ export function GoogleDriveConnection({
             </>
           ) : (
             <>
-              <Cloud className="h-4 w-4 mr-2" />
+              <img 
+                src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg" 
+                alt="Google Drive" 
+                className="h-4 w-4 mr-2 object-contain brightness-0 invert"
+              />
               Conectar con Google Drive
             </>
           )}
@@ -222,7 +233,11 @@ export function GoogleDriveConnection({
           </>
         ) : (
           <>
-            <Cloud className="h-4 w-4 mr-2" />
+            <img 
+              src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg" 
+              alt="Google Drive" 
+              className="h-4 w-4 mr-2 object-contain brightness-0 invert"
+            />
             Conectar Google Drive
           </>
         )}
@@ -285,7 +300,11 @@ export function GoogleDriveConnection({
           </>
         ) : (
           <>
-            <Cloud className="h-4 w-4 mr-2" />
+            <img 
+              src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg" 
+              alt="Google Drive" 
+              className="h-4 w-4 mr-2 object-contain brightness-0 invert"
+            />
             Conectar Google Drive
           </>
         )}

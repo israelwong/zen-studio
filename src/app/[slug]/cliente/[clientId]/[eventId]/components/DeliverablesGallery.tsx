@@ -344,8 +344,8 @@ export function DeliverablesGallery({
             </h3>
             <p className="text-sm text-zinc-400 mb-4">
               {hasGoogleDriveButNoContent
-                ? 'El estudio ha desconectado Google Drive o la carpeta no está disponible. Los entregables no están disponibles temporalmente.'
-                : 'Hay entregables de Google Drive configurados, pero no se pudo obtener el contenido.'}
+                ? 'El estudio ha desconectado Google Drive, la carpeta no está disponible, o no tiene permisos para acceder a la carpeta. Los entregables no están disponibles temporalmente. Contacta al estudio para resolver este problema.'
+                : 'Hay entregables de Google Drive configurados, pero no se pudo obtener el contenido. Esto puede deberse a permisos insuficientes o a que la carpeta fue eliminada.'}
             </p>
             <p className="text-xs text-zinc-500">
               Entregables de Google Drive: {googleDriveDeliverables.length}

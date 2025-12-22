@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, ExternalLink, Link2, MoreVertical, Edit, Trash2, Folder, Cloud, Loader2 } from 'lucide-react';
+import { Plus, ExternalLink, Link2, MoreVertical, Edit, Trash2, Folder, Loader2 } from 'lucide-react';
 import {
   ZenCard,
   ZenCardHeader,
@@ -139,7 +139,7 @@ export function EventDeliverablesCard({
             setFolderNotFound(false);
           } else {
             // Si la carpeta no existe, mostrar error y permitir seleccionar nueva
-            if (folderResult.folderNotFound) {
+            if (!folderResult.success && folderResult.folderNotFound) {
               setFolderNotFound(true);
               setSelectedFolder({
                 id: entregable.google_folder_id,
@@ -205,8 +205,8 @@ export function EventDeliverablesCard({
     setShowFolderPicker(false);
     setFolderNotFound(false);
     // Cuando está conectado a Google Drive, el nombre siempre será el de la carpeta
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       google_folder_id: folder.id,
       name: folder.name,
     });
@@ -398,10 +398,27 @@ export function EventDeliverablesCard({
                         )}
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           {entregable.delivery_mode === 'google_drive' && entregable.google_folder_id && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-950/30 text-blue-400 border border-blue-800/50">
-                              <Cloud className="h-3 w-3" />
-                              Google Drive
-                            </span>
+                            <>
+                              {isGoogleConnected ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-950/30 text-blue-400 border border-blue-800/50">
+                                  <img
+                                    src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+                                    alt="Google Drive"
+                                    className="h-3 w-3 object-contain brightness-0 invert"
+                                  />
+                                  Google Drive
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-red-950/30 text-red-400 border border-red-800/50">
+                                  <img
+                                    src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+                                    alt="Google Drive"
+                                    className="h-3 w-3 object-contain brightness-0 invert opacity-50"
+                                  />
+                                  Google Drive - Desconectado
+                                </span>
+                              )}
+                            </>
                           )}
                           {entregable.file_url && (
                             <a
@@ -516,13 +533,18 @@ export function EventDeliverablesCard({
                       placeholder="https://drive.google.com/..."
                     />
                     <p className="text-xs text-zinc-500 mt-1.5">
-                      Si no usas Google Drive, puedes agregar un enlace manual
+                      Con enlace manual, el cliente solo verá un botón para abrir el enlace en Google Drive.
                     </p>
                   </div>
                 </>
               ) : (
                 <div>
-                  <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
+                  <label className="text-sm font-medium text-zinc-300 mb-1.5 flex items-center gap-2">
+                    <img
+                      src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+                      alt="Google Drive"
+                      className="h-4 w-4 object-contain brightness-0 invert"
+                    />
                     Carpeta de Google Drive
                   </label>
                   <p className="text-xs text-zinc-500 mb-2">
@@ -552,7 +574,11 @@ export function EventDeliverablesCard({
                   ) : (
                     <div className="space-y-2">
                       <div className={`flex items-center gap-2 p-2 rounded border ${folderNotFound ? 'bg-red-950/20 border-red-800/50' : 'bg-zinc-800/50 border-zinc-800'}`}>
-                        <Folder className={`h-4 w-4 ${folderNotFound ? 'text-red-400' : 'text-blue-400'}`} />
+                        <img
+                          src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+                          alt="Google Drive"
+                          className={`h-4 w-4 object-contain brightness-0 invert ${folderNotFound ? 'opacity-50' : ''}`}
+                        />
                         <span className={`text-xs flex-1 truncate ${folderNotFound ? 'text-red-300' : 'text-zinc-300'}`}>
                           {selectedFolder.name}
                         </span>

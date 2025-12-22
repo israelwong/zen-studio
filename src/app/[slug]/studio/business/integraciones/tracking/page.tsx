@@ -5,7 +5,8 @@ import { ZenCard, ZenCardHeader, ZenCardContent, ZenCardTitle, ZenCardDescriptio
 import { useStudioData } from "@/hooks/useStudioData";
 import { actualizarTracking } from "@/lib/actions/studio/business/integraciones.actions";
 import { toast } from "sonner";
-import { ExternalLink, Loader2, Info, Plug, MessageCircle, CreditCard } from "lucide-react";
+import { ExternalLink, Loader2, Info, Plug, CreditCard } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 interface TrackingPageProps {
@@ -24,7 +25,7 @@ export default function TrackingPage({ params }: TrackingPageProps) {
     });
   }, [params]);
 
-  const { identidadData, isLoading } = useStudioData({ studioSlug: slug });
+  const { identidadData, loading: isLoading } = useStudioData({ studioSlug: slug });
 
   useEffect(() => {
     if (identidadData) {
@@ -67,7 +68,7 @@ export default function TrackingPage({ params }: TrackingPageProps) {
   return (
     <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
       <ZenCard variant="default" padding="none" className="flex flex-col flex-1 min-h-0">
-        <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0">
+        <ZenCardHeader className="border-b border-zinc-800 shrink-0">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-600/20 rounded-lg">
@@ -102,6 +103,13 @@ export default function TrackingPage({ params }: TrackingPageProps) {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1.5">
                         <ZenCardTitle className="flex items-center gap-2">
+                          <Image
+                            src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-calendar.svg"
+                            alt="Google"
+                            width={20}
+                            height={20}
+                            className="object-contain"
+                          />
                           <span className="text-base">Google Tag Manager</span>
                         </ZenCardTitle>
                         <ZenCardDescription>
@@ -125,7 +133,7 @@ export default function TrackingPage({ params }: TrackingPageProps) {
                       placeholder="GTM-XXXXXXX"
                       value={gtmId}
                       onChange={(e) => setGtmId(e.target.value)}
-                      helper="Obtén tu ID en Google Tag Manager"
+                      hint="Obtén tu ID en Google Tag Manager"
                     />
                   </ZenCardContent>
                 </ZenCard>
@@ -159,7 +167,7 @@ export default function TrackingPage({ params }: TrackingPageProps) {
                       placeholder="1234567890123456"
                       value={facebookPixelId}
                       onChange={(e) => setFacebookPixelId(e.target.value)}
-                      helper="16 dígitos - Obtén en Meta Business"
+                      hint="16 dígitos - Obtén en Meta Business"
                     />
                   </ZenCardContent>
                 </ZenCard>
@@ -179,7 +187,13 @@ export default function TrackingPage({ params }: TrackingPageProps) {
                     <div className="flex items-start justify-between">
                       <div className="space-y-1.5">
                         <ZenCardTitle className="flex items-center gap-2">
-                          <MessageCircle className="w-5 h-5 text-zinc-500" />
+                          <Image
+                            src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/Manychat_White.png"
+                            alt="ManyChat"
+                            width={20}
+                            height={20}
+                            className="object-contain"
+                          />
                           <span className="text-base text-zinc-400">ManyChat</span>
                           <ZenBadge variant="secondary" className="text-xs">
                             Próximamente

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Folder, ChevronRight, ChevronLeft, Loader2, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Loader2, X } from 'lucide-react';
 import {
   ZenButton,
   ZenInput,
@@ -67,14 +67,14 @@ export function GoogleDriveFolderPicker({
     try {
       setLoading(true);
       let result;
-      
+
       if (folderId) {
         // Cargar subcarpetas de la carpeta actual
         result = await listarSubcarpetas(studioSlug, folderId);
       } else {
         // Cargar carpetas en la raíz
         result = await listarCarpetasDrive(studioSlug);
-        
+
         // Si hay una sola carpeta en la raíz y estamos en modo inline, 
         // cargar automáticamente sus subcarpetas en lugar de mostrarla
         if (result.success && result.data && result.data.length === 1 && inline) {
@@ -92,7 +92,7 @@ export function GoogleDriveFolderPicker({
           setRootFolderId(null);
         }
       }
-      
+
       if (result.success && result.data) {
         setFolders(result.data);
       } else {
@@ -122,10 +122,10 @@ export function GoogleDriveFolderPicker({
       }
       return;
     }
-    
+
     const newPath = currentPath.slice(0, -1);
     setCurrentPath(newPath);
-    
+
     if (newPath.length === 0) {
       // Volver a la raíz
       setCurrentFolderId(null);
@@ -158,8 +158,8 @@ export function GoogleDriveFolderPicker({
 
   const filteredFolders = searchQuery
     ? folders.filter((folder) =>
-        folder.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      folder.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : folders;
 
   if (!isOpen) return null;
@@ -169,7 +169,14 @@ export function GoogleDriveFolderPicker({
       {/* Header - Solo en modo modal */}
       {!inline && (
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h3 className="text-lg font-semibold text-zinc-200">Seleccionar carpeta de Google Drive</h3>
+          <h3 className="text-lg font-semibold text-zinc-200 flex items-center gap-2">
+            <img
+              src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+              alt="Google Drive"
+              className="h-5 w-5 object-contain brightness-0 invert"
+            />
+            Seleccionar carpeta de Google Drive
+          </h3>
           <ZenButton
             variant="ghost"
             size="icon"
@@ -245,7 +252,11 @@ export function GoogleDriveFolderPicker({
                   onClick={() => handleFolderClick(folder)}
                   className="flex items-center gap-3 flex-1 text-left"
                 >
-                  <Folder className="h-5 w-5 text-blue-400" />
+                  <img
+                    src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
+                    alt="Google Drive"
+                    className="h-5 w-5 object-contain brightness-0 invert"
+                  />
                   <span className="text-sm text-zinc-200">{folder.name}</span>
                   <ChevronRight className="h-4 w-4 text-zinc-500 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </button>
@@ -269,7 +280,7 @@ export function GoogleDriveFolderPicker({
           {inline && (
             <span className="text-xs text-zinc-400">Selecciona una carpeta o navega para explorar</span>
           )}
-          <ZenButton variant="ghost" onClick={onClose} size={inline ? "sm" : "default"}>
+          <ZenButton variant="ghost" onClick={onClose} size={inline ? "sm" : "md"}>
             Cancelar
           </ZenButton>
         </div>

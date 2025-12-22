@@ -7,6 +7,11 @@ const nextConfig = {
         hostname: 'bgtapcutchryzhzooony.supabase.co',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'fhwfdwrrnwkbnwxabkcq.supabase.co',
+        pathname: '/**',
+      },
     ],
   },
   env: {

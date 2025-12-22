@@ -339,6 +339,18 @@ export async function obtenerContenidoCarpeta(
     };
   } catch (error) {
     console.error('[obtenerContenidoCarpeta] Error:', error);
+    if (error instanceof Error && error.message === 'CARPETA_SIN_PERMISOS') {
+      return {
+        success: false,
+        error: 'No tienes permisos para acceder a esta carpeta. Verifica que la carpeta pertenezca a tu cuenta de Google Drive o que tengas permisos de lectura.',
+      };
+    }
+    if (error instanceof Error && error.message === 'CARPETA_NO_ENCONTRADA') {
+      return {
+        success: false,
+        error: 'La carpeta fue eliminada o movida',
+      };
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al obtener contenido de carpeta',
@@ -359,6 +371,18 @@ export async function listarSubcarpetas(
     return { success: true, data: folders };
   } catch (error) {
     console.error('[listarSubcarpetas] Error:', error);
+    if (error instanceof Error && error.message === 'CARPETA_SIN_PERMISOS') {
+      return {
+        success: false,
+        error: 'No tienes permisos para acceder a esta carpeta. Verifica que la carpeta pertenezca a tu cuenta de Google Drive o que tengas permisos de lectura.',
+      };
+    }
+    if (error instanceof Error && error.message === 'CARPETA_NO_ENCONTRADA') {
+      return {
+        success: false,
+        error: 'La carpeta fue eliminada o movida',
+      };
+    }
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al listar subcarpetas',
@@ -389,10 +413,28 @@ export async function obtenerDetallesCarpeta(
   } catch (error) {
     console.error('[obtenerDetallesCarpeta] Error:', error);
     const isNotFound = error instanceof Error && error.message === 'CARPETA_NO_ENCONTRADA';
+    const noPermissions = error instanceof Error && error.message === 'CARPETA_SIN_PERMISOS';
+    
+    if (isNotFound) {
+      return {
+        success: false,
+        error: 'La carpeta fue eliminada o movida',
+        folderNotFound: true,
+      };
+    }
+    
+    if (noPermissions) {
+      return {
+        success: false,
+        error: 'No tienes permisos para acceder a esta carpeta. Verifica que la carpeta pertenezca a tu cuenta de Google Drive o que tengas permisos de lectura.',
+        folderNotFound: false,
+      };
+    }
+    
     return {
       success: false,
-      error: isNotFound ? 'La carpeta fue eliminada o movida' : (error instanceof Error ? error.message : 'Error al obtener detalles de la carpeta'),
-      folderNotFound: isNotFound,
+      error: error instanceof Error ? error.message : 'Error al obtener detalles de la carpeta',
+      folderNotFound: false,
     };
   }
 }

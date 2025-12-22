@@ -172,6 +172,10 @@ export async function listFolderContents(
     if (error?.code === 404 || error?.response?.status === 404) {
       throw new Error('CARPETA_NO_ENCONTRADA');
     }
+    // Si el error es 403, no tenemos permisos
+    if (error?.code === 403 || error?.response?.status === 403) {
+      throw new Error('CARPETA_SIN_PERMISOS');
+    }
     throw error;
   }
 }
@@ -208,6 +212,10 @@ export async function listSubfolders(
     if (error?.code === 404 || error?.response?.status === 404) {
       throw new Error('CARPETA_NO_ENCONTRADA');
     }
+    // Si el error es 403, no tenemos permisos
+    if (error?.code === 403 || error?.response?.status === 403) {
+      throw new Error('CARPETA_SIN_PERMISOS');
+    }
     throw error;
   }
 }
@@ -240,6 +248,10 @@ export async function getFolderById(
     // Si el error es 404, la carpeta no existe
     if (error?.code === 404 || error?.response?.status === 404) {
       throw new Error('CARPETA_NO_ENCONTRADA');
+    }
+    // Si el error es 403, no tenemos permisos
+    if (error?.code === 403 || error?.response?.status === 403) {
+      throw new Error('CARPETA_SIN_PERMISOS');
     }
     console.error('[getFolderById] Error:', error);
     return null;

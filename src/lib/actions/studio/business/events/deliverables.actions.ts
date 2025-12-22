@@ -301,13 +301,27 @@ export async function vincularCarpetaDrive(
       return { success: false, error: 'Entregable no encontrado' };
     }
 
-    // Validar que la carpeta existe y obtener metadata inicial
+    // Validar que la carpeta existe, tiene permisos y obtener metadata inicial
     try {
-      const { obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
+      const { obtenerDetallesCarpeta, obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
+      
+      // Primero validar que tenemos acceso a la carpeta
+      const detallesResult = await obtenerDetallesCarpeta(studioSlug, folderId);
+      if (!detallesResult.success) {
+        return { 
+          success: false, 
+          error: detallesResult.error || 'No se pudo acceder a la carpeta de Google Drive. Verifica que la carpeta pertenezca a tu cuenta o que tengas permisos de lectura.' 
+        };
+      }
+      
+      // Luego obtener contenido para validar permisos de lectura
       const contenidoResult = await obtenerContenidoCarpeta(studioSlug, folderId);
       
       if (!contenidoResult.success) {
-        return { success: false, error: 'No se pudo acceder a la carpeta de Google Drive' };
+        return { 
+          success: false, 
+          error: contenidoResult.error || 'No se pudo acceder al contenido de la carpeta. Verifica los permisos de la carpeta en Google Drive.' 
+        };
       }
 
       // Actualizar entregable con google_folder_id y delivery_mode

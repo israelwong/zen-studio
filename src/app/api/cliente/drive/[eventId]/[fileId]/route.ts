@@ -121,22 +121,44 @@ export async function GET(
     // Crear cliente de Drive
     const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
-    // Obtener información del archivo
-    const file = await drive.files.get({
-      fileId,
-      fields: 'id, name, mimeType, webContentLink, size',
-    });
+    // Obtener información del archivo y validar permisos
+    let file;
+    try {
+      file = await drive.files.get({
+        fileId,
+        fields: 'id, name, mimeType, webContentLink, size',
+      });
+    } catch (error: any) {
+      if (error?.code === 403 || error?.response?.status === 403) {
+        return NextResponse.json(
+          { error: 'Sin permisos para acceder a este archivo. El estudio debe verificar los permisos de la carpeta en Google Drive.' },
+          { status: 403 }
+        );
+      }
+      throw error;
+    }
 
     // Obtener el contenido del archivo como stream
-    const response = await drive.files.get(
-      {
-        fileId,
-        alt: 'media',
-      },
-      {
-        responseType: 'stream',
+    let response;
+    try {
+      response = await drive.files.get(
+        {
+          fileId,
+          alt: 'media',
+        },
+        {
+          responseType: 'stream',
+        }
+      );
+    } catch (error: any) {
+      if (error?.code === 403 || error?.response?.status === 403) {
+        return NextResponse.json(
+          { error: 'Sin permisos para descargar este archivo. El estudio debe verificar los permisos de la carpeta en Google Drive.' },
+          { status: 403 }
+        );
       }
-    );
+      throw error;
+    }
 
     // Determinar content type
     const contentType = file.data.mimeType || 'application/octet-stream';
@@ -172,10 +194,18 @@ export async function GET(
   } catch (error: any) {
     console.error('[API /cliente/drive] Error:', error);
     
+    // Manejar errores específicos de Google Drive API
     if (error?.code === 404 || error?.response?.status === 404) {
       return NextResponse.json(
         { error: 'Archivo no encontrado' },
         { status: 404 }
+      );
+    }
+
+    if (error?.code === 403 || error?.response?.status === 403) {
+      return NextResponse.json(
+        { error: 'Sin permisos para acceder a este archivo. El estudio debe verificar los permisos de la carpeta en Google Drive.' },
+        { status: 403 }
       );
     }
 
