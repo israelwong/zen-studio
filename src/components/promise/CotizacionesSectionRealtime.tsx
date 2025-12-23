@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CotizacionesSection } from './CotizacionesSection';
 import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
-import type { PublicCotizacion } from '@/types/public-promise';
+import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 
 interface CotizacionesSectionRealtimeProps {
   initialCotizaciones: PublicCotizacion[];
@@ -35,6 +35,7 @@ interface CotizacionesSectionRealtimeProps {
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
   showPackages?: boolean;
+  paquetes?: PublicPaquete[];
 }
 
 export function CotizacionesSectionRealtime({
@@ -48,6 +49,7 @@ export function CotizacionesSectionRealtime({
   showStandardConditions = true,
   showOfferConditions = false,
   showPackages = false,
+  paquetes = [],
 }: CotizacionesSectionRealtimeProps) {
   const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
 
@@ -97,6 +99,7 @@ export function CotizacionesSectionRealtime({
       showStandardConditions={showStandardConditions}
       showOfferConditions={showOfferConditions}
       showPackages={showPackages}
+      paquetes={paquetes.map(p => ({ id: p.id, cover_url: p.cover_url }))}
     />
   );
 }

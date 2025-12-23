@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Calendar, ContactRound, ShoppingBag, Sparkles, BarChart3, Users, HelpCircle, FileText } from 'lucide-react';
+import { ShoppingBag, Sparkles, BarChart3, Users, HelpCircle, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { ZenButton } from '@/components/ui/zen';
 
@@ -29,38 +29,7 @@ export function UtilityDock({
   onPersonalClick,
 }: UtilityDockProps) {
 
-  const dockItems: DockItem[] = [
-    {
-      id: 'agenda',
-      icon: Calendar,
-      label: 'Agenda',
-      action: onAgendaClick,
-    },
-    {
-      id: 'contacts',
-      icon: ContactRound,
-      label: 'Contactos',
-      action: onContactsClick,
-    },
-    // {
-    //   id: 'personal',
-    //   icon: Users,
-    //   label: 'Personal',
-    //   action: onPersonalClick,
-    // },
-    // {
-    //   id: 'magic',
-    //   icon: Sparkles,
-    //   label: 'ZEN Magic',
-    //   action: onMagicClick,
-    // },
-    {
-      id: 'help',
-      icon: HelpCircle,
-      label: 'Ayuda',
-      href: `/${studioSlug}/studio/ayuda`,
-    },
-  ];
+  const dockItems: DockItem[] = [];
 
   const renderItem = (item: DockItem) => {
     const buttonContent = (
@@ -92,7 +61,7 @@ export function UtilityDock({
   };
 
   return (
-    <aside className="w-12 flex-shrink-0 border-l border-zinc-800 bg-zinc-950/50 flex flex-col items-center py-4 gap-2 z-20">
+    <aside className="w-12 shrink-0 border-l border-zinc-800 bg-zinc-950/50 flex flex-col items-center py-4 gap-2 z-20">
       {dockItems.map(renderItem)}
     </aside>
   );

@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { Loader2, FileText, CheckCircle2, Download } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenBadge } from '@/components/ui/zen';
 import { getEventContractForClient, signEventContract } from '@/lib/actions/studio/business/contracts/contracts.actions';
 import { getEventContractData, renderContractContent } from '@/lib/actions/studio/business/contracts/renderer.actions';
-import { generatePDF, generateContractFilename } from '@/lib/utils/pdf-generator';
+import { generatePDFFromElement, generateContractFilename } from '@/lib/utils/pdf-generator';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import type { EventContract } from '@/types/contracts';
@@ -25,6 +25,7 @@ export default function EventoContratoPage() {
   const [isSigning, setIsSigning] = useState(false);
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const [eventData, setEventData] = useState<any>(null);
+  const printableRef = useRef<HTMLDivElement>(null);
 
   const loadContract = useCallback(async () => {
     if (!slug || !eventId || !cliente?.id) return;
@@ -94,7 +95,7 @@ export default function EventoContratoPage() {
   };
 
   const handleExportPDF = async () => {
-    if (!eventData || !renderedContent) {
+    if (!eventData || !renderedContent || !printableRef.current) {
       toast.error('No hay datos del contrato disponibles');
       return;
     }
@@ -106,7 +107,7 @@ export default function EventoContratoPage() {
         eventData.nombre_cliente || 'Cliente'
       );
 
-      await generatePDF(renderedContent, {
+      await generatePDFFromElement(printableRef.current, {
         filename,
         margin: 0.75,
       });
@@ -337,6 +338,26 @@ export default function EventoContratoPage() {
           )}
         </ZenCardContent>
       </ZenCard>
+
+      {/* Hidden Printable Version - Sin clases Tailwind para PDF */}
+      {renderedContent && (
+        <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+          <div
+            ref={printableRef}
+            style={{
+              backgroundColor: '#ffffff',
+              color: '#000000',
+              padding: '32px',
+              width: '210mm',
+              minHeight: '297mm',
+              fontFamily: 'Arial, sans-serif',
+              fontSize: '14px',
+              lineHeight: '1.6'
+            }}
+            dangerouslySetInnerHTML={{ __html: renderedContent }}
+          />
+        </div>
+      )}
     </div>
   );
 }

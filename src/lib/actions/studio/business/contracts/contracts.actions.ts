@@ -463,9 +463,9 @@ export async function getEventContractForClient(
       return { success: false, error: "Studio no encontrado" };
     }
 
-    // Verificar que el cliente tiene acceso al evento
-    // El evento puede tener contact_id directamente o a través de la promesa
-    const event = await prisma.studio_events.findFirst({
+    // IMPORTANTE: El eventId puede ser un promise_id o un event_id real
+    // Primero intentar buscar como event_id, luego como promise_id
+    let event = await prisma.studio_events.findFirst({
       where: {
         id: eventId,
         studio_id: studio.id,
@@ -487,13 +487,41 @@ export async function getEventContractForClient(
       },
     });
 
+    // Si no se encuentra como event_id, buscar por promise_id
+    if (!event) {
+      event = await prisma.studio_events.findFirst({
+        where: {
+          promise_id: eventId,
+          studio_id: studio.id,
+          OR: [
+            { contact_id: clientId },
+            {
+              promise: {
+                contact_id: clientId,
+              },
+            },
+          ],
+        },
+        include: {
+          promise: {
+            include: {
+              contact: true,
+            },
+          },
+        },
+      });
+    }
+
     if (!event) {
       return { success: false, error: "Evento no encontrado o sin acceso" };
     }
 
+    // IMPORTANTE: Usar el event.id real, no el eventId de la URL (que puede ser promise_id)
+    const realEventId = event.id;
+
     const contract = await prisma.studio_event_contracts.findFirst({
       where: {
-        event_id: eventId,
+        event_id: realEventId, // Usar el event_id real del evento encontrado
         studio_id: studio.id,
         status: {
           in: ["published", "signed"],

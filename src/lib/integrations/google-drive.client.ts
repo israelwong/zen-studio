@@ -272,3 +272,136 @@ export async function getAccessTokenForPicker(studioSlug: string): Promise<strin
   return credentials.access_token;
 }
 
+/**
+ * Establece permisos públicos (reader) para una carpeta y todos sus archivos
+ * Esto permite que los clientes descarguen archivos sin autenticarse en Google
+ * @param studioSlug - Slug del estudio
+ * @param folderId - ID de la carpeta
+ * @param recursive - Si es true, también establece permisos en subcarpetas y archivos (default: true)
+ */
+export async function establecerPermisosPublicos(
+  studioSlug: string,
+  folderId: string,
+  recursive: boolean = true
+): Promise<{ success: boolean; error?: string }> {
+  const { drive } = await getGoogleDriveClient(studioSlug);
+
+  try {
+    // Establecer permiso público en la carpeta raíz
+    try {
+      await drive.permissions.create({
+        fileId: folderId,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+    } catch (error: any) {
+      // Si el permiso ya existe (error 400), continuar
+      if (error?.code !== 400 && error?.response?.status !== 400) {
+        console.error('[establecerPermisosPublicos] Error estableciendo permiso en carpeta:', error);
+        throw error;
+      }
+    }
+
+    if (!recursive) {
+      return { success: true };
+    }
+
+    // Obtener todos los archivos y subcarpetas recursivamente
+    let allFiles: string[] = [];
+    let allFolders: string[] = [folderId];
+    let processedFolders = new Set<string>();
+
+    while (allFolders.length > 0) {
+      const currentFolderId = allFolders.shift()!;
+      
+      if (processedFolders.has(currentFolderId)) {
+        continue;
+      }
+      processedFolders.add(currentFolderId);
+
+      // Obtener archivos y subcarpetas de la carpeta actual
+      let nextPageToken: string | undefined = undefined;
+      
+      do {
+        const response = await drive.files.list({
+          q: `'${currentFolderId}' in parents and trashed=false`,
+          fields: 'nextPageToken, files(id, mimeType)',
+          pageSize: 100,
+          pageToken: nextPageToken,
+        });
+
+        const files = response.data.files || [];
+        
+        for (const file of files) {
+          if (file.mimeType === 'application/vnd.google-apps.folder') {
+            // Es una subcarpeta, agregarla a la cola
+            if (!processedFolders.has(file.id!)) {
+              allFolders.push(file.id!);
+            }
+          } else {
+            // Es un archivo, agregarlo a la lista
+            allFiles.push(file.id!);
+          }
+        }
+
+        nextPageToken = response.data.nextPageToken || undefined;
+      } while (nextPageToken);
+    }
+
+    // Establecer permisos en todas las subcarpetas
+    for (const subfolderId of processedFolders) {
+      if (subfolderId === folderId) continue; // Ya procesamos la raíz
+      
+      try {
+        await drive.permissions.create({
+          fileId: subfolderId,
+          requestBody: {
+            role: 'reader',
+            type: 'anyone',
+          },
+        });
+      } catch (error: any) {
+        // Si el permiso ya existe, continuar
+        if (error?.code !== 400 && error?.response?.status !== 400) {
+          console.error(`[establecerPermisosPublicos] Error estableciendo permiso en subcarpeta ${subfolderId}:`, error);
+        }
+      }
+    }
+
+    // Establecer permisos en todos los archivos (en lotes para eficiencia)
+    const batchSize = 10;
+    for (let i = 0; i < allFiles.length; i += batchSize) {
+      const batch = allFiles.slice(i, i + batchSize);
+      
+      await Promise.allSettled(
+        batch.map(async (fileId) => {
+          try {
+            await drive.permissions.create({
+              fileId,
+              requestBody: {
+                role: 'reader',
+                type: 'anyone',
+              },
+            });
+          } catch (error: any) {
+            // Si el permiso ya existe, ignorar
+            if (error?.code !== 400 && error?.response?.status !== 400) {
+              console.error(`[establecerPermisosPublicos] Error estableciendo permiso en archivo ${fileId}:`, error);
+            }
+          }
+        })
+      );
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error('[establecerPermisosPublicos] Error:', error);
+    return {
+      success: false,
+      error: error?.message || 'Error al establecer permisos públicos',
+    };
+  }
+}
+

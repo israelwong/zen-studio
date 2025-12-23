@@ -48,7 +48,12 @@ export function StudioLayoutWrapper({
       {/* COLUMNA 1: Main Column (AppHeader + Sidebar + Content en flex-col) */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* AppHeader - Full width */}
-        <AppHeader studioSlug={studioSlug} onCommandOpen={() => setCommandOpen(true)} />
+        <AppHeader 
+          studioSlug={studioSlug} 
+          onCommandOpen={() => setCommandOpen(true)}
+          onAgendaClick={handleAgendaClick}
+          onContactsClick={handleContactsClick}
+        />
 
         {/* Container: Sidebar + Main Content */}
         <div className="flex flex-1 overflow-hidden">
@@ -74,14 +79,14 @@ export function StudioLayoutWrapper({
         />
       </div>
 
-      {/* COLUMNA 2: Utility Dock (Full height) */}
-      <UtilityDock
+      {/* COLUMNA 2: Utility Dock (Full height) - Oculto por ahora, mantenido para uso futuro */}
+      {/* <UtilityDock
         studioSlug={studioSlug}
         onAgendaClick={handleAgendaClick}
         onContactsClick={handleContactsClick}
         onMagicClick={handleMagicClick}
         onPersonalClick={handlePersonalClick}
-      />
+      /> */}
 
       {/* ZEN Magic Chat (siempre al final) */}
       <ZenMagicChatWrapper studioSlug={studioSlug} />

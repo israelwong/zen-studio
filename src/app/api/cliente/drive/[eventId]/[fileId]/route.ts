@@ -138,18 +138,47 @@ export async function GET(
       throw error;
     }
 
+    const mimeType = file.data.mimeType || '';
+    
+    // Mapeo de documentos de Google a formatos de exportación
+    const googleDocsExportMap: Record<string, string> = {
+      'application/vnd.google-apps.document': 'application/pdf', // Google Docs -> PDF
+      'application/vnd.google-apps.spreadsheet': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // Google Sheets -> Excel
+      'application/vnd.google-apps.presentation': 'application/pdf', // Google Slides -> PDF
+      'application/vnd.google-apps.drawing': 'image/png', // Google Drawings -> PNG
+    };
+
+    // Determinar si es un documento de Google que requiere exportación
+    const isGoogleDoc = mimeType.startsWith('application/vnd.google-apps.');
+    const exportMimeType = isGoogleDoc ? googleDocsExportMap[mimeType] : null;
+    const contentType = exportMimeType || mimeType || 'application/octet-stream';
+
     // Obtener el contenido del archivo como stream
     let response;
     try {
-      response = await drive.files.get(
-        {
-          fileId,
-          alt: 'media',
-        },
-        {
-          responseType: 'stream',
-        }
-      );
+      if (isGoogleDoc && exportMimeType) {
+        // Exportar documento de Google al formato especificado
+        response = await drive.files.export(
+          {
+            fileId,
+            mimeType: exportMimeType,
+          },
+          {
+            responseType: 'stream',
+          }
+        );
+      } else {
+        // Descargar archivo normal
+        response = await drive.files.get(
+          {
+            fileId,
+            alt: 'media',
+          },
+          {
+            responseType: 'stream',
+          }
+        );
+      }
     } catch (error: any) {
       if (error?.code === 403 || error?.response?.status === 403) {
         return NextResponse.json(
@@ -159,9 +188,6 @@ export async function GET(
       }
       throw error;
     }
-
-    // Determinar content type
-    const contentType = file.data.mimeType || 'application/octet-stream';
 
     // Convertir Node.js stream a ReadableStream para Next.js
     // Esto permite streaming sin cargar todo el archivo en memoria
@@ -178,12 +204,27 @@ export async function GET(
       },
     });
 
+    // Determinar nombre de archivo con extensión correcta
+    let fileName = file.data.name || 'file';
+    if (isGoogleDoc && exportMimeType) {
+      // Agregar extensión según el tipo de exportación
+      const extensionMap: Record<string, string> = {
+        'application/pdf': '.pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+        'image/png': '.png',
+      };
+      const extension = extensionMap[exportMimeType] || '';
+      // Remover extensión existente si la tiene y agregar la nueva
+      const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+      fileName = nameWithoutExt + extension;
+    }
+
     // Retornar el stream con headers de caché optimizados
     return new NextResponse(stream, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Content-Disposition': `inline; filename="${encodeURIComponent(file.data.name || 'file')}"`,
+        'Content-Disposition': `inline; filename="${encodeURIComponent(fileName)}"`,
         // Caché agresivo: 24 horas para archivos, revalidación en background
         'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
         // Headers adicionales para Vercel Edge Cache

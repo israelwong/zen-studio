@@ -159,31 +159,6 @@ export function DeliverablesGallery({
   const videosCount = currentFolderData?.items.filter(i => i.mimeType.startsWith('video/')).length ?? 0;
   const totalAll = currentFolderData?.items.length ?? 0;
 
-  // Helper para convertir webContentLink al formato que funciona
-  const convertToDirectDownloadUrl = (webContentLink: string | undefined, fileId: string | undefined): string | undefined => {
-    if (!webContentLink || !fileId) return undefined;
-
-    // Si ya es el formato correcto, retornarlo
-    if (webContentLink.includes('drive.usercontent.google.com')) {
-      return webContentLink;
-    }
-
-    // Convertir de formato: https://drive.google.com/uc?id=FILE_ID&export=download
-    // A formato: https://drive.usercontent.google.com/download?id=FILE_ID
-    try {
-      const url = new URL(webContentLink);
-      const idParam = url.searchParams.get('id');
-      if (idParam) {
-        return `https://drive.usercontent.google.com/download?id=${idParam}`;
-      }
-      // Si no tiene id en params, usar el fileId directamente
-      return `https://drive.usercontent.google.com/download?id=${fileId}`;
-    } catch {
-      // Si falla el parsing, usar fileId directamente
-      return `https://drive.usercontent.google.com/download?id=${fileId}`;
-    }
-  };
-
   // Preparar slides para lightbox
   // Usar proxy API directamente (ya tenemos webViewLink/webContentLink en los datos)
   // El proxy API sirve los archivos con autenticación del servidor
@@ -226,11 +201,14 @@ export function DeliverablesGallery({
   };
 
   const handleDownload = (item: GoogleDriveFile) => {
-    // Abrir en nueva pestaña para descarga
-    if (item.webViewLink) {
-      window.open(item.webViewLink, '_blank');
-    } else if (item.webContentLink) {
+    // Usar webContentLink para descarga directa
+    if (item.webContentLink) {
       window.open(item.webContentLink, '_blank');
+    } else {
+      // Si no hay webContentLink (documentos de Google), usar proxy API
+      // El proxy API maneja la exportación automática para documentos de Google
+      const proxyUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
+      window.open(proxyUrl, '_blank');
     }
   };
 
@@ -548,9 +526,8 @@ export function DeliverablesGallery({
                     const isVideo = item.mimeType.startsWith('video/');
                     const isImage = item.mimeType.startsWith('image/');
 
-                    // Para thumbnails, usar thumbnailLink si está disponible
-                    // Si no hay thumbnailLink, usar webViewLink como fallback para imágenes
-                    const thumbnailUrl = item.thumbnailLink || (isImage ? item.webViewLink : undefined);
+                    // Usar solo thumbnailLink para thumbnails (no webViewLink)
+                    const thumbnailUrl = item.thumbnailLink;
 
                     return (
                       <div
@@ -567,27 +544,17 @@ export function DeliverablesGallery({
                             crossOrigin="anonymous"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
-                              // Si el thumbnail falla (probablemente por CORS), usar proxy API
+                              // Si el thumbnail falla, mostrar placeholder
                               const target = e.target as HTMLImageElement;
-                              // Intentar con proxy API como fallback
-                              const proxyUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
-                              target.src = proxyUrl;
-                              // Si el proxy también falla, mostrar placeholder
-                              target.onerror = () => {
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  const placeholder = parent.querySelector('.thumbnail-placeholder') as HTMLElement;
-                                  if (placeholder) placeholder.style.display = 'flex';
-                                }
-                              };
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const placeholder = parent.querySelector('.thumbnail-placeholder') as HTMLElement;
+                                if (placeholder) placeholder.style.display = 'flex';
+                              }
                             }}
                           />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-zinc-800">
-                            <p className="text-xs text-zinc-500">Sin thumbnail</p>
-                          </div>
-                        )}
+                        ) : null}
 
                         {/* Placeholder si no hay thumbnail o falla */}
                         <div className="thumbnail-placeholder w-full h-full flex items-center justify-center bg-zinc-800" style={{ display: thumbnailUrl ? 'none' : 'flex' }}>
@@ -596,8 +563,10 @@ export function DeliverablesGallery({
                               <Video className="h-12 w-12 text-zinc-500" />
                               <Play className="absolute h-8 w-8 text-white/80" fill="currentColor" />
                             </div>
-                          ) : (
+                          ) : isImage ? (
                             <Image className="h-12 w-12 text-zinc-500" />
+                          ) : (
+                            <Download className="h-12 w-12 text-zinc-500" />
                           )}
                         </div>
 

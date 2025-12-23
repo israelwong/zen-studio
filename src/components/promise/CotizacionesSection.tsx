@@ -38,6 +38,7 @@ interface CotizacionesSectionProps {
   showStandardConditions?: boolean;
   showOfferConditions?: boolean;
   showPackages?: boolean;
+  paquetes?: Array<{ id: string; cover_url: string | null }>;
 }
 
 export function CotizacionesSection({
@@ -51,6 +52,7 @@ export function CotizacionesSection({
   showStandardConditions = true,
   showOfferConditions = false,
   showPackages = false,
+  paquetes = [],
 }: CotizacionesSectionProps) {
   const [selectedCotizacion, setSelectedCotizacion] = useState<PublicCotizacion | null>(null);
 
@@ -225,6 +227,7 @@ export function CotizacionesSection({
           showStandardConditions={showStandardConditions}
           showOfferConditions={showOfferConditions}
           showPackages={showPackages}
+          paquetes={paquetes}
         />
       )}
     </>

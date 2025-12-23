@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Inbox, Zap, Menu, ChevronDown } from 'lucide-react';
+import { Inbox, Zap, Menu, ChevronDown, Calendar, ContactRound } from 'lucide-react';
 import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
 import { UserAvatar } from '@/components/auth/user-avatar';
@@ -14,9 +14,11 @@ import { SubscriptionPopover } from './SubscriptionPopover';
 interface AppHeaderProps {
     studioSlug: string;
     onCommandOpen?: () => void;
+    onAgendaClick?: () => void;
+    onContactsClick?: () => void;
 }
 
-export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
+export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContactsClick }: AppHeaderProps) {
     const [isMounted, setIsMounted] = useState(false);
     const { toggleSidebar } = useZenSidebar();
     const { identidadData } = useStudioData({ studioSlug });
@@ -113,6 +115,34 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                         )}
                     </ZenButton>
                 </Link> */}
+
+                {/* Agenda */}
+                {onAgendaClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onAgendaClick}
+                        title="Agenda"
+                    >
+                        <Calendar className="h-5 w-5" />
+                        <span className="sr-only">Agenda</span>
+                    </ZenButton>
+                )}
+
+                {/* Contactos */}
+                {onContactsClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onContactsClick}
+                        title="Contactos"
+                    >
+                        <ContactRound className="h-5 w-5" />
+                        <span className="sr-only">Contactos</span>
+                    </ZenButton>
+                )}
 
                 {/* Notificaciones */}
                 <NotificationsDropdown studioSlug={studioSlug} />

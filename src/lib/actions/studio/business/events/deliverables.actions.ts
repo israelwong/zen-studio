@@ -357,6 +357,7 @@ export async function vincularCarpetaDrive(
     // Validar que la carpeta existe, tiene permisos y obtener metadata inicial
     try {
       const { obtenerDetallesCarpeta, obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
+      const { establecerPermisosPublicos } = await import('@/lib/integrations/google-drive.client');
       
       // Primero validar que tenemos acceso a la carpeta
       const detallesResult = await obtenerDetallesCarpeta(studioSlug, folderId);
@@ -375,6 +376,15 @@ export async function vincularCarpetaDrive(
           success: false, 
           error: contenidoResult.error || 'No se pudo acceder al contenido de la carpeta. Verifica los permisos de la carpeta en Google Drive.' 
         };
+      }
+
+      // Establecer permisos públicos en la carpeta y todos sus archivos
+      // Esto permite que los clientes descarguen sin autenticarse en Google
+      const permisosResult = await establecerPermisosPublicos(studioSlug, folderId, true);
+      if (!permisosResult.success) {
+        console.error('[vincularCarpetaDrive] Error estableciendo permisos públicos:', permisosResult.error);
+        // No fallar la operación si los permisos fallan, pero registrar el error
+        // El usuario puede establecer permisos manualmente si es necesario
       }
 
       // Actualizar entregable con google_folder_id y delivery_mode

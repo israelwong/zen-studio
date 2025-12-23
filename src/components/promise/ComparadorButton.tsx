@@ -78,6 +78,7 @@ export function ComparadorButton({ cotizaciones, paquetes, promiseId, studioSlug
           onClose={() => setSelectedCotizacion(null)}
           promiseId={promiseId}
           studioSlug={studioSlug}
+          paquetes={paquetes.map(p => ({ id: p.id, cover_url: p.cover_url }))}
         />
       )}
 
