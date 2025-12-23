@@ -53,7 +53,7 @@ export function StudioLayoutWrapper({
         {/* Container: Sidebar + Main Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar Izquierdo (Navegación) */}
-          <StudioSidebar studioSlug={studioSlug} />
+          <StudioSidebar studioSlug={studioSlug} onCommandOpen={() => setCommandOpen(true)} />
 
           {/* Main Content */}
           <main className="flex-1 overflow-y-auto bg-zinc-900/40">

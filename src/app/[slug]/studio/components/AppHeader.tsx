@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, Inbox, Zap, Menu, ChevronDown } from 'lucide-react';
+import { Inbox, Zap, Menu, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
 import { UserAvatar } from '@/components/auth/user-avatar';
@@ -18,14 +18,12 @@ interface AppHeaderProps {
 
 export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
     const [isMounted, setIsMounted] = useState(false);
-    const [isMac, setIsMac] = useState(false);
     const { toggleSidebar } = useZenSidebar();
     const { identidadData } = useStudioData({ studioSlug });
 
     // Evitar problemas de hidratación con Radix UI
     useEffect(() => {
         setIsMounted(true);
-        setIsMac(typeof window !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform));
     }, []);
 
     return (
@@ -118,20 +116,6 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
 
                 {/* Notificaciones */}
                 <NotificationsDropdown studioSlug={studioSlug} />
-
-                {/* Botón de Comando (⌘K / Ctrl+K) */}
-                {isMounted && (
-                    <ZenButton
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 hidden md:flex gap-2 px-4 border border-zinc-700"
-                        onClick={onCommandOpen}
-                    >
-                        <Search className="h-4 w-4" />
-                        <span className="text-sm text-zinc-600">Buscar...</span>
-                        <span className="text-xs ml-auto">{isMac ? '⌘' : 'Ctrl'}+K</span>
-                    </ZenButton>
-                )}
 
                 {/* Avatar del usuario - siempre visible */}
                 <UserAvatar studioSlug={studioSlug} />

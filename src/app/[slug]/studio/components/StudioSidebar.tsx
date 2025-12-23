@@ -23,11 +23,13 @@ import {
     FolderOpen,
     PanelLeftClose,
     PanelLeftOpen,
+    Search,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
     className?: string;
     studioSlug: string;
+    onCommandOpen?: () => void;
 }
 
 // Componente para grupo de menú con soporte para modo colapsado
@@ -65,12 +67,18 @@ const MenuGroup = ({
     );
 };
 
-export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
+export function StudioSidebar({ className, studioSlug, onCommandOpen }: StudioSidebarProps) {
     const { isOpen, toggleSidebar, isCollapsed, toggleCollapse, isMobile } = useZenSidebar();
     const [isHovered, setIsHovered] = React.useState(false);
+    const [isMac, setIsMac] = React.useState(false);
     
     // En desktop, si está colapsado y se hace hover, expandir temporalmente
     const isExpandedOnHover = !isMobile && isCollapsed && isHovered;
+
+    // Detectar si es Mac
+    React.useEffect(() => {
+        setIsMac(typeof window !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform));
+    }, []);
 
     // Configuración de navegación modular según Plan Maestro ZEN
     // Nota: Profile y Content ahora están en /profile/edit/ con su propio sidebar
@@ -127,8 +135,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
             <ZenSidebarContent className={isCollapsed && !isExpandedOnHover ? "px-1.5" : "px-4"}>
                     {/* Botón toggle collapse - Solo visible en desktop */}
                     <div className={cn(
-                        "flex items-center justify-between pt-4 pb-2",
-                        isCollapsed ? "px-1.5 lg:px-1.5" : "px-3 lg:px-3"
+                        "flex items-center justify-between pt-4",
+                        isCollapsed ? "pb-2 px-1.5 lg:px-1.5" : "pb-6 px-3 lg:px-3"
                     )}>
                     {/* Botón de cerrar - Solo visible en mobile */}
                     <div className="flex justify-end lg:hidden">
@@ -167,10 +175,47 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
                     </div>
                 </div>
                 
-                {/* Divisor debajo del botón toggle */}
-                <div className="hidden lg:block">
-                    <div className="h-[0.5px] bg-zinc-900 mx-3 my-2" />
-                </div>
+                {/* Divisor debajo del botón toggle - solo cuando está colapsado */}
+                {isCollapsed && !isExpandedOnHover && (
+                    <div className="hidden lg:block">
+                        <div className="h-[0.5px] bg-zinc-900 mx-3 my-2" />
+                    </div>
+                )}
+
+                {/* Botón de búsqueda - arriba de la sección Comercial */}
+                {onCommandOpen && (
+                    <div className={cn(
+                        "hidden lg:block mb-1",
+                        isCollapsed && !isExpandedOnHover ? "px-1.5" : "px-4"
+                    )}>
+                        <button
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onCommandOpen();
+                            }}
+                            className={cn(
+                                "w-full flex items-center transition-all duration-200 rounded-full group",
+                                isCollapsed && !isExpandedOnHover
+                                    ? "justify-center px-0 py-2 mx-0"
+                                    : "gap-2.5 px-3 py-2 border border-zinc-700/50",
+                                "text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/40"
+                            )}
+                            title={isCollapsed && !isExpandedOnHover ? "Buscar" : undefined}
+                        >
+                            <Search className={cn(
+                                "shrink-0 text-zinc-500 group-hover:text-zinc-300",
+                                isCollapsed && !isExpandedOnHover ? "w-5 h-5" : "w-4 h-4"
+                            )} />
+                            {(!isCollapsed || isExpandedOnHover) && (
+                                <>
+                                    <span className="text-zinc-300 group-hover:text-white">Buscar...</span>
+                                    <span className="text-xs text-zinc-600 ml-auto">{isMac ? '⌘' : 'Ctrl'}+K</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
 
                 <ZenSidebarMenu className={isCollapsed && !isExpandedOnHover ? "pt-2" : "pt-4"}>
                     {builderNavItems.map((group, groupIndex) => (
@@ -189,8 +234,8 @@ export function StudioSidebar({ className, studioSlug }: StudioSidebarProps) {
                                             className={cn(
                                                 "flex items-center transition-all duration-200 rounded-md group",
                                                 isCollapsed && !isExpandedOnHover
-                                                    ? "justify-center px-0 py-2 mx-0"
-                                                    : "gap-2.5 px-3 py-1",
+                                                    ? "justify-center px-0 py-1.5 mx-0"
+                                                    : "gap-2 px-2.5 py-0.5",
                                                 "text-sm text-zinc-400 hover:text-white hover:bg-zinc-800/40"
                                             )}
                                             title={isCollapsed && !isExpandedOnHover ? item.name : undefined}
