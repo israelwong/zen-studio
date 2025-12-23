@@ -202,6 +202,7 @@ export function ContactEventFormModal({
                     email: initialData.email || '',
                     event_type_id: initialData.event_type_id || '',
                     event_location: initialData.event_location || '',
+                    event_name: initialData.event_name || '',
                     interested_dates: initialData.interested_dates,
                     acquisition_channel_id: initialData.acquisition_channel_id ?? '',
                     social_network_id: initialData.social_network_id,

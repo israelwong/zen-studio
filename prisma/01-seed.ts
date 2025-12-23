@@ -195,6 +195,13 @@ async function seedAcquisitionChannels() {
 
     const channels = [
         {
+            name: 'Directo',
+            description: 'Contacto directo con el cliente',
+            color: '#6366F1',
+            icon: 'phone',
+            order: 0,
+        },
+        {
             name: 'Referidos',
             description: 'Clientes referidos por otros clientes',
             color: '#10B981',

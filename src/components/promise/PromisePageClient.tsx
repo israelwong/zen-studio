@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { Calendar } from 'lucide-react';
 import { PromiseHeroSection } from './PromiseHeroSection';
 import { CotizacionesSectionRealtime } from './CotizacionesSectionRealtime';
 import { PaquetesSection } from './PaquetesSection';
@@ -173,7 +174,6 @@ export function PromisePageClient({
           contactName={promise.contact_name}
           eventTypeName={promise.event_type_name}
           eventDate={promise.event_date}
-          eventLocation={promise.event_location}
           studioName={studio.studio_name}
           studioLogoUrl={studio.logo_url}
         />
@@ -183,19 +183,7 @@ export function PromisePageClient({
           <section className="py-4 px-4">
             <div className="max-w-4xl mx-auto">
               <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-                <svg
-                  className="w-4 h-4 text-emerald-400 shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
+                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
                 <p className="text-sm text-zinc-300">
                   Sugerimos contratar antes del {' '}
                   <span className="font-medium text-emerald-400">

@@ -1,14 +1,11 @@
 'use client';
 
 import React from 'react';
-import { MapPin } from 'lucide-react';
-import { ZenCard, ZenCardContent } from '@/components/ui/zen';
 
 interface PromiseHeroSectionProps {
   contactName: string;
   eventTypeName: string | null;
   eventDate: Date | null;
-  eventLocation: string | null;
   studioName: string;
   studioLogoUrl: string | null;
 }
@@ -17,7 +14,6 @@ export function PromiseHeroSection({
   contactName,
   eventTypeName,
   eventDate,
-  eventLocation,
   studioName,
   studioLogoUrl,
 }: PromiseHeroSectionProps) {
@@ -42,7 +38,7 @@ export function PromiseHeroSection({
   return (
     <section className="relative overflow-hidden">
       {/* Fondo degradado */}
-      <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/40 via-zinc-950 to-zinc-950" />
+      <div className="absolute inset-0 bg-linear-to-b from-zinc-900/40 via-zinc-950 to-zinc-950" />
 
       {/* Pattern de fondo */}
       <div className="absolute inset-0 opacity-5">
@@ -79,25 +75,6 @@ export function PromiseHeroSection({
             )}
           </p>
         </div>
-
-        {/* Información del evento */}
-        {eventLocation && (
-          <ZenCard className="bg-zinc-900/50 backdrop-blur-sm border-zinc-800">
-            <ZenCardContent className="p-6">
-              <div className="flex items-start gap-3 justify-center md:justify-start">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <MapPin className="h-5 w-5 text-blue-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs text-zinc-500 mb-1">Ubicación del Evento</p>
-                  <p className="text-sm font-semibold text-white">
-                    {eventLocation}
-                  </p>
-                </div>
-              </div>
-            </ZenCardContent>
-          </ZenCard>
-        )}
 
         {/* Indicador de scroll (solo mobile) */}
         <div className="mt-8 flex justify-center md:hidden">

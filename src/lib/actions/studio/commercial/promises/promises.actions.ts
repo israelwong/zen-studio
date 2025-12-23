@@ -519,6 +519,21 @@ export async function createPromise(
       ? (validatedData.event_location?.trim() || 'Pendiente')
       : null;
 
+    // Parsear fecha de forma segura (sin cambios por zona horaria)
+    // Si hay una sola fecha en interested_dates, guardarla también como event_date
+    let eventDate: Date | null = null;
+    if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
+      const dateString = validatedData.interested_dates[0];
+      // Si es formato YYYY-MM-DD o ISO, parsear como fecha local
+      const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (dateMatch) {
+        const [, year, month, day] = dateMatch;
+        eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } else {
+        eventDate = new Date(dateString);
+      }
+    }
+
     const promise = await prisma.studio_promises.create({
       data: {
         studio_id: studio.id,
@@ -528,6 +543,7 @@ export async function createPromise(
         name: validatedData.event_name?.trim() || null,
         pipeline_stage_id: stageId,
         status: 'pending',
+        event_date: eventDate, // ✅ Guardar como event_date si hay una sola fecha
         tentative_dates: validatedData.interested_dates
           ? (validatedData.interested_dates as unknown)
           : null,
@@ -766,6 +782,24 @@ export async function updatePromise(
         updateData.tentative_dates = validatedData.interested_dates
           ? (validatedData.interested_dates as unknown)
           : null;
+
+        // Si hay una sola fecha, guardarla también como event_date
+        if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
+          const dateString = validatedData.interested_dates[0];
+          const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (dateMatch) {
+            const [, year, month, day] = dateMatch;
+            updateData.event_date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+          } else {
+            updateData.event_date = new Date(dateString);
+          }
+        } else if (validatedData.interested_dates && validatedData.interested_dates.length === 0) {
+          // Si se eliminan todas las fechas, limpiar event_date
+          updateData.event_date = null;
+        } else if (validatedData.interested_dates && validatedData.interested_dates.length > 1) {
+          // Si hay múltiples fechas, limpiar event_date (solo usar tentative_dates)
+          updateData.event_date = null;
+        }
       }
 
       promise = await prisma.studio_promises.update({
