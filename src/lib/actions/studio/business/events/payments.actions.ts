@@ -494,6 +494,19 @@ export async function cancelarPago(
             },
         });
 
+        // Notificar al cliente
+        try {
+          const { notifyPaymentCancelled } = await import('@/lib/notifications/client');
+          await notifyPaymentCancelled(
+            pago.id,
+            Number(pago.amount),
+            pago.metodo_pago
+          );
+        } catch (error) {
+          console.error('Error enviando notificación de pago cancelado:', error);
+          // No fallar la operación si la notificación falla
+        }
+
         revalidatePath(`/${studioSlug}/studio/business/events`);
         revalidatePath(`/${studioSlug}/studio/business/finanzas`);
 

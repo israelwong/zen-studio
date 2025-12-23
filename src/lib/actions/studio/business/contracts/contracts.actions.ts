@@ -379,6 +379,15 @@ export async function publishEventContract(
       },
     });
 
+    // Notificar al cliente
+    try {
+      const { notifyContractAvailable } = await import('@/lib/notifications/client');
+      await notifyContractAvailable(contractId, updated.version || 1);
+    } catch (error) {
+      console.error('Error enviando notificación de contrato disponible:', error);
+      // No fallar la operación si la notificación falla
+    }
+
     revalidatePath(`/${studioSlug}/studio/business/events/${contract.event_id}`);
 
     return { success: true, data: updated as EventContract };
@@ -455,13 +464,19 @@ export async function getEventContractForClient(
     }
 
     // Verificar que el cliente tiene acceso al evento
+    // El evento puede tener contact_id directamente o a través de la promesa
     const event = await prisma.studio_events.findFirst({
       where: {
         id: eventId,
         studio_id: studio.id,
-        promise: {
-          contact_id: clientId,
-        },
+        OR: [
+          { contact_id: clientId },
+          {
+            promise: {
+              contact_id: clientId,
+            },
+          },
+        ],
       },
       include: {
         promise: {

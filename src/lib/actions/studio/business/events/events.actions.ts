@@ -612,6 +612,21 @@ export async function moveEvent(
       agenda: updatedEvento.agenda[0] || null,
     };
 
+    // Notificar al cliente sobre cambio de etapa
+    try {
+      const { notifyEventStageChanged } = await import('@/lib/notifications/client');
+      const previousStageName = evento.stage?.name || undefined;
+      const newStageName = updatedEvento.stage?.name || 'Sin etapa';
+      await notifyEventStageChanged(
+        evento.id,
+        newStageName,
+        previousStageName
+      );
+    } catch (error) {
+      console.error('Error enviando notificación de cambio de etapa:', error);
+      // No fallar la operación si la notificación falla
+    }
+
     // Revalidar paths
     revalidatePath(`/${studioSlug}/studio/business/events`);
     revalidatePath(`/${studioSlug}/studio/business/events/${evento.id}`);

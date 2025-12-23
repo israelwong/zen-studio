@@ -33,11 +33,11 @@ export default function EventoContratoPage() {
   }, [isAuthenticated, cliente, eventId, slug]);
 
   const loadContract = async () => {
-    if (!slug || !eventId || !clientId) return;
+    if (!slug || !eventId || !cliente?.id) return;
 
     setLoading(true);
     try {
-      const contractResult = await getEventContractForClient(slug, eventId, clientId);
+      const contractResult = await getEventContractForClient(slug, eventId, cliente.id);
 
       if (contractResult.success && contractResult.data) {
         setContract(contractResult.data);

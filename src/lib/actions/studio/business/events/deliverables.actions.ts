@@ -3,6 +3,11 @@
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { DeliverableType } from '@prisma/client';
+import {
+  notifyDeliverableAdded,
+  notifyDeliverableUpdated,
+  notifyDeliverableDeleted,
+} from '@/lib/notifications/client';
 
 const createDeliverableSchema = z.object({
   event_id: z.string(),
@@ -144,6 +149,18 @@ export async function crearEntregable(
       },
     });
 
+    // Notificar al cliente
+    try {
+      await notifyDeliverableAdded(
+        entregable.id,
+        entregable.name,
+        entregable.type
+      );
+    } catch (error) {
+      console.error('Error enviando notificación de entregable agregado:', error);
+      // No fallar la operación si la notificación falla
+    }
+
     return { success: true, data: entregable };
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -181,7 +198,7 @@ export async function actualizarEntregable(
           studio_id: studio.id,
         },
       },
-      select: { id: true },
+      select: { id: true, name: true, type: true },
     });
 
     if (!entregable) {
@@ -200,6 +217,18 @@ export async function actualizarEntregable(
         client_approved_at: validated.client_approved_at,
       },
     });
+
+    // Notificar al cliente
+    try {
+      await notifyDeliverableUpdated(
+        updated.id,
+        updated.name,
+        updated.type
+      );
+    } catch (error) {
+      console.error('Error enviando notificación de entregable actualizado:', error);
+      // No fallar la operación si la notificación falla
+    }
 
     return { success: true, data: updated };
   } catch (error) {
@@ -238,16 +267,40 @@ export async function eliminarEntregable(
           studio_id: studio.id,
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        name: true,
+        event_id: true,
+        event: {
+          select: {
+            studio_id: true,
+            contact_id: true,
+          },
+        },
+      },
     });
 
     if (!entregable) {
       return { success: false, error: 'Entregable no encontrado' };
     }
 
+    // Guardar datos antes de eliminar para la notificación
+    const deliverableName = entregable.name;
+    const eventId = entregable.event_id;
+    const studioId = entregable.event.studio_id;
+    const contactId = entregable.event.contact_id;
+
     await prisma.studio_event_deliverables.delete({
       where: { id: entregableId },
     });
+
+    // Notificar al cliente
+    try {
+      await notifyDeliverableDeleted(eventId, deliverableName, studioId, contactId);
+    } catch (error) {
+      console.error('Error enviando notificación de entregable eliminado:', error);
+      // No fallar la operación si la notificación falla
+    }
 
     return { success: true };
   } catch (error) {

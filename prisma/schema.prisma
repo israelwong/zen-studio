@@ -761,6 +761,7 @@ model studios {
   eventos                                         studio_events[]
   promises                                        studio_promises[]
   studio_notifications                            studio_notifications[]
+  studio_client_notifications                     studio_client_notifications[]
   faq                                             studio_faq[]
   gastos                                          studio_gastos[]
   recurring_expenses                              studio_recurring_expenses[]
@@ -1249,6 +1250,7 @@ model studio_contacts {
   pagos                  studio_pagos[]
   events                 studio_events[]
   notifications          studio_notifications[]
+  client_notifications   studio_client_notifications[]
   studioOfferSubmissions studio_offer_submissions[]
 
   @@unique([studio_id, phone])
@@ -1315,6 +1317,7 @@ model studio_promises {
   logs                            studio_promise_logs[]
   tags                            studio_promises_tags[]
   notifications                   studio_notifications[]
+  client_notifications            studio_client_notifications[]
   agenda                          studio_agenda[]
   pagos                           studio_pagos[]
 
@@ -1439,6 +1442,7 @@ model studio_events {
   timeline             studio_event_timeline[]
   client_portal_access studio_client_portal_access[]
   notifications        studio_notifications[]
+  client_notifications studio_client_notifications[]
   contract             studio_event_contracts?
 
   @@index([contact_id])
@@ -1851,6 +1855,65 @@ model studio_notifications {
   @@index([payment_id])
 }
 
+//! NOTIFICACIONES DE CLIENTE
+
+model studio_client_notifications {
+  id String @id @default(cuid())
+
+  // Destinatario
+  contact_id String // studio_contacts.id
+  studio_id  String
+
+  // Tipo y contenido
+  type     ClientNotificationType
+  title    String
+  message  String
+  category String                 @default("general")
+  priority NotificationPriority   @default(MEDIUM)
+
+  // Navegación y tracking
+  route        String?
+  route_params Json?
+  clicked_at   DateTime?
+  is_read      Boolean   @default(false)
+  read_at      DateTime?
+
+  // Metadata estructurado
+  metadata Json?
+
+  // Relaciones con entidades
+  promise_id    String?
+  event_id      String?
+  payment_id    String?
+  quote_id      String?
+  deliverable_id String?
+  contract_id   String?
+
+  // Control de ciclo de vida
+  is_active     Boolean   @default(true)
+  expires_at    DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relaciones
+  contact  studio_contacts @relation(fields: [contact_id], references: [id], onDelete: Cascade)
+  studio   studios        @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  promise  studio_promises? @relation(fields: [promise_id], references: [id], onDelete: SetNull)
+  event    studio_events?   @relation(fields: [event_id], references: [id], onDelete: SetNull)
+  payment  studio_pagos?    @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+
+  // Índices
+  @@index([contact_id, is_read, created_at])
+  @@index([contact_id, is_active, created_at])
+  @@index([studio_id, contact_id, is_read])
+  @@index([type, category])
+  @@index([created_at])
+  @@index([expires_at])
+  @@index([event_id])
+  @@index([payment_id])
+  @@index([deliverable_id])
+}
+
 //! COMMERCIAL (CONDICIONES COMERCIALES)
 
 model studio_condiciones_comerciales {
@@ -2119,6 +2182,7 @@ model studio_pagos {
   studio_users                           studio_users?                               @relation(fields: [user_id], references: [id])
   contact                                studio_contacts?                            @relation(fields: [contact_id], references: [id])
   promise                                studio_promises?                            @relation(fields: [promise_id], references: [id])
+  client_notifications                   studio_client_notifications[]
 
   @@index([status])
   @@index([created_at])
@@ -2928,6 +2992,16 @@ enum StudioNotificationType {
   AGENDA_UPDATED
   AGENDA_CANCELLED
   STUDIO_SETTINGS_UPDATED
+}
+
+enum ClientNotificationType {
+  DELIVERABLE_ADDED
+  DELIVERABLE_UPDATED
+  DELIVERABLE_DELETED
+  PAYMENT_RECEIVED
+  PAYMENT_CANCELLED
+  CONTRACT_AVAILABLE
+  EVENT_STAGE_CHANGED
 }
 
 enum NotificationPriority {

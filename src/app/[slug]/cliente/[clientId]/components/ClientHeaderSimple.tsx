@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { ZenButton } from '@/components/ui/zen';
 import { useFavicon } from '@/hooks/useFavicon';
 import { logoutCliente } from '@/lib/actions/public/cliente';
+import { NotificationsDropdown } from '@/components/client/notifications/NotificationsDropdown';
 import type { ClientSession } from '@/types/client';
 import type { StudioPublicInfo } from '@/lib/actions/public/cliente';
 
@@ -70,8 +71,11 @@ export function ClientHeaderSimple({ slug, cliente, studioInfo }: ClientHeaderSi
         )}
       </div>
 
-      {/* RIGHT: User Info + Logout */}
+      {/* RIGHT: Notifications + User Info + Logout */}
       <div className="flex items-center gap-2 lg:gap-4">
+        {/* Notificaciones */}
+        <NotificationsDropdown studioSlug={slug} contactId={cliente.id} />
+        
         <div className="hidden sm:flex items-center gap-2 text-zinc-300">
           <User className="h-4 w-4" />
           <span className="text-sm">{cliente.name}</span>
