@@ -89,6 +89,8 @@ export {
 // CONTRACT COMPONENTS (DISPONIBLES)
 // =============================================================================
 export { ContractVariables } from '@/components/contract/ContractVariables';
+export { ContractEditor, ContractEditorToolbar } from '@/components/contract/ContractEditor';
+export { ContractPreview } from '@/components/contract/ContractPreview';
 
 // =============================================================================
 // DESIGN TOKENS
@@ -123,6 +125,8 @@ export type { ZenDialogProps } from './modals/ZenDialog';
 // CONTRACT TYPES (DISPONIBLES)
 // =============================================================================
 export type { ContractVariablesProps } from '@/components/contract/ContractVariables';
+export type { ContractEditorProps } from '@/components/contract/ContractEditor';
+export type { ContractPreviewProps } from '@/components/contract/ContractPreview';
 
 // =============================================================================
 // COMPONENTES PENDIENTES (comentados hasta implementación)
