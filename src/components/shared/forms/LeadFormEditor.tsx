@@ -20,6 +20,8 @@ export interface LeadFormConfig {
   show_packages_after_submit?: boolean;
   enable_interest_date: boolean;
   validate_with_calendar: boolean;
+  enable_event_name: boolean; // Solicitar nombre del evento
+  event_name_required: boolean; // Nombre del evento obligatorio
   success_message: string;
   success_redirect_url: string;
 }
@@ -212,6 +214,40 @@ export function LeadFormEditor({
             </div>
           </div>
 
+          {/* Nombre del evento */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+            <div className="mb-3">
+              <h4 className="text-sm font-medium text-zinc-300">
+                Nombre del evento
+              </h4>
+              <p className="text-xs text-zinc-500 mt-1">
+                Te ayuda a nombrar el evento desde un principio para estar organizado, sabemos que en ocasiones quien solicita la información no es el festejado (novia, mamá, padrinos)
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <ZenSwitch
+                checked={formData.enable_event_name || false}
+                onCheckedChange={(checked) =>
+                  onUpdate({ enable_event_name: checked })
+                }
+                label="Solicitar nombre del evento"
+              />
+
+              {formData.enable_event_name && (
+                <div className="space-y-2 pl-4 border-l-2 border-zinc-700/50">
+                  <ZenSwitch
+                    checked={formData.event_name_required || false}
+                    onCheckedChange={(checked) =>
+                      onUpdate({ event_name_required: checked })
+                    }
+                    label="Nombre del evento obligatorio"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Mostrar paquetes después de registro (modo SINGLE - ofertas) */}
           {mode === "single" && eventTypeId && (
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
@@ -262,17 +298,19 @@ export function LeadFormEditor({
         </div>
       </div>
 
-      {/* Success */}
-      <div className="border-t border-zinc-800 pt-4 space-y-4">
-        <ZenTextarea
-          label="Mensaje de Éxito"
-          value={formData.success_message}
-          onChange={(e) =>
-            onUpdate({ success_message: e.target.value })
-          }
-          rows={2}
-        />
-      </div>
+      {/* Success - Solo mostrar si NO se muestran paquetes después del submit */}
+      {!formData.show_packages_after_submit && (
+        <div className="border-t border-zinc-800 pt-4 space-y-4">
+          <ZenTextarea
+            label="Mensaje de Éxito"
+            value={formData.success_message}
+            onChange={(e) =>
+              onUpdate({ success_message: e.target.value })
+            }
+            rows={2}
+          />
+        </div>
+      )}
 
       {/* Botones de acción en la parte inferior */}
       <div className="mt-6 pt-6 border-t border-zinc-800 flex items-center justify-end gap-2">

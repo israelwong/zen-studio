@@ -371,6 +371,7 @@ export async function submitOfferLeadform(
           status: "pending",
           event_type_id: validatedData.event_type_id || null,
           event_date: eventDate, // ✅ Guardar como event_date (parseado de forma segura)
+          name: validatedData.event_name?.trim() || null, // ✅ Guardar nombre del evento
           // ✅ Marcar como prueba si aplica
           is_test: isTest,
           test_created_at: testTimestamp,

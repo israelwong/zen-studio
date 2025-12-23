@@ -125,6 +125,8 @@ export async function createOffer(
               email_required: validatedData.leadform.email_required,
               enable_interest_date: validatedData.leadform.enable_interest_date,
               validate_with_calendar: validatedData.leadform.validate_with_calendar,
+              enable_event_name: validatedData.leadform.enable_event_name,
+              event_name_required: validatedData.leadform.event_name_required,
             },
           },
         },
@@ -237,6 +239,8 @@ export async function createOffer(
             email_required: (offer.leadform as any).email_required as boolean | undefined,
             enable_interest_date: offer.leadform.enable_interest_date,
             validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
+            event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -392,6 +396,8 @@ export async function updateOffer(
             email_required: validatedData.leadform.email_required,
             enable_interest_date: validatedData.leadform.enable_interest_date,
             validate_with_calendar: validatedData.leadform.validate_with_calendar,
+            enable_event_name: validatedData.leadform.enable_event_name,
+            event_name_required: validatedData.leadform.event_name_required,
           },
         };
       }
@@ -522,6 +528,8 @@ export async function updateOffer(
             email_required: (offer.leadform as any).email_required as boolean | undefined,
             enable_interest_date: offer.leadform.enable_interest_date,
             validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
+            event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -666,6 +674,8 @@ export async function getOffer(
             email_required: (offer.leadform as any).email_required as boolean | undefined,
             enable_interest_date: offer.leadform.enable_interest_date,
             validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
+            event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -829,6 +839,8 @@ export async function getPublicOffer(
             email_required: (offer.leadform as any).email_required as boolean | undefined,
             enable_interest_date: offer.leadform.enable_interest_date,
             validate_with_calendar: offer.leadform.validate_with_calendar,
+            enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
+            event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }

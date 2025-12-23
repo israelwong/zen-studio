@@ -35,6 +35,8 @@ interface LeadFormData {
   email_required: boolean;
   enable_interest_date: boolean;
   validate_with_calendar: boolean;
+  enable_event_name: boolean; // Solicitar nombre del evento
+  event_name_required: boolean; // Nombre del evento obligatorio
   fields_config: {
     fields: LeadFormField[];
   };
@@ -109,6 +111,8 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     email_required: (initialOffer?.leadform?.email_required as boolean) || false,
     enable_interest_date: (initialOffer?.leadform?.enable_interest_date as boolean) || false,
     validate_with_calendar: (initialOffer?.leadform?.validate_with_calendar as boolean) || false,
+    enable_event_name: (initialOffer?.leadform?.enable_event_name as boolean) || false,
+    event_name_required: (initialOffer?.leadform?.event_name_required as boolean) || false,
     fields_config: {
       fields: (initialOffer?.leadform?.fields_config?.fields || []) as LeadFormField[],
     },
@@ -176,6 +180,8 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
         email_required: leadformData.email_required,
         enable_interest_date: leadformData.enable_interest_date,
         validate_with_calendar: leadformData.validate_with_calendar,
+        enable_event_name: leadformData.enable_event_name,
+        event_name_required: leadformData.event_name_required,
       },
     };
 

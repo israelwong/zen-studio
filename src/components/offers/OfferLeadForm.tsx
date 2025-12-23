@@ -23,6 +23,7 @@ import { LeadFormFieldsConfig } from "@/lib/actions/schemas/offer-schemas";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { OfferLeadFormFields } from "@/components/shared/forms";
+import { getEventTypes } from "@/lib/actions/studio/commercial/promises/event-types.actions";
 
 // Tipos para objetos globales de tracking
 interface WindowWithDataLayer extends Window {
@@ -47,6 +48,8 @@ interface OfferLeadFormProps {
   enableInterestDate?: boolean;
   validateWithCalendar?: boolean;
   emailRequired?: boolean;
+  enableEventName?: boolean; // Solicitar nombre del evento
+  eventNameRequired?: boolean; // Nombre del evento obligatorio
   coverUrl?: string | null;
   coverType?: string | null;
   isPreview?: boolean;
@@ -73,6 +76,8 @@ export function OfferLeadForm({
   enableInterestDate,
   validateWithCalendar = false,
   emailRequired = false,
+  enableEventName = false,
+  eventNameRequired = false,
   coverUrl,
   coverType,
   isPreview = false,
@@ -85,6 +90,7 @@ export function OfferLeadForm({
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPreparingPackages, setIsPreparingPackages] = useState(false);
+  const [eventTypeName, setEventTypeName] = useState<string | null>(null);
 
   // Verificar si viene de éxito
   const isSuccess = searchParams.get("success") === "true";
@@ -167,12 +173,36 @@ export function OfferLeadForm({
     trackVisit();
   }, [offerId, offerSlug, isSuccess]);
 
+  // Cargar nombre del tipo de evento
+  useEffect(() => {
+    const loadEventTypeName = async () => {
+      if (!eventTypeId) {
+        setEventTypeName(null);
+        return;
+      }
+
+      try {
+        const result = await getEventTypes(studioSlug);
+        if (result.success && result.data) {
+          const eventType = result.data.find((t) => t.id === eventTypeId);
+          setEventTypeName(eventType?.name || null);
+        }
+      } catch (error) {
+        console.error("[OfferLeadForm] Error loading event type name:", error);
+        setEventTypeName(null);
+      }
+    };
+
+    loadEventTypeName();
+  }, [eventTypeId, studioSlug]);
+
   // Handler para submit del formulario compartido
   const handleFormSubmit = async (data: {
     name: string;
     phone: string;
     email: string;
     interest_date?: string;
+    event_name?: string;
     event_type_id?: string | null;
   }) => {
     setIsSubmitting(true);
@@ -382,6 +412,9 @@ export function OfferLeadForm({
             {!isModal && (
               <ZenCardHeader>
                 <ZenCardTitle>{title || "Solicita información"}</ZenCardTitle>
+                {eventTypeName && (
+                  <p className="text-xs text-zinc-500 mt-1">{eventTypeName}</p>
+                )}
                 {description && (
                   <p className="text-sm text-zinc-400 mt-2">{description}</p>
                 )}
@@ -393,12 +426,15 @@ export function OfferLeadForm({
                 emailRequired={emailRequired}
                 enableInterestDate={enableInterestDate}
                 validateWithCalendar={validateWithCalendar}
+                enableEventName={enableEventName}
+                eventNameRequired={eventNameRequired}
                 eventTypeId={eventTypeId}
+                eventTypeName={eventTypeName}
                 studioId={studioId}
                 studioSlug={studioSlug}
                 isPreview={effectiveIsPreview}
                 onSubmit={handleFormSubmit}
-                submitLabel="Enviar solicitud"
+                submitLabel={showPackagesAfterSubmit ? "Ver paquetes" : "Solicitar información"}
                 isPreparingPackages={isPreparingPackages}
                 preparingMessage="Preparando información de paquetes disponibles para tu revisión..."
               />

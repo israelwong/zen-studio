@@ -24,7 +24,10 @@ export interface OfferLeadFormFieldsProps {
   emailRequired?: boolean;
   enableInterestDate?: boolean;
   validateWithCalendar?: boolean;
+  enableEventName?: boolean; // Solicitar nombre del evento
+  eventNameRequired?: boolean; // Nombre del evento obligatorio
   eventTypeId?: string | null;
+  eventTypeName?: string | null; // Nombre del tipo de evento para placeholder dinámico
   studioId: string;
   studioSlug: string; // ✅ NUEVO: Para validación de teléfono
   isPreview?: boolean;
@@ -33,6 +36,7 @@ export interface OfferLeadFormFieldsProps {
     phone: string;
     email: string;
     interest_date?: string;
+    event_name?: string;
     event_type_id?: string | null;
   }) => Promise<void> | void;
   onSuccess?: () => void; // Callback opcional después de submit exitoso
@@ -51,14 +55,17 @@ export function OfferLeadFormFields({
   emailRequired = false,
   enableInterestDate = false,
   validateWithCalendar = false,
+  enableEventName = false,
+  eventNameRequired = false,
   eventTypeId,
+  eventTypeName,
   studioId,
   studioSlug,
   isPreview = false,
   onSubmit,
   onSuccess,
   initialData = {},
-  submitLabel = "Enviar solicitud",
+  submitLabel = "Solicitar información",
   isPreparingPackages = false,
   preparingMessage = "Preparando información de paquetes disponibles para tu revisión...",
 }: OfferLeadFormFieldsProps) {
@@ -114,6 +121,32 @@ export function OfferLeadFormFields({
       label: "Fecha de interés",
       required: false,
       placeholder: "Selecciona una fecha",
+    });
+  }
+
+  // Función para obtener placeholder según tipo de evento
+  const getEventNamePlaceholder = (): string => {
+    if (!eventTypeName) {
+      return "Nombre del/los festejado(s)";
+    }
+    const eventTypeLower = eventTypeName.toLowerCase();
+    if (eventTypeLower.includes('boda') || eventTypeLower.includes('matrimonio')) {
+      return "Nombre de los novios (Ej: Ana y Juan)";
+    }
+    if (eventTypeLower.includes('xv') || eventTypeLower.includes('quince') || eventTypeLower.includes('15')) {
+      return "Nombre de la festejada";
+    }
+    return "Nombre del/los festejado(s)";
+  };
+
+  // Agregar campo de nombre del evento si está habilitado
+  if (enableEventName) {
+    basicFields.push({
+      id: "event_name",
+      type: "text",
+      label: "Nombre del evento",
+      required: eventNameRequired,
+      placeholder: getEventNamePlaceholder(),
     });
   }
 
@@ -249,6 +282,7 @@ export function OfferLeadFormFields({
         phone: cleanPhone,
         email: formData.email || "",
         interest_date: formData.interest_date,
+        event_name: formData.event_name || undefined,
         event_type_id: eventTypeId,
       });
 

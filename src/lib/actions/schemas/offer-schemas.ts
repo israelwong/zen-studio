@@ -65,6 +65,8 @@ export const CreateOfferSchema = z.object({
     email_required: z.boolean().default(false),
     enable_interest_date: z.boolean().default(false),
     validate_with_calendar: z.boolean().default(false),
+    enable_event_name: z.boolean().default(false), // Solicitar nombre del evento
+    event_name_required: z.boolean().default(false), // Nombre del evento obligatorio
   }),
 });
 
@@ -79,6 +81,7 @@ export const SubmitLeadFormSchema = z.object({
   phone: z.string().length(10, 'El teléfono debe tener exactamente 10 dígitos').regex(/^\d+$/, 'El teléfono solo debe contener números'),
   email: z.string().email('Email inválido').optional().or(z.literal('')),
   interest_date: z.string().optional(), // Fecha de interés del evento
+  event_name: z.string().max(200, 'El nombre del evento es demasiado largo').optional().or(z.literal('')), // Nombre del evento
   // Asunto / Tipo de evento
   event_type_id: z.string().optional(), // Si useEventTypes = true
   subject: z.string().optional(), // LEGACY: si useEventTypes = false

@@ -66,6 +66,8 @@ export interface StudioOfferLeadform {
   email_required?: boolean;
   enable_interest_date?: boolean;
   validate_with_calendar?: boolean;
+  enable_event_name?: boolean; // Solicitar nombre del evento
+  event_name_required?: boolean; // Nombre del evento obligatorio
   created_at: Date;
   updated_at: Date;
 }

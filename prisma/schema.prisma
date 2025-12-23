@@ -2716,6 +2716,8 @@ model studio_offer_leadforms {
   email_required             Boolean       @default(false)
   enable_interest_date       Boolean       @default(false)
   validate_with_calendar     Boolean       @default(false)
+  enable_event_name          Boolean       @default(false) // Solicitar nombre del evento
+  event_name_required        Boolean       @default(false) // Nombre del evento obligatorio
   created_at                 DateTime      @default(now())
   updated_at                 DateTime      @updatedAt
   offer                      studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)

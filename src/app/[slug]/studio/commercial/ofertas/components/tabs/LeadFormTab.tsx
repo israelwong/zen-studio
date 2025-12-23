@@ -81,11 +81,14 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId, onSave, onC
                 enableInterestDate={leadformData.enable_interest_date}
                 validateWithCalendar={leadformData.validate_with_calendar}
                 emailRequired={leadformData.email_required}
+                enableEventName={leadformData.enable_event_name || false}
+                eventNameRequired={leadformData.event_name_required || false}
                 coverUrl={formData.cover_media_url}
                 coverType={formData.cover_media_type}
                 isPreview={true}
                 isModal={false}
                 isEditMode={true}
+                showPackagesAfterSubmit={leadformData.show_packages_after_submit || false}
               />
             </div>
           </MobilePreviewFull>
