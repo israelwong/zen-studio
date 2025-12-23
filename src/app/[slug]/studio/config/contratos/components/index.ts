@@ -8,6 +8,10 @@ export { VariableAutocomplete } from "./VariableAutocomplete";
 export { VariableBadge } from "./VariableBadge";
 export { CotizacionBlock } from "./CotizacionBlock";
 export { CondicionesComercialesBlock } from "./CondicionesComercialesBlock";
+export { ContractTemplateCard } from "./ContractTemplate";
+export { ContractTemplatesTable } from "./ContractTemplatesTable";
+export type { ContractTemplateProps } from "./ContractTemplate";
+export type { ContractTemplatesTableProps } from "./ContractTemplatesTable";
 
 export type {
   ContractVariable,

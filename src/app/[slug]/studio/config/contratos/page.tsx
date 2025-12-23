@@ -6,6 +6,8 @@ import { FileText, Plus, Loader2 } from 'lucide-react';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { createContractTemplate } from '@/lib/actions/studio/business/contracts';
 import { DEFAULT_CONTRACT_TEMPLATE } from '@/lib/constants/contract-template';
+import { DragEndEvent } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import {
   ZenCard,
   ZenCardContent,
@@ -14,8 +16,8 @@ import {
   ZenCardDescription,
   ZenButton,
   ZenConfirmModal,
-  ContractTemplateCard,
 } from '@/components/ui/zen';
+import { ContractTemplatesTable } from './components';
 import {
   getContractTemplates,
   deleteContractTemplate,
@@ -44,6 +46,7 @@ export default function ContratosPage() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ContractTemplate | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isReordering, setIsReordering] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -125,6 +128,42 @@ export default function ContratosPage() {
   const handleDeleteClick = (templateId: string) => {
     setTemplateToDelete(templateId);
     setDeleteModalOpen(true);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (isReordering || !over || active.id === over.id) {
+      return;
+    }
+
+    const oldIndex = templates.findIndex((template) => template.id === active.id);
+    const newIndex = templates.findIndex((template) => template.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) {
+      return;
+    }
+
+    const newTemplates = arrayMove(templates, oldIndex, newIndex);
+
+    try {
+      setIsReordering(true);
+      setTemplates(newTemplates);
+
+      // TODO: Implementar acción para persistir el orden en la base de datos
+      // const templateIds = newTemplates.map((template) => template.id);
+      // const result = await reorderContractTemplates(studioSlug, templateIds);
+      // if (!result.success) {
+      //   toast.error(result.error || 'Error al reordenar las plantillas');
+      //   await loadTemplates();
+      // }
+    } catch (error) {
+      console.error('Error reordenando plantillas:', error);
+      toast.error('Error al reordenar las plantillas');
+      await loadTemplates();
+    } finally {
+      setIsReordering(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -225,18 +264,15 @@ export default function ContratosPage() {
               </ZenButton>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {templates.map((template) => (
-                <ContractTemplateCard
-                  key={template.id}
-                  template={template}
-                  onEdit={() => handleEdit(template.id)}
-                  onDuplicate={() => handleDuplicate(template.id)}
-                  onToggle={() => handleToggle(template.id)}
-                  onDelete={() => handleDeleteClick(template.id)}
-                />
-              ))}
-            </div>
+            <ContractTemplatesTable
+              templates={templates}
+              onEdit={handleEdit}
+              onDuplicate={handleDuplicate}
+              onToggle={handleToggle}
+              onDelete={handleDeleteClick}
+              onDragEnd={handleDragEnd}
+              isReordering={isReordering}
+            />
           )}
         </ZenCardContent>
       </ZenCard>
