@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { LogIn, Phone, Mail } from 'lucide-react';
 import Image from 'next/image';
 import { ZenCard, ZenInput, ZenButton } from '@/components/ui/zen';
@@ -27,6 +27,7 @@ export default function ClientLoginPage() {
   const { toasts, removeToast, error: showError, success } = useToast();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const slug = params?.slug as string;
 
   // Actualizar favicon dinámicamente
@@ -57,6 +58,19 @@ export default function ClientLoginPage() {
     };
     fetchStudioInfo();
   }, [slug]);
+
+  // Prellenar teléfono desde query params
+  useEffect(() => {
+    const phoneParam = searchParams.get('phone');
+    if (phoneParam) {
+      // Limpiar número (solo dígitos)
+      const cleanPhone = phoneParam.replace(/\D/g, '').slice(0, 10);
+      if (cleanPhone) {
+        setPhone(cleanPhone);
+        setLoginMethod('phone');
+      }
+    }
+  }, [searchParams]);
 
   // Validar email formato
   const validateEmail = (email: string): boolean => {
