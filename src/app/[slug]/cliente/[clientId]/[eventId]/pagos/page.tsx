@@ -27,7 +27,7 @@ export default function EventoPagosPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!isAuthenticated || !cliente || clientId !== cliente.id) {
+      if (!isAuthenticated || !cliente || clientId !== cliente.id || !eventId) {
         return;
       }
 
@@ -35,6 +35,7 @@ export default function EventoPagosPage() {
         setLoading(true);
 
         // Obtener pagos y info bancaria en paralelo
+        // obtenerPagosEvento ahora acepta tanto event_id como promise_id
         const [pagosResponse, bankResponse] = await Promise.all([
           obtenerPagosEvento(eventId, cliente.id),
           obtenerInfoBancariaStudio(cliente.studio_id),

@@ -70,7 +70,6 @@ export function useClientNotificationsHistory({
           setError(result.error || 'Error al cargar notificaciones');
         }
       } catch (err) {
-        console.error('[useClientNotificationsHistory] Error:', err);
         setError('Error al cargar notificaciones');
       } finally {
         if (isMountedRef.current) {

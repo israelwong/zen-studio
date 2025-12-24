@@ -22,6 +22,8 @@ export {
 export {
   notifyPaymentReceived,
   notifyPaymentCancelled,
+  notifyPaymentUpdated,
+  notifyPaymentDeleted,
 } from './helpers/payment-notifications';
 
 export {

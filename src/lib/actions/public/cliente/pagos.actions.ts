@@ -9,9 +9,33 @@ import type { ClientPago, StudioBankInfo, ApiResponse } from '@/types/client';
 
 /**
  * Obtiene el historial de pagos de un evento (promise)
+ * Acepta tanto event_id (studio_events) como promise_id (studio_promises)
  */
-export async function obtenerPagosEvento(promiseId: string, contactId: string): Promise<ApiResponse<ClientPago[]>> {
+export async function obtenerPagosEvento(eventIdOrPromiseId: string, contactId: string): Promise<ApiResponse<ClientPago[]>> {
   try {
+    let promiseId = eventIdOrPromiseId;
+
+    // Verificar si es un event_id (studio_events) o promise_id (studio_promises)
+    const event = await prisma.studio_events.findUnique({
+      where: { id: eventIdOrPromiseId },
+      select: { 
+        id: true,
+        promise_id: true,
+        contact_id: true,
+      },
+    });
+
+    if (event) {
+      // Es un event_id, usar el promise_id asociado
+      if (event.contact_id !== contactId) {
+        return {
+          success: false,
+          message: 'No tienes acceso a este evento',
+        };
+      }
+      promiseId = event.promise_id;
+    }
+
     // Verificar que la promesa pertenece al contacto
     const promise = await prisma.studio_promises.findFirst({
       where: {

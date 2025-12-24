@@ -8,6 +8,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
 } from '@/components/ui/shadcn/sheet';
 import { ZenButton, ZenSelect } from '@/components/ui/zen';
 import { cn } from '@/lib/utils';
@@ -43,28 +44,36 @@ export function NotificationsHistorySheet({
       period,
     });
 
+
   // Estado para detectar si es la carga inicial
   const isInitialLoad = React.useRef(true);
-  const prevPeriodRef = React.useRef(period);
+  const hasLoadedOnce = React.useRef(false);
 
   React.useEffect(() => {
-    if (open) {
-      if (period !== prevPeriodRef.current) {
-        isInitialLoad.current = true;
-        prevPeriodRef.current = period;
-      } else if (!isInitialLoad.current && loading) {
-        isInitialLoad.current = false;
-      }
-    } else {
+    if (open && !hasLoadedOnce.current) {
       isInitialLoad.current = true;
     }
-  }, [open, period, loading]);
+  }, [open]);
 
   React.useEffect(() => {
-    if (!loading && isInitialLoad.current && open) {
+    if (!loading && open) {
       isInitialLoad.current = false;
+      hasLoadedOnce.current = true;
     }
-  }, [loading, open]);
+    // Si hay notificaciones cargadas, no mostrar skeleton
+    if (notifications.length > 0) {
+      isInitialLoad.current = false;
+      hasLoadedOnce.current = true;
+    }
+  }, [loading, open, notifications.length]);
+
+  React.useEffect(() => {
+    if (!open) {
+      // No resetear hasLoadedOnce para mantener el estado de carga
+      // hasLoadedOnce.current = false;
+      // isInitialLoad.current = true;
+    }
+  }, [open]);
 
   // Scroll infinito
   useEffect(() => {
@@ -133,6 +142,9 @@ export function NotificationsHistorySheet({
           <SheetTitle className="text-xl font-semibold text-zinc-200">
             Historial de Notificaciones
           </SheetTitle>
+          <SheetDescription className="sr-only">
+            Historial completo de notificaciones del cliente
+          </SheetDescription>
           <div className="flex items-center gap-2 mt-4">
             <ZenSelect
               value={period}
@@ -153,7 +165,7 @@ export function NotificationsHistorySheet({
           ref={scrollContainerRef}
           className="flex-1 overflow-y-auto"
         >
-          {loading && isInitialLoad.current ? (
+          {loading && isInitialLoad.current && notifications.length === 0 && groupedEntries.length === 0 ? (
             <div className="space-y-6 px-4 py-4">
               {[1, 2].map((groupIndex) => (
                 <div key={groupIndex} className="space-y-2">

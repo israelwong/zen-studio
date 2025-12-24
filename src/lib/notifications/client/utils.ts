@@ -29,17 +29,21 @@ export function buildRoute(
 
   // Si faltan IDs en route_params pero están en la notificación, usarlos
   if (notification) {
-    if (!paramsObj.eventId && notification.event_id) {
+    if (!paramsObj.eventId && !paramsObj.event_id && notification.event_id) {
       paramsObj.eventId = notification.event_id;
+      paramsObj.event_id = notification.event_id; // También agregar en snake_case por si acaso
     }
-    if (!paramsObj.paymentId && notification.payment_id) {
+    if (!paramsObj.paymentId && !paramsObj.payment_id && notification.payment_id) {
       paramsObj.paymentId = notification.payment_id;
+      paramsObj.payment_id = notification.payment_id;
     }
-    if (!paramsObj.deliverableId && notification.deliverable_id) {
+    if (!paramsObj.deliverableId && !paramsObj.deliverable_id && notification.deliverable_id) {
       paramsObj.deliverableId = notification.deliverable_id;
+      paramsObj.deliverable_id = notification.deliverable_id;
     }
-    if (!paramsObj.contractId && notification.contract_id) {
+    if (!paramsObj.contractId && !paramsObj.contract_id && notification.contract_id) {
       paramsObj.contractId = notification.contract_id;
+      paramsObj.contract_id = notification.contract_id;
     }
   }
 

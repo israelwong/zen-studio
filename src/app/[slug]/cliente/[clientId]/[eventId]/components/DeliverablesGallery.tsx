@@ -107,11 +107,8 @@ export function DeliverablesGallery({
           // Por ahora, solo establecemos el folder actual
           // El path completo se puede reconstruir navegando hacia atrás si es necesario
         }
-      } else {
-        console.error('[DeliverablesGallery] Error cargando carpeta:', result.error);
       }
     } catch (error) {
-      console.error('[DeliverablesGallery] Error cargando carpeta:', error);
     } finally {
       setLoadingFolder(false);
     }
@@ -311,11 +308,7 @@ export function DeliverablesGallery({
   const hasGoogleDriveContent = entregables.some((e) => {
     const hasContent = e.driveContent && e.driveContent.allItems.length > 0;
     if (e.delivery_mode === 'google_drive' && !hasContent) {
-      console.log(`[DeliverablesGallery] Entregable ${e.id} es Google Drive pero sin contenido:`, {
-        hasDriveContent: !!e.driveContent,
-        foldersCount: e.driveContent?.folders.length || 0,
-        allItemsCount: e.driveContent?.allItems.length || 0,
-      });
+      // Entregable Google Drive sin contenido
     }
     return hasContent;
   });

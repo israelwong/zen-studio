@@ -32,7 +32,6 @@ export function ClientHeaderSimple({ slug, cliente, studioInfo }: ClientHeaderSi
     try {
       await logoutCliente(slug);
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
       router.push(`/${slug}/cliente/login`);
     }
   };
@@ -75,7 +74,7 @@ export function ClientHeaderSimple({ slug, cliente, studioInfo }: ClientHeaderSi
       <div className="flex items-center gap-2 lg:gap-4">
         {/* Notificaciones */}
         <NotificationsDropdown studioSlug={slug} contactId={cliente.id} />
-        
+
         <div className="hidden sm:flex items-center gap-2 text-zinc-300">
           <User className="h-4 w-4" />
           <span className="text-sm">{cliente.name}</span>

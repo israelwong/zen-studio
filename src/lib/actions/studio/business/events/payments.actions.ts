@@ -271,6 +271,19 @@ export async function crearPago(
             },
         });
 
+        // Notificar al cliente
+        try {
+          const { notifyPaymentReceived } = await import('@/lib/notifications/client');
+          await notifyPaymentReceived(
+            pago.id,
+            Number(pago.amount),
+            pago.metodo_pago
+          );
+        } catch (error) {
+          console.error('Error enviando notificación de pago recibido:', error);
+          // No fallar la operación si la notificación falla
+        }
+
         revalidatePath(`/${validatedData.studio_slug}/studio/business/events`);
         revalidatePath(`/${validatedData.studio_slug}/studio/business/finanzas`);
 
@@ -409,6 +422,18 @@ export async function actualizarPago(
                 created_at: true,
             },
         });
+
+        // Notificar al cliente
+        try {
+          const { notifyPaymentUpdated } = await import('@/lib/notifications/client');
+          await notifyPaymentUpdated(
+            pago.id,
+            Number(pago.amount),
+            pago.metodo_pago
+          );
+        } catch (error) {
+          // No fallar la operación si la notificación falla
+        }
 
         revalidatePath(`/${validatedData.studio_slug}/studio/business/events`);
         revalidatePath(`/${validatedData.studio_slug}/studio/business/finanzas`);
@@ -561,16 +586,73 @@ export async function eliminarPago(
                     },
                 ],
             },
+            include: {
+                promise: {
+                    include: {
+                        event: {
+                            include: {
+                                studio: {
+                                    select: {
+                                        slug: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
 
         if (!pago) {
             return { success: false, error: 'Pago no encontrado' };
         }
 
+        // Guardar datos antes de eliminar para la notificación
+        const paymentAmount = Number(pago.amount);
+        const paymentMethod = pago.metodo_pago;
+        let promiseId: string | undefined;
+        let contactId: string | undefined;
+        let studioSlugForNotification: string | undefined;
+
+        // Obtener datos del evento si existe
+        if (pago.promise?.event) {
+            promiseId = pago.promise.event.promise_id || pago.promise.id;
+            contactId = pago.promise.event.contact_id;
+            studioSlugForNotification = pago.promise.event.studio.slug;
+        } else if (pago.promise) {
+            // Si no hay evento, usar datos de la promise
+            promiseId = pago.promise.id;
+            contactId = pago.promise.contact_id;
+            // Obtener slug del studio
+            const studioData = await prisma.studios.findUnique({
+                where: { id: studio.id },
+                select: { slug: true },
+            });
+            studioSlugForNotification = studioData?.slug;
+        }
+
         // Eliminar el pago completamente
         await prisma.studio_pagos.delete({
             where: { id: pagoId },
         });
+
+        // Notificar al cliente si tenemos los datos necesarios
+        if (promiseId && contactId && studioSlugForNotification) {
+            try {
+                const { notifyPaymentDeleted } = await import('@/lib/notifications/client');
+                await notifyPaymentDeleted(
+                    pagoId,
+                    paymentAmount,
+                    paymentMethod,
+                    promiseId,
+                    contactId,
+                    studio.id,
+                    studioSlugForNotification
+                );
+            } catch (error) {
+                // No fallar la operación si la notificación falla
+            }
+        }
 
         revalidatePath(`/${studioSlug}/studio/business/events`);
         revalidatePath(`/${studioSlug}/studio/business/finanzas`);

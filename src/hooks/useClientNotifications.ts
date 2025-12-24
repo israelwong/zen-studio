@@ -108,7 +108,6 @@ export function useClientNotifications({
         const authResult = await setupRealtimeAuth(supabase, requiresAuth);
 
         if (!authResult.success && requiresAuth) {
-          console.error('[CLIENT NOTIFICATIONS] Error configurando auth:', authResult.error);
           return;
         }
 
@@ -122,11 +121,13 @@ export function useClientNotifications({
           ack: false,
         });
 
-        // Agregar listeners
+        // Agregar listeners para realtime.send()
+        // El formato del payload de realtime.send() es: { operation, table, new, old, record, old_record }
         channel
           .on('broadcast', { event: 'INSERT' }, (payload: unknown) => {
             const p = payload as any;
-            const notification = p.record || p.payload?.record || p.new;
+            // realtime.send() envía el payload directamente, no dentro de payload.payload
+            const notification = p.record || p.new || (p.payload ? (p.payload.record || p.payload.new) : null);
             if (notification && notification.contact_id === contactId) {
               setNotifications((prev) => {
                 if (prev.some((n) => n.id === notification.id)) return prev;
@@ -137,7 +138,7 @@ export function useClientNotifications({
           })
           .on('broadcast', { event: 'UPDATE' }, (payload: unknown) => {
             const p = payload as any;
-            const notification = p.record || p.payload?.record || p.new;
+            const notification = p.record || p.new || (p.payload ? (p.payload.record || p.payload.new) : null);
             if (notification && notification.contact_id === contactId) {
               if (!notification.is_active) {
                 setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
@@ -152,7 +153,7 @@ export function useClientNotifications({
           })
           .on('broadcast', { event: 'DELETE' }, (payload: unknown) => {
             const p = payload as any;
-            const notification = p.old_record || p.payload?.old_record || p.old;
+            const notification = p.old_record || p.old || (p.payload ? (p.payload.old_record || p.payload.old) : null);
             if (notification && notification.contact_id === contactId) {
               setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
               if (!notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -161,14 +162,12 @@ export function useClientNotifications({
 
         // Suscribirse
         await subscribeToChannel(channel, (status, err) => {
-          if (err) {
-            console.error('[CLIENT NOTIFICATIONS] Error en suscripción:', err);
-          }
+          // Manejo silencioso de errores
         });
 
         channelRef.current = channel;
       } catch (error) {
-        console.error('[CLIENT NOTIFICATIONS] Error en setupRealtime:', error);
+        // Error silencioso - no interrumpir la experiencia del usuario
       }
     };
 
@@ -191,7 +190,7 @@ export function useClientNotifications({
       await markNotificationAsRead(notificationId, contactId);
       // El estado se actualizará automáticamente vía Realtime UPDATE event
     } catch (err) {
-      console.error('[useClientNotifications] Error marcando como leída:', err);
+      // Error silencioso
     }
   }, [contactId]);
 
@@ -221,7 +220,6 @@ export function useClientNotifications({
       try {
         await markNotificationAsClicked(notificationId, contactId);
       } catch (err) {
-        console.error('[useClientNotifications] Error marcando como clickeada:', err);
         // Revertir en caso de error
         await loadNotifications();
       }

@@ -29,7 +29,6 @@ export function ClientHeader({ slug, cliente, studioInfo }: ClientHeaderProps) {
     try {
       await logoutCliente(slug);
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
       router.push(`/${slug}/cliente/login`);
     }
   };

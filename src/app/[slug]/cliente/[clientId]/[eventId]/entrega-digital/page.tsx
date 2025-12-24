@@ -35,7 +35,6 @@ export default function EntregaDigitalPage() {
           setError(result.error || 'Error al cargar entregables');
         }
       } catch (err) {
-        console.error('Error loading entregables:', err);
         setError('Error al cargar entregables');
       } finally {
         setLoading(false);

@@ -22,7 +22,6 @@ export function ClientNavbar({ cliente, studioName, studioLogo }: ClientNavbarPr
     try {
       await logoutCliente(slug);
     } catch (error) {
-      console.error('Error al cerrar sesión:', error);
       router.push(`/${slug}/cliente/login`);
     }
   };

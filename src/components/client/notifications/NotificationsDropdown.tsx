@@ -33,6 +33,7 @@ export function NotificationsDropdown({ studioSlug, contactId }: NotificationsDr
   const { notifications, unreadCount, loading, error, markAsClicked, deleteNotification } =
     useClientNotifications({ studioSlug, contactId });
 
+
   // Evitar problemas de hidratación con Radix UI
   useEffect(() => {
     setIsMounted(true);
@@ -151,7 +152,7 @@ export function NotificationsDropdown({ studioSlug, contactId }: NotificationsDr
           )}
         </div>
 
-        {loading ? (
+        {loading && notifications.length === 0 ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
           </div>
@@ -160,7 +161,7 @@ export function NotificationsDropdown({ studioSlug, contactId }: NotificationsDr
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
           </div>
-        ) : notifications.length === 0 ? (
+        ) : !loading && notifications.length === 0 ? (
           <div className="px-3 py-8 text-center text-sm text-zinc-400">
             No hay notificaciones
           </div>

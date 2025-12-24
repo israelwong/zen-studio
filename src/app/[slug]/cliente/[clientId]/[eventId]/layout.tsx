@@ -27,14 +27,99 @@ export default async function EventoLayout({ children, params }: EventoLayoutPro
     redirect(`/${slug}/cliente/${cliente.id}`);
   }
 
+  // Verificar si eventId es un event_id (studio_events) o promise_id (studio_promises)
+  const { prisma } = await import('@/lib/prisma');
+  
+  // Primero intentar como event_id (studio_events)
+  const event = await prisma.studio_events.findUnique({
+    where: { id: eventId },
+    select: { 
+      id: true,
+      promise_id: true,
+      contact_id: true,
+    },
+  });
+
+  let promiseId = eventId; // Por defecto asumir que es promise_id
+  
+  if (event) {
+    // Es un event_id, usar el promise_id asociado
+    if (event.contact_id !== cliente.id) {
+      redirect(`/${slug}/cliente/${clientId}`);
+    }
+    promiseId = event.promise_id;
+  } else {
+    // No es event_id, verificar que sea promise_id válido
+    const promise = await prisma.studio_promises.findFirst({
+      where: {
+        id: eventId,
+        contact_id: cliente.id,
+      },
+      select: { id: true },
+    });
+
+    if (!promise) {
+      redirect(`/${slug}/cliente/${clientId}`);
+    }
+  }
+
   // Cargar datos en paralelo (memoizados con React.cache)
   const [eventoResponse, studioInfo] = await Promise.all([
-    obtenerEventoDetalle(eventId, cliente.id),
+    obtenerEventoDetalle(promiseId, cliente.id),
     obtenerStudioPublicInfo(slug),
   ]);
 
+  // Si no se encuentra el evento completo, verificar al menos existencia básica
   if (!eventoResponse.success || !eventoResponse.data) {
-    redirect(`/${slug}/cliente/${clientId}`);
+    const promiseExists = await prisma.studio_promises.findFirst({
+      where: {
+        id: promiseId,
+        contact_id: cliente.id,
+      },
+      select: { id: true },
+    });
+
+    if (!promiseExists) {
+      redirect(`/${slug}/cliente/${clientId}`);
+    }
+    
+    // Si existe pero no tiene datos completos, crear un evento mínimo para el layout
+    // Las páginas individuales manejarán su propia lógica
+    const eventoMinimo: ClientEventDetail = {
+      id: eventId,
+      name: 'Evento',
+      event_date: '',
+      event_location: null,
+      address: null,
+      event_type: null,
+      cotizacion: {
+        id: '',
+        status: 'draft',
+        total: 0,
+        pagado: 0,
+        pendiente: 0,
+        descuento: null,
+        descripcion: null,
+        servicios: [],
+      },
+    };
+
+    return (
+      <EventoLayoutClient studioInfo={studioInfo}>
+        <EventoProvider evento={eventoMinimo}>
+          <ZenSidebarProvider>
+            <ClientLayoutWrapper
+              slug={slug}
+              cliente={cliente}
+              evento={eventoMinimo}
+              studioInfo={studioInfo}
+            >
+              {children}
+            </ClientLayoutWrapper>
+          </ZenSidebarProvider>
+        </EventoProvider>
+      </EventoLayoutClient>
+    );
   }
 
   const evento: ClientEventDetail = eventoResponse.data;
