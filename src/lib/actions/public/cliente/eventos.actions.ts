@@ -408,3 +408,67 @@ function agruparServiciosPorCotizacion(
   return Array.from(seccionesMap.values());
 }
 
+/**
+ * Actualizar información básica del evento (nombre y sede)
+ * Solo permite actualizar si el cliente tiene acceso al evento
+ */
+export async function actualizarEventoInfo(
+  promiseId: string,
+  contactId: string,
+  data: { name?: string | null; event_location?: string | null }
+): Promise<ApiResponse<{ name: string | null; event_location: string | null }>> {
+  try {
+    // Verificar que el cliente tenga acceso al evento
+    const promise = await prisma.studio_promises.findFirst({
+      where: {
+        id: promiseId,
+        contact_id: contactId,
+        quotes: {
+          some: {
+            status: { in: ['aprobada', 'autorizada', 'approved'] },
+          },
+        },
+      },
+    });
+
+    if (!promise) {
+      return {
+        success: false,
+        message: 'No tienes acceso a este evento',
+      };
+    }
+
+    // Actualizar solo los campos proporcionados
+    const updateData: { name?: string | null; event_location?: string | null } = {};
+    if (data.name !== undefined) {
+      updateData.name = data.name?.trim() || null;
+    }
+    if (data.event_location !== undefined) {
+      updateData.event_location = data.event_location?.trim() || null;
+    }
+
+    const updatedPromise = await prisma.studio_promises.update({
+      where: { id: promiseId },
+      data: updateData,
+      select: {
+        name: true,
+        event_location: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        name: updatedPromise.name,
+        event_location: updatedPromise.event_location,
+      },
+    };
+  } catch (error) {
+    console.error('[actualizarEventoInfo] Error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Error al actualizar el evento',
+    };
+  }
+}
+

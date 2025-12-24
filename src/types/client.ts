@@ -10,7 +10,9 @@ export interface ClientSession {
   name: string;
   phone: string;
   email: string | null;
+  address: string | null;
   studio_id: string;
+  avatar_url?: string | null;
 }
 
 export interface ClientCotizacion {

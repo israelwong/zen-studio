@@ -161,7 +161,9 @@ export async function getClienteSession(): Promise<ClientSession | null> {
         name: true,
         phone: true,
         email: true,
+        address: true,
         studio_id: true,
+        avatar_url: true,
       },
     });
 
@@ -189,7 +191,9 @@ export async function getClienteSession(): Promise<ClientSession | null> {
       name: contact.name,
       phone: contact.phone,
       email: contact.email,
+      address: contact.address,
       studio_id: contact.studio_id,
+      avatar_url: contact.avatar_url,
     };
   } catch (error) {
     console.error('[getClienteSession] Error:', error);

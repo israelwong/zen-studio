@@ -32,3 +32,7 @@ export {
 
 export type { ClienteDeliverable, GetClienteDeliverablesResult, FolderContentResult } from './deliverables.actions';
 
+export {
+  actualizarPerfilCliente,
+} from './perfil.actions';
+
