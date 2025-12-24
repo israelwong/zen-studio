@@ -51,7 +51,10 @@ export function useClientNotifications({
 
   // Cargar notificaciones iniciales
   const loadNotifications = useCallback(async () => {
-    if (!contactId || !enabled) return;
+    if (!contactId || !enabled) {
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -67,7 +70,8 @@ export function useClientNotifications({
       if (notificationsResult.success && notificationsResult.data) {
         setNotifications(notificationsResult.data);
       } else {
-        setError(notificationsResult.error || 'Error al cargar notificaciones');
+        const errorMsg = notificationsResult.error || 'Error al cargar notificaciones';
+        setError(errorMsg);
       }
 
       if (countResult.success && countResult.data !== undefined) {
@@ -76,9 +80,7 @@ export function useClientNotifications({
     } catch (err) {
       setError('Error al cargar notificaciones');
     } finally {
-      if (isMountedRef.current) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }, [studioSlug, contactId, enabled]);
 
@@ -86,6 +88,8 @@ export function useClientNotifications({
   useEffect(() => {
     if (contactId && enabled) {
       loadNotifications();
+    } else {
+      setLoading(false);
     }
   }, [contactId, studioSlug, enabled, loadNotifications]);
 
@@ -130,33 +134,50 @@ export function useClientNotifications({
             const notification = p.record || p.new || (p.payload ? (p.payload.record || p.payload.new) : null);
             if (notification && notification.contact_id === contactId) {
               setNotifications((prev) => {
-                if (prev.some((n) => n.id === notification.id)) return prev;
-                return [notification, ...prev];
+                // Verificar si ya existe la notificación (evitar duplicados)
+                if (prev.some((n) => n.id === notification.id)) {
+                  return prev;
+                }
+
+                const newNotifications = [notification, ...prev];
+                
+                // Calcular contador basado en las notificaciones reales (más confiable)
+                const newUnreadCount = newNotifications.filter((n) => !n.is_read).length;
+                setUnreadCount(newUnreadCount);
+
+                return newNotifications;
               });
-              if (!notification.is_read) setUnreadCount((prev) => prev + 1);
             }
           })
           .on('broadcast', { event: 'UPDATE' }, (payload: unknown) => {
             const p = payload as any;
             const notification = p.record || p.new || (p.payload ? (p.payload.record || p.payload.new) : null);
             if (notification && notification.contact_id === contactId) {
-              if (!notification.is_active) {
-                setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-                if (!notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
-              } else {
-                setNotifications((prev) =>
-                  prev.map((n) => (n.id === notification.id ? notification : n))
-                );
-                if (notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
-              }
+              setNotifications((prev) => {
+                if (!notification.is_active) {
+                  const newNotifications = prev.filter((n) => n.id !== notification.id);
+                  const newUnreadCount = newNotifications.filter((n) => !n.is_read).length;
+                  setUnreadCount(newUnreadCount);
+                  return newNotifications;
+                } else {
+                  const newNotifications = prev.map((n) => (n.id === notification.id ? notification : n));
+                  const newUnreadCount = newNotifications.filter((n) => !n.is_read).length;
+                  setUnreadCount(newUnreadCount);
+                  return newNotifications;
+                }
+              });
             }
           })
           .on('broadcast', { event: 'DELETE' }, (payload: unknown) => {
             const p = payload as any;
             const notification = p.old_record || p.old || (p.payload ? (p.payload.old_record || p.payload.old) : null);
             if (notification && notification.contact_id === contactId) {
-              setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-              if (!notification.is_read) setUnreadCount((prev) => Math.max(0, prev - 1));
+              setNotifications((prev) => {
+                const newNotifications = prev.filter((n) => n.id !== notification.id);
+                const newUnreadCount = newNotifications.filter((n) => !n.is_read).length;
+                setUnreadCount(newUnreadCount);
+                return newNotifications;
+              });
             }
           });
 
