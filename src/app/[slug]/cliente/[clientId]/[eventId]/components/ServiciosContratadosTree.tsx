@@ -19,7 +19,7 @@ export function ServiciosContratadosTree({ servicios }: ServiciosContratadosTree
         </h3>
 
         {servicios.length > 0 ? (
-          <PublicServiciosTree servicios={servicios} showPrices={true} />
+          <PublicServiciosTree servicios={servicios} showPrices={false} />
         ) : (
           <p className="text-sm text-zinc-400 py-4 text-center">
             No hay servicios contratados

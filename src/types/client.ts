@@ -13,6 +13,18 @@ export interface ClientSession {
   studio_id: string;
 }
 
+export interface ClientCotizacion {
+  id: string;
+  name: string;
+  status: string;
+  total: number;
+  pagado: number;
+  pendiente: number;
+  descuento: number | null;
+  descripcion: string | null;
+  servicios: PublicSeccionData[];
+}
+
 export interface ClientEvent {
   id: string; // promise_id
   name: string | null;
@@ -22,22 +34,17 @@ export interface ClientEvent {
     id: string;
     name: string;
   } | null;
-  cotizacion: {
-    id: string;
-    status: string;
-    total: number;
-    pagado: number;
-    pendiente: number;
-    descuento: number | null;
-    servicios: PublicSeccionData[];
-  };
+  cotizacion: ClientCotizacion;
 }
 
-export interface ClientEventDetail extends ClientEvent {
+export interface ClientEventDetail extends Omit<ClientEvent, 'cotizacion'> {
   address: string | null;
-  cotizacion: ClientEvent['cotizacion'] & {
-    descripcion: string | null;
-  };
+  cotizaciones: ClientCotizacion[]; // Array de cotizaciones
+  // Totales consolidados (suma de todas las cotizaciones)
+  total: number;
+  pagado: number;
+  pendiente: number;
+  descuento: number | null;
 }
 
 export interface ClientPago {

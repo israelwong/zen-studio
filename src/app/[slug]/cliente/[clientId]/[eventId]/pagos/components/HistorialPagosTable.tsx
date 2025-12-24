@@ -1,14 +1,15 @@
 'use client';
 
 import { Receipt } from 'lucide-react';
-import { ZenCard, ZenBadge } from '@/components/ui/zen';
+import { ZenCard, ZenBadge, ZenCardHeader, ZenCardTitle, ZenCardContent } from '@/components/ui/zen';
 import type { ClientPago } from '@/types/client';
 
 interface HistorialPagosTableProps {
   pagos: ClientPago[];
+  headerActions?: React.ReactNode;
 }
 
-export function HistorialPagosTable({ pagos }: HistorialPagosTableProps) {
+export function HistorialPagosTable({ pagos, headerActions }: HistorialPagosTableProps) {
   const formatMoney = (amount: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -45,12 +46,15 @@ export function HistorialPagosTable({ pagos }: HistorialPagosTableProps) {
 
   return (
     <ZenCard>
-      <div className="p-6 space-y-4">
-        <h3 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
+      <ZenCardHeader className="flex items-center justify-between">
+        <ZenCardTitle className="flex items-center gap-2">
           <Receipt className="h-5 w-5" />
           Historial de Pagos
-        </h3>
+        </ZenCardTitle>
+        {headerActions}
+      </ZenCardHeader>
 
+      <ZenCardContent>
         {pagos.length > 0 ? (
           <div className="space-y-3">
             {pagos.map((pago) => (
@@ -85,7 +89,7 @@ export function HistorialPagosTable({ pagos }: HistorialPagosTableProps) {
             No hay pagos registrados
           </p>
         )}
-      </div>
+      </ZenCardContent>
     </ZenCard>
   );
 }

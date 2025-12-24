@@ -161,9 +161,7 @@ export function PublicServiciosTree({ servicios, showPrices = false, showSubtota
 
   return (
     <div className="space-y-2">
-      {servicios
-        .sort((a, b) => a.orden - b.orden)
-        .map((seccion) => {
+      {servicios.map((seccion) => {
           const isSectionExpanded = expandedSections.has(seccion.id);
 
           return (
@@ -188,9 +186,7 @@ export function PublicServiciosTree({ servicios, showPrices = false, showSubtota
 
               {isSectionExpanded && (
                 <div className="bg-zinc-900/50">
-                  {seccion.categorias
-                    .sort((a, b) => a.orden - b.orden)
-                    .map((categoria, categoriaIndex) => {
+                  {seccion.categorias.map((categoria, categoriaIndex) => {
                       const isCategoryExpanded = expandedCategories.has(categoria.id);
                       // Calcular subtotal por categoría: suma de (precio × cantidad) de todos los items
                       const totalPriceCategoria = categoria.servicios.reduce((sum, s) => {

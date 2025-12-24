@@ -1,14 +1,9 @@
 'use client';
 
 import { Calendar, MapPin, Tag } from 'lucide-react';
-import { ZenCard } from '@/components/ui/zen';
 import { useToast } from '@/hooks/useToast';
 import { useEvento } from './context/EventoContext';
-import {
-  ServiciosContratadosTree,
-  ResumenPago,
-  ToastContainer,
-} from '@/components/client';
+import { ToastContainer } from '@/components/client';
 
 function formatFecha(fecha: string): string {
   try {
@@ -64,39 +59,6 @@ export default function EventoResumenPage() {
         {evento.address && (
           <p className="text-sm text-zinc-400 mt-2">{evento.address}</p>
         )}
-      </div>
-
-      {/* Content */}
-      <div className="grid gap-8 lg:grid-cols-2">
-        {/* Servicios contratados */}
-        <div>
-          <ServiciosContratadosTree servicios={evento.cotizacion.servicios} />
-        </div>
-
-        {/* Resumen de pago */}
-        <div className="space-y-6">
-          <ResumenPago
-            eventoId={evento.id}
-            total={evento.cotizacion.total}
-            pagado={evento.cotizacion.pagado}
-            pendiente={evento.cotizacion.pendiente}
-            descuento={evento.cotizacion.descuento}
-          />
-
-          {/* Descripción si existe */}
-          {evento.cotizacion.descripcion && (
-            <ZenCard>
-              <div className="p-6 space-y-2">
-                <h3 className="text-lg font-semibold text-zinc-100">
-                  Descripción
-                </h3>
-                <p className="text-sm text-zinc-400 whitespace-pre-wrap">
-                  {evento.cotizacion.descripcion}
-                </p>
-              </div>
-            </ZenCard>
-          )}
-        </div>
       </div>
     </>
   );

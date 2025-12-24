@@ -12,9 +12,10 @@ interface ResumenPagoProps {
   pagado: number;
   pendiente: number;
   descuento: number | null;
+  showHistorialButton?: boolean;
 }
 
-export function ResumenPago({ eventoId, total, pagado, pendiente, descuento }: ResumenPagoProps) {
+export function ResumenPago({ eventoId, total, pagado, pendiente, descuento, showHistorialButton = true }: ResumenPagoProps) {
   const router = useRouter();
   const params = useParams();
   const { cliente } = useClientAuth();
@@ -99,18 +100,20 @@ export function ResumenPago({ eventoId, total, pagado, pendiente, descuento }: R
         </div>
 
         {/* Botón historial */}
-        <ZenButton
-          variant="outline"
-          className="w-full"
-          onClick={() => {
-            if (clientId) {
-              router.push(`/${slug}/cliente/${clientId}/${eventoId}/pagos`);
-            }
-          }}
-        >
-          Ver historial de pagos
-          <ArrowRight className="h-4 w-4 ml-2" />
-        </ZenButton>
+        {showHistorialButton && (
+          <ZenButton
+            variant="outline"
+            className="w-full"
+            onClick={() => {
+              if (clientId) {
+                router.push(`/${slug}/cliente/${clientId}/${eventoId}/pagos`);
+              }
+            }}
+          >
+            Ver historial de pagos
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </ZenButton>
+        )}
       </div>
     </ZenCard>
   );

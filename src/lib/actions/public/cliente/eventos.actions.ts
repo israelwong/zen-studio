@@ -6,6 +6,8 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
+import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import type { ClientEvent, ClientEventDetail, ApiResponse } from '@/types/client';
 import type { PublicSeccionData } from '@/types/public-promise';
 
@@ -28,6 +30,11 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
         name: true,
         event_date: true,
         event_location: true,
+        studio: {
+          select: {
+            slug: true,
+          },
+        },
         event_type: {
           select: {
             id: true,
@@ -44,31 +51,16 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
             discount: true,
             status: true,
             cotizacion_items: {
-              include: {
-                items: {
-                  select: {
-                    id: true,
-                    name: true,
-                    service_categories: {
-                      select: {
-                        id: true,
-                        name: true,
-                        section_categories: {
-                          select: {
-                            id: true,
-                            service_sections: {
-                              select: {
-                                id: true,
-                                name: true,
-                                order: true,
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
+              select: {
+                id: true,
+                item_id: true,
+                name: true,
+                description: true,
+                unit_price: true,
+                quantity: true,
+                order: true,
+                category_name: true,
+                seccion_name: true,
               },
               orderBy: { order: 'asc' },
             },
@@ -82,13 +74,23 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
             },
           },
           orderBy: { created_at: 'desc' },
-          take: 1,
         },
       },
       orderBy: { event_date: 'desc' },
     });
 
-    const eventos: ClientEvent[] = promises.map((promise) => {
+    // Obtener catálogos únicos por studio para evitar consultas duplicadas
+    const studioSlugs = new Set(promises.map(p => p.studio.slug));
+    const catalogosMap = new Map<string, SeccionData[]>();
+
+    for (const slug of studioSlugs) {
+      const catalogoResult = await obtenerCatalogo(slug, false);
+      if (catalogoResult.success && catalogoResult.data) {
+        catalogosMap.set(slug, catalogoResult.data);
+      }
+    }
+
+    const eventos = await Promise.all(promises.map(async (promise) => {
       const cotizacion = promise.quotes[0];
 
       if (!cotizacion) {
@@ -104,8 +106,10 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
       const pagado = cotizacion.pagos.reduce((sum, pago) => sum + Number(pago.amount), 0);
       const pendiente = total - pagado;
 
-      // Agrupar servicios por sección -> categoría -> items
-      const serviciosAgrupados = agruparServiciosPorSeccion(cotizacion.cotizacion_items);
+      // Agrupar servicios usando la estructura de la cotización (como en ResumenCotizacion.tsx)
+      // Los items ya vienen ordenados por order: 'asc' desde la consulta
+      // Usamos los snapshots guardados (seccion_name, category_name) para agrupar
+      const serviciosAgrupados = agruparServiciosPorCotizacion(cotizacion.cotizacion_items);
 
       return {
         id: promise.id,
@@ -123,11 +127,13 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
           servicios: serviciosAgrupados,
         },
       };
-    }).filter((evento): evento is ClientEvent => evento !== null);
+    }));
+
+    const eventosFiltrados: ClientEvent[] = eventos.filter((evento): evento is ClientEvent => evento !== null);
 
     return {
       success: true,
-      data: eventos,
+      data: eventosFiltrados,
     };
   } catch (error) {
     console.error('[obtenerEventosCliente] Error:', error);
@@ -140,9 +146,33 @@ export async function obtenerEventosCliente(contactId: string): Promise<ApiRespo
 
 /**
  * Obtiene el detalle completo de un evento
+ * Acepta tanto event_id (studio_events) como promise_id (studio_promises)
  */
-export async function obtenerEventoDetalle(promiseId: string, contactId: string): Promise<ApiResponse<ClientEventDetail>> {
+export async function obtenerEventoDetalle(eventIdOrPromiseId: string, contactId: string): Promise<ApiResponse<ClientEventDetail>> {
   try {
+    let promiseId = eventIdOrPromiseId;
+
+    // Verificar si es un event_id (studio_events) o promise_id (studio_promises)
+    const event = await prisma.studio_events.findUnique({
+      where: { id: eventIdOrPromiseId },
+      select: {
+        id: true,
+        promise_id: true,
+        contact_id: true,
+      },
+    });
+
+    if (event) {
+      // Es un event_id, usar el promise_id asociado
+      if (event.contact_id !== contactId) {
+        return {
+          success: false,
+          message: 'No tienes acceso a este evento',
+        };
+      }
+      promiseId = event.promise_id;
+    }
+
     const promise = await prisma.studio_promises.findFirst({
       where: {
         id: promiseId,
@@ -159,6 +189,11 @@ export async function obtenerEventoDetalle(promiseId: string, contactId: string)
         event_date: true,
         event_location: true,
         address: true,
+        studio: {
+          select: {
+            slug: true,
+          },
+        },
         event_type: {
           select: {
             id: true,
@@ -175,31 +210,16 @@ export async function obtenerEventoDetalle(promiseId: string, contactId: string)
             discount: true,
             status: true,
             cotizacion_items: {
-              include: {
-                items: {
-                  select: {
-                    id: true,
-                    name: true,
-                    service_categories: {
-                      select: {
-                        id: true,
-                        name: true,
-                        section_categories: {
-                          select: {
-                            id: true,
-                            service_sections: {
-                              select: {
-                                id: true,
-                                name: true,
-                                order: true,
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
+              select: {
+                id: true,
+                item_id: true,
+                name: true,
+                description: true,
+                unit_price: true,
+                quantity: true,
+                order: true,
+                category_name: true,
+                seccion_name: true,
               },
               orderBy: { order: 'asc' },
             },
@@ -213,31 +233,48 @@ export async function obtenerEventoDetalle(promiseId: string, contactId: string)
             },
           },
           orderBy: { created_at: 'desc' },
-          take: 1,
         },
       },
     });
 
-    if (!promise || !promise.quotes[0]) {
+    if (!promise || !promise.quotes || promise.quotes.length === 0) {
       return {
         success: false,
         message: 'Evento no encontrado',
       };
     }
 
-    const cotizacion = promise.quotes[0];
+    // Procesar todas las cotizaciones aprobadas
+    const cotizaciones = promise.quotes.map((cotizacion) => {
+      // Calcular totales por cotización
+      const precioBase = cotizacion.price || 0;
+      const descuento = cotizacion.discount || null;
+      const descuentoEnDolares = descuento || 0;
+      const total = precioBase - descuentoEnDolares;
+      const pagado = cotizacion.pagos.reduce((sum, pago) => sum + Number(pago.amount), 0);
+      const pendiente = total - pagado;
 
-    // Calcular totales
-    // El descuento viene como monto absoluto en $ (no como factor decimal)
-    const precioBase = cotizacion.price || 0;
-    const descuento = cotizacion.discount || null;
-    const descuentoEnDolares = descuento || 0;
-    const total = precioBase - descuentoEnDolares;
-    const pagado = cotizacion.pagos.reduce((sum, pago) => sum + Number(pago.amount), 0);
-    const pendiente = total - pagado;
+      // Agrupar servicios usando la estructura de la cotización
+      const serviciosAgrupados = agruparServiciosPorCotizacion(cotizacion.cotizacion_items);
 
-    // Agrupar servicios
-    const serviciosAgrupados = agruparServiciosPorSeccion(cotizacion.cotizacion_items);
+      return {
+        id: cotizacion.id,
+        name: cotizacion.name,
+        status: cotizacion.status,
+        total,
+        pagado,
+        pendiente,
+        descuento,
+        descripcion: cotizacion.description,
+        servicios: serviciosAgrupados,
+      };
+    });
+
+    // Calcular totales consolidados (suma de todas las cotizaciones)
+    const totalConsolidado = cotizaciones.reduce((sum, cot) => sum + cot.total, 0);
+    const pagadoConsolidado = cotizaciones.reduce((sum, cot) => sum + cot.pagado, 0);
+    const pendienteConsolidado = cotizaciones.reduce((sum, cot) => sum + cot.pendiente, 0);
+    const descuentoConsolidado = cotizaciones.reduce((sum, cot) => sum + (cot.descuento || 0), 0);
 
     const eventoDetalle: ClientEventDetail = {
       id: promise.id,
@@ -246,16 +283,11 @@ export async function obtenerEventoDetalle(promiseId: string, contactId: string)
       event_location: promise.event_location,
       address: promise.address,
       event_type: promise.event_type,
-      cotizacion: {
-        id: cotizacion.id,
-        status: cotizacion.status,
-        total,
-        pagado,
-        pendiente,
-        descuento,
-        descripcion: cotizacion.description,
-        servicios: serviciosAgrupados,
-      },
+      cotizaciones,
+      total: totalConsolidado,
+      pagado: pagadoConsolidado,
+      pendiente: pendienteConsolidado,
+      descuento: descuentoConsolidado > 0 ? descuentoConsolidado : null,
     };
 
     return {
@@ -273,60 +305,68 @@ export async function obtenerEventoDetalle(promiseId: string, contactId: string)
 
 /**
  * Agrupa items de cotización por sección -> categoría -> items
- * Retorna estructura compatible con PublicServiciosTree
+ * Usa la estructura de la cotización (snapshots guardados)
+ * Mantiene el orden de los items según el campo 'order' de cotizacion_items
+ * (Igual que en ResumenCotizacion.tsx)
  */
-function agruparServiciosPorSeccion(items: any[]): PublicSeccionData[] {
+function agruparServiciosPorCotizacion(
+  items: Array<{
+    id: string;
+    item_id: string | null;
+    name: string | null;
+    description: string | null;
+    unit_price: number;
+    quantity: number;
+    order: number;
+    category_name: string | null;
+    seccion_name: string | null;
+  }>
+): PublicSeccionData[] {
+  // Los items ya vienen ordenados por order: 'asc' desde la consulta
+  // Agrupar por sección y categoría usando los snapshots guardados
   const seccionesMap = new Map<string, PublicSeccionData>();
 
   items.forEach((item) => {
-    // Usar snapshots si existen, sino usar relaciones
-    const seccionId = item.items?.service_categories?.section_categories?.service_sections?.id ||
-      item.seccion_name_snapshot || 'sin-seccion';
-    const seccionName = item.seccion_name_snapshot ||
-      item.items?.service_categories?.section_categories?.service_sections?.name ||
-      'Sin sección';
-    const seccionOrder = item.items?.service_categories?.section_categories?.service_sections?.order || 999;
+    if (!item.item_id) return;
 
-    const categoriaId = item.items?.service_categories?.id ||
-      item.category_name_snapshot || 'sin-categoria';
-    const categoriaName = item.category_name_snapshot ||
-      item.items?.service_categories?.name || 'Sin categoría';
+    const seccionName = item.seccion_name || 'Sin sección';
+    const categoriaName = item.category_name || 'Sin categoría';
 
     // Obtener o crear sección
-    if (!seccionesMap.has(seccionId)) {
-      seccionesMap.set(seccionId, {
-        id: seccionId,
+    if (!seccionesMap.has(seccionName)) {
+      seccionesMap.set(seccionName, {
+        id: seccionName,
         nombre: seccionName,
-        orden: seccionOrder,
+        orden: 0, // No importa el orden numérico, mantenemos orden de inserción
         categorias: [],
       });
     }
 
-    const seccion = seccionesMap.get(seccionId)!;
+    const seccion = seccionesMap.get(seccionName)!;
 
     // Buscar o crear categoría
-    let categoria = seccion.categorias.find((cat) => cat.id === categoriaId);
+    let categoria = seccion.categorias.find((cat) => cat.nombre === categoriaName);
     if (!categoria) {
       categoria = {
-        id: categoriaId,
+        id: categoriaName,
         nombre: categoriaName,
-        orden: 0,
+        orden: 0, // No importa el orden numérico, mantenemos orden de inserción
         servicios: [],
       };
       seccion.categorias.push(categoria);
     }
 
-    // Agregar servicio
+    // Agregar servicio manteniendo el orden de los items (order de cotizacion_items)
     categoria.servicios.push({
-      id: item.id,
-      name: item.name_snapshot || item.name || item.items?.name || 'Servicio sin nombre',
-      description: item.description_snapshot || item.description || item.items?.description || null,
-      price: item.unit_price_snapshot || item.unit_price || 0,
-      quantity: item.quantity || 1,
+      id: item.item_id,
+      name: item.name || 'Servicio sin nombre',
+      description: item.description,
+      price: item.unit_price,
+      quantity: item.quantity,
     });
   });
 
-  // Convertir Map a Array y ordenar
-  return Array.from(seccionesMap.values()).sort((a, b) => a.orden - b.orden);
+  // Convertir Map a Array manteniendo el orden de inserción
+  return Array.from(seccionesMap.values());
 }
 

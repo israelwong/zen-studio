@@ -92,16 +92,11 @@ export default async function EventoLayout({ children, params }: EventoLayoutPro
       event_location: null,
       address: null,
       event_type: null,
-      cotizacion: {
-        id: '',
-        status: 'draft',
-        total: 0,
-        pagado: 0,
-        pendiente: 0,
-        descuento: null,
-        descripcion: null,
-        servicios: [],
-      },
+      cotizaciones: [],
+      total: 0,
+      pagado: 0,
+      pendiente: 0,
+      descuento: null,
     };
 
     return (

@@ -2,21 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ZenCard } from '@/components/ui/zen';
+import { Building2 } from 'lucide-react';
+import { ZenCard, ZenButton, ZenDialog } from '@/components/ui/zen';
 import { useClientAuth } from '@/hooks/useClientAuth';
 import { useToast } from '@/hooks/useToast';
-import { obtenerPagosEvento, obtenerInfoBancariaStudio } from '@/lib/actions/public/cliente';
-import {
-  HistorialPagosTable,
-  BankInfoCard,
-  ToastContainer,
-} from '@/components/client';
+import { obtenerPagosEvento, obtenerInfoBancariaStudio, obtenerEventoDetalle } from '@/lib/actions/public/cliente';
+import { ToastContainer } from '@/components/client';
+import { HistorialPagosTable } from './components/HistorialPagosTable';
+import { BankInfoCard } from './components/BankInfoCard';
+import { ResumenPago } from '../components/ResumenPago';
 import type { ClientPago, StudioBankInfo } from '@/types/client';
 
 export default function EventoPagosPage() {
   const [pagos, setPagos] = useState<ClientPago[]>([]);
   const [bankInfo, setBankInfo] = useState<StudioBankInfo | null>(null);
+  const [balance, setBalance] = useState<{
+    total: number;
+    pagado: number;
+    pendiente: number;
+    descuento: number | null;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isBankModalOpen, setIsBankModalOpen] = useState(false);
   const { cliente, isAuthenticated, isLoading } = useClientAuth();
   const { toasts, removeToast, error: showError } = useToast();
   const params = useParams();
@@ -34,11 +41,12 @@ export default function EventoPagosPage() {
       try {
         setLoading(true);
 
-        // Obtener pagos y info bancaria en paralelo
-        // obtenerPagosEvento ahora acepta tanto event_id como promise_id
-        const [pagosResponse, bankResponse] = await Promise.all([
+        // Obtener pagos, info bancaria y balance en paralelo
+        // obtenerPagosEvento y obtenerEventoDetalle ahora aceptan tanto event_id como promise_id
+        const [pagosResponse, bankResponse, eventoResponse] = await Promise.all([
           obtenerPagosEvento(eventId, cliente.id),
           obtenerInfoBancariaStudio(cliente.studio_id),
+          obtenerEventoDetalle(eventId, cliente.id),
         ]);
 
         if (pagosResponse.success && pagosResponse.data) {
@@ -51,6 +59,15 @@ export default function EventoPagosPage() {
           setBankInfo(bankResponse.data);
         } else {
           showError(bankResponse.message || 'Error al cargar información bancaria');
+        }
+
+        if (eventoResponse.success && eventoResponse.data) {
+          setBalance({
+            total: eventoResponse.data.total,
+            pagado: eventoResponse.data.pagado,
+            pendiente: eventoResponse.data.pendiente,
+            descuento: eventoResponse.data.descuento,
+          });
         }
       } catch (error) {
         showError('Error de conexión. Por favor intenta de nuevo.');
@@ -74,6 +91,7 @@ export default function EventoPagosPage() {
         </div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid gap-8 lg:grid-cols-2">
+            {/* Skeleton historial */}
             <ZenCard>
               <div className="p-6 space-y-4 animate-pulse">
                 <div className="h-6 bg-zinc-800 rounded w-40"></div>
@@ -83,10 +101,13 @@ export default function EventoPagosPage() {
                 </div>
               </div>
             </ZenCard>
+
+            {/* Skeleton resumen */}
             <ZenCard>
               <div className="p-6 space-y-4 animate-pulse">
-                <div className="h-6 bg-zinc-800 rounded w-48"></div>
+                <div className="h-6 bg-zinc-800 rounded w-40"></div>
                 <div className="space-y-3">
+                  <div className="h-4 bg-zinc-800 rounded"></div>
                   <div className="h-4 bg-zinc-800 rounded"></div>
                   <div className="h-4 bg-zinc-800 rounded"></div>
                 </div>
@@ -108,8 +129,21 @@ export default function EventoPagosPage() {
 
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-100 mb-2">Historial de Pagos</h1>
-        <p className="text-zinc-400">Consulta tus pagos e información bancaria</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-zinc-100 mb-2">Historial de Pagos</h1>
+            <p className="text-zinc-400">Consulta tus pagos e información bancaria</p>
+          </div>
+          <ZenButton
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsBankModalOpen(true)}
+            disabled={!bankInfo}
+          >
+            <Building2 className="h-4 w-4 mr-2" />
+            Información bancaria
+          </ZenButton>
+        </div>
       </div>
 
       {/* Content */}
@@ -119,17 +153,35 @@ export default function EventoPagosPage() {
           <HistorialPagosTable pagos={pagos} />
         </div>
 
-        {/* Información bancaria */}
+        {/* Resumen de balance */}
         <div>
-          {bankInfo ? (
-            <BankInfoCard bankInfo={bankInfo} />
-          ) : (
-            <div className="text-zinc-400 text-center py-8">
-              Información bancaria no disponible
-            </div>
+          {balance && (
+            <ResumenPago
+              eventoId={eventId}
+              total={balance.total}
+              pagado={balance.pagado}
+              pendiente={balance.pendiente}
+              descuento={balance.descuento}
+              showHistorialButton={false}
+            />
           )}
         </div>
       </div>
+
+      {/* Modal de información bancaria */}
+      {bankInfo && (
+        <ZenDialog
+          isOpen={isBankModalOpen}
+          onClose={() => setIsBankModalOpen(false)}
+          title="Información Bancaria"
+          description="Datos para realizar transferencias SPEI"
+          maxWidth="md"
+          showCloseButton={true}
+          closeOnClickOutside={true}
+        >
+          <BankInfoCard bankInfo={bankInfo} showCard={false} />
+        </ZenDialog>
+      )}
     </>
   );
 }

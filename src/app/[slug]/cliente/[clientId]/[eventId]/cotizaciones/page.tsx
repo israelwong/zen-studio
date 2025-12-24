@@ -1,26 +1,90 @@
 'use client';
 
-import { ZenCard } from '@/components/ui/zen';
+import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent } from '@/components/ui/zen';
 import { ToastContainer } from '@/components/client';
 import { useToast } from '@/hooks/useToast';
+import { useEvento } from '../context/EventoContext';
+import { ServiciosContratadosTree } from '../components/ServiciosContratadosTree';
+import { ResumenPago } from '../components/ResumenPago';
 
 export default function EventoCotizacionesPage() {
+  const { evento } = useEvento();
   const { toasts, removeToast } = useToast();
+
+  const tieneMultiplesCotizaciones = evento.cotizaciones.length > 1;
 
   return (
     <>
       <ToastContainer toasts={toasts} onRemove={removeToast} />
 
+      {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-100 mb-2">Cotizaciones</h1>
-        <p className="text-zinc-400">Gestiona las cotizaciones de tu evento</p>
+        <h1 className="text-3xl font-bold text-zinc-100 mb-2">
+          {tieneMultiplesCotizaciones ? 'Cotizaciones' : 'Cotización'}
+        </h1>
+        <p className="text-zinc-400">Detalles de servicios y pagos</p>
       </div>
 
-      <ZenCard>
-        <div className="p-12 text-center">
-          <p className="text-zinc-400">Próximamente: Gestión de cotizaciones</p>
+      {/* Si hay múltiples cotizaciones, mostrar cards */}
+      {tieneMultiplesCotizaciones ? (
+        <div className="space-y-6">
+          {evento.cotizaciones.map((cotizacion) => (
+            <ZenCard key={cotizacion.id}>
+              <ZenCardHeader>
+                <ZenCardTitle>{cotizacion.name}</ZenCardTitle>
+              </ZenCardHeader>
+              <ZenCardContent>
+                <div className="grid gap-8 lg:grid-cols-2">
+                  <div>
+                    <ServiciosContratadosTree servicios={cotizacion.servicios} />
+                  </div>
+                  <div>
+                    <ResumenPago
+                      eventoId={evento.id}
+                      total={cotizacion.total}
+                      pagado={cotizacion.pagado}
+                      pendiente={cotizacion.pendiente}
+                      descuento={cotizacion.descuento}
+                    />
+                  </div>
+                </div>
+              </ZenCardContent>
+            </ZenCard>
+          ))}
+
+          {/* Resumen total consolidado */}
+          <ZenCard>
+            <ZenCardHeader>
+              <ZenCardTitle>Resumen Total</ZenCardTitle>
+            </ZenCardHeader>
+            <ZenCardContent>
+              <ResumenPago
+                eventoId={evento.id}
+                total={evento.total}
+                pagado={evento.pagado}
+                pendiente={evento.pendiente}
+                descuento={evento.descuento}
+              />
+            </ZenCardContent>
+          </ZenCard>
         </div>
-      </ZenCard>
+      ) : (
+        /* Si solo hay una cotización, mostrar sin card */
+        <div className="grid gap-8 lg:grid-cols-2">
+          <div>
+            <ServiciosContratadosTree servicios={evento.cotizaciones[0].servicios} />
+          </div>
+          <div className="space-y-6">
+            <ResumenPago
+              eventoId={evento.id}
+              total={evento.total}
+              pagado={evento.pagado}
+              pendiente={evento.pendiente}
+              descuento={evento.descuento}
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }

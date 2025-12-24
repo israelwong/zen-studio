@@ -149,10 +149,12 @@ export async function autorizarCotizacionPublica(
 
     // Calcular anticipo
     const advanceType = condicionComercialInfo?.advance_type || 'percentage';
-    const anticipo = advanceType === 'fixed_amount' && condicionComercialInfo?.advance_amount
-      ? condicionComercialInfo.advance_amount
-      : (condicionComercialInfo?.advance_percentage ?? 0) > 0
-        ? (precioConDescuento * (condicionComercialInfo.advance_percentage ?? 0)) / 100
+    const advancePercentage = condicionComercialInfo?.advance_percentage ?? 0;
+    const advanceAmount = condicionComercialInfo?.advance_amount ?? null;
+    const anticipo = advanceType === 'fixed_amount' && advanceAmount
+      ? advanceAmount
+      : advancePercentage > 0
+        ? (precioConDescuento * advancePercentage) / 100
         : 0;
     const diferido = precioConDescuento - anticipo;
 

@@ -254,11 +254,14 @@ export async function solicitarPaquetePublico(
 
     // Calcular anticipo
     const advanceType = condicionComercialInfo?.advance_type || 'percentage';
-    const anticipo = advanceType === 'fixed_amount' && condicionComercialInfo?.advance_amount
-      ? condicionComercialInfo.advance_amount
-      : (condicionComercialInfo?.advance_percentage ?? 0) > 0
-        ? (precioConDescuento * (condicionComercialInfo.advance_percentage ?? 0)) / 100
-        : 0;
+    const advancePercentage = condicionComercialInfo?.advance_percentage ?? 0;
+    const advanceAmount = condicionComercialInfo?.advance_amount ?? null;
+    let anticipo = 0;
+    if (advanceType === 'fixed_amount' && advanceAmount !== null) {
+      anticipo = advanceAmount;
+    } else if (advancePercentage > 0) {
+      anticipo = (precioConDescuento * advancePercentage) / 100;
+    }
     const diferido = precioConDescuento - anticipo;
 
     // 9. Construir mensaje con información completa de precio y condición comercial
@@ -270,8 +273,8 @@ export async function solicitarPaquetePublico(
     contenidoLog += ` - Total: ${formatPrice(precioConDescuento)}`;
 
     if (condicionComercialInfo) {
-      mensajeNotificacion += ` con condición comercial: "${condicionComercialInfo.name}"`;
-      contenidoLog += ` con condición comercial: "${condicionComercialInfo.name}"`;
+      mensajeNotificacion += ` con condición comercial: "${condicionComercialInfo?.name}"`;
+      contenidoLog += ` con condición comercial: "${condicionComercialInfo?.name}"`;
 
       if (metodoPagoInfo) {
         mensajeNotificacion += ` (Método de pago: ${metodoPagoInfo})`;
@@ -288,8 +291,8 @@ export async function solicitarPaquetePublico(
           mensajeNotificacion += ` - Anticipo: ${formatPrice(anticipo)}`;
           contenidoLog += ` - Anticipo: ${formatPrice(anticipo)}`;
         } else {
-          mensajeNotificacion += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
-          contenidoLog += ` - Anticipo: ${condicionComercialInfo.advance_percentage}% (${formatPrice(anticipo)})`;
+          mensajeNotificacion += ` - Anticipo: ${advancePercentage}% (${formatPrice(anticipo)})`;
+          contenidoLog += ` - Anticipo: ${advancePercentage}% (${formatPrice(anticipo)})`;
         }
         mensajeNotificacion += ` - Diferido: ${formatPrice(diferido)}`;
         contenidoLog += ` - Diferido: ${formatPrice(diferido)}`;
