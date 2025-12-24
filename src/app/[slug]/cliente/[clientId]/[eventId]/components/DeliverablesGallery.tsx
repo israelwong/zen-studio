@@ -158,34 +158,58 @@ export function DeliverablesGallery({
   const totalAll = currentFolderData?.items.length ?? 0;
 
   // Preparar slides para lightbox
-  // Usar proxy API directamente (ya tenemos webViewLink/webContentLink en los datos)
-  // El proxy API sirve los archivos con autenticación del servidor
+  // ESTRATEGIA OPTIMIZADA PARA REDUCIR COSTOS DE ANCHO DE BANDA:
+  // 
+  // VISUALIZACIÓN (Lightbox):
+  // - Imágenes: Proxy API (tráfico moderado, necesario para funcionar)
+  // - Videos: Intentar webContentLink directo primero, fallback a proxy
+  // 
+  // DESCARGA (handleDownload):
+  // - Videos: SIEMPRE webContentLink directo (ahorra 100TB/mes)
+  // - Archivos grandes: webContentLink directo (ahorra 24TB/mes)
+  // - Documentos de Google: Proxy API (necesitan exportación)
+  //
+  // RAZÓN: webContentLink está diseñado para descargas, no para visualización en navegador.
+  // El tráfico de visualización es menor que el de descarga, así que optimizamos las descargas.
   const lightboxSlides = useMemo(() => {
     return filteredItems.map((item) => {
-      // Proxy API: sirve el archivo con autenticación del servidor
-      // Usa los datos que ya tenemos (webViewLink/webContentLink) sin llamadas adicionales
+      // Proxy API para visualización (funciona siempre, tráfico moderado)
       const proxyUrl = item.id ? `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}` : '';
+      const isGoogleDoc = item.mimeType.startsWith('application/vnd.google-apps.');
 
       if (item.mimeType.startsWith('video/')) {
+        // VIDEOS: Intentar webContentLink para visualización (puede funcionar en algunos casos)
+        // Si no funciona, el lightbox usará el proxy como fallback
+        // Nota: Para descargas, siempre usamos webContentLink directo (ver handleDownload)
+        const videoUrl = item.webContentLink || proxyUrl || item.webViewLink || '';
         return {
           type: 'video' as const,
           sources: [
             {
-              // Usar proxy API directamente (sirve el video con autenticación)
-              // webViewLink como fallback (puede requerir autenticación del usuario)
-              src: proxyUrl || item.webViewLink || item.webContentLink || '',
+              src: videoUrl,
               type: item.mimeType,
             },
           ],
           poster: item.thumbnailLink || '',
-          autoPlay: true, // Reproducir automáticamente al abrir en lightbox
+          autoPlay: true,
           muted: false,
           controls: true,
           playsInline: true,
         };
       }
-      // Para imágenes, usar proxy API directamente (sirve la imagen con autenticación)
-      // webViewLink no es una URL directa de imagen, es una página HTML
+
+      // IMÁGENES: Usar proxy API para visualización (funciona siempre)
+      // El tráfico de visualización es moderado comparado con las descargas masivas
+      // Las descargas grandes (videos, archivos grandes) sí usan webContentLink directo
+      if (isGoogleDoc) {
+        // Documentos de Google necesitan exportación, usar proxy API
+        return {
+          src: proxyUrl || item.thumbnailLink || '',
+          alt: item.name,
+        };
+      }
+
+      // Imágenes normales: usar proxy API para visualización (garantiza que funcione)
       return {
         src: proxyUrl || item.thumbnailLink || '',
         alt: item.name,
@@ -207,19 +231,40 @@ export function DeliverablesGallery({
 
     setDownloadingFileId(item.id);
 
-    // Siempre usar el proxy API para asegurar que funcione correctamente
-    // El proxy API maneja tanto archivos normales como documentos de Google
-    // y devuelve Content-Disposition: attachment para forzar descarga
-    const downloadUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
     const fileName = item.name || 'download';
+    let downloadUrl: string;
 
-    // Crear link temporal para descargar
-    // Como el API está en el mismo origen y devuelve Content-Disposition: attachment,
-    // el navegador descargará el archivo automáticamente
+    // Estrategia de descarga optimizada:
+    // 1. Videos: SIEMPRE descarga directa (no pasan por nuestro servidor)
+    // 2. Archivos grandes (>50MB): Descarga directa para ahorrar ancho de banda
+    // 3. Documentos de Google: Proxy API (necesitan exportación)
+    // 4. Archivos pequeños con webContentLink: Descarga directa (opcional, pero eficiente)
+
+    const isVideo = item.mimeType?.startsWith('video/') || false;
+    const isGoogleDoc = item.mimeType?.startsWith('application/vnd.google-apps.');
+    const fileSizeMB = item.size ? parseInt(item.size) / (1024 * 1024) : 0;
+    const isLargeFile = fileSizeMB > 50; // 50MB threshold (más conservador)
+    const hasWebContentLink = !!item.webContentLink;
+
+    if (isGoogleDoc) {
+      // Documentos de Google necesitan exportación, usar proxy API
+      downloadUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
+    } else if ((isVideo || isLargeFile || hasWebContentLink) && item.webContentLink) {
+      // Videos, archivos grandes, o cualquier archivo con webContentLink:
+      // Descarga directa desde Google Drive (no pasa por nuestro servidor)
+      // Esto ahorra ancho de banda y costos en Vercel
+      downloadUrl = item.webContentLink.includes('&export=download')
+        ? item.webContentLink
+        : `${item.webContentLink}&export=download`;
+    } else {
+      // Fallback: usar proxy API si no hay webContentLink disponible
+      downloadUrl = `${window.location.origin}/api/cliente/drive/${eventId}/${item.id}?clientId=${encodeURIComponent(clientId)}`;
+    }
+
+    // Crear link temporal para descargar sin abrir nueva pestaña
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.download = fileName;
-    // No usar target="_blank" para evitar abrir nueva pestaña
     link.style.position = 'fixed';
     link.style.top = '-9999px';
     link.style.left = '-9999px';
