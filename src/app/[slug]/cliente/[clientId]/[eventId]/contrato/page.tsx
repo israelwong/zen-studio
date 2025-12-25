@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useClientAuth } from '@/hooks/useClientAuth';
-import { Loader2, FileText, CheckCircle2, Download, X, Clock, User, Calendar, Edit, Eye } from 'lucide-react';
+import { Loader2, FileText, CheckCircle2, Download, X, Clock, User, Calendar, Edit, Eye, MoreVertical } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenBadge, ZenConfirmModal, ZenDialog, ZenTextarea, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem } from '@/components/ui/zen';
 import { getEventContractForClient, getAllEventContractsForClient, signEventContract, requestContractCancellationByClient, confirmContractCancellationByClient, rejectContractCancellationByClient, regenerateEventContract } from '@/lib/actions/studio/business/contracts/contracts.actions';
 import { getEventContractData, renderContractContent, getRealEventId } from '@/lib/actions/studio/business/contracts/renderer.actions';
@@ -651,17 +651,6 @@ export default function EventoContratoPage() {
               Contrato - Versión {contract.version}
             </ZenCardTitle>
             <div className="flex items-center gap-2">
-              {isSigned && !isCancellationRequestedByStudio && !isCancellationRequestedByClient && !isCancelled && (
-                <ZenButton
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRequestCancellation}
-                  className="text-red-400 border-red-500/30 hover:bg-red-950/20"
-                >
-                  <X className="h-4 w-4 mr-2" />
-                  Solicitar cancelación
-                </ZenButton>
-              )}
               <ZenButton
                 variant="outline"
                 size="sm"
@@ -675,6 +664,28 @@ export default function EventoContratoPage() {
                 )}
                 Descargar PDF
               </ZenButton>
+              {isSigned && !isCancellationRequestedByStudio && !isCancellationRequestedByClient && !isCancelled && (
+                <ZenDropdownMenu>
+                  <ZenDropdownMenuTrigger asChild>
+                    <ZenButton
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </ZenButton>
+                  </ZenDropdownMenuTrigger>
+                  <ZenDropdownMenuContent align="end">
+                    <ZenDropdownMenuItem
+                      onClick={handleRequestCancellation}
+                      className="text-red-400 focus:text-red-300"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Cancelar contrato
+                    </ZenDropdownMenuItem>
+                  </ZenDropdownMenuContent>
+                </ZenDropdownMenu>
+              )}
               {isPublished && !isSigned && (
                 <ZenButton
                   variant="primary"

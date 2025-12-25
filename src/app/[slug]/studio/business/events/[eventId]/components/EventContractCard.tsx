@@ -75,6 +75,7 @@ export function EventContractCard({
   const [showCancellationModal, setShowCancellationModal] = useState(false);
   const [showCancellationConfirmModal, setShowCancellationConfirmModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
+  const [showCancelledContractsModal, setShowCancelledContractsModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -782,6 +783,8 @@ export function EventContractCard({
   // Determinar si mostrar botón "Anexar" en el header
   const hasActiveContract = allContracts.some(c => c.status !== 'CANCELLED');
   const showAddButton = !hasActiveContract; // Mostrar si no hay contrato activo (sin contratos o solo cancelados)
+  const cancelledContracts = allContracts.filter(c => c.status === 'CANCELLED');
+  const hasCancelledContracts = cancelledContracts.length > 0;
 
   return (
     <ZenCard>
@@ -812,18 +815,20 @@ export function EventContractCard({
               .filter(c => c.status !== 'CANCELLED')
               .map((contractItem) => renderContractItem(contractItem, true))}
             
-            {/* Separador si hay contratos cancelados */}
-            {allContracts.some(c => c.status === 'CANCELLED') && allContracts.some(c => c.status !== 'CANCELLED') && (
+            {/* Botón para ver contratos cancelados */}
+            {hasCancelledContracts && (
               <div className="pt-2 border-t border-zinc-800">
-                <p className="text-xs text-zinc-500 mb-2">Historial</p>
+                <ZenButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCancelledContractsModal(true)}
+                  className="w-full text-xs text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50"
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Contratos cancelados ({cancelledContracts.length})
+                </ZenButton>
               </div>
             )}
-            
-            {/* Contratos cancelados después */}
-            {allContracts
-              .filter(c => c.status === 'CANCELLED')
-              .map((contractItem) => renderContractItem(contractItem, false))}
-            
           </div>
         ) : (
           <div className="text-center py-6">
@@ -1113,6 +1118,21 @@ export function EventContractCard({
           )}
         </>
       )}
+
+      {/* Modal de contratos cancelados */}
+      <ZenDialog
+        isOpen={showCancelledContractsModal}
+        onClose={() => setShowCancelledContractsModal(false)}
+        title="Contratos Cancelados"
+        description={`Historial de ${cancelledContracts.length} contrato${cancelledContracts.length !== 1 ? 's' : ''} cancelado${cancelledContracts.length !== 1 ? 's' : ''}`}
+        maxWidth="2xl"
+        onCancel={() => setShowCancelledContractsModal(false)}
+        cancelLabel="Cerrar"
+      >
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto">
+          {cancelledContracts.map((contractItem) => renderContractItem(contractItem, false))}
+        </div>
+      </ZenDialog>
     </ZenCard>
   );
 }
