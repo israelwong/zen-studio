@@ -1380,7 +1380,34 @@ export async function autorizarCotizacion(
         validatedData.studio_slug
       );
 
-      // 2. Cambiar etapa de la promesa a "aprobado"
+      // 2. Archivar autom?ticamente las dem?s cotizaciones de la promesa (solo puede haber una aprobada)
+      // Excluir las canceladas: no se archivan ni modifican
+      if (validatedData.promise_id) {
+        const otrasCotizaciones = await tx.studio_cotizaciones.findMany({
+          where: {
+            promise_id: validatedData.promise_id,
+            id: { not: validatedData.cotizacion_id }, // Excluir la cotizaci?n actual
+            archived: false,
+            status: { not: 'cancelada' }, // Excluir las canceladas
+          },
+          select: { id: true },
+        });
+
+        if (otrasCotizaciones.length > 0) {
+          await tx.studio_cotizaciones.updateMany({
+            where: {
+              id: { in: otrasCotizaciones.map((c) => c.id) },
+            },
+            data: {
+              archived: true,
+              updated_at: new Date(),
+            },
+          });
+          console.log(`[AUTORIZACION] ${otrasCotizaciones.length} cotizaciones archivadas autom?ticamente.`);
+        }
+      }
+
+      // 3. Cambiar etapa de la promesa a "aprobado"
       if (validatedData.promise_id && etapaAprobado) {
         await tx.studio_promises.update({
           where: { id: validatedData.promise_id },
@@ -1390,7 +1417,7 @@ export async function autorizarCotizacion(
           },
         });
 
-        // 4. Eliminar etiqueta "Cancelada" si existe
+        // 5. Eliminar etiqueta "Cancelada" si existe
         const tagCancelada = await tx.studio_promise_tags.findUnique({
           where: {
             studio_id_slug: {
@@ -1416,7 +1443,7 @@ export async function autorizarCotizacion(
         }
       }
 
-      // 5. Convertir agendamiento de promesa a agendamiento de evento
+      // 6. Convertir agendamiento de promesa a agendamiento de evento
       if (eventoId && validatedData.promise_id) {
         // Obtener el evento con su fecha
         const evento = await tx.studio_events.findUnique({

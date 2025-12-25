@@ -293,6 +293,33 @@ export async function autorizarRevisionCotizacion(
         },
       });
 
+      // 3.1. Archivar autom?ticamente las dem?s cotizaciones de la promesa (solo puede haber una aprobada)
+      // Excluir las canceladas: no se archivan ni modifican
+      if (original.promise_id) {
+        const otrasCotizaciones = await tx.studio_cotizaciones.findMany({
+          where: {
+            promise_id: original.promise_id,
+            id: { notIn: [validatedData.revision_id, original.id] }, // Excluir la revisi?n y la original
+            archived: false,
+            status: { not: 'cancelada' }, // Excluir las canceladas
+          },
+          select: { id: true },
+        });
+
+        if (otrasCotizaciones.length > 0) {
+          await tx.studio_cotizaciones.updateMany({
+            where: {
+              id: { in: otrasCotizaciones.map((c) => c.id) },
+            },
+            data: {
+              archived: true,
+              updated_at: new Date(),
+            },
+          });
+          console.log(`[AUTORIZACION REVISION] ${otrasCotizaciones.length} cotizaciones archivadas autom?ticamente.`);
+        }
+      }
+
       // 4. Migrar dependencias si se solicita
       if (validatedData.migrar_dependencias) {
         // Crear mapa de item_id original → item_id revisión

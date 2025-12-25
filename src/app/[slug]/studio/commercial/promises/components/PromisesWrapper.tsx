@@ -98,10 +98,33 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
     }
   }, [studioSlug, loadData]);
 
-  const handlePromiseUpdatedRealtime = useCallback((promiseId: string) => {
+  const handlePromiseUpdatedRealtime = useCallback(async (promiseId: string) => {
     console.log('[PromisesWrapper] Promesa actualizada:', promiseId);
-    loadData();
-  }, [loadData]);
+    // Actualizar solo la promesa específica en lugar de recargar todo
+    try {
+      const result = await getPromiseByIdAsPromiseWithContact(studioSlug, promiseId);
+      if (result.success && result.data) {
+        setPromises((prev) => {
+          const existingIndex = prev.findIndex((p) => p.promise_id === promiseId);
+          if (existingIndex >= 0) {
+            // Actualizar promesa existente
+            const updated = [...prev];
+            updated[existingIndex] = result.data!;
+            return updated;
+          }
+          // Si no existe, agregarla (por si acaso)
+          return [result.data!, ...prev];
+        });
+      } else {
+        // Fallback: recargar todo si falla
+        loadData();
+      }
+    } catch (error) {
+      console.error('[PromisesWrapper] Error al actualizar promesa:', error);
+      // Fallback: recargar todo si falla
+      loadData();
+    }
+  }, [studioSlug, loadData]);
 
   const handlePromiseDeleted = useCallback((promiseId: string) => {
     console.log('[PromisesWrapper] Promesa eliminada:', promiseId);

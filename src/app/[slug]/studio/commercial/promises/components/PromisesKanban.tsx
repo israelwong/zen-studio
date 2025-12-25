@@ -81,15 +81,15 @@ export function PromisesKanban({
     }
 
     // Comparar con la referencia anterior para detectar cambios reales
-    const prevIds = new Set(prevPromisesRef.current.map(p => p.id));
-    const newIds = new Set(promises.map(p => p.id));
+    const prevPromiseIds = new Set(prevPromisesRef.current.map(p => p.promise_id).filter(Boolean));
+    const newPromiseIds = new Set(promises.map(p => p.promise_id).filter(Boolean));
 
     const hasIdChanges =
-      prevIds.size !== newIds.size ||
-      [...prevIds].some(id => !newIds.has(id)) ||
-      [...newIds].some(id => !prevIds.has(id));
+      prevPromiseIds.size !== newPromiseIds.size ||
+      [...prevPromiseIds].some(id => !newPromiseIds.has(id)) ||
+      [...newPromiseIds].some(id => !prevPromiseIds.has(id));
 
-    // Solo sincronizar si hay cambios en IDs (nuevas/eliminadas promesas)
+    // Solo sincronizar si hay cambios en promise_ids (nuevas/eliminadas promesas)
     // No sincronizar por cambios de stage_id ya que se manejan con actualización optimista
     if (hasIdChanges || localPromises.length === 0) {
       setLocalPromises(promises);
@@ -292,9 +292,12 @@ export function PromisesKanban({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
-    isDraggingRef.current = false;
+    // NO resetear isDraggingRef aquí - se reseteará después de completar la actualización
 
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      isDraggingRef.current = false;
+      return;
+    }
 
     const draggedPromiseId = active.id as string; // ✅ Este es promise.promise_id (unique ID)
     const newStageId = over.id as string;
@@ -427,6 +430,12 @@ export function PromisesKanban({
       );
       console.error('Error moviendo promesa:', error);
       toast.error('Error al mover promesa');
+    } finally {
+      // Resetear flag después de completar toda la operación
+      // Usar setTimeout para asegurar que la actualización optimista se haya aplicado
+      setTimeout(() => {
+        isDraggingRef.current = false;
+      }, 100);
     }
   };
 

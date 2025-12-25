@@ -164,7 +164,7 @@ export function PromiseQuotesPanel({
     onCotizacionInserted: () => {
       loadCotizaciones();
     },
-    onCotizacionUpdated: () => {
+    onCotizacionUpdated: (cotizacionId) => {
       loadCotizaciones();
     },
     onCotizacionDeleted: (cotizacionId) => {
@@ -257,22 +257,28 @@ export function PromiseQuotesPanel({
 
   const isMenuDisabled = !eventTypeId || !isSaved;
 
+  // Calcular si hay una cotización aprobada (no cancelada, no archivada)
+  const hasApprovedQuote = cotizaciones.some(
+    (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived && c.status !== 'cancelada'
+  );
+
   return (
     <ZenCard className="min-h-[300px] flex flex-col">
       <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <ZenCardTitle className="text-sm font-medium flex items-center pt-1">Cotizaciones</ZenCardTitle>
-          <ZenDropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            <ZenDropdownMenuTrigger asChild>
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0"
-                disabled={isMenuDisabled}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </ZenButton>
-            </ZenDropdownMenuTrigger>
+          {!hasApprovedQuote && (
+            <ZenDropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <ZenDropdownMenuTrigger asChild>
+                <ZenButton
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  disabled={isMenuDisabled}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </ZenButton>
+              </ZenDropdownMenuTrigger>
             <ZenDropdownMenuContent align="end" className="min-w-[200px]">
               {loadingPackages ? (
                 <div className="px-2 py-3 flex items-center gap-2 text-sm text-zinc-400">
@@ -309,6 +315,7 @@ export function PromiseQuotesPanel({
               )}
             </ZenDropdownMenuContent>
           </ZenDropdownMenu>
+          )}
         </div>
       </ZenCardHeader>
       <ZenCardContent className="p-4 flex flex-col">
@@ -368,88 +375,18 @@ export function PromiseQuotesPanel({
             </div>
           ) : !isHydrated ? (
             <div className="space-y-2">
-              {cotizaciones.map((cotizacion) => (
-                <PromiseQuotesPanelCard
-                  key={cotizacion.id}
-                  cotizacion={cotizacion}
-                  studioSlug={studioSlug}
-                  promiseId={promiseId}
-                  contactId={contactId}
-                  isDuplicating={duplicatingId === cotizacion.id}
-                  onDuplicateStart={(id) => setDuplicatingId(id)}
-                  onDuplicateComplete={(newCotizacion) => {
-                    setDuplicatingId(null);
-                    setCotizaciones((prev) => {
-                      const updated = [...prev, newCotizacion];
-                      return updated.sort((a, b) => {
-                        if (a.archived && !b.archived) return 1;
-                        if (!a.archived && b.archived) return -1;
-                        const orderA = a.order ?? 0;
-                        const orderB = b.order ?? 0;
-                        return orderA - orderB;
-                      });
-                    });
-                  }}
-                  onDuplicateError={() => {
-                    setDuplicatingId(null);
-                  }}
-                  onDelete={(id) => {
-                    setCotizaciones((prev) => prev.filter((c) => c.id !== id));
-                  }}
-                  onArchive={(id) => {
-                    // Actualización local: marcar como archivada y reordenar
-                    setCotizaciones((prev) => {
-                      const updated = prev.map((c) => (c.id === id ? { ...c, archived: true } : c));
-                      return updated.sort((a, b) => {
-                        if (a.archived && !b.archived) return 1;
-                        if (!a.archived && b.archived) return -1;
-                        const orderA = a.order ?? 0;
-                        const orderB = b.order ?? 0;
-                        return orderA - orderB;
-                      });
-                    });
-                  }}
-                  onUpdate={(cotizacionId) => {
-                    // Actualización optimista: marcar como cancelada
-                    setCotizaciones((prev) =>
-                      prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
-                    );
-                    // Refrescar desde servidor para sincronizar
-                    router.refresh();
-                  }}
-                  onUnarchive={(id) => {
-                    // Actualización local: marcar como desarchivada y reordenar
-                    setCotizaciones((prev) => {
-                      const updated = prev.map((c) => (c.id === id ? { ...c, archived: false } : c));
-                      return updated.sort((a, b) => {
-                        if (a.archived && !b.archived) return 1;
-                        if (!a.archived && b.archived) return -1;
-                        const orderA = a.order ?? 0;
-                        const orderB = b.order ?? 0;
-                        return orderA - orderB;
-                      });
-                    });
-                  }}
-                  onNameUpdate={(id, newName) => {
-                    setCotizaciones((prev) =>
-                      prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
-                    );
-                  }}
-                />
-              ))}
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={cotizaciones.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className={`space-y-2 ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
-                  {cotizaciones.map((cotizacion) => (
+              {(() => {
+                // Calcular si hay una cotización aprobada (excluyendo la actual si es aprobada)
+                const hasApprovedQuote = cotizaciones.some(
+                  (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
+                );
+                
+                return cotizaciones.map((cotizacion) => {
+                  // Esta cotización es aprobada, entonces no hay otra aprobada para ella
+                  const isThisApproved = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
+                  const hasOtherApproved = hasApprovedQuote && !isThisApproved;
+                  
+                  return (
                     <PromiseQuotesPanelCard
                       key={cotizacion.id}
                       cotizacion={cotizacion}
@@ -457,10 +394,20 @@ export function PromiseQuotesPanel({
                       promiseId={promiseId}
                       contactId={contactId}
                       isDuplicating={duplicatingId === cotizacion.id}
+                      hasApprovedQuote={hasOtherApproved}
                       onDuplicateStart={(id) => setDuplicatingId(id)}
                       onDuplicateComplete={(newCotizacion) => {
                         setDuplicatingId(null);
-                        setCotizaciones((prev) => [...prev, newCotizacion]);
+                        setCotizaciones((prev) => {
+                          const updated = [...prev, newCotizacion];
+                          return updated.sort((a, b) => {
+                            if (a.archived && !b.archived) return 1;
+                            if (!a.archived && b.archived) return -1;
+                            const orderA = a.order ?? 0;
+                            const orderB = b.order ?? 0;
+                            return orderA - orderB;
+                          });
+                        });
                       }}
                       onDuplicateError={() => {
                         setDuplicatingId(null);
@@ -508,7 +455,95 @@ export function PromiseQuotesPanel({
                         );
                       }}
                     />
-                  ))}
+                  );
+                });
+              })()}
+            </div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={cotizaciones.map((c) => c.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className={`space-y-2 ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
+                  {(() => {
+                    // Calcular si hay una cotización aprobada (excluyendo la actual si es aprobada)
+                    const hasApprovedQuote = cotizaciones.some(
+                      (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
+                    );
+                    
+                    return cotizaciones.map((cotizacion) => {
+                      // Esta cotización es aprobada, entonces no hay otra aprobada para ella
+                      const isThisApproved = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
+                      const hasOtherApproved = hasApprovedQuote && !isThisApproved;
+                      
+                      return (
+                        <PromiseQuotesPanelCard
+                          key={cotizacion.id}
+                          cotizacion={cotizacion}
+                          studioSlug={studioSlug}
+                          promiseId={promiseId}
+                          contactId={contactId}
+                          isDuplicating={duplicatingId === cotizacion.id}
+                          hasApprovedQuote={hasOtherApproved}
+                          onDuplicateStart={(id) => setDuplicatingId(id)}
+                          onDuplicateComplete={(newCotizacion) => {
+                            setDuplicatingId(null);
+                            setCotizaciones((prev) => [...prev, newCotizacion]);
+                          }}
+                          onDuplicateError={() => {
+                            setDuplicatingId(null);
+                          }}
+                          onDelete={(id) => {
+                            setCotizaciones((prev) => prev.filter((c) => c.id !== id));
+                          }}
+                          onArchive={(id) => {
+                            // Actualización local: marcar como archivada y reordenar
+                            setCotizaciones((prev) => {
+                              const updated = prev.map((c) => (c.id === id ? { ...c, archived: true } : c));
+                              return updated.sort((a, b) => {
+                                if (a.archived && !b.archived) return 1;
+                                if (!a.archived && b.archived) return -1;
+                                const orderA = a.order ?? 0;
+                                const orderB = b.order ?? 0;
+                                return orderA - orderB;
+                              });
+                            });
+                          }}
+                          onUpdate={(cotizacionId) => {
+                            // Actualización optimista: marcar como cancelada
+                            setCotizaciones((prev) =>
+                              prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
+                            );
+                            // Refrescar desde servidor para sincronizar
+                            router.refresh();
+                          }}
+                          onUnarchive={(id) => {
+                            // Actualización local: marcar como desarchivada y reordenar
+                            setCotizaciones((prev) => {
+                              const updated = prev.map((c) => (c.id === id ? { ...c, archived: false } : c));
+                              return updated.sort((a, b) => {
+                                if (a.archived && !b.archived) return 1;
+                                if (!a.archived && b.archived) return -1;
+                                const orderA = a.order ?? 0;
+                                const orderB = b.order ?? 0;
+                                return orderA - orderB;
+                              });
+                            });
+                          }}
+                          onNameUpdate={(id, newName) => {
+                            setCotizaciones((prev) =>
+                              prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
+                            );
+                          }}
+                        />
+                      );
+                    });
+                  })()}
                 </div>
               </SortableContext>
             </DndContext>

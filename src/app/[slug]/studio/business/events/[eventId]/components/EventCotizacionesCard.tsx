@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Calendar, MoreVertical, Eye, Edit, X, Loader2, CheckCircle2, Users, Download } from 'lucide-react';
+import { Calendar, MoreVertical, Eye, Edit, X, Loader2, CheckCircle2, Users, Download } from 'lucide-react';
 import {
   ZenCard,
   ZenCardHeader,
@@ -187,12 +187,6 @@ export function EventCotizacionesCard({
     onUpdated?.();
   };
 
-  const handleAnexarCotizacion = () => {
-    if (!promiseId) {
-      return;
-    }
-    router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
-  };
 
   const handleGestionarScheduler = (cotizacionId?: string) => {
     if (cotizacionId) {
@@ -492,21 +486,8 @@ export function EventCotizacionesCard({
       <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
         <div className="flex items-center justify-between">
           <ZenCardTitle className="text-sm font-medium flex items-center pt-1">
-            Cotizaciones
+            Cotización
           </ZenCardTitle>
-          <div className="flex items-center gap-2">
-            {promiseId && (
-              <ZenButton
-                variant="ghost"
-                size="sm"
-                onClick={handleAnexarCotizacion}
-                className="h-6 px-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20"
-              >
-                <Plus className="h-3 w-3 mr-1" />
-                Anexar
-              </ZenButton>
-            )}
-          </div>
         </div>
       </ZenCardHeader>
       <ZenCardContent className="p-4">

@@ -160,7 +160,60 @@ export async function getEventContractData(
       return { success: false, error: "El evento no tiene una promesa asociada" };
     }
 
-    if (!event.cotizacion) {
+    // Buscar cotización aprobada del evento (puede estar en la relación directa o por evento_id)
+    let cotizacionAprobada = event.cotizacion;
+    
+    // Si no hay en la relación directa, buscar por evento_id
+    if (!cotizacionAprobada) {
+      const cotizacionPorEvento = await prisma.studio_cotizaciones.findFirst({
+        where: {
+          evento_id: realEventId,
+          status: { in: ['aprobada', 'autorizada', 'approved'] },
+          archived: false,
+        },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          discount: true,
+          status: true,
+          selected_by_prospect: true,
+          tyc_accepted: true,
+          condiciones_comerciales_id: true,
+          condiciones_comerciales: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              discount_percentage: true,
+              advance_percentage: true,
+              advance_type: true,
+              advance_amount: true,
+            },
+          },
+          cotizacion_items: {
+            include: {
+              items: {
+                include: {
+                  service_categories: true,
+                },
+              },
+              service_categories: true,
+            },
+            orderBy: {
+              order: "asc",
+            },
+          },
+        },
+        orderBy: {
+          created_at: 'desc', // Tomar la más reciente si hay múltiples
+        },
+      });
+      
+      cotizacionAprobada = cotizacionPorEvento;
+    }
+
+    if (!cotizacionAprobada) {
       return { success: false, error: "El evento no tiene una cotización autorizada" };
     }
 
@@ -176,7 +229,7 @@ export async function getEventContractData(
       : "Fecha por definir";
 
     // Ordenar items por categoría (usando snapshots o relaciones)
-    const itemsOrdenados = event.cotizacion.cotizacion_items
+    const itemsOrdenados = cotizacionAprobada.cotizacion_items
       .map((item) => {
         // Obtener nombre de categoría desde snapshot o relación
         const categoryName = item.category_name_snapshot ||
@@ -235,28 +288,28 @@ export async function getEventContractData(
     );
 
     // Calcular total
-    const totalContrato = Number(event.cotizacion.price);
+    const totalContrato = Number(cotizacionAprobada.price);
     // Calcular descuento: puede ser porcentaje o monto fijo
     let descuento = 0;
-    if (event.cotizacion.condiciones_comerciales) {
-      const condiciones = event.cotizacion.condiciones_comerciales;
+    if (cotizacionAprobada.condiciones_comerciales) {
+      const condiciones = cotizacionAprobada.condiciones_comerciales;
       if (condiciones.discount_percentage) {
         // Descuento porcentual
         descuento = totalContrato * (Number(condiciones.discount_percentage) / 100);
-      } else if (event.cotizacion.discount) {
+      } else if (cotizacionAprobada.discount) {
         // Descuento fijo desde la cotización
-        descuento = Number(event.cotizacion.discount);
+        descuento = Number(cotizacionAprobada.discount);
       }
-    } else if (event.cotizacion.discount) {
+    } else if (cotizacionAprobada.discount) {
       // Descuento directo en la cotización
-      descuento = Number(event.cotizacion.discount);
+      descuento = Number(cotizacionAprobada.discount);
     }
     const totalFinal = totalContrato - descuento;
 
     // Preparar datos de condiciones comerciales si existen
     let condicionesData: CondicionesComercialesData | undefined;
-    if (event.cotizacion.condiciones_comerciales) {
-      const cc = event.cotizacion.condiciones_comerciales;
+    if (cotizacionAprobada.condiciones_comerciales) {
+      const cc = cotizacionAprobada.condiciones_comerciales;
       
       // Calcular monto de anticipo
       let montoAnticipoCalculado: number | undefined;
@@ -291,7 +344,7 @@ export async function getEventContractData(
         currency: "MXN",
       }).format(totalFinal),
       condiciones_pago:
-        event.cotizacion.condiciones_comerciales?.description || "No especificadas",
+        cotizacionAprobada.condiciones_comerciales?.description || "No especificadas",
       nombre_studio: studio.studio_name,
       servicios_incluidos: serviciosIncluidos,
       condicionesData,

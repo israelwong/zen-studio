@@ -44,6 +44,7 @@ interface PromiseQuotesPanelCardProps {
   onArchive?: (id: string) => void;
   onUnarchive?: (id: string) => void;
   onNameUpdate?: (id: string, newName: string) => void;
+  hasApprovedQuote?: boolean; // Indica si ya hay una cotización aprobada
 }
 
 export function PromiseQuotesPanelCard({
@@ -60,6 +61,7 @@ export function PromiseQuotesPanelCard({
   onArchive,
   onUnarchive,
   onNameUpdate,
+  hasApprovedQuote = false,
 }: PromiseQuotesPanelCardProps) {
   const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -632,17 +634,20 @@ export function PromiseQuotesPanelCard({
                         Cancelar
                       </ZenDropdownMenuItem>
                     ) : (
-                      <ZenDropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAuthorize();
-                        }}
-                        disabled={loading || isDuplicating || isEditingName || !promiseId}
-                        className="text-emerald-400 focus:text-emerald-300"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Autorizar
-                      </ZenDropdownMenuItem>
+                      // Solo mostrar botón Autorizar si no hay otra cotización aprobada
+                      !hasApprovedQuote && (
+                        <ZenDropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAuthorize();
+                          }}
+                          disabled={loading || isDuplicating || isEditingName || !promiseId}
+                          className="text-emerald-400 focus:text-emerald-300"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Autorizar
+                        </ZenDropdownMenuItem>
+                      )
                     )}
 
                     {/* Duplicar: NO mostrar si es aprobada o revisión */}
