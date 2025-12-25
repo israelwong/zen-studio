@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Plus, LogOut, LayoutDashboard, UserPlus, LogIn, Pencil, Menu, Users } from 'lucide-react';
+import { Plus, LogOut, LayoutDashboard, UserPlus, LogIn, Pencil, Menu, Users, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { logout } from '@/lib/actions/auth/logout.action';
@@ -23,6 +23,7 @@ interface ProfileHeaderProps {
     onCreatePost?: () => void; // Callback para abrir sheet de crear post
     onCreateOffer?: () => void; // Callback para crear oferta
     isEditMode?: boolean; // Habilita botones de edición inline
+    showBackButton?: boolean; // Muestra botón de regresar
 }
 
 /**
@@ -58,7 +59,7 @@ function getStudioInitials(studioName?: string): string {
  * - Builder preview (header sticky)
  * - Perfil público (header completo)
  */
-export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost, onCreateOffer, isEditMode = false }: ProfileHeaderProps) {
+export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost, onCreateOffer, isEditMode = false, showBackButton = false }: ProfileHeaderProps) {
     const router = useRouter();
     const { user } = useAuth();
     const studioData = data || {};
@@ -148,8 +149,18 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
         <div className="sticky top-0 z-10 bg-zinc-900/50 backdrop-blur-lg w-full">
             <div className="w-full mx-auto max-w-[920px] px-4 py-5">
                 <div className="flex items-center">
-                    {/* Columna 1: Logo, nombre y slogan */}
+                    {/* Columna 1: Botón regresar (opcional), Logo, nombre y slogan */}
                     <div className="flex items-center space-x-3 flex-1">
+                        {/* Botón regresar */}
+                        {showBackButton && (
+                            <button
+                                onClick={() => router.back()}
+                                className="flex items-center justify-center w-8 h-8 rounded-md text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors shrink-0"
+                                aria-label="Regresar"
+                            >
+                                <ArrowLeft className="w-4 h-4" />
+                            </button>
+                        )}
                         {/* Logo/Avatar con botón de edición */}
                         <div className="relative group shrink-0">
                             <div className="w-10 h-10 bg-gradient-to-br from-zinc-700 to-zinc-800 rounded-full flex items-center justify-center overflow-hidden">
