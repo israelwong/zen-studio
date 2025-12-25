@@ -49,21 +49,9 @@ export async function getContractTemplates(
       ];
     }
 
-    console.log('[getContractTemplates] Query:', {
-      studioSlug,
-      studioId: studio.id,
-      filters,
-      whereClause,
-    });
-
     const templates = await prisma.studio_contract_templates.findMany({
       where: whereClause,
       orderBy: [{ is_default: "desc" }, { created_at: "desc" }],
-    });
-
-    console.log('[getContractTemplates] Result:', {
-      count: templates.length,
-      templates: templates.map(t => ({ id: t.id, name: t.name, is_active: t.is_active, is_default: t.is_default })),
     });
 
     return { success: true, data: templates as ContractTemplate[] };

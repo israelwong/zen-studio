@@ -95,14 +95,10 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
             select: { storage_bytes: true },
         });
 
-        console.log('🔍 calculateStorageCompleto: Portfolios media encontrados:', portfoliosMedia.length);
-
         const totalPortfoliosBytes = portfoliosMedia.reduce(
             (sum: number, m: { storage_bytes: bigint }) => sum + Number(m.storage_bytes),
             0
         );
-
-        console.log('🔍 calculateStorageCompleto: Total portfolios bytes:', totalPortfoliosBytes);
 
         // Obtener covers de paquetes con su tamaño almacenado
         const paquetes = await prisma.studio_paquetes.findMany({
@@ -117,9 +113,6 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
             },
             0
         );
-
-        console.log('🔍 calculateStorageCompleto: Paquetes con cover:', paquetes.filter(p => p.cover_storage_bytes).length);
-        console.log('🔍 calculateStorageCompleto: Total paquetes bytes:', totalPaquetesBytes);
 
         // Obtener multimedia de ofertas (content blocks)
         const offersMedia = await prisma.studio_offer_media.findMany({
@@ -188,12 +181,6 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
 
         const totalOffersBytes = totalOffersMediaBytes + totalOffersCoverBytes;
 
-        console.log('🔍 calculateStorageCompleto: Ofertas media encontrados:', offersMedia.length);
-        console.log('🔍 calculateStorageCompleto: Ofertas con portada:', offers.filter(o => o.cover_media_url).length);
-        console.log('🔍 calculateStorageCompleto: Total ofertas media bytes:', totalOffersMediaBytes);
-        console.log('🔍 calculateStorageCompleto: Total ofertas portadas bytes:', totalOffersCoverBytes);
-        console.log('🔍 calculateStorageCompleto: Total ofertas bytes:', totalOffersBytes);
-
         // Calcular storage de avatares de contactos desde Supabase Storage
         let totalContactosAvatarsBytes = 0;
         if (supabaseAdmin) {
@@ -256,8 +243,6 @@ export async function calcularStorageCompleto(studioSlug: string): Promise<{
                 // No fallar el cálculo completo si hay error aquí
             }
         }
-
-        console.log('🔍 calculateStorageCompleto: Total contactos avatars bytes:', totalContactosAvatarsBytes);
 
         // Agrupar por sección
         const sectionMap = new Map<string, StorageBreakdown>();

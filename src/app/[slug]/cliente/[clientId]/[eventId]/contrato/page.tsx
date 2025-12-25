@@ -323,7 +323,7 @@ export default function EventoContratoPage() {
 
   // Configurar realtime para escuchar cambios en contratos
   useEffect(() => {
-    if (!slug || !contract?.id) return;
+    if (!slug || !eventId) return;
 
     const setupRealtime = async () => {
       try {
@@ -342,50 +342,41 @@ export default function EventoContratoPage() {
           ack: true,
         });
 
-        contractsChannel
-          .on('broadcast', { event: 'UPDATE' }, (payload: unknown) => {
-            const p = payload as any;
-            const contractNew = p.record || p.new || p.payload?.record || p.payload?.new;
+        const handleContractChange = (payload: unknown, operation: 'INSERT' | 'UPDATE') => {
+          const p = payload as any;
+          const contractNew = p.record || p.new || p.payload?.record || p.payload?.new;
 
-            // Verificar si es el contrato del evento actual
-            if (contractNew && contractNew.id === contract.id) {
-              // Solo recargar si el contrato está publicado o firmado
-              // NO recargar cuando el cliente solicita cancelación (CANCELLATION_REQUESTED_BY_CLIENT)
-              // Solo actualizar el estado local para evitar refresh completo
-              if (contractNew.status === 'PUBLISHED' || contractNew.status === 'SIGNED') {
-                // Recargar contrato después de un pequeño delay para asegurar que la BD está actualizada
-                setTimeout(() => {
-                  loadContract();
-                }, 300);
-              } else if (
-                contractNew.status === 'CANCELLATION_REQUESTED_BY_CLIENT' ||
-                contractNew.status === 'CANCELLATION_REQUESTED_BY_STUDIO' ||
-                contractNew.status === 'CANCELLED'
-              ) {
-                // Solo actualizar el estado local sin recargar todo el componente
-                setContract(contractNew as EventContract);
-              }
+          // Verificar si el contrato pertenece al evento actual
+          if (contractNew && contractNew.event_id === eventId) {
+            // Si es INSERT o UPDATE con status PUBLISHED/SIGNED, recargar
+            if (operation === 'INSERT' || contractNew.status === 'PUBLISHED' || contractNew.status === 'SIGNED') {
+              // Recargar contrato después de un pequeño delay para asegurar que la BD está actualizada
+              setTimeout(() => {
+                loadContract();
+              }, 300);
+            } else if (
+              contractNew.status === 'CANCELLATION_REQUESTED_BY_CLIENT' ||
+              contractNew.status === 'CANCELLATION_REQUESTED_BY_STUDIO' ||
+              contractNew.status === 'CANCELLED'
+            ) {
+              // Solo actualizar el estado local sin recargar todo el componente
+              setContract(contractNew as EventContract);
             }
+          }
+        };
+
+        contractsChannel
+          .on('broadcast', { event: 'INSERT' }, (payload: unknown) => {
+            handleContractChange(payload, 'INSERT');
+          })
+          .on('broadcast', { event: 'UPDATE' }, (payload: unknown) => {
+            handleContractChange(payload, 'UPDATE');
           })
           .on('broadcast', { event: '*' }, (payload: unknown) => {
             const p = payload as any;
             const operation = p.operation || p.event;
-            if (operation === 'UPDATE') {
-              const contractNew = p.record || p.new || p.payload?.record || p.payload?.new;
-              if (contractNew && contractNew.id === contract.id) {
-                if (contractNew.status === 'PUBLISHED' || contractNew.status === 'SIGNED') {
-                  setTimeout(() => {
-                    loadContract();
-                  }, 300);
-                } else if (
-                  contractNew.status === 'CANCELLATION_REQUESTED_BY_CLIENT' ||
-                  contractNew.status === 'CANCELLATION_REQUESTED_BY_STUDIO' ||
-                  contractNew.status === 'CANCELLED'
-                ) {
-                  // Solo actualizar el estado local sin recargar todo el componente
-                  setContract(contractNew as EventContract);
-                }
-              }
+            if (operation === 'INSERT' || operation === 'UPDATE') {
+              handleContractChange(payload, operation as 'INSERT' | 'UPDATE');
             }
           });
 
@@ -396,7 +387,7 @@ export default function EventoContratoPage() {
     };
 
     setupRealtime();
-  }, [slug, contract?.id, supabase, loadContract]);
+  }, [slug, eventId, supabase, loadContract]);
 
   const handleSign = () => {
     setShowSignConfirmModal(true);
@@ -496,7 +487,9 @@ export default function EventoContratoPage() {
 
       if (result.success) {
         toast.success('Contrato cancelado correctamente');
+        // Cerrar el modal inmediatamente
         setShowCancellationConfirmModal(false);
+        // Recargar después de cerrar el modal
         await loadContract();
       } else {
         toast.error(result.error || 'Error al confirmar cancelación');
@@ -505,6 +498,7 @@ export default function EventoContratoPage() {
       console.error('Error confirming cancellation:', error);
       toast.error('Error al confirmar cancelación');
     } finally {
+      // Siempre resetear el estado de carga
       setIsCancelling(false);
     }
   };

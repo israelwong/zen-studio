@@ -826,20 +826,10 @@ export function EventContractCard({
             
           </div>
         ) : (
-          <div className="text-center py-6 space-y-3">
+          <div className="text-center py-6">
             <p className="text-xs text-zinc-500">
               No hay contrato generado para este evento
             </p>
-            <ZenButton
-              variant="outline"
-              size="sm"
-              onClick={handleGenerateClick}
-              disabled={isGenerating}
-              className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-950/20"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Anexar contrato
-            </ZenButton>
           </div>
         )}
       </ZenCardContent>

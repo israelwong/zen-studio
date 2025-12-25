@@ -128,6 +128,9 @@ export async function notifyContractCancellationRequestedByClient(
           studio: {
             select: { id: true, slug: true },
           },
+          contact: {
+            select: { id: true, name: true },
+          },
         },
       },
     },
@@ -139,13 +142,14 @@ export async function notifyContractCancellationRequestedByClient(
 
   const { event } = contract;
   const studioSlug = event.studio.slug;
+  const clientName = event.contact?.name || 'Cliente';
 
   return createStudioNotification({
     scope: StudioNotificationScope.STUDIO,
     type: StudioNotificationType.CONTRACT_CANCELLATION_REQUESTED_BY_CLIENT,
     studio_id: event.studio_id,
     title: 'Solicitud de cancelación de contrato',
-    message: `El cliente ha solicitado cancelar el contrato. Motivo: ${reason}`,
+    message: `${clientName} ha solicitado cancelar el contrato. Motivo: ${reason}`,
     category: 'contracts',
     priority: 'URGENT',
     route: '/{slug}/studio/business/events/{event_id}',
@@ -173,7 +177,7 @@ export async function notifyContractCancellationConfirmed(contractId: string) {
             select: { id: true, slug: true },
           },
           contact: {
-            select: { id: true },
+            select: { id: true, name: true },
           },
         },
       },
@@ -186,6 +190,7 @@ export async function notifyContractCancellationConfirmed(contractId: string) {
 
   const { event } = contract;
   const studioSlug = event.studio.slug;
+  const clientName = event.contact?.name || 'Cliente';
 
   // Notificar al cliente
   await createClientNotification({
@@ -213,7 +218,7 @@ export async function notifyContractCancellationConfirmed(contractId: string) {
     type: StudioNotificationType.CONTRACT_CANCELLATION_CONFIRMED,
     studio_id: event.studio_id,
     title: 'Contrato cancelado',
-    message: 'El contrato ha sido cancelado por mutuo acuerdo',
+    message: `El contrato de ${clientName} ha sido cancelado por mutuo acuerdo`,
     category: 'contracts',
     priority: 'HIGH',
     route: '/{slug}/studio/business/events/{event_id}',
@@ -257,12 +262,13 @@ export async function notifyContractCancellationRejected(
 
   if (rejectedBy === 'client') {
     // Cliente rechazó, notificar al studio
+    const clientName = event.contact?.name || 'Cliente';
     return createStudioNotification({
       scope: StudioNotificationScope.STUDIO,
       type: StudioNotificationType.CONTRACT_CANCELLATION_REJECTED,
       studio_id: event.studio_id,
       title: 'Cancelación rechazada',
-      message: 'El cliente ha rechazado la solicitud de cancelación del contrato',
+      message: `${clientName} ha rechazado la solicitud de cancelación del contrato`,
       category: 'contracts',
       priority: 'MEDIUM',
       route: '/{slug}/studio/business/events/{event_id}',

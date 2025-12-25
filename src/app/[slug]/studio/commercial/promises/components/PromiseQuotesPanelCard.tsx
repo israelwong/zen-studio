@@ -155,6 +155,14 @@ export function PromiseQuotesPanelCard({
     if (isEditingName) {
       return;
     }
+
+    // Si la cotización está autorizada y tiene evento_id, enrutar al evento
+    const isAuthorized = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
+    if (isAuthorized && cotizacion.evento_id) {
+      router.push(`/${studioSlug}/studio/business/events/${cotizacion.evento_id}`);
+      return;
+    }
+
     if (!promiseId) {
       toast.error('No se puede editar la cotización sin una promesa asociada');
       return;
@@ -505,7 +513,7 @@ export function PromiseQuotesPanelCard({
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-sm font-semibold ${cotizacion.archived ? 'text-zinc-500' : 'text-emerald-400'
                   }`}>
-                  ${cotizacion.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                  ${(cotizacion.price - (cotizacion.discount || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 </span>
                 <ZenBadge
                   variant={getStatusVariant(cotizacion.status, cotizacion.revision_status, cotizacion.selected_by_prospect)}
@@ -520,42 +528,20 @@ export function PromiseQuotesPanelCard({
                   )}
                 </ZenBadge>
               </div>
-              {/* Mostrar precio final calculado si está pre-autorizada, aprobada o cancelada (con condición comercial/descuento) */}
+              {/* Mostrar precio original si hay descuento aplicado */}
               {(() => {
-                const esPreAutorizadaOAprobada = cotizacion.selected_by_prospect ||
-                  (cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada');
-                const estaCancelada = cotizacion.status === 'cancelada';
-                const tieneCondicionComercial = !!cotizacion.condiciones_comerciales;
-                const tieneDescuentoCotizacion = cotizacion.discount && cotizacion.discount > 0;
-
-                // Mostrar si está pre-autorizada/aprobada O si está cancelada pero tiene condición comercial/descuento
-                if (esPreAutorizadaOAprobada || (estaCancelada && (tieneCondicionComercial || tieneDescuentoCotizacion))) {
-                  // Precio base (con descuento de cotización si aplica - discount es monto fijo, no porcentaje)
-                  const precioBase = tieneDescuentoCotizacion
-                    ? cotizacion.price - cotizacion.discount
-                    : cotizacion.price;
-
-                  // Precio con descuento de condición comercial (porcentaje) si existe
-                  const descuentoCondicion = tieneCondicionComercial
-                    ? (cotizacion.condiciones_comerciales.discount_percentage ?? 0)
-                    : 0;
-                  const precioConDescuento = descuentoCondicion > 0
-                    ? precioBase - (precioBase * descuentoCondicion) / 100
-                    : precioBase;
-
-                  // Mostrar si hay algún descuento aplicado (de cotización o condición comercial) y el precio es válido (positivo y diferente al original)
-                  const tieneDescuento = tieneDescuentoCotizacion || descuentoCondicion > 0;
-                  if (tieneDescuento && precioConDescuento > 0 && precioConDescuento !== cotizacion.price) {
-                    return (
-                      <div className="mt-0.5">
-                        <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-blue-400'}`}>
-                          A pagar: <span className="font-semibold">
-                            ${precioConDescuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                          </span>
-                        </p>
-                      </div>
-                    );
-                  }
+                const tieneDescuento = cotizacion.discount && cotizacion.discount > 0;
+                
+                if (tieneDescuento) {
+                  return (
+                    <div className="mt-0.5">
+                      <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                        Precio original: <span className="font-semibold">
+                          ${cotizacion.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    </div>
+                  );
                 }
                 return null;
               })()}

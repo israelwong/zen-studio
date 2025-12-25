@@ -34,6 +34,7 @@ export interface CotizacionListItem {
   selected_by_prospect?: boolean;
   selected_at?: Date | null;
   discount?: number | null;
+  evento_id?: string | null;
   condiciones_comerciales_id?: string | null;
   condiciones_comerciales?: {
     id: string;
@@ -231,6 +232,7 @@ export async function getCotizacionesByPromiseId(
         selected_by_prospect: true,
         selected_at: true,
         discount: true,
+        evento_id: true,
         condiciones_comerciales_id: true,
         condiciones_comerciales: {
           select: {
@@ -268,6 +270,7 @@ export async function getCotizacionesByPromiseId(
         selected_by_prospect: cot.selected_by_prospect,
         selected_at: cot.selected_at,
         discount: cot.discount,
+        evento_id: cot.evento_id,
         condiciones_comerciales_id: cot.condiciones_comerciales_id,
         condiciones_comerciales: cot.condiciones_comerciales,
       })),
