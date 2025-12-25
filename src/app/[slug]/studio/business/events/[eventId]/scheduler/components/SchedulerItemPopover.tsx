@@ -33,6 +33,7 @@ interface SchedulerItemPopoverProps {
     eventId: string;
     children: React.ReactNode;
     onItemUpdate?: (updatedItem: NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0]) => void;
+    onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 function formatCurrency(value: number) {
@@ -62,7 +63,7 @@ function getSalaryType(member: CrewMember | undefined): 'fixed' | 'variable' | n
     return null;
 }
 
-export function SchedulerItemPopover({ item, studioSlug, eventId, children, onItemUpdate }: SchedulerItemPopoverProps) {
+export function SchedulerItemPopover({ item, studioSlug, eventId, children, onItemUpdate, onTaskToggleComplete }: SchedulerItemPopoverProps) {
     // Hook de sincronización (optimista + servidor)
     const { localItem, updateCrewMember, updateCompletionStatus } = useSchedulerItemSync(item, onItemUpdate);
 
@@ -155,6 +156,21 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
     const handleTaskCompletionToggle = async (checked: boolean) => {
         if (!localItem.scheduler_task?.id) return;
 
+        // Si tenemos onTaskToggleComplete, usarlo directamente (igual que TaskBarContextMenu)
+        // Esto asegura que se actualice localEventData de la misma manera
+        if (onTaskToggleComplete) {
+            setIsUpdatingCompletion(true);
+            try {
+                await onTaskToggleComplete(localItem.scheduler_task.id, checked);
+            } catch (error) {
+                toast.error(error instanceof Error ? error.message : 'Error al actualizar tarea');
+            } finally {
+                setIsUpdatingCompletion(false);
+            }
+            return;
+        }
+
+        // Fallback: usar el flujo anterior si no hay onTaskToggleComplete
         // Si se intenta completar pero no hay personal asignado, mostrar modal
         if (checked && !localItem.assigned_to_crew_member_id) {
             setOpen(false);

@@ -2425,27 +2425,31 @@ export async function actualizarSchedulerTask(
       // Importar dinámicamente para evitar dependencias circulares
       const { eliminarNominaDesdeTareaDesmarcada } = await import('./payroll-actions');
 
-      // Eliminar nómina en background (no bloquear si falla)
-      eliminarNominaDesdeTareaDesmarcada(studioSlug, eventId, taskId)
-        .then((result) => {
-          if (result.success) {
-            console.log('[SCHEDULER] ✅ Nómina eliminada automáticamente');
-          } else {
-            console.warn('[SCHEDULER] ⚠️ No se pudo eliminar nómina automática:', result.error);
-          }
-        })
-        .catch((error) => {
-          // Log error pero no bloquear la actualización de la tarea
-          console.error(
-            '[SCHEDULER] ❌ Error eliminando nómina automática (no crítico):',
-            error
-          );
-        });
+      // Eliminar nómina (await para evitar revalidaciones durante render)
+      try {
+        const result = await eliminarNominaDesdeTareaDesmarcada(studioSlug, eventId, taskId);
+        if (result.success) {
+          console.log('[SCHEDULER] ✅ Nómina eliminada automáticamente');
+        } else {
+          console.warn('[SCHEDULER] ⚠️ No se pudo eliminar nómina automática:', result.error);
+        }
+      } catch (error) {
+        // Log error pero no bloquear la actualización de la tarea
+        console.error(
+          '[SCHEDULER] ❌ Error eliminando nómina automática (no crítico):',
+          error
+        );
+      }
     }
 
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
+    
+    // Revalidar finanzas si se eliminó una nómina
+    if (data.isCompleted === false && task.cotizacion_item_id) {
+      revalidatePath(`/${studioSlug}/studio/business/finanzas`);
+    }
 
     return {
       success: true,

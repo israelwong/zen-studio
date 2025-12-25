@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 
 type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
@@ -19,13 +19,28 @@ export function useSchedulerItemSync(
 ) {
   const [localItem, setLocalItem] = useState(initialItem);
 
+  // Extraer valores clave del scheduler_task para detectar cambios
+  const taskKey = useMemo(() => {
+    return JSON.stringify({
+      completed_at: initialItem.scheduler_task?.completed_at,
+      status: initialItem.scheduler_task?.status,
+      progress_percent: initialItem.scheduler_task?.progress_percent,
+      id: initialItem.scheduler_task?.id,
+    });
+  }, [
+    initialItem.scheduler_task?.completed_at,
+    initialItem.scheduler_task?.status,
+    initialItem.scheduler_task?.progress_percent,
+    initialItem.scheduler_task?.id,
+  ]);
+
   // Sincronizar con item prop cuando cambie
   useEffect(() => {
     setLocalItem(initialItem);
   }, [
     initialItem.id,
     initialItem.assigned_to_crew_member_id,
-    initialItem.scheduler_task?.completed_at,
+    taskKey,
   ]);
 
   /**

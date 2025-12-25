@@ -56,6 +56,9 @@ export function SchedulerItemRow({
         ? Math.ceil((new Date(localItem.scheduler_task.end_date).getTime() - new Date(localItem.scheduler_task.start_date).getTime()) / (1000 * 60 * 60 * 24))
         : undefined;
 
+    // Determinar si la tarea está completada
+    const isCompleted = !!localItem.scheduler_task?.completed_at;
+
     return (
         <tr className="border-b border-zinc-800 hover:bg-zinc-900/50 transition-colors group">
             {/* Agrupación (Sticky Left) */}
@@ -68,6 +71,7 @@ export function SchedulerItemRow({
                     <button className="w-full text-left">
                         <SchedulerAgrupacionCell
                             servicio={itemData.servicioNombre}
+                            isCompleted={isCompleted}
                             assignedCrewMember={localItem.assigned_to_crew_member}
                             duration={duration}
                         />

@@ -107,10 +107,21 @@ export const EventScheduler = React.memo(function EventScheduler({
               // Asegurar que el item actualizado tenga todos los campos necesarios
               // Especialmente importante para scheduler_task cuando se completa
               // Preservar todos los campos del scheduler_task original y mergear con los actualizados
+              // IMPORTANTE: Crear un nuevo objeto para que React detecte el cambio
               const mergedSchedulerTask = updatedItem.scheduler_task && item.scheduler_task
                 ? {
                   ...item.scheduler_task, // Preservar campos originales (start_date, end_date, etc.)
                   ...updatedItem.scheduler_task, // Sobrescribir con campos actualizados (completed_at, status, progress_percent, etc.)
+                  // Asegurar que completed_at sea un nuevo valor (no undefined)
+                  completed_at: updatedItem.scheduler_task.completed_at !== undefined
+                    ? updatedItem.scheduler_task.completed_at
+                    : item.scheduler_task.completed_at,
+                  // Asegurar que status sea un nuevo valor
+                  status: updatedItem.scheduler_task.status || item.scheduler_task.status,
+                  // Asegurar que progress_percent sea un nuevo valor
+                  progress_percent: updatedItem.scheduler_task.progress_percent !== undefined
+                    ? updatedItem.scheduler_task.progress_percent
+                    : item.scheduler_task.progress_percent,
                 }
                 : (updatedItem.scheduler_task || item.scheduler_task);
 

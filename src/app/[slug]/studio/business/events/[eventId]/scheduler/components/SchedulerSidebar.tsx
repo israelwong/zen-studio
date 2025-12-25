@@ -23,6 +23,7 @@ interface SchedulerSidebarProps {
   eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
   onItemUpdate?: (updatedItem: CotizacionItem) => void;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 interface SchedulerItemProps {
@@ -32,6 +33,7 @@ interface SchedulerItemProps {
   eventId: string;
   renderItem?: (item: CotizacionItem, metadata: ItemMetadata) => React.ReactNode;
   onItemUpdate?: (updatedItem: CotizacionItem) => void;
+  onTaskToggleComplete?: (taskId: string, isCompleted: boolean) => Promise<void>;
 }
 
 function getInitials(name: string) {
@@ -44,7 +46,7 @@ function getInitials(name: string) {
 }
 
 // Componente individual para cada item (con sincronización optimista)
-function SchedulerItem({ item, metadata, studioSlug, eventId, renderItem, onItemUpdate }: SchedulerItemProps) {
+function SchedulerItem({ item, metadata, studioSlug, eventId, renderItem, onItemUpdate, onTaskToggleComplete }: SchedulerItemProps) {
   // Hook de sincronización (optimista + servidor)
   const { localItem } = useSchedulerItemSync(item, onItemUpdate);
   const isCompleted = !!localItem.scheduler_task?.completed_at;
@@ -87,6 +89,7 @@ function SchedulerItem({ item, metadata, studioSlug, eventId, renderItem, onItem
       studioSlug={studioSlug}
       eventId={eventId}
       onItemUpdate={onItemUpdate}
+      onTaskToggleComplete={onTaskToggleComplete}
     >
       <button className="w-full text-left">
         {renderItem ? renderItem(localItem, metadata) : <DefaultItemRender />}
@@ -150,6 +153,7 @@ export const SchedulerSidebar = React.memo(({
                       eventId={eventId}
                       renderItem={renderItem}
                       onItemUpdate={onItemUpdate}
+                      onTaskToggleComplete={onTaskToggleComplete}
                     />
                   </div>
                 );
