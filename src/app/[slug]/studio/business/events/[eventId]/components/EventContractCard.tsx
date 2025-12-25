@@ -23,7 +23,25 @@ import {
 } from '@/components/ui/zen';
 import type { EventContract } from '@/types/contracts';
 import { toast } from 'sonner';
-import { formatDate } from '@/lib/actions/utils/formatting';
+import { formatDateTime as formatDateTimeUtil } from '@/lib/actions/utils/formatting';
+
+// Función para formatear fecha con hora incluyendo segundos
+const formatDateTime = (date: Date | string): string => {
+  try {
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleString('es-MX', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  } catch (error) {
+    return 'Fecha no disponible';
+  }
+};
 import { ContractTemplateSelectorModal } from './ContractTemplateSelectorModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { EventContractViewModal } from './EventContractViewModal';
@@ -538,7 +556,8 @@ export function EventContractCard({
         <div className="flex items-start justify-between gap-3 pr-8">
           <div className="flex-1 min-w-0">
             <p className={`text-sm font-medium mb-1 ${isCancelled ? 'text-zinc-500' : 'text-zinc-100'}`}>
-              {isCancelled ? 'Contrato Cancelado' : 'Contrato'}
+              {isCancelled ? 'Contrato Cancelado' : 'Contrato'}{' '}
+              <span className="font-normal text-zinc-400">v{contractItem.version}</span>
             </p>
 
             {/* Estado */}
@@ -569,42 +588,22 @@ export function EventContractCard({
 
             {/* Información compacta */}
             <div className="space-y-0.5 text-xs">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-zinc-500">Versión:</span>
-                  <span className={isCancelled ? 'text-zinc-500' : 'text-zinc-300'}>{contractItem.version}</span>
-                </div>
-                {!isCancelled && (
-                  <ZenButton
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleViewThisVersions();
-                    }}
-                    className="h-6 px-2 text-xs text-zinc-400 hover:text-zinc-300"
-                  >
-                    <GitBranch className="h-3 w-3 mr-1" />
-                    Historial
-                  </ZenButton>
-                )}
-              </div>
               {contractItem.created_at && (
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-500">Creado:</span>
-                  <span className={isCancelled ? 'text-zinc-500' : 'text-zinc-300'}>{formatDate(contractItem.created_at)}</span>
+                  <span className={isCancelled ? 'text-zinc-500' : 'text-zinc-300'}>{formatDateTime(contractItem.created_at)}</span>
                 </div>
               )}
               {contractItem.signed_at && (
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-500">Firmado:</span>
-                  <span className={isCancelled ? 'text-zinc-500' : 'text-zinc-300'}>{formatDate(contractItem.signed_at)}</span>
+                  <span className={isCancelled ? 'text-zinc-500' : 'text-zinc-300'}>{formatDateTime(contractItem.signed_at)}</span>
                 </div>
               )}
               {isCancelled && contractItem.cancelled_at && (
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-500">Cancelado:</span>
-                  <span className="text-zinc-500">{formatDate(contractItem.cancelled_at)}</span>
+                  <span className="text-zinc-500">{formatDateTime(contractItem.cancelled_at)}</span>
                 </div>
               )}
             </div>
@@ -640,6 +639,19 @@ export function EventContractCard({
               >
                 <Eye className="h-4 w-4" />
               </ZenButton>
+              {/* Botón Historial */}
+              <ZenButton
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleViewThisVersions();
+                }}
+                className="h-7 w-7 text-zinc-400 hover:text-zinc-300"
+                title="Historial de Versiones"
+              >
+                <GitBranch className="h-4 w-4" />
+              </ZenButton>
               {/* Menú dropdown */}
               <ZenDropdownMenu>
                 <ZenDropdownMenuTrigger asChild>
@@ -661,11 +673,6 @@ export function EventContractCard({
                       <ZenDropdownMenuItem onClick={handleChangeThisTemplate}>
                         <FileText className="mr-2 h-4 w-4" />
                         Cambiar plantilla
-                      </ZenDropdownMenuItem>
-                      <ZenDropdownMenuSeparator />
-                      <ZenDropdownMenuItem onClick={handlePublishThisContract}>
-                        <Send className="mr-2 h-4 w-4" />
-                        Publicar
                       </ZenDropdownMenuItem>
                       <ZenDropdownMenuSeparator />
                       <ZenDropdownMenuItem
@@ -729,11 +736,6 @@ export function EventContractCard({
                       </ZenDropdownMenuItem>
                     </>
                   )}
-                  <ZenDropdownMenuSeparator />
-                  <ZenDropdownMenuItem onClick={handleViewThisVersions}>
-                    <GitBranch className="mr-2 h-4 w-4" />
-                    Historial de Versiones
-                  </ZenDropdownMenuItem>
                 </ZenDropdownMenuContent>
               </ZenDropdownMenu>
             </div>
