@@ -79,6 +79,8 @@ export interface AgendaItem {
     is_expired?: boolean;
     // Indica si es la fecha principal del evento (event_date de la promesa)
     is_main_event_date?: boolean;
+    // Google Calendar sync
+    google_event_id?: string | null;
 }
 
 export interface ActionResponse<T> {
@@ -168,6 +170,7 @@ export async function obtenerAgendaUnificada(
                         status: true,
                         contact_id: true,
                         promise_id: true,
+                        google_event_id: true,
                         event_type: {
                             select: {
                                 name: true,
@@ -488,6 +491,7 @@ export async function obtenerAgendamientoPorId(
                         id: true,
                         status: true,
                         promise_id: true,
+                        google_event_id: true,
                         event_type: {
                             select: {
                                 name: true,
@@ -550,6 +554,7 @@ export async function obtenerAgendamientoPorId(
             promise_status: agenda.promise_id ? 'pending' : null,
             evento_status: agenda.eventos?.status || null,
             is_main_event_date: isMainEventDate || false,
+            google_event_id: agenda.eventos?.google_event_id || null,
         };
 
         return {
@@ -736,6 +741,7 @@ export async function obtenerAgendamientosPorEvento(
                 event_type_name: agenda.eventos?.event_type?.name || null,
                 evento_status: agenda.eventos?.status || null,
                 is_main_event_date: isMainEventDate || false,
+                google_event_id: agenda.eventos?.google_event_id || null,
             };
         });
 
@@ -908,6 +914,7 @@ export async function crearAgendamiento(
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             evento_status: agenda.eventos?.status || null,
             is_main_event_date: isMainEventDate || false,
+            google_event_id: agenda.eventos?.google_event_id || null,
         };
 
         revalidatePath(`/${studioSlug}/studio/commercial/promises`);
@@ -1130,6 +1137,7 @@ export async function actualizarAgendamiento(
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
             evento_status: agenda.eventos?.status || null,
             is_main_event_date: isMainEventDate || false,
+            google_event_id: agenda.eventos?.google_event_id || null,
         };
 
         revalidatePath(`/${studioSlug}/studio/commercial/promises`);

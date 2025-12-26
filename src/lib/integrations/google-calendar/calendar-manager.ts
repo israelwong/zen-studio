@@ -1,0 +1,105 @@
+'use server';
+
+import { prisma } from '@/lib/prisma';
+import { getGoogleCalendarClient } from './client';
+import { obtenerTimezoneEstudio } from './timezone';
+
+/**
+ * Obtiene o crea el calendario secundario "Tareas De ZEN" para un estudio.
+ * Si el calendario fue eliminado manualmente en Google (error 404), crea uno nuevo.
+ *
+ * @param studioSlug - Slug del estudio
+ * @returns ID del calendario secundario
+ * @throws Error si no se puede conectar a Google o crear el calendario
+ */
+export async function obtenerOCrearCalendarioSecundario(
+  studioSlug: string
+): Promise<string> {
+  // Obtener studio y su google_calendar_secondary_id
+  const studio = await prisma.studios.findUnique({
+    where: { slug: studioSlug },
+    select: {
+      id: true,
+      google_calendar_secondary_id: true,
+    },
+  });
+
+  if (!studio) {
+    throw new Error('Studio no encontrado');
+  }
+
+  // Si ya existe ID guardado, verificar que sigue existiendo en Google
+  if (studio.google_calendar_secondary_id) {
+    try {
+      const { calendar } = await getGoogleCalendarClient(studioSlug);
+
+      // Intentar obtener el calendario para verificar que existe
+      const calendarResponse = await calendar.calendars.get({
+        calendarId: studio.google_calendar_secondary_id,
+      });
+
+      // Si existe, retornar el ID
+      if (calendarResponse.data.id) {
+        return calendarResponse.data.id;
+      }
+    } catch (error: any) {
+      // Si el error es 404, el calendario fue eliminado manualmente
+      if (error?.code === 404 || error?.response?.status === 404) {
+        console.warn(
+          `[Google Calendar] Calendario secundario ${studio.google_calendar_secondary_id} no encontrado en Google, creando uno nuevo...`
+        );
+        // Continuar para crear uno nuevo
+      } else {
+        // Otro tipo de error, relanzar
+        console.error(
+          '[Google Calendar] Error verificando calendario secundario:',
+          error
+        );
+        throw new Error(
+          `Error al verificar calendario secundario: ${error?.message || 'Error desconocido'}`
+        );
+      }
+    }
+  }
+
+  // Si no existe o fue eliminado, crear uno nuevo
+  try {
+    const { calendar } = await getGoogleCalendarClient(studioSlug);
+
+    // Obtener timezone del estudio
+    const timezone = await obtenerTimezoneEstudio(studioSlug);
+
+    // Crear nuevo calendario
+    const newCalendarResponse = await calendar.calendars.insert({
+      requestBody: {
+        summary: 'Tareas De ZEN',
+        description: 'Tareas de cronograma y post-producción',
+        timeZone: timezone,
+      },
+    });
+
+    const newCalendarId = newCalendarResponse.data.id;
+
+    if (!newCalendarId) {
+      throw new Error('No se pudo obtener el ID del calendario creado');
+    }
+
+    // Guardar ID en la base de datos
+    await prisma.studios.update({
+      where: { id: studio.id },
+      data: { google_calendar_secondary_id: newCalendarId },
+    });
+
+    console.log(
+      `[Google Calendar] ✅ Calendario secundario creado: ${newCalendarId}`
+    );
+
+    return newCalendarId;
+  } catch (error: any) {
+    console.error('[Google Calendar] Error creando calendario secundario:', error);
+    throw new Error(
+      `Error al crear calendario secundario: ${error?.message || 'Error desconocido'}`
+    );
+  }
+}
+

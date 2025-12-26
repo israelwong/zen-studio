@@ -66,10 +66,11 @@ export async function iniciarConexionGoogle(
 
     const { clientId, redirectUri } = credentialsResult.data;
 
-    // Scopes necesarios para Drive y Calendar (preparado para futuro)
+    // Scopes necesarios para Drive y Calendar
     const scopes = [
       'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/calendar.events', // Para Calendar (futuro)
+      'https://www.googleapis.com/auth/calendar',
+      'https://www.googleapis.com/auth/calendar.events',
     ];
 
     // State contiene el studioSlug y returnUrl para recuperarlos en el callback

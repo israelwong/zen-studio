@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar } from 'lucide-react';
+import { Calendar, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import {
   Sheet,
   SheetContent,
@@ -15,6 +15,8 @@ import { obtenerAgendaUnificada } from '@/lib/actions/shared/agenda-unified.acti
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/shadcn/Skeleton';
+import { ZenButton } from '@/components/ui/zen';
+import { tieneGoogleCalendarHabilitado, sincronizarTodosEventosPrincipales } from '@/lib/integrations/google-calendar/helpers';
 
 interface AgendaUnifiedSheetProps {
   open: boolean;
@@ -32,6 +34,8 @@ export function AgendaUnifiedSheet({
   const [loading, setLoading] = useState(true);
   const [calendarView, setCalendarView] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
+  const [hasCalendarEnabled, setHasCalendarEnabled] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
 
   const loadAgendamientos = useCallback(async () => {
     setLoading(true);
@@ -53,13 +57,55 @@ export function AgendaUnifiedSheet({
     }
   }, [studioSlug]);
 
+  const loadCalendarStatus = useCallback(async () => {
+    try {
+      const enabled = await tieneGoogleCalendarHabilitado(studioSlug);
+      setHasCalendarEnabled(enabled);
+    } catch (error) {
+      console.error('Error verificando Google Calendar:', error);
+      setHasCalendarEnabled(false);
+    }
+  }, [studioSlug]);
+
+  const handleSincronizarTodos = useCallback(async () => {
+    setSincronizando(true);
+    try {
+      const result = await sincronizarTodosEventosPrincipales(studioSlug);
+      
+      if (result.success) {
+        if (result.sincronizados && result.sincronizados > 0) {
+          toast.success(
+            `✅ ${result.sincronizados} evento(s) sincronizado(s) con Google Calendar`
+          );
+        } else {
+          toast.info('Todos los eventos ya están sincronizados');
+        }
+        
+        if (result.errores && result.errores > 0) {
+          toast.warning(`${result.errores} evento(s) tuvieron errores al sincronizar`);
+        }
+        
+        // Recargar agenda para mostrar los cambios
+        await loadAgendamientos();
+      } else {
+        toast.error(result.error || 'Error al sincronizar eventos');
+      }
+    } catch (error) {
+      console.error('Error sincronizando eventos:', error);
+      toast.error('Error al sincronizar eventos');
+    } finally {
+      setSincronizando(false);
+    }
+  }, [studioSlug, loadAgendamientos]);
+
   useEffect(() => {
     if (open) {
       // Resetear loading al abrir el sheet para mostrar skeleton inmediatamente
       setLoading(true);
       loadAgendamientos();
+      loadCalendarStatus();
     }
-  }, [open, loadAgendamientos]);
+  }, [open, loadAgendamientos, loadCalendarStatus]);
 
   const handleSelectEvent = () => {
     // Cambiar a vista agenda al hacer click
@@ -124,18 +170,53 @@ export function AgendaUnifiedSheet({
         >
           <div className="p-0">
             <SheetHeader className="border-b border-zinc-800 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600/20 rounded-lg">
-                  <Calendar className="h-5 w-5 text-blue-400" />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-600/20 rounded-lg">
+                    <Calendar className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <div>
+                    <SheetTitle className="text-xl font-semibold text-white">
+                      Agenda
+                    </SheetTitle>
+                    <SheetDescription className="text-zinc-400">
+                      Visualiza y gestiona todos tus agendamientos
+                    </SheetDescription>
+                  </div>
                 </div>
-                <div>
-                  <SheetTitle className="text-xl font-semibold text-white">
-                    Agenda
-                  </SheetTitle>
-                  <SheetDescription className="text-zinc-400">
-                    Visualiza y gestiona todos tus agendamientos
-                  </SheetDescription>
-                </div>
+                
+                {/* Botón de sincronización con Google Calendar */}
+                {hasCalendarEnabled && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+                      {hasCalendarEnabled ? (
+                        <>
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span className="text-emerald-400">Google Calendar</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          <span className="text-red-400">Desconectado</span>
+                        </>
+                      )}
+                    </div>
+                    <ZenButton
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSincronizarTodos}
+                      disabled={sincronizando}
+                      loading={sincronizando}
+                      className="gap-2 text-xs"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${sincronizando ? 'animate-spin' : ''}`} />
+                      Sincronizar
+                    </ZenButton>
+                  </div>
+                )}
               </div>
             </SheetHeader>
 

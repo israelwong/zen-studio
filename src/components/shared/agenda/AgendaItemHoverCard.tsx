@@ -4,7 +4,7 @@ import React from 'react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { ZenButton } from '@/components/ui/zen';
 import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback } from '@/components/ui/zen/media/ZenAvatar';
-import { ExternalLink, Mail, Phone, Calendar as CalendarIcon, Clock, Tag } from 'lucide-react';
+import { ExternalLink, Mail, Phone, Calendar as CalendarIcon, Clock, Tag, CheckCircle2 } from 'lucide-react';
 import { formatInitials } from '@/lib/actions/utils/formatting';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 
@@ -135,19 +135,61 @@ export function AgendaItemHoverCard({
             </div>
           )}
 
-          {/* Botón ver promesa/evento */}
-          {(item.contexto === 'promise' && item.promise_id) ||
-          (item.contexto === 'evento' && item.evento_id) ? (
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              onClick={handleViewClick}
-              className="w-full text-xs h-7 mt-2"
-            >
-              <ExternalLink className="h-3 w-3 mr-1.5" />
-              {item.contexto === 'promise' ? 'Ver Promesa' : 'Ver Evento'}
-            </ZenButton>
-          ) : null}
+          {/* Estado de sincronización con Google Calendar (solo eventos principales) */}
+          {item.contexto === 'evento' && item.is_main_event_date && (
+            <div className="flex items-center gap-2 text-xs">
+              {item.google_event_id ? (
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Sincronizado con Google Calendar</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-zinc-500">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>No sincronizado</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Botones de acción */}
+          <div className="flex flex-col gap-2 mt-2">
+            {(item.contexto === 'promise' && item.promise_id) ||
+            (item.contexto === 'evento' && item.evento_id) ? (
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={handleViewClick}
+                className="w-full text-xs h-7"
+              >
+                <ExternalLink className="h-3 w-3 mr-1.5" />
+                {item.contexto === 'promise' ? 'Ver Promesa' : 'Ver Evento'}
+              </ZenButton>
+            ) : null}
+
+            {/* Botón para abrir en Google Calendar (solo si está sincronizado) */}
+            {item.contexto === 'evento' &&
+            item.is_main_event_date &&
+            item.google_event_id ? (
+              <ZenButton
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  // Obtener el email del estudio desde el contexto o usar el evento
+                  // Por ahora, usamos el formato estándar de Google Calendar
+                  window.open(
+                    `https://calendar.google.com/calendar/u/0/r/eventedit/${item.google_event_id}`,
+                    '_blank'
+                  );
+                }}
+                className="w-full text-xs h-7 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10"
+              >
+                <CalendarIcon className="h-3 w-3 mr-1.5" />
+                Abrir en Google Calendar
+              </ZenButton>
+            ) : null}
+          </div>
 
           {/* Badge tipo de cita */}
           {!item.is_pending_date && !item.is_confirmed_event_date && item.type_scheduling && (

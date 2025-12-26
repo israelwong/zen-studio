@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import { Calendar, momentLocalizer, View } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { AgendaItemHoverCard } from './AgendaItemHoverCard';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -261,8 +261,18 @@ const AgendaEventComponent = ({
   }
 
   const trigger = (
-    <div className="rbc-event-content cursor-pointer w-full h-full relative z-10">
-      {event.title ? event.title.charAt(0).toUpperCase() + event.title.slice(1).toLowerCase() : ''}
+    <div className="rbc-event-content cursor-pointer w-full h-full relative z-10 flex items-center justify-between gap-1.5">
+      <span className="flex-1 truncate">
+        {event.title ? event.title.charAt(0).toUpperCase() + event.title.slice(1).toLowerCase() : ''}
+      </span>
+      {/* Indicador de sincronización Google Calendar */}
+      {item.contexto === 'evento' && item.is_main_event_date && item.google_event_id && (
+        <CheckCircle2 
+          className="h-3.5 w-3.5 text-white/90 flex-shrink-0" 
+          title="Sincronizado con Google Calendar"
+          style={{ filter: 'drop-shadow(0 0 2px rgba(16, 185, 129, 0.5))' }}
+        />
+      )}
     </div>
   );
 

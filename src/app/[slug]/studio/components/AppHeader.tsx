@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Inbox, Zap, Menu, ChevronDown, Calendar, ContactRound } from 'lucide-react';
+import { Inbox, Zap, Menu, ChevronDown, Calendar, ContactRound, CheckSquare2 } from 'lucide-react';
 import Link from 'next/link';
 import { BreadcrumbHeader } from './BreadcrumbHeader';
 import { UserAvatar } from '@/components/auth/user-avatar';
@@ -16,9 +16,10 @@ interface AppHeaderProps {
     onCommandOpen?: () => void;
     onAgendaClick?: () => void;
     onContactsClick?: () => void;
+    onTareasOperativasClick?: () => void;
 }
 
-export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContactsClick }: AppHeaderProps) {
+export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContactsClick, onTareasOperativasClick }: AppHeaderProps) {
     const [isMounted, setIsMounted] = useState(false);
     const { toggleSidebar } = useZenSidebar();
     const { identidadData } = useStudioData({ studioSlug });
@@ -141,6 +142,20 @@ export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContacts
                     >
                         <ContactRound className="h-5 w-5" />
                         <span className="sr-only">Contactos</span>
+                    </ZenButton>
+                )}
+
+                {/* Tareas Operativas */}
+                {onTareasOperativasClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 transition-colors"
+                        onClick={onTareasOperativasClick}
+                        title="Tareas Operativas"
+                    >
+                        <CheckSquare2 className="h-5 w-5" />
+                        <span className="sr-only">Tareas Operativas</span>
                     </ZenButton>
                 )}
 

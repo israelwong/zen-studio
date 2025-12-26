@@ -1496,6 +1496,21 @@ export async function cancelarEvento(
       // No fallar la cancelación si falla la notificación
     }
 
+    // Sincronizar eliminación con Google Calendar en background
+    try {
+      const { tieneGoogleCalendarHabilitado, eliminarEventoPrincipalEnBackground } =
+        await import('@/lib/integrations/google-calendar/helpers');
+      
+      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+        eliminarEventoPrincipalEnBackground(eventoId);
+      }
+    } catch (error) {
+      console.error(
+        '[Google Calendar] Error eliminando evento en cancelarEvento (no crítico):',
+        error
+      );
+    }
+
     return { success: true };
   } catch (error) {
     console.error('[EVENTOS] Error cancelando evento:', error);
@@ -1784,6 +1799,21 @@ export async function actualizarFechaEvento(
       stage: eventoActualizado.stage,
     };
 
+    // Sincronizar con Google Calendar en background
+    try {
+      const { tieneGoogleCalendarHabilitado, sincronizarEventoPrincipalEnBackground } =
+        await import('@/lib/integrations/google-calendar/helpers');
+      
+      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+        sincronizarEventoPrincipalEnBackground(event_id, studioSlug);
+      }
+    } catch (error) {
+      console.error(
+        '[Google Calendar] Error sincronizando evento en actualizarFechaEvento (no crítico):',
+        error
+      );
+    }
+
     return {
       success: true,
       data: eventoSerializado,
@@ -2043,6 +2073,64 @@ export async function asignarCrewAItem(
       revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
       revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
     }
+
+    // Sincronizar con Google Calendar si se asignó o removió personal
+    if (eventId) {
+      try {
+        const task = await prisma.studio_scheduler_event_tasks.findFirst({
+          where: {
+            cotizacion_item_id: itemId,
+            scheduler_instance: {
+              event_id: eventId,
+            },
+          },
+          select: {
+            id: true,
+            google_event_id: true,
+            google_calendar_id: true,
+          },
+        });
+
+        if (task) {
+          const { tieneGoogleCalendarHabilitado } =
+            await import('@/lib/integrations/google-calendar/helpers');
+          
+          if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+            if (crewMemberId) {
+              // Si se asignó personal, sincronizar (crear/actualizar evento)
+              const { sincronizarTareaEnBackground } =
+                await import('@/lib/integrations/google-calendar/helpers');
+              sincronizarTareaEnBackground(task.id, studioSlug);
+            } else if (task.google_event_id && task.google_calendar_id) {
+              // Si se removió personal y existe evento en Google, eliminarlo
+              const { eliminarEventoEnBackground } =
+                await import('@/lib/integrations/google-calendar/helpers');
+              eliminarEventoEnBackground(task.google_calendar_id, task.google_event_id);
+              
+              // Limpiar google_event_id y google_calendar_id de la tarea
+              await prisma.studio_scheduler_event_tasks.update({
+                where: { id: task.id },
+                data: {
+                  google_event_id: null,
+                  google_calendar_id: null,
+                },
+              });
+              
+              console.log(
+                `[Google Calendar] ✅ Evento eliminado de Google Calendar al remover personal de tarea ${task.id}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        // Log error pero no bloquear la operación principal
+        console.error(
+          '[Google Calendar] Error sincronizando después de asignar/remover personal (no crítico):',
+          error
+        );
+      }
+    }
+
     return {
       success: true,
       payrollResult: payrollResult || undefined,
@@ -2267,6 +2355,21 @@ export async function crearSchedulerTask(
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
 
+    // Sincronizar con Google Calendar (en background, no bloquea respuesta)
+    try {
+      const { tieneGoogleCalendarHabilitado, sincronizarTareaEnBackground } =
+        await import('@/lib/integrations/google-calendar/helpers');
+      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+        await sincronizarTareaEnBackground(task.id, studioSlug);
+      }
+    } catch (error) {
+      // Log error pero no bloquear la operación principal
+      console.error(
+        '[Google Calendar] Error verificando conexión Google (no crítico):',
+        error
+      );
+    }
+
     return { success: true, data: task };
   } catch (error) {
     console.error('[GANTT] Error creando tarea:', error);
@@ -2437,6 +2540,21 @@ export async function actualizarSchedulerTask(
       revalidatePath(`/${studioSlug}/studio/business/finanzas`);
     }
 
+    // Sincronizar con Google Calendar (en background, no bloquea respuesta)
+    try {
+      const { tieneGoogleCalendarHabilitado, sincronizarTareaEnBackground } =
+        await import('@/lib/integrations/google-calendar/helpers');
+      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+        await sincronizarTareaEnBackground(taskId, studioSlug);
+      }
+    } catch (error) {
+      // Log error pero no bloquear la operación principal
+      console.error(
+        '[Google Calendar] Error verificando conexión Google (no crítico):',
+        error
+      );
+    }
+
     return {
       success: true,
       payrollResult: payrollResult || undefined,
@@ -2601,6 +2719,15 @@ export async function eliminarSchedulerTask(
       return { success: false, error: 'Tarea no encontrada' };
     }
 
+    // Obtener google_event_id antes de eliminar (para sincronización)
+    const taskWithGoogle = await prisma.studio_scheduler_event_tasks.findUnique({
+      where: { id: taskId },
+      select: {
+        google_calendar_id: true,
+        google_event_id: true,
+      },
+    });
+
     // Eliminar la tarea
     await prisma.studio_scheduler_event_tasks.delete({
       where: { id: taskId },
@@ -2608,6 +2735,28 @@ export async function eliminarSchedulerTask(
 
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+
+    // Sincronizar eliminación con Google Calendar (en background, no bloquea respuesta)
+    if (taskWithGoogle?.google_event_id && taskWithGoogle?.google_calendar_id) {
+      try {
+        const {
+          tieneGoogleCalendarHabilitado,
+          eliminarEventoEnBackground,
+        } = await import('@/lib/integrations/google-calendar/helpers');
+        if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+          await eliminarEventoEnBackground(
+            taskWithGoogle.google_calendar_id,
+            taskWithGoogle.google_event_id
+          );
+        }
+      } catch (error) {
+        // Log error pero no bloquear la operación principal
+        console.error(
+          '[Google Calendar] Error verificando conexión Google (no crítico):',
+          error
+        );
+      }
+    }
 
     return { success: true };
   } catch (error) {

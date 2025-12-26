@@ -1356,6 +1356,21 @@ export async function autorizarCotizacion(
       });
 
       eventoId = nuevoEvento.id;
+
+      // Sincronizar con Google Calendar en background
+      try {
+        const { tieneGoogleCalendarHabilitado, sincronizarEventoPrincipalEnBackground } =
+          await import('@/lib/integrations/google-calendar/helpers');
+        
+        if (await tieneGoogleCalendarHabilitado(validatedData.studio_slug)) {
+          sincronizarEventoPrincipalEnBackground(nuevoEvento.id, validatedData.studio_slug);
+        }
+      } catch (error) {
+        console.error(
+          '[Google Calendar] Error sincronizando evento en autorizarCotizacion (no crítico):',
+          error
+        );
+      }
     }
 
     // Obtener etapa "aprobado" del pipeline de promises

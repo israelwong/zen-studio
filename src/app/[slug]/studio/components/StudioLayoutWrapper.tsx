@@ -11,6 +11,7 @@ import { useContactsSheet } from '@/components/shared/contacts/ContactsSheetCont
 import { AgendaUnifiedSheet } from '@/components/shared/agenda';
 import { ContactsSheet } from '@/components/shared/contacts';
 import { CrewMembersManager } from '@/components/shared/crew-members';
+import { TareasOperativasSheet } from '@/components/shared/tareas-operativas/TareasOperativasSheet';
 
 interface StudioLayoutWrapperProps {
   studioSlug: string;
@@ -26,6 +27,7 @@ export function StudioLayoutWrapper({
   const [agendaOpen, setAgendaOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [crewSheetOpen, setCrewSheetOpen] = useState(false);
+  const [tareasOperativasOpen, setTareasOperativasOpen] = useState(false);
 
   const handleAgendaClick = () => {
     setAgendaOpen(true);
@@ -43,6 +45,10 @@ export function StudioLayoutWrapper({
     setCrewSheetOpen(true);
   };
 
+  const handleTareasOperativasClick = () => {
+    setTareasOperativasOpen(true);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* COLUMNA 1: Main Column (AppHeader + Sidebar + Content en flex-col) */}
@@ -53,6 +59,7 @@ export function StudioLayoutWrapper({
           onCommandOpen={() => setCommandOpen(true)}
           onAgendaClick={handleAgendaClick}
           onContactsClick={handleContactsClick}
+          onTareasOperativasClick={handleTareasOperativasClick}
         />
 
         {/* Container: Sidebar + Main Content */}
@@ -116,6 +123,13 @@ export function StudioLayoutWrapper({
         isOpen={crewSheetOpen}
         onClose={() => setCrewSheetOpen(false)}
         mode="manage"
+      />
+
+      {/* Sheet de Tareas Operativas */}
+      <TareasOperativasSheet
+        open={tareasOperativasOpen}
+        onOpenChange={setTareasOperativasOpen}
+        studioSlug={studioSlug}
       />
     </div>
   );

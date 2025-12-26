@@ -803,11 +803,13 @@ model studios {
   user_studio_roles           user_studio_roles[]
 
   // Google OAuth Integration (genérico, puede tener múltiples scopes)
-  google_oauth_refresh_token String? // Encrypted, genérico para todas las APIs
-  google_oauth_email         String?
-  google_oauth_scopes        String? // JSON array: ["drive.readonly", "gmail.send"]
-  is_google_connected        Boolean @default(false)
-  google_integrations_config Json? // { drive: { enabled: true }, gmail: { enabled: false } }
+  google_oauth_refresh_token     String? // Encrypted, genérico para todas las APIs
+  google_oauth_email             String?
+  google_oauth_scopes            String? // JSON array: ["drive.readonly", "gmail.send"]
+  is_google_connected            Boolean @default(false)
+  google_integrations_config     Json? // { drive: { enabled: true }, gmail: { enabled: false } }
+  google_calendar_secondary_id   String? // ID del calendario secundario "Tareas De Sen"
+  timezone                       String  @default("America/Mexico_City")
 
   @@index([plan_id])
   @@index([slug])
@@ -1420,6 +1422,9 @@ model studio_events {
   started_at        DateTime?
   completed_at      DateTime?
 
+  // Google Calendar Integration
+  google_event_id String?
+
   // Relaciones comerciales
   contact         studio_contacts                 @relation(fields: [contact_id], references: [id])
   promise         studio_promises?                @relation(fields: [promise_id], references: [id], onDelete: Cascade)
@@ -1452,6 +1457,7 @@ model studio_events {
   @@index([studio_id, status])
   @@index([promise_id])
   @@index([stage_id])
+  @@index([google_event_id])
   @@map("studio_eventos")
 }
 
@@ -1723,11 +1729,17 @@ model studio_scheduler_event_tasks {
   cotizacion_item       studio_cotizacion_items?         @relation("CotizacionItemSchedulerTask", fields: [cotizacion_item_id], references: [id])
   activity_log          studio_scheduler_task_activity[]
 
+  // Google Calendar Integration
+  google_calendar_id String?
+  google_event_id  String?
+
   @@index([scheduler_instance_id, status])
   @@index([assigned_to_user_id])
   @@index([start_date, end_date])
   @@index([status])
   @@index([cotizacion_item_id])
+  @@index([google_calendar_id])
+  @@index([google_event_id])
 }
 
 model studio_scheduler_task_activity {
