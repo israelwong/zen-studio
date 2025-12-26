@@ -11,6 +11,7 @@ import { Trash2, CheckCircle2, Calendar, Circle, UserPlus, UserMinus } from 'luc
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { SelectCrewModal } from './SelectCrewModal';
+import { ZenConfirmModal } from '@/components/ui/zen/overlays/ZenConfirmModal';
 import { asignarCrewAItem, obtenerCrewMembers } from '@/lib/actions/studio/business/events';
 import { toast } from 'sonner';
 import { useSchedulerItemSync } from '../hooks/useSchedulerItemSync';
@@ -26,6 +27,7 @@ interface TaskBarContextMenuProps {
   isCompleted: boolean;
   itemId?: string;
   studioSlug?: string;
+  eventId?: string;
   item?: CotizacionItem;
   children: React.ReactNode;
   onDelete: (taskId: string) => Promise<void>;
@@ -41,6 +43,7 @@ export function TaskBarContextMenu({
   isCompleted,
   itemId,
   studioSlug,
+  eventId,
   item,
   children,
   onDelete,
@@ -50,6 +53,8 @@ export function TaskBarContextMenu({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingComplete, setIsTogglingComplete] = useState(false);
   const [selectCrewModalOpen, setSelectCrewModalOpen] = useState(false);
+  const [showRemoveCrewConfirm, setShowRemoveCrewConfirm] = useState(false);
+  const [isRemovingCrew, setIsRemovingCrew] = useState(false);
 
   // Crear item mínimo válido si no tenemos item (para evitar hooks condicionales)
   // El hook necesita un item válido, pero si no tenemos onItemUpdate, no usaremos updateCrewMember
@@ -123,6 +128,8 @@ export function TaskBarContextMenu({
 
         toast.success(crewMemberId ? 'Personal asignado correctamente' : 'Asignación removida');
         setSelectCrewModalOpen(false);
+        // Disparar evento para actualizar PublicationBar
+        window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Error al asignar personal');
       }
@@ -135,9 +142,26 @@ export function TaskBarContextMenu({
         }
         toast.success(crewMemberId ? 'Personal asignado correctamente' : 'Asignación removida');
         setSelectCrewModalOpen(false);
+        // Disparar evento para actualizar PublicationBar
+        window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Error al asignar personal');
       }
+    }
+  };
+
+  const handleRemoveCrew = async () => {
+    if (!itemId || !studioSlug || !effectiveItem) return;
+    
+    setIsRemovingCrew(true);
+    try {
+      await handleAssignCrew(null);
+      setShowRemoveCrewConfirm(false);
+      // El evento ya se dispara en handleAssignCrew
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Error al quitar personal');
+    } finally {
+      setIsRemovingCrew(false);
     }
   };
 
@@ -191,23 +215,36 @@ export function TaskBarContextMenu({
               )}
             </ContextMenuItem>
 
-            {/* Asignar/Quitar personal */}
-            {itemId && studioSlug && (
+            {/* Asignar personal */}
+            {itemId && studioSlug && !hasCrewMember && (
               <ContextMenuItem
                 onClick={() => setSelectCrewModalOpen(true)}
                 className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer focus:bg-zinc-800 focus:text-zinc-100"
               >
-                {hasCrewMember ? (
-                  <>
-                    <UserMinus className="h-4 w-4 text-zinc-400" />
-                    <span>Quitar personal</span>
-                  </>
-                ) : (
-                  <>
-                    <UserPlus className="h-4 w-4 text-zinc-400" />
-                    <span>Asignar personal</span>
-                  </>
-                )}
+                <UserPlus className="h-4 w-4 text-zinc-400" />
+                <span>Asignar personal</span>
+              </ContextMenuItem>
+            )}
+
+            {/* Cambiar personal (si ya tiene asignado) */}
+            {itemId && studioSlug && hasCrewMember && (
+              <ContextMenuItem
+                onClick={() => setSelectCrewModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer focus:bg-zinc-800 focus:text-zinc-100"
+              >
+                <UserPlus className="h-4 w-4 text-zinc-400" />
+                <span>Cambiar personal</span>
+              </ContextMenuItem>
+            )}
+
+            {/* Quitar personal (si ya tiene asignado) */}
+            {itemId && studioSlug && hasCrewMember && (
+              <ContextMenuItem
+                onClick={() => setShowRemoveCrewConfirm(true)}
+                className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer focus:bg-red-500/10 focus:text-red-300 text-red-400"
+              >
+                <UserMinus className="h-4 w-4" />
+                <span>Quitar personal</span>
               </ContextMenuItem>
             )}
 
@@ -234,10 +271,42 @@ export function TaskBarContextMenu({
           currentMemberId={effectiveItem?.assigned_to_crew_member_id || null}
           title={hasCrewMember ? 'Cambiar asignación de personal' : 'Asignar personal'}
           description={hasCrewMember
-            ? 'Selecciona un nuevo miembro del equipo o quita la asignación actual.'
+            ? 'Selecciona un nuevo miembro del equipo para esta tarea.'
             : 'Selecciona un miembro del equipo para asignar a esta tarea.'}
+          eventId={eventId}
+          taskStartDate={startDate}
+          taskEndDate={endDate}
+          taskId={taskId}
         />
       )}
+
+      {/* Modal de confirmación para quitar personal */}
+      <ZenConfirmModal
+        isOpen={showRemoveCrewConfirm}
+        onClose={() => setShowRemoveCrewConfirm(false)}
+        onConfirm={handleRemoveCrew}
+        title="¿Quitar personal de esta tarea?"
+        description={
+          <div className="space-y-2">
+            <p className="text-sm text-zinc-300">
+              Se quitará la asignación de personal de esta tarea.
+            </p>
+            {effectiveItem?.assigned_to_crew_member && (
+              <p className="text-sm text-zinc-400">
+                Personal actual: <strong className="text-zinc-200">{effectiveItem.assigned_to_crew_member.name}</strong>
+              </p>
+            )}
+            <p className="text-xs text-zinc-500 mt-2">
+              La tarea quedará como borrador y deberás publicar el cronograma nuevamente si ya estaba sincronizado.
+            </p>
+          </div>
+        }
+        confirmText="Sí, quitar personal"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={isRemovingCrew}
+        loadingText="Quitando..."
+      />
     </>
   );
 }

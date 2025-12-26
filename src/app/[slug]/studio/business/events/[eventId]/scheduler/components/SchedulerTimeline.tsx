@@ -15,6 +15,7 @@ interface SchedulerTimelineProps {
   itemsMap: Map<string, CotizacionItem>;
   dateRange: DateRange;
   studioSlug?: string;
+  eventId?: string;
   onTaskUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   onTaskCreate?: (itemId: string, catalogItemId: string, itemName: string, startDate: Date) => Promise<void>;
   onTaskDelete?: (taskId: string) => Promise<void>;
@@ -27,6 +28,7 @@ export const SchedulerTimeline = React.memo(({
   itemsMap,
   dateRange,
   studioSlug,
+  eventId,
   onTaskUpdate,
   onTaskCreate,
   onTaskDelete,
@@ -47,6 +49,7 @@ export const SchedulerTimeline = React.memo(({
         itemsMap={itemsMap}
         dateRange={dateRange}
         studioSlug={studioSlug}
+        eventId={eventId}
         onTaskUpdate={onTaskUpdate}
         onTaskCreate={onTaskCreate}
         onTaskDelete={onTaskDelete}

@@ -6,6 +6,7 @@ import { CheckCircle2, AlertCircle, Clock, Users } from 'lucide-react';
 import { EventSchedulerView } from './EventSchedulerView';
 import { SchedulerDateRangeConfig } from './SchedulerDateRangeConfig';
 import { DateRangeConflictModal } from './DateRangeConflictModal';
+import { PublicationBar } from './PublicationBar';
 import { ZenBadge } from '@/components/ui/zen';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 
@@ -269,6 +270,16 @@ export function SchedulerWrapper({
         }}
         conflictCount={conflictCount}
         proposedRange={proposedRange || { from: new Date(), to: new Date() }}
+      />
+
+      {/* Barra de publicación flotante */}
+      <PublicationBar
+        studioSlug={studioSlug}
+        eventId={eventId}
+        onPublished={() => {
+          // Recargar datos después de publicar
+          onDataChange?.(eventData);
+        }}
       />
     </>
   );

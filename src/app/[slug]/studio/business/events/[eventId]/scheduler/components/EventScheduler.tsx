@@ -299,6 +299,11 @@ export const EventScheduler = React.memo(function EventScheduler({
           end_date: endDate,
         });
 
+        // Disparar evento para actualizar PublicationBar
+        if (result.success) {
+          window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+        }
+
         if (!result.success) {
           toast.error(result.error || 'Error al actualizar la tarea');
           throw new Error(result.error);
@@ -326,6 +331,11 @@ export const EventScheduler = React.memo(function EventScheduler({
           startDate,
           endDate,
         });
+        
+        // Disparar evento para actualizar PublicationBar
+        if (result.success) {
+          window.dispatchEvent(new CustomEvent('scheduler-task-created'));
+        }
 
         if (!result.success) {
           toast.error(result.error || 'Error al crear la tarea');
@@ -387,6 +397,11 @@ export const EventScheduler = React.memo(function EventScheduler({
       try {
         const result = await eliminarSchedulerTask(studioSlug, eventId, taskId);
 
+        // Disparar evento para actualizar PublicationBar
+        if (result.success) {
+          window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+        }
+
         if (!result.success) {
           toast.error(result.error || 'Error al eliminar la tarea');
           return;
@@ -437,6 +452,11 @@ export const EventScheduler = React.memo(function EventScheduler({
           const result = await actualizarSchedulerTask(studioSlug, eventId, taskId, {
             isCompleted: false,
           });
+
+          // Disparar evento para actualizar PublicationBar
+          if (result.success) {
+            window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+          }
 
           if (!result.success) {
             toast.error(result.error || 'Error al actualizar el estado');
@@ -536,6 +556,11 @@ export const EventScheduler = React.memo(function EventScheduler({
               isCompleted: true,
             });
 
+            // Disparar evento para actualizar PublicationBar
+            if (result.success) {
+              window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+            }
+
             if (!result.success) {
               toast.error(result.error || 'Error al actualizar el estado');
               return;
@@ -605,6 +630,11 @@ export const EventScheduler = React.memo(function EventScheduler({
           isCompleted: true,
           skipPayroll: skipPayment,
         });
+
+        // Disparar evento para actualizar PublicationBar
+        if (result.success) {
+          window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+        }
 
         if (!result.success) {
           toast.error(result.error || 'Error al actualizar el estado');
@@ -720,6 +750,11 @@ export const EventScheduler = React.memo(function EventScheduler({
           skipPayroll: skipPayment,
         });
 
+        // Disparar evento para actualizar PublicationBar
+        if (result.success) {
+          window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+        }
+
         if (!result.success) {
           const errorMessage = result.error || 'Error al completar la tarea';
           toast.error(errorMessage);
@@ -810,6 +845,11 @@ export const EventScheduler = React.memo(function EventScheduler({
       const result = await actualizarSchedulerTask(studioSlug, eventId, pendingTaskCompletion.taskId, {
         isCompleted: true,
       });
+
+      // Disparar evento para actualizar PublicationBar
+      if (result.success) {
+        window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+      }
 
       if (!result.success) {
         toast.error(result.error || 'Error al actualizar el estado');

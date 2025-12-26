@@ -1733,8 +1733,12 @@ model studio_scheduler_event_tasks {
   // Google Calendar Integration
   google_calendar_id String?
   google_event_id  String?
+  sync_status      SyncStatus      @default(DRAFT)
+  invitation_status InvitationStatus?
 
   @@index([scheduler_instance_id, status])
+  @@index([sync_status])
+  @@index([invitation_status])
   @@index([assigned_to_user_id])
   @@index([start_date, end_date])
   @@index([status])
@@ -3312,6 +3316,18 @@ enum TaskStatus {
   BLOCKED
   COMPLETED
   CANCELLED
+}
+
+enum SyncStatus {
+  DRAFT      // Cambios locales, no sincronizados
+  PUBLISHED  // Visible en plataforma, no sincronizado con Google
+  INVITED    // Sincronizado con Google Calendar
+}
+
+enum InvitationStatus {
+  PENDING   // Invitación enviada, esperando respuesta
+  ACCEPTED  // Colaborador aceptó la invitación
+  DECLINED  // Colaborador rechazó la invitación
 }
 
 enum TaskAction {

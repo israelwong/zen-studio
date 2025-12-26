@@ -14,6 +14,7 @@ interface SchedulerGridProps {
   itemsMap: Map<string, CotizacionItem>;
   dateRange: DateRange;
   studioSlug?: string;
+  eventId?: string;
   onTaskUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   onTaskCreate?: (itemId: string, catalogItemId: string, itemName: string, startDate: Date) => Promise<void>;
   onTaskDelete?: (taskId: string) => Promise<void>;
@@ -26,6 +27,7 @@ export const SchedulerGrid = React.memo(({
   itemsMap,
   dateRange,
   studioSlug,
+  eventId,
   onTaskUpdate,
   onTaskCreate,
   onTaskDelete,
@@ -79,6 +81,7 @@ export const SchedulerGrid = React.memo(({
                     tasks={tasks}
                     dateRange={dateRange}
                     studioSlug={studioSlug}
+                    eventId={eventId}
                     item={item}
                     onTaskUpdate={onTaskUpdate}
                     onTaskCreate={onTaskCreate}

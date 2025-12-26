@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ZenDialog } from '@/components/ui/zen/modals/ZenDialog';
-import { ZenInput, ZenButton, ZenAvatar, ZenAvatarFallback } from '@/components/ui/zen';
+import { ZenInput, ZenButton, ZenAvatar, ZenAvatarFallback, ZenBadge } from '@/components/ui/zen';
 import { obtenerCrewMembers } from '@/lib/actions/studio/business/events';
-import { Check, UserPlus } from 'lucide-react';
+import { verificarConflictosColaborador } from '@/lib/actions/studio/business/events/scheduler-actions';
+import { Check, UserPlus, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { QuickAddCrewModal } from './QuickAddCrewModal';
 
@@ -27,6 +28,11 @@ interface SelectCrewModalProps {
   currentMemberId?: string | null;
   title?: string;
   description?: string;
+  // Props opcionales para verificación de conflictos
+  eventId?: string;
+  taskStartDate?: Date;
+  taskEndDate?: Date;
+  taskId?: string;
 }
 
 function getInitials(name: string) {
@@ -56,6 +62,10 @@ export function SelectCrewModal({
   currentMemberId,
   title = 'Asignar personal',
   description = 'Selecciona un miembro del equipo para asignar a esta tarea.',
+  eventId,
+  taskStartDate,
+  taskEndDate,
+  taskId,
 }: SelectCrewModalProps) {
   const [members, setMembers] = useState<CrewMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -63,14 +73,72 @@ export function SelectCrewModal({
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(currentMemberId || null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [showQuickAddModal, setShowQuickAddModal] = useState(false);
+  const [conflictCount, setConflictCount] = useState<number | null>(null);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
+
+  // Usar refs para las fechas para evitar recreación constante
+  const taskStartDateRef = useRef(taskStartDate);
+  const taskEndDateRef = useRef(taskEndDate);
+  
+  useEffect(() => {
+    taskStartDateRef.current = taskStartDate;
+    taskEndDateRef.current = taskEndDate;
+  }, [taskStartDate, taskEndDate]);
+
+  const checkConflicts = useCallback(async (crewMemberId: string) => {
+    const startDate = taskStartDateRef.current;
+    const endDate = taskEndDateRef.current;
+    
+    if (!eventId || !startDate || !endDate) return;
+
+    setCheckingConflicts(true);
+    try {
+      const result = await verificarConflictosColaborador(
+        studioSlug,
+        eventId,
+        crewMemberId,
+        startDate,
+        endDate,
+        taskId
+      );
+
+      if (result.success && result.conflictCount !== undefined) {
+        setConflictCount(result.conflictCount);
+      } else {
+        setConflictCount(null);
+      }
+    } catch (error) {
+      console.error('Error verificando conflictos:', error);
+      setConflictCount(null);
+    } finally {
+      setCheckingConflicts(false);
+    }
+  }, [studioSlug, eventId, taskId]);
 
   // Sincronizar selectedMemberId con currentMemberId cuando cambia
   useEffect(() => {
     if (isOpen) {
       setSelectedMemberId(currentMemberId || null);
       setSearchTerm('');
+      setConflictCount(null);
     }
   }, [isOpen, currentMemberId]);
+
+  // Verificar conflictos cuando se selecciona un colaborador y hay fechas disponibles
+  useEffect(() => {
+    if (
+      selectedMemberId &&
+      eventId &&
+      taskStartDateRef.current &&
+      taskEndDateRef.current &&
+      selectedMemberId !== currentMemberId
+    ) {
+      checkConflicts(selectedMemberId);
+    } else {
+      setConflictCount(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMemberId, eventId, currentMemberId]); // checkConflicts es estable gracias a useCallback
 
   // Cargar miembros cuando se abre el modal
   useEffect(() => {
@@ -254,6 +322,23 @@ export function SelectCrewModal({
                       </button>
                     ))
                   )}
+                </div>
+              )}
+
+              {/* Aviso de conflictos */}
+              {selectedMemberId && conflictCount !== null && conflictCount > 0 && (
+                <div className="bg-amber-950/20 border border-amber-800/30 rounded-lg p-3 mt-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-amber-300 font-medium mb-1">
+                        Este colaborador ya tiene {conflictCount} {conflictCount === 1 ? 'tarea' : 'tareas'} en este rango de fechas
+                      </p>
+                      <p className="text-xs text-amber-300/70">
+                        Puedes asignarlo de todas formas. El sistema permite asignación múltiple.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
 

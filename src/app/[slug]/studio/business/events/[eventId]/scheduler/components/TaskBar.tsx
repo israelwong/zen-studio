@@ -4,6 +4,7 @@ import React, { useCallback, useState, useEffect } from 'react';
 import { Rnd, type RndDragEvent } from 'react-rnd';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { Calendar, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import {
   getPositionFromDate,
@@ -16,6 +17,7 @@ import {
   getStatusColor,
 } from '../utils/task-status-utils';
 import { TaskBarContextMenu } from './TaskBarContextMenu';
+import { ZenBadge } from '@/components/ui/zen';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events/events.actions';
 
 type CotizacionItem = NonNullable<NonNullable<EventoDetalle['cotizaciones']>[0]['cotizacion_items']>[0];
@@ -30,6 +32,7 @@ interface TaskBarProps {
   hasCrewMember?: boolean;
   dateRange: DateRange;
   studioSlug?: string;
+  eventId?: string;
   item?: CotizacionItem;
   onUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   onDelete?: (taskId: string) => Promise<void>;
@@ -48,6 +51,7 @@ export const TaskBar = React.memo(({
   hasCrewMember = false,
   dateRange,
   studioSlug,
+  eventId,
   item,
   onUpdate,
   onDelete,
@@ -194,6 +198,7 @@ export const TaskBar = React.memo(({
       isCompleted={isCompleted}
       itemId={itemId}
       studioSlug={studioSlug}
+      eventId={eventId}
       item={item}
       onDelete={handleDelete}
       onToggleComplete={handleToggleComplete}
@@ -236,10 +241,41 @@ export const TaskBar = React.memo(({
         `}
       >
         <div
-          className="w-full h-full flex items-center justify-center text-center truncate pointer-events-none"
+          className="w-full h-full flex items-center justify-between gap-1.5 px-1.5 pointer-events-none"
           title={`${taskName}\n${format(localStartDate, 'd MMM', { locale: es })} - ${format(localEndDate, 'd MMM', { locale: es })}`}
         >
-          {taskName}
+          <span className="flex-1 truncate text-center text-xs font-medium">{taskName}</span>
+          
+          {/* Indicadores de sincronización */}
+          <div className="flex items-center gap-1 shrink-0">
+            {item?.scheduler_task && (
+              <>
+                {/* Icono de estado de sincronización */}
+                {item.scheduler_task.sync_status === 'INVITED' ? (
+                  <Calendar className="h-3 w-3 text-emerald-400" title="✅ Sincronizado con Google Calendar - Invitación enviada" />
+                ) : item.scheduler_task.sync_status === 'PUBLISHED' ? (
+                  <Calendar className="h-3 w-3 text-blue-400" title="📋 Publicado en ZEN (no sincronizado con Google Calendar)" />
+                ) : (
+                  <Calendar className="h-3 w-3 text-zinc-500" title="📝 Borrador - Usa 'Publicar Cronograma' para sincronizar" />
+                )}
+
+                {/* Badge de estado de invitación */}
+                {item.scheduler_task.sync_status === 'INVITED' && item.scheduler_task.invitation_status && (
+                  <>
+                    {item.scheduler_task.invitation_status === 'ACCEPTED' && (
+                      <CheckCircle2 className="h-3 w-3 text-emerald-400" title="Invitación aceptada" />
+                    )}
+                    {item.scheduler_task.invitation_status === 'DECLINED' && (
+                      <XCircle className="h-3 w-3 text-red-400" title="Invitación rechazada" />
+                    )}
+                    {item.scheduler_task.invitation_status === 'PENDING' && (
+                      <Clock className="h-3 w-3 text-amber-400" title="Esperando respuesta" />
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </Rnd>
     </TaskBarContextMenu>

@@ -213,6 +213,9 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                 );
 
                 if (result.success) {
+                    // Disparar evento para actualizar PublicationBar
+                    window.dispatchEvent(new CustomEvent('scheduler-task-updated'));
+                    
                     if (skipPayment && checked) {
                         toast.success('Tarea completada (sin generar pago de nómina)');
                     } else if (result.payrollResult?.success && result.payrollResult.personalNombre) {
@@ -490,6 +493,10 @@ export function SchedulerItemPopover({ item, studioSlug, eventId, children, onIt
                 onSelect={handleMemberSelect}
                 studioSlug={studioSlug}
                 currentMemberId={selectedMemberId}
+                eventId={eventId}
+                taskStartDate={localItem.scheduler_task?.start_date ? new Date(localItem.scheduler_task.start_date) : undefined}
+                taskEndDate={localItem.scheduler_task?.end_date ? new Date(localItem.scheduler_task.end_date) : undefined}
+                taskId={localItem.scheduler_task?.id}
             />
 
             {/* Modal para asignar personal antes de completar */}

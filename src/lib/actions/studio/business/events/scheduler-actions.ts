@@ -38,13 +38,47 @@ export async function actualizarSchedulerTaskFechas(
       };
     }
 
+    // Obtener la tarea actual para verificar si las fechas realmente cambiaron
+    const currentTask = await prisma.studio_scheduler_event_tasks.findUnique({
+      where: { id: taskId },
+      select: {
+        start_date: true,
+        end_date: true,
+        sync_status: true,
+      },
+    });
+
+    if (!currentTask) {
+      return {
+        success: false,
+        error: 'Tarea no encontrada',
+      };
+    }
+
+    // Verificar si las fechas realmente cambiaron
+    const datesChanged =
+      currentTask.start_date.getTime() !== startDate.getTime() ||
+      currentTask.end_date.getTime() !== endDate.getTime();
+
+    // Si las fechas cambiaron y la tarea estaba sincronizada, marcar como DRAFT
+    const updateData: {
+      start_date: Date;
+      end_date: Date;
+      sync_status?: 'DRAFT';
+    } = {
+      start_date: startDate,
+      end_date: endDate,
+    };
+
+    if (datesChanged && (currentTask.sync_status === 'INVITED' || currentTask.sync_status === 'PUBLISHED')) {
+      // Si estaba sincronizada/publicada y cambió, volver a DRAFT
+      updateData.sync_status = 'DRAFT';
+    }
+
     // Actualizar la tarea en BD
     const updatedTask = await prisma.studio_scheduler_event_tasks.update({
       where: { id: taskId },
-      data: {
-        start_date: startDate,
-        end_date: endDate,
-      },
+      data: updateData,
     });
 
     // Revalidar la página para reflejar cambios
@@ -91,6 +125,249 @@ export async function obtenerSchedulerTareas(studioSlug: string, eventId: string
       success: false,
       error: 'Error al obtener las tareas',
       data: [],
+    };
+  }
+}
+
+/**
+ * Publica el cronograma de un evento
+ * Opción 1: Solo Publicar - Cambia estado DRAFT a PUBLISHED (visible en plataforma)
+ * Opción 2: Publicar e Invitar - Cambia a INVITED y sincroniza con Google Calendar
+ */
+export async function publicarCronograma(
+  studioSlug: string,
+  eventId: string,
+  opcion: 'solo_publicar' | 'publicar_e_invitar'
+): Promise<{ success: boolean; publicado?: number; sincronizado?: number; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Obtener todas las tareas DRAFT del evento
+    const tareasDraft = await prisma.studio_scheduler_event_tasks.findMany({
+      where: {
+        scheduler_instance: {
+          event_id: eventId,
+        },
+        sync_status: 'DRAFT',
+      },
+      include: {
+        cotizacion_item: {
+          select: {
+            id: true,
+            assigned_to_crew_member_id: true,
+            assigned_to_crew_member: {
+              select: {
+                id: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (tareasDraft.length === 0) {
+      return {
+        success: true,
+        publicado: 0,
+        sincronizado: 0,
+      };
+    }
+
+    let publicado = 0;
+    let sincronizado = 0;
+
+    if (opcion === 'solo_publicar') {
+      // Solo cambiar estado a PUBLISHED
+      await prisma.studio_scheduler_event_tasks.updateMany({
+        where: {
+          id: {
+            in: tareasDraft.map(t => t.id),
+          },
+        },
+        data: {
+          sync_status: 'PUBLISHED',
+        },
+      });
+      publicado = tareasDraft.length;
+    } else {
+      // Publicar e Invitar: sincronizar con Google Calendar
+      const { tieneGoogleCalendarHabilitado, sincronizarTareaEnBackground } =
+        await import('@/lib/integrations/google-calendar/helpers');
+
+      const tieneGoogle = await tieneGoogleCalendarHabilitado(studioSlug);
+
+      if (!tieneGoogle) {
+        return {
+          success: false,
+          error: 'Google Calendar no está conectado. Conecta tu cuenta primero.',
+        };
+      }
+
+      // Sincronizar cada tarea que tenga personal asignado
+      for (const tarea of tareasDraft) {
+        try {
+          // Solo sincronizar si tiene personal asignado
+          if (tarea.cotizacion_item?.assigned_to_crew_member_id) {
+            await sincronizarTareaEnBackground(tarea.id, studioSlug);
+            sincronizado++;
+
+            // Actualizar estado a INVITED
+            await prisma.studio_scheduler_event_tasks.update({
+              where: { id: tarea.id },
+              data: {
+                sync_status: 'INVITED',
+                invitation_status: 'PENDING',
+              },
+            });
+          } else {
+            // Sin personal, solo marcar como PUBLISHED
+            await prisma.studio_scheduler_event_tasks.update({
+              where: { id: tarea.id },
+              data: {
+                sync_status: 'PUBLISHED',
+              },
+            });
+            publicado++;
+          }
+        } catch (error) {
+          console.error(`[Publicar Cronograma] Error sincronizando tarea ${tarea.id}:`, error);
+          // Continuar con las demás tareas aunque una falle
+        }
+      }
+    }
+
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+
+    return {
+      success: true,
+      publicado,
+      sincronizado,
+    };
+  } catch (error) {
+    console.error('[Publicar Cronograma] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al publicar cronograma',
+    };
+  }
+}
+
+/**
+ * Obtiene el conteo de tareas DRAFT para mostrar en la barra de publicación
+ */
+export async function obtenerConteoTareasDraft(
+  studioSlug: string,
+  eventId: string
+): Promise<{ success: boolean; count?: number; error?: string }> {
+  try {
+    // Contar tareas con sync_status DRAFT o null (tareas antiguas sin migración)
+    const count = await prisma.studio_scheduler_event_tasks.count({
+      where: {
+        scheduler_instance: {
+          event_id: eventId,
+        },
+        OR: [
+          { sync_status: 'DRAFT' },
+          { sync_status: null }, // Tareas antiguas sin migración se consideran DRAFT
+        ],
+      },
+    });
+
+    return {
+      success: true,
+      count,
+    };
+  } catch (error) {
+    console.error('[Conteo Tareas DRAFT] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al contar tareas',
+    };
+  }
+}
+
+/**
+ * Verifica si un colaborador tiene tareas en un rango de fechas específico
+ * Retorna el número de tareas que se solapan con el rango
+ */
+export async function verificarConflictosColaborador(
+  studioSlug: string,
+  eventId: string,
+  crewMemberId: string,
+  startDate: Date,
+  endDate: Date,
+  excludeTaskId?: string
+): Promise<{ success: boolean; conflictCount?: number; error?: string }> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Buscar tareas del colaborador que se solapen con el rango de fechas
+    const conflictTasks = await prisma.studio_scheduler_event_tasks.findMany({
+      where: {
+        scheduler_instance: {
+          event_id: eventId,
+        },
+        cotizacion_item: {
+          assigned_to_crew_member_id: crewMemberId,
+        },
+        // Excluir la tarea actual si se está editando
+        ...(excludeTaskId ? { id: { not: excludeTaskId } } : {}),
+        // Verificar solapamiento de fechas
+        OR: [
+          // La tarea empieza dentro del rango
+          {
+            start_date: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          // La tarea termina dentro del rango
+          {
+            end_date: {
+              gte: startDate,
+              lte: endDate,
+            },
+          },
+          // La tarea contiene completamente el rango
+          {
+            start_date: { lte: startDate },
+            end_date: { gte: endDate },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        name: true,
+        start_date: true,
+        end_date: true,
+      },
+    });
+
+    return {
+      success: true,
+      conflictCount: conflictTasks.length,
+    };
+  } catch (error) {
+    console.error('[Verificar Conflictos] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al verificar conflictos',
     };
   }
 }

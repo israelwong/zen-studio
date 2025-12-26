@@ -168,6 +168,9 @@ export interface EventoDetalle extends EventoBasico {
         completed_at: Date | null;
         assigned_to_user_id: string | null;
         depends_on_task_id: string | null;
+        sync_status: 'DRAFT' | 'PUBLISHED' | 'INVITED';
+        invitation_status: 'PENDING' | 'ACCEPTED' | 'DECLINED' | null;
+        google_event_id: string | null;
       } | null;
     }>;
   }>; // Todas las cotizaciones del evento (incluye principal + adicionales)
@@ -981,6 +984,9 @@ export async function obtenerEventoDetalle(
                     completed_at: true,
                     assigned_to_user_id: true,
                     depends_on_task_id: true,
+                    sync_status: true,
+                    invitation_status: true,
+                    google_event_id: true,
                   },
                 },
               },
@@ -2074,7 +2080,8 @@ export async function asignarCrewAItem(
       revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
     }
 
-    // Sincronizar con Google Calendar si se asignó o removió personal
+    // Marcar tarea como DRAFT si se asignó o removió personal (NO sincronizar automáticamente)
+    // El usuario debe usar "Publicar Cronograma" para sincronizar con Google Calendar
     if (eventId) {
       try {
         const task = await prisma.studio_scheduler_event_tasks.findFirst({
@@ -2086,46 +2093,80 @@ export async function asignarCrewAItem(
           },
           select: {
             id: true,
+            sync_status: true,
             google_event_id: true,
             google_calendar_id: true,
           },
         });
 
         if (task) {
-          const { tieneGoogleCalendarHabilitado } =
-            await import('@/lib/integrations/google-calendar/helpers');
-          
-          if (await tieneGoogleCalendarHabilitado(studioSlug)) {
-            if (crewMemberId) {
-              // Si se asignó personal, sincronizar (crear/actualizar evento)
-              const { sincronizarTareaEnBackground } =
-                await import('@/lib/integrations/google-calendar/helpers');
-              sincronizarTareaEnBackground(task.id, studioSlug);
-            } else if (task.google_event_id && task.google_calendar_id) {
-              // Si se removió personal y existe evento en Google, eliminarlo
-              const { eliminarEventoEnBackground } =
-                await import('@/lib/integrations/google-calendar/helpers');
-              eliminarEventoEnBackground(task.google_calendar_id, task.google_event_id);
-              
-              // Limpiar google_event_id y google_calendar_id de la tarea
-              await prisma.studio_scheduler_event_tasks.update({
-                where: { id: task.id },
-                data: {
+          // Si la tarea estaba sincronizada/publicada y cambió el personal, marcar como DRAFT
+          if (task.sync_status === 'INVITED' || task.sync_status === 'PUBLISHED') {
+            // Si se removió personal y la tarea estaba INVITED, cancelar invitación en Google Calendar
+            if (crewMemberId === null && task.sync_status === 'INVITED' && task.google_event_id && task.google_calendar_id) {
+              try {
+                const {
+                  tieneGoogleCalendarHabilitado,
+                  eliminarEventoEnBackground,
+                } = await import('@/lib/integrations/google-calendar/helpers');
+                if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+                  // Cancelar invitación en segundo plano (no bloquea la respuesta)
+                  await eliminarEventoEnBackground(
+                    task.google_calendar_id,
+                    task.google_event_id
+                  );
+                  console.log('[Scheduler] ✅ Invitación cancelada en Google Calendar al quitar personal');
+                }
+              } catch (error) {
+                // Log error pero no bloquear la operación principal
+                console.error(
+                  '[Scheduler] Error cancelando invitación al quitar personal (no crítico):',
+                  error
+                );
+              }
+            }
+            
+            // Si se cambió personal (de un miembro a otro) y la tarea estaba INVITED, cancelar invitación anterior
+            if (crewMemberId !== null && task.sync_status === 'INVITED' && task.google_event_id && task.google_calendar_id) {
+              try {
+                const {
+                  tieneGoogleCalendarHabilitado,
+                  eliminarEventoEnBackground,
+                } = await import('@/lib/integrations/google-calendar/helpers');
+                if (await tieneGoogleCalendarHabilitado(studioSlug)) {
+                  // Cancelar invitación anterior en segundo plano
+                  await eliminarEventoEnBackground(
+                    task.google_calendar_id,
+                    task.google_event_id
+                  );
+                  console.log('[Scheduler] ✅ Invitación anterior cancelada en Google Calendar al cambiar personal');
+                }
+              } catch (error) {
+                // Log error pero no bloquear la operación principal
+                console.error(
+                  '[Scheduler] Error cancelando invitación anterior al cambiar personal (no crítico):',
+                  error
+                );
+              }
+            }
+
+            await prisma.studio_scheduler_event_tasks.update({
+              where: { id: task.id },
+              data: {
+                sync_status: 'DRAFT',
+                // Limpiar referencias de Google cuando se quita o cambia personal
+                ...((crewMemberId === null || (crewMemberId !== null && task.google_event_id)) && task.google_event_id ? {
                   google_event_id: null,
                   google_calendar_id: null,
-                },
-              });
-              
-              console.log(
-                `[Google Calendar] ✅ Evento eliminado de Google Calendar al remover personal de tarea ${task.id}`
-              );
-            }
+                } : {}),
+              },
+            });
           }
         }
       } catch (error) {
         // Log error pero no bloquear la operación principal
         console.error(
-          '[Google Calendar] Error sincronizando después de asignar/remover personal (no crítico):',
+          '[Scheduler] Error actualizando estado de tarea después de asignar/remover personal (no crítico):',
           error
         );
       }
@@ -2325,7 +2366,7 @@ export async function crearSchedulerTask(
       (data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)
     ) + 1;
 
-    // Crear la tarea
+    // Crear la tarea en estado DRAFT (no sincroniza inmediatamente)
     const task = await prisma.studio_scheduler_event_tasks.create({
       data: {
         scheduler_instance_id: schedulerInstanceId,
@@ -2341,6 +2382,7 @@ export async function crearSchedulerTask(
         progress_percent: data.isCompleted ? 100 : 0,
         notes: data.notes || null,
         completed_at: data.isCompleted ? new Date() : null,
+        sync_status: 'DRAFT', // Estado inicial: borrador, no sincronizado
       },
       include: {
         cotizacion_item: {
@@ -2354,21 +2396,10 @@ export async function crearSchedulerTask(
 
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/gantt`);
     revalidatePath(`/${studioSlug}/studio/business/events/${eventId}`);
+    revalidatePath(`/${studioSlug}/studio/business/events/${eventId}/scheduler`);
 
-    // Sincronizar con Google Calendar (en background, no bloquea respuesta)
-    try {
-      const { tieneGoogleCalendarHabilitado, sincronizarTareaEnBackground } =
-        await import('@/lib/integrations/google-calendar/helpers');
-      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
-        await sincronizarTareaEnBackground(task.id, studioSlug);
-      }
-    } catch (error) {
-      // Log error pero no bloquear la operación principal
-      console.error(
-        '[Google Calendar] Error verificando conexión Google (no crítico):',
-        error
-      );
-    }
+    // NO sincronizar inmediatamente - el usuario debe "Publicar" los cambios
+    // La sincronización se hará cuando el usuario publique el cronograma
 
     return { success: true, data: task };
   } catch (error) {
@@ -2428,6 +2459,7 @@ export async function actualizarSchedulerTask(
         start_date: true,
         end_date: true,
         cotizacion_item_id: true,
+        sync_status: true,
       },
     });
 
@@ -2446,6 +2478,7 @@ export async function actualizarSchedulerTask(
       progress_percent?: number;
       notes?: string | null;
       completed_at?: Date | null;
+      sync_status?: 'DRAFT';
     } = {};
 
     if (data.name !== undefined) updateData.name = data.name;
@@ -2455,12 +2488,28 @@ export async function actualizarSchedulerTask(
     const finalStartDate = data.startDate || task.start_date;
     const finalEndDate = data.endDate || task.end_date;
 
+    // Verificar si las fechas cambiaron
+    const datesChanged =
+      (data.startDate && data.startDate.getTime() !== task.start_date.getTime()) ||
+      (data.endDate && data.endDate.getTime() !== task.end_date.getTime());
+
     if (data.startDate || data.endDate) {
       updateData.start_date = finalStartDate;
       updateData.end_date = finalEndDate;
       updateData.duration_days = Math.ceil(
         (finalEndDate.getTime() - finalStartDate.getTime()) / (1000 * 60 * 60 * 24)
       ) + 1;
+
+      // Si las fechas cambiaron y la tarea estaba sincronizada/publicada, marcar como DRAFT
+      if (datesChanged && (task.sync_status === 'INVITED' || task.sync_status === 'PUBLISHED')) {
+        updateData.sync_status = 'DRAFT';
+      }
+    }
+
+    // Si cambió el nombre, descripción o notas, también marcar como DRAFT si estaba sincronizada
+    if ((data.name !== undefined || data.description !== undefined || data.notes !== undefined) &&
+        (task.sync_status === 'INVITED' || task.sync_status === 'PUBLISHED')) {
+      updateData.sync_status = 'DRAFT';
     }
 
     if (data.isCompleted !== undefined) {
@@ -2540,20 +2589,8 @@ export async function actualizarSchedulerTask(
       revalidatePath(`/${studioSlug}/studio/business/finanzas`);
     }
 
-    // Sincronizar con Google Calendar (en background, no bloquea respuesta)
-    try {
-      const { tieneGoogleCalendarHabilitado, sincronizarTareaEnBackground } =
-        await import('@/lib/integrations/google-calendar/helpers');
-      if (await tieneGoogleCalendarHabilitado(studioSlug)) {
-        await sincronizarTareaEnBackground(taskId, studioSlug);
-      }
-    } catch (error) {
-      // Log error pero no bloquear la operación principal
-      console.error(
-        '[Google Calendar] Error verificando conexión Google (no crítico):',
-        error
-      );
-    }
+    // NO sincronizar inmediatamente - el usuario debe "Publicar" los cambios
+    // La sincronización se hará cuando el usuario publique el cronograma
 
     return {
       success: true,

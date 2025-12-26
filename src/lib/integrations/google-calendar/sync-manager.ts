@@ -118,6 +118,7 @@ export async function sincronizarTareaConGoogle(
                 promise: {
                   select: {
                     name: true,
+                    status: true,
                   },
                 },
                 event_type: {
@@ -170,6 +171,18 @@ export async function sincronizarTareaConGoogle(
     // Obtener información del evento
     const eventName = task.scheduler_instance.event.promise?.name || 'Evento sin nombre';
     const eventTypeName = task.scheduler_instance.event.event_type?.name || null;
+    
+    // Obtener estado del evento y formatearlo
+    const eventStatus = task.scheduler_instance.event.promise?.status || 'pending';
+    const eventStatusText = eventStatus === 'pending' 
+      ? 'Pendiente'
+      : eventStatus === 'confirmed'
+      ? 'Confirmado'
+      : eventStatus === 'cancelled'
+      ? 'Cancelado'
+      : eventStatus === 'completed'
+      ? 'Completado'
+      : eventStatus.charAt(0).toUpperCase() + eventStatus.slice(1).toLowerCase();
 
     // Construir descripción con contexto completo
     const descriptionParts: string[] = [];
@@ -186,8 +199,8 @@ export async function sincronizarTareaConGoogle(
     if (eventTypeName) {
       descriptionParts.push(`🎯 Tipo de Evento: ${eventTypeName}`);
     }
-    descriptionParts.push(`📅 Evento: ${eventName}`);
-    descriptionParts.push(`📦 Item: ${itemName}`);
+    descriptionParts.push(`📅 Evento: ${eventStatusText}`);
+    descriptionParts.push(`📦 Tarea: ${itemName}`);
     descriptionParts.push(`🏢 Estudio: ${studioName}`);
 
     const description = descriptionParts.join('\n').trim();

@@ -22,6 +22,7 @@ interface SchedulerRowProps {
   }>;
   dateRange: DateRange;
   studioSlug?: string;
+  eventId?: string;
   item?: CotizacionItem;
   onTaskUpdate: (taskId: string, startDate: Date, endDate: Date) => Promise<void>;
   onTaskCreate?: (itemId: string, catalogItemId: string, itemName: string, startDate: Date) => Promise<void>;
@@ -38,6 +39,7 @@ export const SchedulerRow = React.memo(({
   tasks,
   dateRange,
   studioSlug,
+  eventId,
   item,
   onTaskUpdate,
   onTaskCreate,
@@ -112,6 +114,7 @@ export const SchedulerRow = React.memo(({
             hasCrewMember={task.has_crew_member}
             dateRange={dateRange}
             studioSlug={studioSlug}
+            eventId={eventId}
             item={item}
             onUpdate={handleTaskUpdate}
             onDelete={onTaskDelete}
