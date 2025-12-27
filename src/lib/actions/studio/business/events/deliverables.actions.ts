@@ -340,6 +340,7 @@ export async function vincularCarpetaDrive(
       return { success: false, error: 'El estudio no tiene Google Drive conectado' };
     }
 
+    // Verificar que el entregable existe antes de continuar
     const entregable = await prisma.studio_event_deliverables.findFirst({
       where: {
         id: entregableId,
@@ -351,7 +352,8 @@ export async function vincularCarpetaDrive(
     });
 
     if (!entregable) {
-      return { success: false, error: 'Entregable no encontrado' };
+      console.error('[vincularCarpetaDrive] Entregable no encontrado:', entregableId);
+      return { success: false, error: 'Entregable no encontrado. Puede que haya sido eliminado o el ID sea incorrecto.' };
     }
 
     // Validar que la carpeta existe, tiene permisos y obtener metadata inicial
@@ -378,13 +380,46 @@ export async function vincularCarpetaDrive(
         };
       }
 
-      // Establecer permisos públicos en la carpeta y todos sus archivos
+      // Verificar nuevamente que el entregable existe antes de actualizar
+      const entregableVerificado = await prisma.studio_event_deliverables.findFirst({
+        where: {
+          id: entregableId,
+          event: {
+            studio_id: studio.id,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!entregableVerificado) {
+        console.error('[vincularCarpetaDrive] Entregable no encontrado antes de actualizar:', entregableId);
+        return { success: false, error: 'Entregable no encontrado. Puede que haya sido eliminado.' };
+      }
+
+      // Establecer permisos públicos en la carpeta y todos sus archivos (en background)
       // Esto permite que los clientes descarguen sin autenticarse en Google
-      const permisosResult = await establecerPermisosPublicos(studioSlug, folderId, true);
-      if (!permisosResult.success) {
-        console.error('[vincularCarpetaDrive] Error estableciendo permisos públicos:', permisosResult.error);
-        // No fallar la operación si los permisos fallan, pero registrar el error
-        // El usuario puede establecer permisos manualmente si es necesario
+      // No esperamos a que termine para no bloquear la UI
+      establecerPermisosPublicos(studioSlug, folderId, true).then((permisosResult) => {
+        if (!permisosResult.success) {
+          console.error('[vincularCarpetaDrive] Error estableciendo permisos públicos:', permisosResult.error);
+        }
+      }).catch((error) => {
+        console.error('[vincularCarpetaDrive] Error en establecerPermisosPublicos:', error);
+      });
+
+      // Verificar una vez más antes de actualizar (por si se eliminó durante el proceso de permisos)
+      const entregableFinal = await prisma.studio_event_deliverables.findFirst({
+        where: {
+          id: entregableId,
+          event: {
+            studio_id: studio.id,
+          },
+        },
+      });
+
+      if (!entregableFinal) {
+        console.error('[vincularCarpetaDrive] Entregable eliminado durante el proceso:', entregableId);
+        return { success: false, error: 'Entregable fue eliminado durante el proceso de vinculación.' };
       }
 
       // Actualizar entregable con google_folder_id y delivery_mode

@@ -50,6 +50,7 @@ export async function getGoogleDriveClient(studioSlug: string) {
       hasDriveScope =
         scopes.includes('https://www.googleapis.com/auth/drive.readonly') ||
         scopes.includes('https://www.googleapis.com/auth/drive');
+      // Nota: drive.readonly es suficiente para leer, pero drive es necesario para establecer permisos
     } catch {
       // Si no se puede parsear, intentar como string simple
       const scopesStr = studio.google_oauth_scopes;
@@ -110,13 +111,17 @@ export async function getGoogleDriveClient(studioSlug: string) {
 
   // Refrescar access token (googleapis maneja automáticamente si es necesario)
   // Si el token es válido, simplemente lo devuelve; si está expirado, lo refresca
+  // Nota: Los scopes vienen del refresh_token original y no se pueden cambiar después
   try {
     const { credentials } = await oauth2Client.refreshAccessToken();
     // Actualizar credenciales con el nuevo access_token si fue refrescado
     oauth2Client.setCredentials(credentials);
-  } catch (error) {
+  } catch (error: any) {
     console.error('[getGoogleDriveClient] Error refrescando token:', error);
-    // Si el refresh falla, puede ser que el refresh_token sea inválido
+    // Si el refresh falla, puede ser que el refresh_token sea inválido o no tenga los scopes
+    if (error?.response?.status === 403 || error?.code === 403) {
+      throw new Error('Permisos insuficientes. Por favor, reconecta Google Drive desde la configuración de integraciones para actualizar los permisos.');
+    }
     // En ese caso, el usuario necesita reconectarse
     throw new Error('Error al refrescar access token. Por favor, reconecta tu cuenta de Google.');
   }
@@ -452,8 +457,9 @@ export async function establecerPermisosPublicos(
               },
             });
           } catch (error: any) {
-            // Si el permiso ya existe, ignorar
-            if (error?.code !== 400 && error?.response?.status !== 400) {
+            // Si el permiso ya existe (400) o es un error interno de Google (500), ignorar
+            // Los errores 500 de Google pueden ser temporales o por límites de rate
+            if (error?.code !== 400 && error?.code !== 500 && error?.response?.status !== 400 && error?.response?.status !== 500) {
               console.error(`[establecerPermisosPublicos] Error estableciendo permiso en archivo ${fileId}:`, error);
             }
           }

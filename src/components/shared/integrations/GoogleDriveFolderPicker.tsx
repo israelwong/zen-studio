@@ -97,7 +97,12 @@ export function GoogleDriveFolderPicker({
       if (result.success && result.data) {
         setFolders(result.data);
       } else {
-        toast.error(result.error || 'Error al cargar carpetas');
+        const errorMessage = result.error || 'Error al cargar carpetas';
+        toast.error(errorMessage);
+        // Si es error de permisos, mostrar mensaje más específico
+        if (errorMessage.includes('Permisos insuficientes')) {
+          console.error('[GoogleDriveFolderPicker] Error de permisos:', errorMessage);
+        }
       }
     } catch (error) {
       console.error('Error loading folders:', error);

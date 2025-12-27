@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Plus, ExternalLink, Link2, MoreVertical, Edit, Trash2, Folder, Loader2 } from 'lucide-react';
+import { Plus, ExternalLink, Link2, MoreVertical, Edit, Trash2, Loader2 } from 'lucide-react';
 import {
   ZenCard,
   ZenCardHeader,
@@ -66,6 +66,29 @@ export function EventDeliverablesCard({
     google_folder_id: '',
   });
 
+  const checkGoogleConnection = async () => {
+    try {
+      setIsCheckingGoogle(true);
+      const status = await obtenerEstadoConexion(studioSlug);
+
+      // Usar el estado isConnected del servidor que ya valida scopes de Drive y refresh token
+      // Además verificar explícitamente scopes de Drive para mostrar estado correcto
+      const hasDriveScope = status.scopes?.some(
+        (scope) => scope.includes('drive.readonly') || scope.includes('drive')
+      ) ?? false;
+
+      // Drive está conectado si el servidor dice que está conectado Y tiene scopes de Drive
+      const hasActiveConnection = status.isConnected && hasDriveScope;
+
+      setIsGoogleConnected(hasActiveConnection);
+    } catch (error) {
+      console.error('Error checking Google connection:', error);
+      setIsGoogleConnected(false);
+    } finally {
+      setIsCheckingGoogle(false);
+    }
+  };
+
   useEffect(() => {
     loadEntregables();
     checkGoogleConnection();
@@ -85,29 +108,6 @@ export function EventDeliverablesCard({
       }, 1000);
     }
   }, [eventId, studioSlug]);
-
-  const checkGoogleConnection = async () => {
-    try {
-      setIsCheckingGoogle(true);
-      const status = await obtenerEstadoConexion(studioSlug);
-
-      // Validación correcta: solo verificar si tiene scopes de Drive
-      // No usar lógica legacy de entregables o configuración
-      const hasDriveScope = status.scopes?.some(
-        (scope) => scope.includes('drive.readonly') || scope.includes('drive')
-      ) ?? false;
-
-      // También verificar que tenga refresh token (conexión activa)
-      const hasActiveConnection = hasDriveScope && !!status.email;
-
-      setIsGoogleConnected(hasActiveConnection);
-    } catch (error) {
-      console.error('Error checking Google connection:', error);
-      setIsGoogleConnected(false);
-    } finally {
-      setIsCheckingGoogle(false);
-    }
-  };
 
   const loadEntregables = async () => {
     try {
@@ -205,6 +205,7 @@ export function EventDeliverablesCard({
   };
 
   const handleGoogleConnected = async () => {
+    // Verificar conexión con las validaciones actuales (scopes de Drive)
     await checkGoogleConnection();
   };
 
@@ -227,7 +228,6 @@ export function EventDeliverablesCard({
       google_folder_id: folder.id,
       name: folder.name,
     });
-    toast.success(`Carpeta "${folder.name}" seleccionada`);
   };
 
 
@@ -261,6 +261,9 @@ export function EventDeliverablesCard({
           setEntregables(prev => prev.map(item =>
             item.id === editingId ? result.data! : item
           ));
+          // Recargar entregables y verificar conexión después de actualizar
+          await loadEntregables();
+          await checkGoogleConnection();
           toast.success('Entregable actualizado');
           handleCloseForm();
           onUpdated?.();
@@ -279,21 +282,36 @@ export function EventDeliverablesCard({
         });
 
         if (result.success && result.data) {
-          // Si hay carpeta de Google seleccionada, vincularla
+          const entregableCreado = result.data;
+          
+          // Si hay carpeta de Google seleccionada, vincularla inmediatamente
           if (selectedFolder?.id) {
-            const vincularResult = await vincularCarpetaDrive(studioSlug, result.data.id, selectedFolder.id);
+            const vincularResult = await vincularCarpetaDrive(studioSlug, entregableCreado.id, selectedFolder.id);
             if (vincularResult.success && vincularResult.data) {
+              // Usar el entregable actualizado con la carpeta vinculada
               setEntregables(prev => [...prev, vincularResult.data!]);
               toast.success('Entregable creado y carpeta vinculada');
+              // Si se vinculó una carpeta, Google Drive está conectado
+              setIsGoogleConnected(true);
+              setIsCheckingGoogle(false);
             } else {
-              setEntregables(prev => [...prev, result.data!]);
-              toast.success('Entregable creado, pero error al vincular carpeta');
+              // Si falla la vinculación, agregar el entregable sin carpeta
+              setEntregables(prev => [...prev, entregableCreado]);
+              toast.warning('Entregable creado, pero error al vincular carpeta: ' + (vincularResult.error || 'Error desconocido'));
             }
           } else {
-            setEntregables(prev => [...prev, result.data!]);
+            // Agregar el entregable al estado local
+            setEntregables(prev => [...prev, entregableCreado]);
             toast.success('Entregable creado');
           }
+          
+          // Cerrar el formulario y resetear estado
           handleCloseForm();
+          setIsSaving(false);
+          
+          // Recargar entregables y verificar conexión
+          await loadEntregables();
+          await checkGoogleConnection();
           onUpdated?.();
         } else {
           toast.error(result.error || 'Error al crear entregable');
@@ -416,7 +434,12 @@ export function EventDeliverablesCard({
                         <div className="flex flex-wrap items-center gap-2 mt-1.5">
                           {entregable.delivery_mode === 'google_drive' && entregable.google_folder_id && (
                             <>
-                              {isGoogleConnected ? (
+                              {isCheckingGoogle ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-zinc-800/50 border border-zinc-800">
+                                  <Loader2 className="h-3 w-3 animate-spin text-zinc-400" />
+                                  <span className="text-zinc-400">Validando...</span>
+                                </span>
+                              ) : isGoogleConnected ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-blue-950/30 text-blue-400 border border-blue-800/50">
                                   <img
                                     src="https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/Studio/icons/google-drive-black.svg"
@@ -508,54 +531,6 @@ export function EventDeliverablesCard({
             </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isGoogleConnected ? (
-                <>
-                  <div>
-                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
-                      Nombre *
-                    </label>
-                    <ZenInput
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Ej: Galería de fotos - Ceremonia"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
-                      Descripción
-                    </label>
-                    <ZenInput
-                      value={formData.description}
-                      onChange={(e) =>
-                        setFormData({ ...formData, description: e.target.value })
-                      }
-                      placeholder="Descripción opcional"
-                    />
-                  </div>
-                  <GoogleDriveConnection
-                    studioSlug={studioSlug}
-                    variant="compact"
-                    returnUrl={`${window.location.pathname}?google_connected=true&return_to_modal=true`}
-                    onConnected={handleGoogleConnected}
-                    onDisconnected={handleGoogleDisconnected}
-                    showDisconnect={true}
-                  />
-                  <div>
-                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
-                      Enlace manual (URL)
-                    </label>
-                    <ZenInput
-                      type="url"
-                      value={formData.file_url}
-                      onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
-                      placeholder="https://drive.google.com/..."
-                    />
-                    <p className="text-xs text-zinc-500 mt-1.5">
-                      Con enlace manual, el cliente solo verá un botón para abrir el enlace en Google Drive.
-                    </p>
-                  </div>
-                </>
-              ) : (
                 <div>
                   <label className="text-sm font-medium text-zinc-300 mb-1.5 flex items-center gap-2">
                     <img
@@ -621,6 +596,53 @@ export function EventDeliverablesCard({
                     El cliente verá subcarpetas y contenido en su portal como galería y links de descarga
                   </p>
                 </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
+                      Nombre *
+                    </label>
+                    <ZenInput
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Ej: Galería de fotos - Ceremonia"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
+                      Descripción
+                    </label>
+                    <ZenInput
+                      value={formData.description}
+                      onChange={(e) =>
+                        setFormData({ ...formData, description: e.target.value })
+                      }
+                      placeholder="Descripción opcional"
+                    />
+                  </div>
+                  <GoogleDriveConnection
+                    studioSlug={studioSlug}
+                    variant="compact"
+                    returnUrl={`${window.location.pathname}?google_connected=true&return_to_modal=true`}
+                    onConnected={handleGoogleConnected}
+                    showDisconnect={false}
+                  />
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
+                      Enlace manual (URL)
+                    </label>
+                    <ZenInput
+                      type="url"
+                      value={formData.file_url}
+                      onChange={(e) => setFormData({ ...formData, file_url: e.target.value })}
+                      placeholder="https://drive.google.com/..."
+                    />
+                    <p className="text-xs text-zinc-500 mt-1.5">
+                      Con enlace manual, el cliente solo verá un botón para abrir el enlace en Google Drive.
+                    </p>
+                  </div>
+                </>
               )}
               <div className="flex gap-2 pt-2">
                 <ZenButton

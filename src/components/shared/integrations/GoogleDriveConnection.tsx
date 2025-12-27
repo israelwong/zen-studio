@@ -49,11 +49,13 @@ export function GoogleDriveConnection({
     try {
       setIsLoading(true);
       const status = await obtenerEstadoConexion(studioSlug);
+      const wasConnected = isConnected;
       setIsConnected(status.isConnected || false);
       setEmail(status.email);
       setScopes(status.scopes || []);
 
-      if (status.isConnected && onConnected) {
+      // Solo llamar a onConnected si cambió de desconectado a conectado
+      if (status.isConnected && !wasConnected && onConnected) {
         onConnected();
       }
     } catch (error) {
@@ -118,6 +120,11 @@ export function GoogleDriveConnection({
   };
 
   const hasDriveScope = scopes.some((scope) => scope.includes('drive'));
+  // Verificar si tiene permisos de escritura (drive completo, no solo readonly)
+  const hasWritePermissions = scopes.some(
+    (scope) => scope.includes('https://www.googleapis.com/auth/drive') && 
+                !scope.includes('readonly')
+  );
 
   // Wrapper para incluir el modal en todos los casos
   const renderContent = () => {
@@ -350,6 +357,7 @@ export function GoogleDriveConnection({
         onConfirm={handleConfirmDisconnect}
         studioSlug={studioSlug}
         isDisconnecting={isDisconnecting}
+        canRevokePermissions={hasWritePermissions}
       />
     </>
   );

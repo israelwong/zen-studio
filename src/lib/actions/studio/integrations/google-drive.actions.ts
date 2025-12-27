@@ -68,10 +68,10 @@ export async function iniciarConexionGoogle(
 
     const { clientId, redirectUri } = credentialsResult.data;
 
-    // Autorización incremental: Solo pedir scopes de Drive
-    // El usuario verá claramente que solo está dando permiso de lectura para sus archivos
+    // Autorización incremental: Pedir scopes de Drive con permisos de escritura
+    // Necesitamos permisos de escritura para establecer permisos públicos en carpetas
     const scopes = [
-      'https://www.googleapis.com/auth/drive.readonly',
+      'https://www.googleapis.com/auth/drive',
     ];
 
     // State contiene el studioSlug, returnUrl y resourceType para recuperarlos en el callback
@@ -188,7 +188,18 @@ export async function procesarCallbackGoogle(
     const encryptedRefreshToken = await encryptToken(tokens.refresh_token);
 
     // Parsear scopes que realmente se otorgaron
-    const scopes = tokens.scope ? tokens.scope.split(' ') : [];
+    // Si Google no devuelve scope en la respuesta, usar los scopes que solicitamos
+    let scopes: string[] = [];
+    if (tokens.scope) {
+      scopes = tokens.scope.split(' ');
+    } else {
+      // Si no vienen en la respuesta, usar los scopes que solicitamos
+      // Esto puede pasar en algunos casos de OAuth
+      console.warn('[procesarCallbackGoogle] No se recibieron scopes en la respuesta del token, usando scopes solicitados');
+      scopes = ['https://www.googleapis.com/auth/drive'];
+    }
+    
+    console.log('[procesarCallbackGoogle] Scopes recibidos:', scopes);
 
     // Obtener scopes existentes para combinarlos (autorización incremental)
     const studioActual = await prisma.studios.findUnique({
@@ -209,7 +220,9 @@ export async function procesarCallbackGoogle(
     }
 
     // Determinar qué integraciones están habilitadas según los scopes
-    const hasDriveScope = scopesFinales.includes('https://www.googleapis.com/auth/drive.readonly');
+    const hasDriveScope = 
+      scopesFinales.includes('https://www.googleapis.com/auth/drive.readonly') ||
+      scopesFinales.includes('https://www.googleapis.com/auth/drive');
     const hasCalendarScope =
       scopesFinales.includes('https://www.googleapis.com/auth/calendar') ||
       scopesFinales.includes('https://www.googleapis.com/auth/calendar.events');
@@ -635,6 +648,14 @@ export async function listarCarpetasDrive(
     return { success: true, data: folders };
   } catch (error) {
     console.error('[listarCarpetasDrive] Error:', error);
+    
+    // Si el error es de permisos insuficientes, retornar error específico
+    if (error instanceof Error && error.message.includes('Permisos insuficientes')) {
+      return {
+        success: false,
+        error: 'Permisos insuficientes. Por favor, reconecta Google Drive desde la configuración de integraciones para actualizar los permisos.',
+      };
+    }
     
     // Verificar si hay conexión existente o entregables vinculados
     const studio = await prisma.studios.findUnique({
