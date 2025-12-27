@@ -269,16 +269,14 @@ export async function obtenerConteoTareasDraft(
   eventId: string
 ): Promise<{ success: boolean; count?: number; error?: string }> {
   try {
-    // Contar tareas con sync_status DRAFT o null (tareas antiguas sin migración)
+    // Contar tareas con sync_status DRAFT
+    // Nota: sync_status tiene @default(DRAFT), por lo que todas las tareas tienen un valor
     const count = await prisma.studio_scheduler_event_tasks.count({
       where: {
         scheduler_instance: {
           event_id: eventId,
         },
-        OR: [
-          { sync_status: 'DRAFT' },
-          { sync_status: null }, // Tareas antiguas sin migración se consideran DRAFT
-        ],
+        sync_status: 'DRAFT',
       },
     });
 

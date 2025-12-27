@@ -2,29 +2,27 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Cloud, Calendar, MessageSquare, CreditCard, Sparkles, LucideIcon } from 'lucide-react';
+import { Cloud } from 'lucide-react';
 import { obtenerEstadoConexion } from '@/lib/actions/studio/integrations';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenCardContent } from '@/components/ui/zen';
 import {
-  IntegrationCard,
   GoogleDriveIntegrationModal,
-  CalendarIntegrationModal,
   ManychatIntegrationModal,
   StripeIntegrationModal,
   ZenMagicIntegrationModal,
 } from '@/components/shared/integrations';
+import {
+  CalendarIntegrationCard,
+  GoogleDriveIntegrationCard,
+  ManychatIntegrationCard,
+  StripeIntegrationCard,
+  ZenMagicIntegrationCard,
+} from './components';
+import { GoogleCalendarConnectionModal } from '@/components/shared/integrations/GoogleCalendarConnectionModal';
+import { iniciarVinculacionRecursoGoogleClient } from '@/lib/actions/auth/oauth-client.actions';
+import { toast } from 'sonner';
 
-type IntegrationId = 'calendar' | 'google-drive' | 'manychat' | 'stripe' | 'zen-magic';
-
-interface Integration {
-  id: IntegrationId;
-  name: string;
-  description: string;
-  icon: LucideIcon;
-  iconColor: string;
-  isComingSoon: boolean;
-  isConnected?: boolean;
-}
+type IntegrationId = 'google-drive' | 'manychat' | 'stripe' | 'zen-magic';
 
 export default function IntegracionesPage() {
   const params = useParams();
@@ -32,10 +30,29 @@ export default function IntegracionesPage() {
   useEffect(() => {
     document.title = 'ZEN Studio - Integraciones';
   }, []);
+
   const studioSlug = params?.slug as string;
+
+  // Detectar cuando se conecta exitosamente y disparar evento
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('success') === 'google_connected') {
+      // Disparar evento para que AppHeader actualice
+      window.dispatchEvent(new CustomEvent('google-calendar-connection-changed'));
+      // Limpiar el parámetro de la URL
+      urlParams.delete('success');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   const [scopes, setScopes] = useState<string[]>([]);
   const [openModal, setOpenModal] = useState<IntegrationId | null>(null);
+  // Estados para modales de Google Calendar
+  const [showCalendarConnectionModal, setShowCalendarConnectionModal] = useState(false);
+  const [connecting, setConnecting] = useState(false);
 
   const loadConnectionStatus = useCallback(async () => {
     if (!studioSlug) return;
@@ -48,63 +65,62 @@ export default function IntegracionesPage() {
   }, [loadConnectionStatus]);
 
   const hasDriveScope = scopes.some((scope) => scope.includes('drive'));
+  const hasCalendarScope = scopes.some((scope) => scope.includes('calendar'));
 
-  const integrations: Integration[] = [
-    {
-      id: 'calendar',
-      name: 'Calendar',
-      description: 'Sincroniza tu agenda con Google Calendar automáticamente',
-      icon: Calendar,
-      iconColor: 'text-purple-400',
-      isComingSoon: true,
-    },
-    {
-      id: 'google-drive',
-      name: 'Google Drive',
-      description: 'Vincula carpetas de Google Drive a tus entregables para optimizar almacenamiento',
-      icon: Cloud,
-      iconColor: 'text-blue-400',
-      isComingSoon: false,
-      isConnected: hasDriveScope,
-    },
-    {
-      id: 'manychat',
-      name: 'Manychat',
-      description: 'Automatiza conversaciones y respuestas con tus clientes',
-      icon: MessageSquare,
-      iconColor: 'text-green-400',
-      isComingSoon: true,
-    },
-    {
-      id: 'stripe',
-      name: 'Stripe',
-      description: 'Procesa pagos de forma segura con Stripe',
-      icon: CreditCard,
-      iconColor: 'text-indigo-400',
-      isComingSoon: true,
-    },
-    {
-      id: 'zen-magic',
-      name: 'ZEN Magic',
-      description: 'Asistente virtual dinámico para automatización de tareas',
-      icon: Sparkles,
-      iconColor: 'text-yellow-400',
-      isComingSoon: true,
-    },
-  ];
-
-  const handleConnect = (integrationId: IntegrationId) => {
-    setOpenModal(integrationId);
+  const handleConnectCalendar = () => {
+    setShowCalendarConnectionModal(true);
   };
 
-  const handleManage = (integrationId: IntegrationId) => {
-    setOpenModal(integrationId);
+
+  const handleConnectDrive = () => {
+    setOpenModal('google-drive');
+  };
+
+  const handleManageDrive = () => {
+    setOpenModal('google-drive');
   };
 
   const handleCloseModal = () => {
     setOpenModal(null);
     loadConnectionStatus();
   };
+
+  // Handlers para Google Calendar
+  const handleConfirmConnectCalendar = async () => {
+    setConnecting(true);
+    try {
+      const result = await iniciarVinculacionRecursoGoogleClient(studioSlug);
+
+      if (!result.success) {
+        let errorMessage = result.error || 'Error al iniciar conexión con Google';
+
+        if (result.error?.includes('provider is not enabled') || result.error?.includes('Unsupported provider')) {
+          errorMessage = 'El proveedor de Google no está habilitado en Supabase. Por favor, contacta al administrador.';
+        } else if (result.error?.includes('validation_failed')) {
+          errorMessage = 'Error de configuración de Google OAuth. Verifica la configuración en Supabase Dashboard.';
+        }
+
+        toast.error(errorMessage);
+        setConnecting(false);
+        setShowCalendarConnectionModal(false);
+      }
+      // La redirección ocurre automáticamente
+    } catch (error) {
+      console.error('Error conectando Google Calendar:', error);
+
+      let errorMessage = 'Error al conectar con Google Calendar';
+      if (error instanceof Error) {
+        if (error.message.includes('provider is not enabled') || error.message.includes('Unsupported provider')) {
+          errorMessage = 'El proveedor de Google no está habilitado en Supabase. Por favor, contacta al administrador.';
+        }
+      }
+
+      toast.error(errorMessage);
+      setConnecting(false);
+      setShowCalendarConnectionModal(false);
+    }
+  };
+
 
   if (!studioSlug) {
     return null;
@@ -113,7 +129,7 @@ export default function IntegracionesPage() {
   return (
     <div className="w-full max-w-7xl mx-auto h-full flex flex-col">
       <ZenCard variant="default" padding="none" className="flex flex-col flex-1 min-h-0">
-        <ZenCardHeader className="border-b border-zinc-800 flex-shrink-0">
+        <ZenCardHeader className="border-b border-zinc-800 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600/20 rounded-lg">
               <Cloud className="h-5 w-5 text-blue-400" />
@@ -129,19 +145,20 @@ export default function IntegracionesPage() {
 
         <ZenCardContent className="p-6 flex-1 min-h-0 overflow-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {integrations.map((integration) => (
-              <IntegrationCard
-                key={integration.id}
-                name={integration.name}
-                description={integration.description}
-                icon={integration.icon}
-                iconColor={integration.iconColor}
-                isConnected={integration.isConnected}
-                isComingSoon={integration.isComingSoon}
-                onConnect={!integration.isComingSoon ? () => handleConnect(integration.id) : undefined}
-                onManage={integration.isConnected && !integration.isComingSoon ? () => handleManage(integration.id) : undefined}
-              />
-            ))}
+            <CalendarIntegrationCard
+              isConnected={hasCalendarScope}
+              studioSlug={studioSlug}
+              onConnect={handleConnectCalendar}
+              onDisconnected={loadConnectionStatus}
+            />
+            <GoogleDriveIntegrationCard
+              isConnected={hasDriveScope}
+              onConnect={handleConnectDrive}
+              onManage={handleManageDrive}
+            />
+            <ManychatIntegrationCard />
+            <StripeIntegrationCard />
+            <ZenMagicIntegrationCard />
           </div>
         </ZenCardContent>
       </ZenCard>
@@ -155,10 +172,12 @@ export default function IntegracionesPage() {
             studioSlug={studioSlug}
             onConnected={loadConnectionStatus}
           />
-          <CalendarIntegrationModal
-            isOpen={openModal === 'calendar'}
-            onClose={handleCloseModal}
-            studioSlug={studioSlug}
+          {/* Modales de Google Calendar */}
+          <GoogleCalendarConnectionModal
+            isOpen={showCalendarConnectionModal}
+            onClose={() => setShowCalendarConnectionModal(false)}
+            onConnect={handleConfirmConnectCalendar}
+            connecting={connecting}
           />
           <ManychatIntegrationModal
             isOpen={openModal === 'manychat'}

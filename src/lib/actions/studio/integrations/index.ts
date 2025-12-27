@@ -4,14 +4,15 @@
 
 export {
   obtenerEstadoConexion,
-  iniciarConexionGoogle,
-  desconectarGoogle,
+  iniciarConexionGoogle, // @deprecated - Usar iniciarVinculacionDriveClient desde oauth-client.actions
+  desconectarGoogle, // @deprecated - Usar desconectarGoogleDrive
+  desconectarGoogleDrive,
   listarCarpetasDrive,
   listarSubcarpetas,
   obtenerContenidoCarpeta,
   obtenerDetallesCarpeta,
   obtenerAccessToken,
-  procesarCallbackGoogle,
+  procesarCallbackGoogle, // @deprecated - Ya no se usa, migrado a callback unificado
   type GoogleConnectionStatus,
   type GoogleOAuthUrlResult,
   type GoogleFolderListResult,

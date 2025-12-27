@@ -26,7 +26,10 @@ export function GoogleCalendarConnectionModal({
 }: GoogleCalendarConnectionModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-zinc-900 border-zinc-800 max-w-lg">
+      <DialogContent 
+        className="bg-zinc-900 border-zinc-800 max-w-lg"
+        overlayZIndex={10100}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl text-zinc-100 flex items-center gap-2">
             <Calendar className="h-5 w-5 text-emerald-400" />

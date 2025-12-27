@@ -267,11 +267,12 @@ const AgendaEventComponent = ({
       </span>
       {/* Indicador de sincronización Google Calendar */}
       {item.contexto === 'evento' && item.is_main_event_date && item.google_event_id && (
-        <CheckCircle2 
-          className="h-3.5 w-3.5 text-white/90 flex-shrink-0" 
-          title="Sincronizado con Google Calendar"
-          style={{ filter: 'drop-shadow(0 0 2px rgba(16, 185, 129, 0.5))' }}
-        />
+        <div title="Sincronizado con Google Calendar">
+          <CheckCircle2
+            className="h-3.5 w-3.5 text-white/90 shrink-0"
+            style={{ filter: 'drop-shadow(0 0 2px rgba(16, 185, 129, 0.5))' }}
+          />
+        </div>
       )}
     </div>
   );
@@ -393,7 +394,7 @@ export function AgendaCalendar({
 
     return (
       <div className="rbc-toolbar flex items-center justify-between pb-4">
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handlePrevious}
@@ -420,7 +421,7 @@ export function AgendaCalendar({
           </button>
         </div>
         <div className="rbc-toolbar-label text-center flex-1 font-semibold">{label}</div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {views.map((v) => (
             <button
               key={v}
@@ -668,13 +669,13 @@ export function AgendaCalendar({
       `}</style>
 
         <Calendar
+          key={currentDate.getTime()}
           localizer={localizer}
           events={calendarEvents}
           startAccessor="start"
           endAccessor="end"
           style={{ height: '100%' }}
-          date={currentDate}
-          defaultDate={defaultDate}
+          defaultDate={currentDate}
           defaultView={defaultView}
           view={view}
           onView={onViewChange}

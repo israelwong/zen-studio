@@ -24,22 +24,14 @@ import { iniciarVinculacionRecursoGoogleClient } from '@/lib/actions/auth/oauth-
 import { obtenerEstadoConexion } from '@/lib/actions/studio/integrations/google-drive.actions';
 import {
   desvincularRecursoGoogle,
-  obtenerConteoEventosSincronizados,
 } from '@/lib/actions/auth/desconectar-google-calendar.actions';
 import {
   sincronizarTodosEventosPrincipales,
   contarEventosPendientesSincronizar,
 } from '@/lib/integrations/google-calendar/helpers';
-import { GoogleCalendarConnectionModal } from './GoogleCalendarConnectionModal';
+import { GoogleCalendarConnectionModal } from '@/components/shared/integrations/GoogleCalendarConnectionModal';
 import { toast } from 'sonner';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/shadcn/dialog';
+import { GoogleCalendarDisconnectModal } from '@/components/shared/integrations/GoogleCalendarDisconnectModal';
 
 interface GoogleCalendarIntegrationProps {
   studioSlug: string;
@@ -60,9 +52,6 @@ export function GoogleCalendarIntegration({
   const [showConnectionModal, setShowConnectionModal] = useState(false);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
-  const [limpiarEventos, setLimpiarEventos] = useState(false);
-  const [eventosSincronizados, setEventosSincronizados] = useState<number | null>(null);
-  const [cargandoConteo, setCargandoConteo] = useState(false);
   const [sincronizando, setSincronizando] = useState(false);
   const [eventosPendientes, setEventosPendientes] = useState<number | null>(null);
 
@@ -135,29 +124,6 @@ export function GoogleCalendarIntegration({
     loadConnectionStatus();
   }, [loadConnectionStatus]);
 
-  // Cargar conteo de eventos cuando se abre el modal
-  useEffect(() => {
-    if (showDisconnectModal && state === 'connected') {
-      cargarConteoEventos();
-    }
-  }, [showDisconnectModal, state]);
-
-  const cargarConteoEventos = async () => {
-    setCargandoConteo(true);
-    try {
-      const result = await obtenerConteoEventosSincronizados(studioSlug);
-      if (result.success && result.total !== undefined) {
-        setEventosSincronizados(result.total);
-      } else {
-        setEventosSincronizados(0);
-      }
-    } catch (error) {
-      console.error('Error cargando conteo de eventos:', error);
-      setEventosSincronizados(0);
-    } finally {
-      setCargandoConteo(false);
-    }
-  };
 
   useEffect(() => {
     // Verificar parámetros de URL para mensajes de error/éxito
@@ -257,7 +223,7 @@ export function GoogleCalendarIntegration({
     }
   };
 
-  const handleDisconnect = async () => {
+  const handleConfirmDisconnect = async (limpiarEventos: boolean) => {
     setDisconnecting(true);
     try {
       const result = await desvincularRecursoGoogle(studioSlug, limpiarEventos);
@@ -271,8 +237,6 @@ export function GoogleCalendarIntegration({
           toast.success('Google Calendar desconectado. Los eventos se mantienen en tu calendario.');
         }
         setShowDisconnectModal(false);
-        setLimpiarEventos(false);
-        setEventosSincronizados(null);
         await loadConnectionStatus();
 
         // Disparar evento personalizado para actualizar AppHeader en tiempo real
@@ -460,121 +424,13 @@ export function GoogleCalendarIntegration({
       />
 
       {/* Modal de Confirmación para Desconectar */}
-      <Dialog
-        open={showDisconnectModal}
-        onOpenChange={(open) => {
-          setShowDisconnectModal(open);
-          if (!open) {
-            setLimpiarEventos(false);
-            setEventosSincronizados(null);
-          }
-        }}
-      >
-        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-zinc-100">
-              Desconectar Google Calendar
-            </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              {cargandoConteo ? (
-                'Cargando información...'
-              ) : eventosSincronizados !== null && eventosSincronizados > 0 ? (
-                <>
-                  Tienes <span className="text-zinc-200 font-medium">{eventosSincronizados}</span>{' '}
-                  {eventosSincronizados === 1 ? 'tarea sincronizada' : 'tareas sincronizadas'} en
-                  tu Google Calendar. ¿Qué deseas hacer con estos eventos?
-                </>
-              ) : (
-                '¿Estás seguro de que deseas desconectar Google Calendar? Las tareas dejarán de sincronizarse automáticamente.'
-              )}
-            </DialogDescription>
-          </DialogHeader>
-
-          {eventosSincronizados !== null && eventosSincronizados > 0 && (
-            <div className="space-y-3 py-4">
-              <div
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${!limpiarEventos
-                  ? 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
-                  : 'bg-zinc-800 border-zinc-600'
-                  }`}
-                onClick={() => setLimpiarEventos(false)}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="radio"
-                    checked={!limpiarEventos}
-                    onChange={() => setLimpiarEventos(false)}
-                    className="mt-1 h-4 w-4 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-zinc-900 border-zinc-600 bg-zinc-800"
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-zinc-200 mb-1">
-                      Solo desconectar
-                    </div>
-                    <div className="text-xs text-zinc-400">
-                      Mantener los eventos actuales en tu Google Calendar. Solo se detendrá la
-                      sincronización automática.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${limpiarEventos
-                  ? 'bg-red-950/20 border-red-900/50 hover:border-red-900/70'
-                  : 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
-                  }`}
-                onClick={() => setLimpiarEventos(true)}
-              >
-                <div className="flex items-start gap-3">
-                  <input
-                    type="radio"
-                    checked={limpiarEventos}
-                    onChange={() => setLimpiarEventos(true)}
-                    className="mt-1 h-4 w-4 text-red-600 focus:ring-red-500 focus:ring-offset-zinc-900 border-zinc-600 bg-zinc-800"
-                  />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-zinc-200 mb-1">
-                      Limpiar y desconectar
-                    </div>
-                    <div className="text-xs text-zinc-400">
-                      Al elegir esta opción, se eliminarán de tu Google Calendar tanto las fechas
-                      de eventos principales (citas y fechas de cobertura) como las tareas
-                      operativas asignadas a tu equipo (cronograma). Esta acción no se puede
-                      deshacer.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter className="gap-2">
-            <ZenButton
-              variant="outline"
-              onClick={() => {
-                setShowDisconnectModal(false);
-                setLimpiarEventos(false);
-                setEventosSincronizados(null);
-              }}
-              disabled={disconnecting}
-            >
-              Cancelar
-            </ZenButton>
-            <ZenButton
-              variant="destructive"
-              onClick={handleDisconnect}
-              loading={disconnecting}
-              loadingText={
-                limpiarEventos && eventosSincronizados && eventosSincronizados > 0
-                  ? 'Limpiando eventos...'
-                  : 'Desconectando...'
-              }
-            >
-              {limpiarEventos ? 'Limpiar y Desconectar' : 'Desconectar'}
-            </ZenButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <GoogleCalendarDisconnectModal
+        isOpen={showDisconnectModal}
+        onClose={() => setShowDisconnectModal(false)}
+        onConfirm={handleConfirmDisconnect}
+        studioSlug={studioSlug}
+        isDisconnecting={disconnecting}
+      />
     </>
   );
 }

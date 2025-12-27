@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@supabase/ssr';
 import {
   procesarUsuarioOAuth,
   vincularRecursoGoogle,
 } from '@/lib/actions/auth/oauth.actions';
+import { procesarCallbackGoogleCalendar } from '@/lib/actions/auth/oauth-calendar.actions';
+import { procesarCallbackGoogle } from '@/lib/actions/studio/integrations/google-drive.actions';
 
 /**
  * Callback de Supabase Auth OAuth
@@ -61,7 +63,15 @@ function getSafeRedirectUrl(
   request: NextRequest
 ): string {
   if (next && isValidInternalUrl(next)) {
-    return next;
+    // Limpiar parámetros de error/success previos para evitar acumulación
+    try {
+      const url = new URL(next, request.url);
+      // Mantener solo el pathname, eliminar todos los query params
+      return url.pathname;
+    } catch {
+      // Si falla el parseo, usar next tal cual
+      return next;
+    }
   }
   return fallback;
 }
@@ -70,18 +80,107 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
+  const state = searchParams.get('state'); // State de OAuth directo (Google)
   const next = searchParams.get('next'); // URL de origen para redirección
   const type = searchParams.get('type'); // Tipo de flujo: 'link_resource' o null (login)
   const studioSlug = searchParams.get('studioSlug'); // Slug del studio (solo para link_resource)
+  const resourceType = searchParams.get('resourceType') as 'calendar' | 'drive' | null; // Tipo de recurso: 'calendar' | 'drive'
 
   // Debug: Log de parámetros recibidos
   console.log('[OAuth Callback] Parámetros recibidos:', {
     hasCode: !!code,
     hasError: !!error,
+    hasState: !!state,
     next,
     type,
     studioSlug,
   });
+
+  // Si hay state, es OAuth directo de Google (Calendar o Drive) - NO usa Supabase Auth
+  // Esto NO interfiere con la sesión del usuario porque no pasa por Supabase Auth
+  if (state && code) {
+    console.log('[OAuth Callback] Flujo OAuth directo de Google (sin Supabase Auth)');
+    
+    try {
+      // Decodificar state para obtener información
+      let stateData: { studioSlug?: string; returnUrl?: string; resourceType?: string };
+      try {
+        stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+      } catch {
+        return NextResponse.redirect(
+          new URL('/login?error=invalid_state', request.url)
+        );
+      }
+
+      const studioSlugFromState = stateData.studioSlug;
+      const returnUrl = stateData.returnUrl || null;
+      const stateResourceType = stateData.resourceType;
+
+      // Si es Calendar, procesar con la función de Calendar
+      if (stateResourceType === 'calendar' && studioSlugFromState) {
+        const result = await procesarCallbackGoogleCalendar(code, state);
+        
+        if (!result.success) {
+          const redirectPath = getSafeRedirectUrl(
+            returnUrl,
+            `/${studioSlugFromState}/studio/config/integraciones`,
+            request
+          );
+          return NextResponse.redirect(
+            new URL(`${redirectPath}?error=${encodeURIComponent(result.error || 'Error al conectar')}`, request.url)
+          );
+        }
+
+        // Redirigir con éxito
+        const redirectPath = getSafeRedirectUrl(
+          result.returnUrl || returnUrl,
+          `/${result.studioSlug || studioSlugFromState}/studio/config/integraciones`,
+          request
+        );
+        const redirectUrl = new URL(redirectPath, request.url);
+        redirectUrl.searchParams.set('success', 'google_connected');
+        
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Si es Drive o no tiene resourceType (compatibilidad con versiones anteriores)
+      if ((stateResourceType === 'drive' || !stateResourceType) && studioSlugFromState) {
+        const result = await procesarCallbackGoogle(code, state);
+        
+        if (!result.success) {
+          const redirectPath = getSafeRedirectUrl(
+            returnUrl,
+            `/${studioSlugFromState}/studio/config/integraciones`,
+            request
+          );
+          return NextResponse.redirect(
+            new URL(`${redirectPath}?error=${encodeURIComponent(result.error || 'Error al conectar')}`, request.url)
+          );
+        }
+
+        // Redirigir con éxito
+        const redirectPath = getSafeRedirectUrl(
+          result.returnUrl || returnUrl,
+          `/${result.studioSlug || studioSlugFromState}/studio/config/integraciones`,
+          request
+        );
+        const redirectUrl = new URL(redirectPath, request.url);
+        redirectUrl.searchParams.set('success', 'google_connected');
+        
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Si no hay studioSlug, error
+      return NextResponse.redirect(
+        new URL('/login?error=invalid_state', request.url)
+      );
+    } catch (error) {
+      console.error('[OAuth Callback] Error procesando OAuth directo:', error);
+      return NextResponse.redirect(
+        new URL('/login?error=oauth_error', request.url)
+      );
+    }
+  }
 
   // Manejar error de OAuth (usuario canceló)
   if (error) {
@@ -118,22 +217,137 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // IMPORTANTE: Logging detallado de cookies antes de procesar
+    const allCookies = request.cookies.getAll();
+    console.log('🍪 [OAuth Callback] ========================================');
+    console.log('🍪 [OAuth Callback] Cookies presentes:', allCookies.map(c => c.name));
+    console.log('🍪 [OAuth Callback] Total de cookies:', allCookies.length);
+    
+    // Filtrar cookies de PKCE para debugging
+    const pkceCookies = allCookies.filter(c => 
+      c.name.includes('code-verifier') || c.name.includes('code-challenge')
+    );
+    console.log('🔐 [OAuth Callback] Cookies de PKCE encontradas:', pkceCookies.length);
+    pkceCookies.forEach(c => {
+      console.log('🔐 [OAuth Callback] Cookie PKCE:', {
+        name: c.name,
+        hasValue: !!c.value,
+        valueLength: c.value?.length || 0,
+        valuePreview: c.value ? c.value.substring(0, 50) + '...' : 'EMPTY ❌',
+        isEmpty: !c.value || c.value?.length === 0,
+      });
+    });
+    
+    // Si el code_verifier está vacío, mostrar advertencia clara
+    const codeVerifierCookie = pkceCookies.find(c => c.name.includes('code-verifier'));
+    if (codeVerifierCookie) {
+      if (!codeVerifierCookie.value || codeVerifierCookie.value.length === 0) {
+        console.error('❌ [OAuth Callback] ERROR CRÍTICO: Code verifier está VACÍO');
+        console.error('❌ [OAuth Callback] Esto causará un error en exchangeCodeForSession');
+        console.error('❌ [OAuth Callback] Cookie name:', codeVerifierCookie.name);
+        console.error('❌ [OAuth Callback] Cookie value:', codeVerifierCookie.value);
+      } else {
+        console.log('✅ [OAuth Callback] Code verifier tiene valor:', codeVerifierCookie.value.length, 'caracteres');
+      }
+    } else {
+      console.error('❌ [OAuth Callback] ERROR: No se encontró cookie de code-verifier');
+    }
+    console.log('🍪 [OAuth Callback] ========================================');
+
     // IMPORTANTE: Para vinculación de recurso, guardar cookies originales antes de exchangeCodeForSession
     // porque exchangeCodeForSession sobrescribe las cookies con una sesión temporal
-    let originalCookies: { name: string; value: string }[] = [];
+    let originalSessionCookies: { name: string; value: string }[] = [];
     if (type === 'link_resource') {
-      // Guardar todas las cookies de sesión originales
+      // Guardar TODAS las cookies de Supabase excepto las de PKCE
+      // Las cookies de PKCE se necesitan para exchangeCodeForSession
       request.cookies.getAll().forEach(cookie => {
-        if (cookie.name.startsWith('sb-') || cookie.name.includes('supabase')) {
-          originalCookies.push({ name: cookie.name, value: cookie.value });
+        // Guardar cookies de sesión pero NO las de PKCE
+        // PKCE cookies: sb-*-auth-token-code-verifier, sb-*-auth-token-code-challenge
+        // Session cookies: sb-*-auth-token (sin code-verifier ni code-challenge)
+        const isPkceCookie = 
+          cookie.name.includes('code-verifier') || 
+          cookie.name.includes('code-challenge')
+        
+        if (
+          cookie.name.startsWith('sb-') && 
+          !isPkceCookie
+        ) {
+          originalSessionCookies.push({ name: cookie.name, value: cookie.value });
         }
       });
-      console.log('[OAuth Callback] Cookies originales guardadas:', originalCookies.length);
+      console.log('[OAuth Callback] Cookies de sesión originales guardadas:', originalSessionCookies.length);
+      if (originalSessionCookies.length > 0) {
+        console.log('[OAuth Callback] Nombres de cookies guardadas:', originalSessionCookies.map(c => c.name));
+      } else {
+        console.warn('[OAuth Callback] ⚠️ No se encontraron cookies de sesión originales - el usuario podría perder la sesión');
+      }
     }
 
-    const supabase = await createClient();
+    // CRUCIAL: En Next.js 14+, debemos usar createServerClient directamente
+    // con las cookies del request para asegurar que el code_verifier esté disponible
+    // Crear respuesta temporal para manejar cookies
+    const response = NextResponse.next();
+    
+    // Crear cliente de Supabase usando las cookies del request directamente
+    // Esto asegura que el code_verifier esté disponible cuando se necesite
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            // Forzar lectura de cookies del request
+            // Decodificar valores si están codificados (por si usamos encodeURIComponent)
+            const cookies = request.cookies.getAll();
+            return cookies.map(cookie => {
+              // Si el valor parece estar codificado (contiene %), decodificarlo
+              if (cookie.value && cookie.value.includes('%')) {
+                try {
+                  const decoded = decodeURIComponent(cookie.value);
+                  return { name: cookie.name, value: decoded };
+                } catch {
+                  // Si falla la decodificación, usar el valor original
+                  return cookie;
+                }
+              }
+              return cookie;
+            });
+          },
+          setAll(cookiesToSet) {
+            // Guardar cookies en la respuesta
+            cookiesToSet.forEach(({ name, value, options }) => {
+              request.cookies.set(name, value);
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false, // No detectar sesión en URL para evitar interferencias
+        },
+      }
+    );
+
+    // Helper para crear respuesta de redirección con cookies de Supabase
+    // Se define aquí para poder usarlo después de exchangeCodeForSession
+    const createRedirectResponse = (url: URL) => {
+      const redirectResponse = NextResponse.redirect(url);
+      // Copiar todas las cookies establecidas por Supabase durante exchangeCodeForSession
+      response.cookies.getAll().forEach(cookie => {
+        redirectResponse.cookies.set(cookie.name, cookie.value, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        });
+      });
+      return redirectResponse;
+    };
 
     // Intercambiar código por sesión
+    // Esto requiere que las cookies de PKCE estén disponibles en el request
+    console.log('[OAuth Callback] Intentando intercambiar código por sesión...');
     const { data, error: exchangeError } =
       await supabase.auth.exchangeCodeForSession(code);
 
@@ -142,8 +356,25 @@ export async function GET(request: NextRequest) {
         '[OAuth Callback] Error intercambiando código:',
         exchangeError
       );
+      
+      // Si es vinculación de recurso, redirigir al studio con error
+      if (type === 'link_resource' && studioSlug) {
+        const redirectPath = getSafeRedirectUrl(
+          next,
+          `/${studioSlug}/studio/config/integraciones`,
+          request
+        );
+        
+        // Limpiar la URL antes de agregar el parámetro de error
+        const redirectUrl = new URL(redirectPath, request.url);
+        redirectUrl.searchParams.delete('success'); // Limpiar success si existe
+        redirectUrl.searchParams.set('error', 'auth_failed');
+        
+        return createRedirectResponse(redirectUrl);
+      }
+      
       const loginRedirect = getSafeRedirectUrl(next, '/login', request);
-      return NextResponse.redirect(
+      return createRedirectResponse(
         new URL(`${loginRedirect}?error=auth_failed`, request.url)
       );
     }
@@ -151,7 +382,7 @@ export async function GET(request: NextRequest) {
     if (!data.user || !data.session) {
       console.error('[OAuth Callback] No se pudo obtener usuario o sesión');
       const loginRedirect = getSafeRedirectUrl(next, '/login', request);
-      return NextResponse.redirect(
+      return createRedirectResponse(
         new URL(`${loginRedirect}?error=auth_failed`, request.url)
       );
     }
@@ -169,7 +400,8 @@ export async function GET(request: NextRequest) {
       // No crea usuario, solo actualiza tokens del Studio
       const result = await vincularRecursoGoogle(
         studioSlug,
-        data.session
+        data.session,
+        resourceType || undefined // Pasar tipo de recurso si está disponible
       );
 
       if (!result.success) {
@@ -183,7 +415,7 @@ export async function GET(request: NextRequest) {
         
         console.log('[OAuth Callback] Redirigiendo a (error):', redirectPath);
         
-        return NextResponse.redirect(
+        return createRedirectResponse(
           new URL(
             `${redirectPath}?error=${encodeURIComponent(
               result.error || 'Error al vincular recurso'
@@ -209,27 +441,60 @@ export async function GET(request: NextRequest) {
       console.log('[OAuth Callback] Redirigiendo a (éxito):', redirectPath);
       
       // Construir URL completa con parámetro de éxito
+      // IMPORTANTE: Limpiar cualquier parámetro de error previo antes de agregar success
       const redirectUrl = new URL(redirectPath, request.url);
+      redirectUrl.searchParams.delete('error'); // Limpiar error si existe
       redirectUrl.searchParams.set('success', 'google_connected');
       
-      // IMPORTANTE: Restaurar cookies originales para mantener la sesión del usuario
-      // El OAuth creó una sesión temporal que sobrescribió las cookies originales
-      const response = NextResponse.redirect(redirectUrl);
+      // IMPORTANTE: Restaurar cookies de sesión originales para mantener la sesión del usuario
+      // El OAuth creó una sesión temporal que sobrescribió las cookies de sesión originales
+      const finalResponse = createRedirectResponse(redirectUrl);
       
-      if (originalCookies.length > 0) {
-        console.log('[OAuth Callback] Restaurando cookies originales del usuario');
-        // Restaurar cada cookie original
-        originalCookies.forEach(cookie => {
-          response.cookies.set(cookie.name, cookie.value, {
+      if (originalSessionCookies.length > 0) {
+        console.log('[OAuth Callback] Restaurando cookies de sesión originales del usuario:', originalSessionCookies.length);
+        // Restaurar cada cookie de sesión original con las mismas opciones que Supabase usa
+        originalSessionCookies.forEach(cookie => {
+          finalResponse.cookies.set(cookie.name, cookie.value, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             path: '/',
+            // Mantener maxAge si estaba presente (Supabase usa 60 días por defecto)
+            maxAge: 60 * 60 * 24 * 60, // 60 días
           });
+          console.log('[OAuth Callback] Cookie restaurada:', cookie.name);
         });
+      } else {
+        console.warn('[OAuth Callback] ⚠️ No se encontraron cookies de sesión originales');
+        console.log('[OAuth Callback] Cookies disponibles en el request:', request.cookies.getAll().map(c => c.name));
+        
+        // Si no hay cookies originales, mantener las cookies de la sesión temporal de OAuth
+        // Esto evita que el usuario pierda la sesión completamente
+        // Las cookies de OAuth temporal se limpiarán cuando el usuario haga logout o expire
+        const tempSessionCookies = response.cookies.getAll().filter(c => 
+          c.name.startsWith('sb-') && 
+          c.name.includes('auth-token') &&
+          !c.name.includes('code-verifier') &&
+          !c.name.includes('code-challenge')
+        );
+        
+        if (tempSessionCookies.length > 0) {
+          console.log('[OAuth Callback] Manteniendo cookies de sesión temporal de OAuth:', tempSessionCookies.length);
+          tempSessionCookies.forEach(cookie => {
+            finalResponse.cookies.set(cookie.name, cookie.value, {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              path: '/',
+              maxAge: 60 * 60 * 24 * 60, // 60 días
+            });
+          });
+        } else {
+          console.log('[OAuth Callback] No hay cookies de sesión disponibles - el usuario necesitará iniciar sesión');
+        }
       }
       
-      return response;
+      return finalResponse;
     }
 
     // FLUJO: Login de Usuario (flujo normal)

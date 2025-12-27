@@ -66,6 +66,7 @@ export function GoogleDriveFolderPicker({
   const loadFolders = async (folderId: string | null) => {
     try {
       setLoading(true);
+      
       let result;
 
       if (folderId) {

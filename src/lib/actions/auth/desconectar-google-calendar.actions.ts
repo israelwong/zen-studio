@@ -358,6 +358,11 @@ export async function desvincularRecursoGoogle(
       `[Desconexión] ✅ Google Calendar desconectado de ${studioSlug}. Eventos eliminados: ${eventosEliminados}`
     );
 
+    // Disparar evento personalizado para que AppHeader actualice el estado
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('google-calendar-connection-changed'));
+    }
+
     return {
       success: true,
       eventosEliminados,

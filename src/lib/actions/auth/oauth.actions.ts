@@ -256,10 +256,15 @@ export async function procesarUsuarioOAuth(
  * 
  * Permite que un usuario autenticado con Cuenta A
  * conecte Calendar/Drive de Cuenta B al Studio
+ * 
+ * @param studioSlug - Slug del estudio
+ * @param session - Sesión de OAuth con tokens de Google
+ * @param resourceType - Tipo de recurso: 'calendar' | 'drive' | undefined (auto-detecta desde scopes)
  */
 export async function vincularRecursoGoogle(
   studioSlug: string,
-  session: Session
+  session: Session,
+  resourceType?: 'calendar' | 'drive'
 ): Promise<VincularRecursoGoogleResult> {
   try {
     if (!session?.provider_refresh_token || !session?.provider_token) {
@@ -320,18 +325,36 @@ export async function vincularRecursoGoogle(
     // Encriptar refresh_token
     const encryptedToken = await encryptToken(session.provider_refresh_token);
 
-    // Determinar scopes según el tipo de flujo (Calendar o Drive)
-    // El state contiene información sobre qué recurso se está vinculando
-    // Por defecto, asumimos Calendar (ya que esta función se usa desde iniciarVinculacionRecursoGoogleClient)
-    const scopes = [
-      'https://www.googleapis.com/auth/calendar',
-      'https://www.googleapis.com/auth/calendar.events',
-    ];
+    // Determinar scopes según el tipo de recurso
+    // Si no se especifica, intentar detectar desde los scopes otorgados
+    let scopes: string[] = [];
+    
+    if (resourceType === 'drive') {
+      scopes = ['https://www.googleapis.com/auth/drive.readonly'];
+    } else if (resourceType === 'calendar') {
+      scopes = [
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events',
+      ];
+    } else {
+      // Auto-detectar desde los scopes otorgados en la sesión
+      // Si la sesión tiene scopes de Drive, asumir Drive; si no, Calendar
+      const grantedScopes = session.provider_metadata?.scopes || '';
+      if (grantedScopes.includes('drive.readonly') || grantedScopes.includes('drive')) {
+        scopes = ['https://www.googleapis.com/auth/drive.readonly'];
+      } else {
+        // Por defecto, Calendar (compatibilidad con flujo existente)
+        scopes = [
+          'https://www.googleapis.com/auth/calendar',
+          'https://www.googleapis.com/auth/calendar.events',
+        ];
+      }
+    }
 
     // Obtener scopes existentes para no sobrescribirlos si hay múltiples conexiones
     const studioActual = await prisma.studios.findUnique({
       where: { id: studio.id },
-      select: { google_oauth_scopes: true },
+      select: { google_oauth_scopes: true, google_integrations_config: true },
     });
 
     let scopesFinales = scopes;
@@ -346,6 +369,32 @@ export async function vincularRecursoGoogle(
       }
     }
 
+    // Determinar qué integraciones están habilitadas según los scopes
+    const hasDriveScope = scopesFinales.includes('https://www.googleapis.com/auth/drive.readonly');
+    const hasCalendarScope =
+      scopesFinales.includes('https://www.googleapis.com/auth/calendar') ||
+      scopesFinales.includes('https://www.googleapis.com/auth/calendar.events');
+
+    // Obtener configuración existente de integraciones
+    let integrationsConfig: any = {};
+    if (studioActual?.google_integrations_config) {
+      try {
+        integrationsConfig = typeof studioActual.google_integrations_config === 'string'
+          ? JSON.parse(studioActual.google_integrations_config)
+          : studioActual.google_integrations_config;
+      } catch {
+        integrationsConfig = {};
+      }
+    }
+
+    // Actualizar configuración según los scopes
+    if (hasDriveScope) {
+      integrationsConfig.drive = { enabled: true };
+    }
+    if (hasCalendarScope) {
+      integrationsConfig.calendar = { enabled: true };
+    }
+
     // Actualizar studio con tokens de Google
     // IMPORTANTE: Esto sobrescribe cualquier conexión existente
     // El usuario está explícitamente conectando una nueva cuenta
@@ -357,10 +406,7 @@ export async function vincularRecursoGoogle(
         google_oauth_name: googleName, // Nombre de la cuenta de Google
         google_oauth_scopes: JSON.stringify(scopesFinales),
         is_google_connected: true,
-        google_integrations_config: {
-          calendar: { enabled: true },
-          // No habilitar drive automáticamente - se conectará por separado
-        },
+        google_integrations_config: integrationsConfig,
       },
     });
 

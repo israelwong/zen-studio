@@ -90,11 +90,20 @@ export function EventDeliverablesCard({
     try {
       setIsCheckingGoogle(true);
       const status = await obtenerEstadoConexion(studioSlug);
-      const isConnected = status.isConnected || false;
-      setIsGoogleConnected(isConnected);
-      // Ya no necesitamos access token para el selector personalizado
+
+      // Validación correcta: solo verificar si tiene scopes de Drive
+      // No usar lógica legacy de entregables o configuración
+      const hasDriveScope = status.scopes?.some(
+        (scope) => scope.includes('drive.readonly') || scope.includes('drive')
+      ) ?? false;
+
+      // También verificar que tenga refresh token (conexión activa)
+      const hasActiveConnection = hasDriveScope && !!status.email;
+
+      setIsGoogleConnected(hasActiveConnection);
     } catch (error) {
       console.error('Error checking Google connection:', error);
+      setIsGoogleConnected(false);
     } finally {
       setIsCheckingGoogle(false);
     }
@@ -196,8 +205,16 @@ export function EventDeliverablesCard({
   };
 
   const handleGoogleConnected = async () => {
-    setIsGoogleConnected(true);
-    // Ya no necesitamos access token para el selector personalizado
+    await checkGoogleConnection();
+  };
+
+  const handleGoogleDisconnected = async () => {
+    await checkGoogleConnection();
+    // Si estaba seleccionada una carpeta, limpiarla
+    if (selectedFolder) {
+      setSelectedFolder(null);
+      setFormData({ ...formData, google_folder_id: '', name: formData.name || '' });
+    }
   };
 
   const handleFolderSelect = (folder: { id: string; name: string; url: string }) => {
@@ -520,7 +537,8 @@ export function EventDeliverablesCard({
                     variant="compact"
                     returnUrl={`${window.location.pathname}?google_connected=true&return_to_modal=true`}
                     onConnected={handleGoogleConnected}
-                    showDisconnect={false}
+                    onDisconnected={handleGoogleDisconnected}
+                    showDisconnect={true}
                   />
                   <div>
                     <label className="text-sm font-medium text-zinc-300 mb-1.5 block">
