@@ -559,33 +559,6 @@ export async function obtenerEstadoConexion(studioSlug: string): Promise<GoogleC
       }
     }
 
-    // Verificar si hay entregables con google_folder_id (indica conexión previa de Drive)
-    const tieneEntregablesDrive = await prisma.studio_event_deliverables.count({
-      where: {
-        event: {
-          studio_id: studio.id,
-        },
-        google_folder_id: {
-          not: null,
-        },
-        delivery_mode: 'google_drive',
-      },
-    });
-
-    // Verificar configuración de integraciones
-    let driveConfigEnabled = false;
-    if (studio.google_integrations_config) {
-      try {
-        const config =
-          typeof studio.google_integrations_config === 'string'
-            ? JSON.parse(studio.google_integrations_config)
-            : studio.google_integrations_config;
-        driveConfigEnabled = config?.drive?.enabled === true;
-      } catch {
-        // Si no se puede parsear, continuar sin error
-      }
-    }
-
     // Determinar si Drive está conectado:
     // SOLO verificar si tiene scope de Drive (validación correcta)
     // NO usar lógica legacy de entregables o configuración
