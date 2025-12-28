@@ -144,7 +144,17 @@ export async function procesarCallbackGoogleContacts(
 
     const tokens = await tokenResponse.json();
 
+    // ⚠️ CRÍTICO: Log para verificar refresh_token
+    console.log('[procesarCallbackGoogleContacts] Tokens recibidos:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      tokenType: tokens.token_type,
+      expiresIn: tokens.expires_in,
+      scope: tokens.scope,
+    });
+
     if (!tokens.refresh_token) {
+      console.error('[procesarCallbackGoogleContacts] ERROR: No se recibió refresh_token');
       return {
         success: false,
         error:
@@ -237,17 +247,27 @@ export async function procesarCallbackGoogleContacts(
       },
     };
 
+    // ⚠️ CRÍTICO: Solo actualizar refresh_token si no es null para evitar borrar tokens válidos
+    const updateData: any = {
+      google_oauth_email: email,
+      google_oauth_name: name,
+      google_oauth_scopes: JSON.stringify(scopesFinales),
+      is_google_connected: true,
+      google_integrations_config: integrationsConfig,
+    };
+
+    // Solo actualizar refresh_token si tenemos uno nuevo (no null)
+    if (encryptedRefreshToken) {
+      updateData.google_oauth_refresh_token = encryptedRefreshToken;
+      console.log('[procesarCallbackGoogleContacts] Actualizando refresh_token');
+    } else {
+      console.warn('[procesarCallbackGoogleContacts] WARNING: encryptedRefreshToken es null, no se actualizará');
+    }
+
     // Guardar tokens en DB
     await prisma.studios.update({
       where: { slug: studioSlug },
-      data: {
-        google_oauth_refresh_token: encryptedRefreshToken,
-        google_oauth_email: email,
-        google_oauth_name: name,
-        google_oauth_scopes: JSON.stringify(scopesFinales),
-        is_google_connected: true,
-        google_integrations_config: integrationsConfig,
-      },
+      data: updateData,
     });
 
     return { success: true, studioSlug, returnUrl: returnUrl || undefined };

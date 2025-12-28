@@ -168,6 +168,12 @@ export async function listFolders(
       mimeType: file.mimeType!,
     }));
   } catch (error: any) {
+    // ⚠️ CRÍTICO: Manejar 401 (Unauthorized) - token expirado, intentar refrescar
+    if (error?.code === 401 || error?.response?.status === 401) {
+      console.warn('[listFolders] Token expirado (401), el cliente debería refrescar automáticamente');
+      // El cliente de googleapis debería refrescar automáticamente, pero si falla, necesitamos reconectar
+      throw new Error('Sesión expirada. Por favor, reconecta Google Drive desde la configuración de integraciones.');
+    }
     // Manejar errores de permisos insuficientes
     if (error?.code === 403 || error?.response?.status === 403) {
       console.warn('[listFolders] Permisos insuficientes para listar carpetas de Drive');
@@ -239,6 +245,11 @@ export async function listFolderContents(
       files: sortedFiles,
     };
   } catch (error: any) {
+    // ⚠️ CRÍTICO: Manejar 401 (Unauthorized) - token expirado
+    if (error?.code === 401 || error?.response?.status === 401) {
+      console.warn('[listFolderContents] Token expirado (401)');
+      throw new Error('Sesión expirada. Por favor, reconecta Google Drive desde la configuración de integraciones.');
+    }
     // Si el error es 404, la carpeta no existe
     if (error?.code === 404 || error?.response?.status === 404) {
       throw new Error('CARPETA_NO_ENCONTRADA');

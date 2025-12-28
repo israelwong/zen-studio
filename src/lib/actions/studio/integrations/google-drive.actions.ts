@@ -164,7 +164,17 @@ export async function procesarCallbackGoogle(
 
     const tokens = await tokenResponse.json();
 
+    // ⚠️ CRÍTICO: Log para verificar refresh_token
+    console.log('[procesarCallbackGoogle] Tokens recibidos:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      tokenType: tokens.token_type,
+      expiresIn: tokens.expires_in,
+      scope: tokens.scope,
+    });
+
     if (!tokens.refresh_token) {
+      console.error('[procesarCallbackGoogle] ERROR: No se recibió refresh_token');
       return {
         success: false,
         error: 'No se recibió refresh_token. Asegúrate de incluir prompt=consent en la URL de OAuth.',
@@ -227,19 +237,29 @@ export async function procesarCallbackGoogle(
       scopesFinales.includes('https://www.googleapis.com/auth/calendar') ||
       scopesFinales.includes('https://www.googleapis.com/auth/calendar.events');
 
+    // ⚠️ CRÍTICO: Solo actualizar refresh_token si no es null para evitar borrar tokens válidos
+    const updateData: any = {
+      google_oauth_email: email,
+      google_oauth_scopes: JSON.stringify(scopesFinales),
+      is_google_connected: true,
+      google_integrations_config: {
+        drive: { enabled: hasDriveScope },
+        calendar: { enabled: hasCalendarScope },
+      },
+    };
+
+    // Solo actualizar refresh_token si tenemos uno nuevo (no null)
+    if (encryptedRefreshToken) {
+      updateData.google_oauth_refresh_token = encryptedRefreshToken;
+      console.log('[procesarCallbackGoogle] Actualizando refresh_token');
+    } else {
+      console.warn('[procesarCallbackGoogle] WARNING: encryptedRefreshToken es null, no se actualizará');
+    }
+
     // Guardar tokens en DB
     await prisma.studios.update({
       where: { slug: studioSlug },
-      data: {
-        google_oauth_refresh_token: encryptedRefreshToken,
-        google_oauth_email: email,
-        google_oauth_scopes: JSON.stringify(scopesFinales),
-        is_google_connected: true,
-        google_integrations_config: {
-          drive: { enabled: hasDriveScope },
-          calendar: { enabled: hasCalendarScope },
-        },
-      },
+      data: updateData,
     });
 
     return { success: true, studioSlug, returnUrl: returnUrl || undefined };
@@ -572,26 +592,40 @@ export async function obtenerEstadoConexion(studioSlug: string): Promise<GoogleC
       }
     }
 
-    // Determinar si Drive está conectado:
-    // SOLO verificar si tiene scope de Drive (validación correcta)
-    // NO usar lógica legacy de entregables o configuración
+    // ⚠️ CRÍTICO: Independencia de recursos - cada recurso se evalúa independientemente
+    // Un recurso está conectado si tiene su scope Y tiene refresh_token Y tiene email
     const hasDriveScope = scopes.some(
       (scope) => scope.includes('drive.readonly') || scope.includes('drive')
     );
-    const driveConnected = hasDriveScope && studio.google_oauth_refresh_token !== null;
-
-    // Para isConnected general: debe tener token Y (Drive o Calendar conectado)
     const hasCalendarScope = scopes.some(
       (scope) => scope.includes('calendar') || scope.includes('calendar.events')
     );
+    const hasContactsScope = scopes.some(
+      (scope) => scope.includes('contacts')
+    );
+
+    // Cada recurso es independiente: necesita scope + token + email
+    const driveConnected = hasDriveScope && 
+      studio.google_oauth_refresh_token !== null && 
+      studio.google_oauth_email !== null;
+    
+    const calendarConnected = hasCalendarScope && 
+      studio.google_oauth_refresh_token !== null && 
+      studio.google_oauth_email !== null;
+    
+    const contactsConnected = hasContactsScope && 
+      studio.google_oauth_refresh_token !== null && 
+      studio.google_oauth_email !== null;
+
+    // isConnected general: debe tener token Y email Y al menos un recurso conectado
     const isConnectedGeneral =
-      studio.is_google_connected &&
       studio.google_oauth_refresh_token !== null &&
-      (hasDriveScope || hasCalendarScope);
+      studio.google_oauth_email !== null &&
+      (driveConnected || calendarConnected || contactsConnected);
 
     const result = {
       success: true,
-      isConnected: isConnectedGeneral || driveConnected,
+      isConnected: isConnectedGeneral,
       email: studio.google_oauth_email || undefined,
       name: studio.google_oauth_name || undefined,
       scopes: scopes.length > 0 ? scopes : undefined,
