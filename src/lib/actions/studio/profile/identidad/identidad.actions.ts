@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { retryDatabaseOperation } from '@/lib/actions/utils/database-retry';
 import { revalidatePath } from 'next/cache';
+import { renombrarGrupoContactosZEN } from '@/lib/integrations/google-contacts.client';
 import {
     IdentidadUpdateSchema,
     LogoUpdateSchema,
@@ -131,10 +132,34 @@ export async function updateStudioName(
 
         const validated = StudioNameUpdateSchema.parse(data);
 
+        // Obtener nombre anterior y configuración de Contacts
+        const studioBefore = await prisma.studios.findUnique({
+            where: { id: studio.id },
+            select: { studio_name: true, google_integrations_config: true },
+        });
+
         await prisma.studios.update({
             where: { id: studio.id },
             data: { studio_name: validated.studio_name }
         });
+
+        // ⚠️ CRÍTICO: Si cambió el nombre Y tiene Contacts conectado, renombrar grupo
+        if (studioBefore && studioBefore.studio_name !== validated.studio_name) {
+            try {
+                const contactsConfig = studioBefore.google_integrations_config as any;
+                if (contactsConfig?.contacts?.enabled && contactsConfig?.contacts?.groupResourceName) {
+                    await renombrarGrupoContactosZEN(
+                        studioSlug,
+                        contactsConfig.contacts.groupResourceName,
+                        validated.studio_name
+                    );
+                    // Actualizar groupResourceName en la configuración (el nombre del grupo cambió pero el resourceName sigue igual)
+                }
+            } catch (error) {
+                // No fallar la actualización si falla el renombrado, solo loguear
+                console.error('[updateStudioName] Error renombrando grupo de contactos:', error);
+            }
+        }
 
         revalidatePath(`/${studioSlug}`);
         revalidatePath(`/${studioSlug}/studio/business/identity`);
@@ -234,6 +259,12 @@ export async function actualizarIdentidadBasica(
             throw new Error("Studio no encontrado");
         }
 
+        // Obtener nombre anterior y configuración de Contacts
+        const studioBefore = await prisma.studios.findUnique({
+            where: { id: studio.id },
+            select: { studio_name: true, google_integrations_config: true },
+        });
+
         const validatedData = IdentidadUpdateSchema.parse(data);
 
         const studioActualizado = await prisma.studios.update({
@@ -252,6 +283,23 @@ export async function actualizarIdentidadBasica(
                 isotipo_url: true,
             },
         });
+
+        // ⚠️ CRÍTICO: Si cambió el nombre Y tiene Contacts conectado, renombrar grupo
+        if (studioBefore && studioBefore.studio_name !== validatedData.nombre) {
+            try {
+                const contactsConfig = studioBefore.google_integrations_config as any;
+                if (contactsConfig?.contacts?.enabled && contactsConfig?.contacts?.groupResourceName) {
+                    await renombrarGrupoContactosZEN(
+                        studioSlug,
+                        contactsConfig.contacts.groupResourceName,
+                        validatedData.nombre
+                    );
+                }
+            } catch (error) {
+                // No fallar la actualización si falla el renombrado, solo loguear
+                console.error('[actualizarIdentidadBasica] Error renombrando grupo de contactos:', error);
+            }
+        }
 
         revalidatePath(`/${studioSlug}/studio/profile/identidad`);
         return studioActualizado;
@@ -342,6 +390,12 @@ export async function actualizarIdentidadCompleta(
             throw new Error("Studio no encontrado");
         }
 
+        // Obtener nombre anterior y configuración de Contacts
+        const studioBefore = await prisma.studios.findUnique({
+            where: { id: studio.id },
+            select: { studio_name: true, google_integrations_config: true },
+        });
+
         const validatedData = IdentidadUpdateSchema.parse(data);
 
         // Preparar datos de actualización con tipo explícito
@@ -377,6 +431,23 @@ export async function actualizarIdentidadCompleta(
                 website: true,
             },
         });
+
+        // ⚠️ CRÍTICO: Si cambió el nombre Y tiene Contacts conectado, renombrar grupo
+        if (studioBefore && studioBefore.studio_name !== validatedData.nombre) {
+            try {
+                const contactsConfig = studioBefore.google_integrations_config as any;
+                if (contactsConfig?.contacts?.enabled && contactsConfig?.contacts?.groupResourceName) {
+                    await renombrarGrupoContactosZEN(
+                        studioSlug,
+                        contactsConfig.contacts.groupResourceName,
+                        validatedData.nombre
+                    );
+                }
+            } catch (error) {
+                // No fallar la actualización si falla el renombrado, solo loguear
+                console.error('[actualizarIdentidadCompleta] Error renombrando grupo de contactos:', error);
+            }
+        }
 
         // Parsear palabras clave para la respuesta
         let palabrasClave: string[] = [];

@@ -378,6 +378,17 @@ export async function createContact(
       }
     });
 
+    // Sincronizar con Google Contacts (si está conectado)
+    try {
+      const { sincronizarContactoConGoogle } = await import(
+        '@/lib/actions/integrations/google-contacts.actions'
+      );
+      await sincronizarContactoConGoogle(contact.id, studioSlug);
+    } catch (error) {
+      // No fallar la creación si falla la sincronización, solo loguear
+      console.error('[createContact] Error sincronizando con Google Contacts:', error);
+    }
+
     const mappedContact: Contact = {
       id: contact.id,
       studio_id: contact.studio_id,
@@ -540,6 +551,17 @@ export async function updateContact(
         }
       }
     });
+
+    // Sincronizar con Google Contacts (si está conectado)
+    try {
+      const { sincronizarContactoConGoogle } = await import(
+        '@/lib/actions/integrations/google-contacts.actions'
+      );
+      await sincronizarContactoConGoogle(contact.id, studioSlug);
+    } catch (error) {
+      // No fallar la actualización si falla la sincronización, solo loguear
+      console.error('[updateContact] Error sincronizando con Google Contacts:', error);
+    }
 
     const mappedContact: Contact = {
       id: contact.id,

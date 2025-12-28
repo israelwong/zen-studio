@@ -141,6 +141,7 @@ model user_studio_roles {
   assigned_tasks_scheduler  studio_scheduler_event_tasks[]   @relation("TaskAssignedTo")
   completed_tasks_scheduler studio_scheduler_event_tasks[]   @relation("TaskCompletedBy")
   scheduler_task_activities studio_scheduler_task_activity[]
+  google_contact_id          String?
   studio                    studios                          @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   user                      users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -149,6 +150,8 @@ model user_studio_roles {
   @@index([studio_id, is_active])
   @@index([role, is_active])
   @@index([user_id, studio_id, is_active])
+  @@index([google_contact_id])
+  @@index([studio_id, google_contact_id])
 }
 
 model studio_role_permissions {
@@ -1217,6 +1220,7 @@ model studio_contacts {
   referrer_contact_id    String?
   referrer_name          String?
   notes                  String?
+  google_contact_id      String?
   created_at             DateTime                       @default(now())
   updated_at             DateTime                       @updatedAt
   is_test                Boolean                        @default(false)
@@ -1243,6 +1247,8 @@ model studio_contacts {
   @@index([acquisition_channel_id])
   @@index([social_network_id])
   @@index([referrer_contact_id])
+  @@index([google_contact_id])
+  @@index([studio_id, google_contact_id])
 }
 
 model studio_contact_logs {

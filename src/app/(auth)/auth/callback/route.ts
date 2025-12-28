@@ -143,6 +143,39 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(redirectUrl);
       }
 
+      // Si es Contacts, procesar con la función de Contacts
+      if (stateResourceType === 'contacts' && studioSlugFromState) {
+        const { procesarCallbackGoogleContacts } = await import(
+          '@/lib/actions/auth/oauth-contacts.actions'
+        );
+        const result = await procesarCallbackGoogleContacts(code, state);
+
+        if (!result.success) {
+          const redirectPath = getSafeRedirectUrl(
+            returnUrl,
+            `/${studioSlugFromState}/studio/config/integraciones`,
+            request
+          );
+          return NextResponse.redirect(
+            new URL(
+              `${redirectPath}?error=${encodeURIComponent(result.error || 'Error al conectar')}`,
+              request.url
+            )
+          );
+        }
+
+        // Redirigir con éxito
+        const redirectPath = getSafeRedirectUrl(
+          result.returnUrl || returnUrl,
+          `/${result.studioSlug || studioSlugFromState}/studio/config/integraciones`,
+          request
+        );
+        const redirectUrl = new URL(redirectPath, request.url);
+        redirectUrl.searchParams.set('success', 'google_contacts_connected');
+
+        return NextResponse.redirect(redirectUrl);
+      }
+
       // Si es Drive o no tiene resourceType (compatibilidad con versiones anteriores)
       if ((stateResourceType === 'drive' || !stateResourceType) && studioSlugFromState) {
         const result = await procesarCallbackGoogle(code, state);

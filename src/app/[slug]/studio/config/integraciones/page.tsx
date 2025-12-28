@@ -14,6 +14,7 @@ import {
 import {
   CalendarIntegrationCard,
   GoogleDriveIntegrationCard,
+  GoogleContactsIntegrationCard,
   ManychatIntegrationCard,
   StripeIntegrationCard,
   ZenMagicIntegrationCard,
@@ -48,6 +49,15 @@ export default function IntegracionesPage() {
       const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
       window.history.replaceState({}, '', newUrl);
     }
+    if (urlParams.get('success') === 'google_contacts_connected') {
+      // Recargar estado de conexión
+      loadConnectionStatus();
+      toast.success('Google Contacts conectado correctamente');
+      // Limpiar el parámetro de la URL
+      urlParams.delete('success');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }
   }, []);
 
   const [scopes, setScopes] = useState<string[]>([]);
@@ -71,6 +81,7 @@ export default function IntegracionesPage() {
 
   const hasDriveScope = scopes.some((scope) => scope.includes('drive'));
   const hasCalendarScope = scopes.some((scope) => scope.includes('calendar'));
+  const hasContactsScope = scopes.some((scope) => scope.includes('contacts'));
 
   const handleConnectCalendar = () => {
     setShowCalendarConnectionModal(true);
@@ -79,6 +90,10 @@ export default function IntegracionesPage() {
 
   const handleConnectDrive = () => {
     setOpenModal('google-drive');
+  };
+
+  const handleConnectContacts = () => {
+    // La conexión se maneja directamente en el card
   };
 
   const handleManageDrive = () => {
@@ -181,6 +196,12 @@ export default function IntegracionesPage() {
               isConnected={hasDriveScope}
               onConnect={handleConnectDrive}
               onManage={handleManageDrive}
+            />
+            <GoogleContactsIntegrationCard
+              isConnected={hasContactsScope}
+              studioSlug={studioSlug}
+              onConnect={handleConnectContacts}
+              onDisconnected={loadConnectionStatus}
             />
             <ManychatIntegrationCard />
             <StripeIntegrationCard />
