@@ -160,9 +160,6 @@ export async function sincronizarTareaConGoogle(
     const timezone = await obtenerTimezoneEstudio(studioSlug, userTimezone);
     const calendarId = await obtenerOCrearCalendarioSecundario(studioSlug);
 
-    // Obtener nombre del estudio para el texto
-    const studioName = await obtenerNombreEstudio(studioSlug);
-
     // Obtener nombre del item (más descriptivo que el nombre de la tarea)
     const itemName = task.cotizacion_item?.name || 
                      task.cotizacion_item?.name_snapshot || 
@@ -171,42 +168,56 @@ export async function sincronizarTareaConGoogle(
     // Obtener información del evento
     const eventName = task.scheduler_instance.event.promise?.name || 'Evento sin nombre';
     const eventTypeName = task.scheduler_instance.event.event_type?.name || null;
-    
-    // Obtener estado del evento y formatearlo
-    const eventStatus = task.scheduler_instance.event.promise?.status || 'pending';
-    const eventStatusText = eventStatus === 'pending' 
-      ? 'Pendiente'
-      : eventStatus === 'confirmed'
-      ? 'Confirmado'
-      : eventStatus === 'cancelled'
-      ? 'Cancelado'
-      : eventStatus === 'completed'
-      ? 'Completado'
-      : eventStatus.charAt(0).toUpperCase() + eventStatus.slice(1).toLowerCase();
-
-    // Construir descripción con contexto completo
-    const descriptionParts: string[] = [];
-    
-    if (task.description) {
-      descriptionParts.push(task.description);
-    }
-    
-    // Agregar información contextual estructurada
-    descriptionParts.push('\n━━━━━━━━━━━━━━━━━━━━');
-    descriptionParts.push('📋 INFORMACIÓN DEL EVENTO');
-    descriptionParts.push('━━━━━━━━━━━━━━━━━━━━');
-    
-    if (eventTypeName) {
-      descriptionParts.push(`🎯 Tipo de Evento: ${eventTypeName}`);
-    }
-    descriptionParts.push(`📅 Evento: ${eventStatusText}`);
-    descriptionParts.push(`📦 Tarea: ${itemName}`);
-    descriptionParts.push(`🏢 Estudio: ${studioName}`);
-
-    const description = descriptionParts.join('\n').trim();
 
     // Obtener emails de colaboradores desde cotizacion_item.assigned_to_crew_member
     const attendees = await obtenerEmailsColaboradores(task.cotizacion_item_id);
+
+    // Si la tarea tiene google_event_id pero no tiene personal asignado, cancelar el evento
+    if (task.google_event_id && attendees.length === 0) {
+      console.log(
+        `[Google Calendar] Tarea ${taskId} tiene evento pero no tiene personal, cancelando invitación...`
+      );
+      
+      try {
+        await eliminarEventoGoogle(calendarId, task.google_event_id);
+        
+        // Limpiar referencias de Google Calendar en la base de datos
+        await prisma.studio_scheduler_event_tasks.update({
+          where: { id: taskId },
+          data: {
+            google_event_id: null,
+            google_calendar_id: null,
+            invitation_status: null,
+          },
+        });
+        
+        console.log(
+          `[Google Calendar] ✅ Evento ${task.google_event_id} cancelado para tarea ${taskId} (sin personal)`
+        );
+        
+        // Retornar string vacío para indicar que no hay evento sincronizado
+        // Esto permite que la función complete sin error pero sin crear/actualizar evento
+        return '';
+      } catch (error: any) {
+        // Si el evento ya no existe (404), limpiar referencias y retornar
+        if (error?.code === 404 || error?.response?.status === 404) {
+          await prisma.studio_scheduler_event_tasks.update({
+            where: { id: taskId },
+            data: {
+              google_event_id: null,
+              google_calendar_id: null,
+              invitation_status: null,
+            },
+          });
+          console.log(
+            `[Google Calendar] Evento ${task.google_event_id} ya no existe, referencias limpiadas`
+          );
+          return '';
+        }
+        // Otro tipo de error, relanzar
+        throw error;
+      }
+    }
 
     // Log para debugging
     if (attendees.length > 0) {
@@ -220,14 +231,16 @@ export async function sincronizarTareaConGoogle(
       );
     }
 
-    // Preparar datos del evento
-    // Formato: [nombre de la tarea] - [tipo] [nombre evento]
-    const summaryParts: string[] = [itemName];
+    // Asunto simplificado: "Invitación: [nombre item]"
+    const summary = `Invitación: ${itemName}`;
+
+    // Descripción simplificada: "nombre tarea. tipo de evento nombre evento"
+    const descriptionParts: string[] = [task.name];
     if (eventTypeName) {
-      summaryParts.push(eventTypeName);
+      descriptionParts.push(eventTypeName);
     }
-    summaryParts.push(eventName);
-    const summary = summaryParts.join(' - ');
+    descriptionParts.push(eventName);
+    const description = descriptionParts.join('. ').trim();
 
     const eventData: any = {
       summary: summary,
@@ -267,6 +280,14 @@ export async function sincronizarTareaConGoogle(
 
         // Verificar que el evento fue actualizado correctamente
         if (updatedEvent.data.id) {
+          // Actualizar google_calendar_id en la BD para asegurar que apunte al calendario secundario correcto
+          await prisma.studio_scheduler_event_tasks.update({
+            where: { id: taskId },
+            data: {
+              google_calendar_id: calendarId,
+            },
+          });
+          
           console.log(
             `[Google Calendar] ✅ Tarea ${taskId} actualizada en Google Calendar: ${updatedEvent.data.id}`
           );

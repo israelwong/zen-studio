@@ -221,13 +221,31 @@ export async function publicarCronograma(
               },
             });
           } else {
-            // Sin personal, solo marcar como PUBLISHED
-            await prisma.studio_scheduler_event_tasks.update({
-              where: { id: tarea.id },
-              data: {
-                sync_status: 'PUBLISHED',
-              },
-            });
+            // Sin personal asignado
+            // Si tiene google_event_id, fue invitada anteriormente, cancelar invitación
+            if (tarea.google_event_id && tarea.google_calendar_id) {
+              const { eliminarEventoEnBackground } = await import('@/lib/integrations/google-calendar/helpers');
+              await eliminarEventoEnBackground(tarea.google_calendar_id, tarea.google_event_id);
+              
+              // Limpiar referencias de Google Calendar
+              await prisma.studio_scheduler_event_tasks.update({
+                where: { id: tarea.id },
+                data: {
+                  sync_status: 'PUBLISHED',
+                  google_event_id: null,
+                  google_calendar_id: null,
+                  invitation_status: null,
+                },
+              });
+            } else {
+              // Sin personal y sin evento previo, solo marcar como PUBLISHED
+              await prisma.studio_scheduler_event_tasks.update({
+                where: { id: tarea.id },
+                data: {
+                  sync_status: 'PUBLISHED',
+                },
+              });
+            }
             publicado++;
           }
         } catch (error) {

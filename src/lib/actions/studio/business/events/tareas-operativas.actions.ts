@@ -46,7 +46,10 @@ export async function obtenerTareasOperativas(
   try {
     const studio = await prisma.studios.findUnique({
       where: { slug: studioSlug },
-      select: { id: true },
+      select: { 
+        id: true,
+        google_calendar_secondary_id: true,
+      },
     });
 
     if (!studio) {
@@ -73,6 +76,12 @@ export async function obtenerTareasOperativas(
         },
       },
     };
+
+    // Si el estudio tiene calendario secundario configurado, filtrar solo tareas de ese calendario
+    // Esto asegura que solo se muestren tareas sincronizadas con el calendario secundario correcto
+    if (studio.google_calendar_secondary_id) {
+      whereClause.google_calendar_id = studio.google_calendar_secondary_id;
+    }
 
     // Filtrar por evento si se proporciona
     if (eventId) {
