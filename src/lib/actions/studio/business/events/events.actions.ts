@@ -2366,7 +2366,7 @@ export async function crearSchedulerTask(
       (data.endDate.getTime() - data.startDate.getTime()) / (1000 * 60 * 60 * 24)
     ) + 1;
 
-    // Crear la tarea en estado DRAFT (no sincroniza inmediatamente)
+    // Crear la tarea usando el cliente Prisma estándar
     const task = await prisma.studio_scheduler_event_tasks.create({
       data: {
         scheduler_instance_id: schedulerInstanceId,
@@ -2376,13 +2376,13 @@ export async function crearSchedulerTask(
         start_date: data.startDate,
         end_date: data.endDate,
         duration_days: durationDays,
-        category: 'PLANNING', // Default category
-        priority: 'MEDIUM', // Default priority
+        category: 'PLANNING',
+        priority: 'MEDIUM',
         status: data.isCompleted ? 'COMPLETED' : 'PENDING',
         progress_percent: data.isCompleted ? 100 : 0,
         notes: data.notes || null,
         completed_at: data.isCompleted ? new Date() : null,
-        sync_status: 'DRAFT', // Estado inicial: borrador, no sincronizado
+        sync_status: 'DRAFT',
       },
       include: {
         cotizacion_item: {

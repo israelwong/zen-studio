@@ -1,17 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Upload, Send, Loader2 } from 'lucide-react';
+import { Upload, Loader2 } from 'lucide-react';
 import { ZenButton, ZenBadge } from '@/components/ui/zen';
-import {
-  ZenDropdownMenu,
-  ZenDropdownMenuContent,
-  ZenDropdownMenuItem,
-  ZenDropdownMenuTrigger,
-  ZenDropdownMenuSeparator,
-} from '@/components/ui/zen';
-import { publicarCronograma, obtenerConteoTareasDraft } from '@/lib/actions/studio/business/events/scheduler-actions';
-import { toast } from 'sonner';
+import { obtenerConteoTareasDraft } from '@/lib/actions/studio/business/events/scheduler-actions';
+import { PublicationSummarySheet } from './PublicationSummarySheet';
 
 interface PublicationBarProps {
   studioSlug: string;
@@ -21,8 +14,8 @@ interface PublicationBarProps {
 
 export function PublicationBar({ studioSlug, eventId, onPublished }: PublicationBarProps) {
   const [draftCount, setDraftCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [showSummarySheet, setShowSummarySheet] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -70,32 +63,15 @@ export function PublicationBar({ studioSlug, eventId, onPublished }: Publication
     };
   }, [checkDraftCount]);
 
-  const handlePublicar = async (opcion: 'solo_publicar' | 'publicar_e_invitar') => {
-    setLoading(true);
-    try {
-      const result = await publicarCronograma(studioSlug, eventId, opcion);
+  const handleOpenSummary = () => {
+    setShowSummarySheet(true);
+  };
 
-      if (result.success) {
-        if (opcion === 'solo_publicar') {
-          toast.success(`${result.publicado || 0} tarea(s) publicada(s) correctamente`);
-        } else {
-          const total = (result.publicado || 0) + (result.sincronizado || 0);
-          toast.success(
-            `${result.sincronizado || 0} tarea(s) sincronizada(s) con Google Calendar. ${result.publicado || 0} publicada(s) sin sincronizar.`
-          );
-        }
-        setDraftCount(0);
-        onPublished?.();
-        await checkDraftCount();
-      } else {
-        toast.error(result.error || 'Error al publicar cronograma');
-      }
-    } catch (error) {
-      console.error('Error publicando cronograma:', error);
-      toast.error('Error al publicar cronograma');
-    } finally {
-      setLoading(false);
-    }
+  const handlePublished = () => {
+    setShowSummarySheet(false);
+    setDraftCount(0);
+    onPublished?.();
+    checkDraftCount();
   };
 
   // Mostrar solo si ya terminó de verificar Y hay tareas DRAFT
@@ -121,54 +97,24 @@ export function PublicationBar({ studioSlug, eventId, onPublished }: Publication
           </span>
         </div>
 
-        <ZenDropdownMenu>
-          <ZenDropdownMenuTrigger asChild>
-            <ZenButton
-              variant="primary"
-              size="sm"
-              disabled={loading}
-              className="gap-2"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Publicando...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" />
-                  Publicar
-                </>
-              )}
-            </ZenButton>
-          </ZenDropdownMenuTrigger>
-          <ZenDropdownMenuContent align="end" className="w-56">
-            <ZenDropdownMenuItem
-              onClick={() => handlePublicar('solo_publicar')}
-              disabled={loading}
-              className="gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              Solo Publicar
-              <span className="text-xs text-zinc-500 ml-auto">
-                Visible en ZEN
-              </span>
-            </ZenDropdownMenuItem>
-            <ZenDropdownMenuSeparator />
-            <ZenDropdownMenuItem
-              onClick={() => handlePublicar('publicar_e_invitar')}
-              disabled={loading}
-              className="gap-2"
-            >
-              <Send className="h-4 w-4" />
-              Publicar e Invitar
-              <span className="text-xs text-zinc-500 ml-auto">
-                + Google Calendar
-              </span>
-            </ZenDropdownMenuItem>
-          </ZenDropdownMenuContent>
-        </ZenDropdownMenu>
+        <ZenButton
+          variant="primary"
+          size="sm"
+          onClick={handleOpenSummary}
+          className="gap-2"
+        >
+          <Upload className="h-4 w-4" />
+          Ver Resumen y Publicar
+        </ZenButton>
       </div>
+
+      <PublicationSummarySheet
+        isOpen={showSummarySheet}
+        onClose={() => setShowSummarySheet(false)}
+        studioSlug={studioSlug}
+        eventId={eventId}
+        onPublished={handlePublished}
+      />
     </div>
   );
 }

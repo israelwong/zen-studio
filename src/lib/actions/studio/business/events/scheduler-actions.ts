@@ -294,6 +294,102 @@ export async function obtenerConteoTareasDraft(
 }
 
 /**
+ * Obtiene el resumen detallado de cambios pendientes de publicación
+ */
+export async function obtenerResumenCambiosPendientes(
+  studioSlug: string,
+  eventId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    totalTareas: number;
+    tareasConPersonal: number;
+    tareasSinPersonal: number;
+    tareas: Array<{
+      id: string;
+      name: string;
+      startDate: Date;
+      endDate: Date;
+      status: string;
+      category: string;
+      tienePersonal: boolean;
+      personalNombre?: string;
+      personalEmail?: string;
+    }>;
+  };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const tareasDraft = await prisma.studio_scheduler_event_tasks.findMany({
+      where: {
+        scheduler_instance: {
+          event_id: eventId,
+        },
+        sync_status: 'DRAFT',
+      },
+      include: {
+        cotizacion_item: {
+          select: {
+            id: true,
+            assigned_to_crew_member_id: true,
+            assigned_to_crew_member: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        start_date: 'asc',
+      },
+    });
+
+    const tareas = tareasDraft.map((tarea) => ({
+      id: tarea.id,
+      name: tarea.name,
+      startDate: tarea.start_date,
+      endDate: tarea.end_date,
+      status: tarea.status,
+      category: tarea.category,
+      tienePersonal: !!tarea.cotizacion_item?.assigned_to_crew_member_id,
+      personalNombre: tarea.cotizacion_item?.assigned_to_crew_member?.name || undefined,
+      personalEmail: tarea.cotizacion_item?.assigned_to_crew_member?.email || undefined,
+    }));
+
+    const tareasConPersonal = tareas.filter((t) => t.tienePersonal).length;
+    const tareasSinPersonal = tareas.length - tareasConPersonal;
+
+    return {
+      success: true,
+      data: {
+        totalTareas: tareas.length,
+        tareasConPersonal,
+        tareasSinPersonal,
+        tareas,
+      },
+    };
+  } catch (error) {
+    console.error('[Resumen Cambios] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener resumen',
+    };
+  }
+}
+
+/**
  * Verifica si un colaborador tiene tareas en un rango de fechas específico
  * Retorna el número de tareas que se solapan con el rango
  */
