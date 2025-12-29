@@ -1,25 +1,27 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/shadcn/card';
 import { Badge } from '@/components/ui/shadcn/badge';
 import {
     Download,
-    Eye,
     CheckCircle,
     Clock,
     XCircle,
-    Calendar,
-    CreditCard
+    Calendar
 } from 'lucide-react';
 import { SuscripcionData } from '@/lib/actions/studio/account/suscripcion/types';
+import { SubscriptionInvoice } from '@/components/shared/subscription/SubscriptionInvoice';
 
 interface BillingHistoryCardProps {
     data: SuscripcionData;
+    studioSlug: string;
 }
 
-export function BillingHistoryCard({ data }: BillingHistoryCardProps) {
+export function BillingHistoryCard({ data, studioSlug }: BillingHistoryCardProps) {
     const { billing_history } = data;
+    const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+    const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
 
     const getStatusIcon = (status: string) => {
         switch (status) {
@@ -65,22 +67,40 @@ export function BillingHistoryCard({ data }: BillingHistoryCardProps) {
         }).format(amount);
     };
 
+    const handleViewInvoice = (invoiceId: string | undefined) => {
+        if (!invoiceId) {
+            // Si no hay invoice_id, intentar usar el ID de billing_history
+            return;
+        }
+        setSelectedInvoiceId(invoiceId);
+        setIsInvoiceModalOpen(true);
+    };
+
+    const handleDownloadInvoice = async (invoiceId: string | undefined, invoicePdf: string | null | undefined) => {
+        if (invoicePdf) {
+            // Si hay PDF directo de Stripe, descargarlo directamente
+            window.open(invoicePdf, '_blank');
+            return;
+        }
+
+        if (invoiceId) {
+            // Si no hay PDF de Stripe, abrir modal para generar PDF local
+            handleViewInvoice(invoiceId);
+        }
+    };
+
     if (billing_history.length === 0) {
         return (
-            <Card className="bg-zinc-900/50 border-zinc-800">
+            <Card className="bg-zinc-900/50 border-zinc-800 h-full w-full flex flex-col">
                 <CardHeader>
-                    <CardTitle className="text-white flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-blue-400" />
+                    <CardTitle className="text-white">
                         Historial de Facturación
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-center h-32 text-zinc-500">
-                        <div className="text-center">
-                            <CreditCard className="h-8 w-8 mx-auto mb-2 text-zinc-600" />
-                            <p>No hay historial de facturación</p>
-                            <p className="text-sm">Las facturas aparecerán aquí</p>
-                        </div>
+                <CardContent className="flex-1 flex items-center justify-center">
+                    <div className="text-center text-zinc-500">
+                        <p>No hay historial de facturación</p>
+                        <p className="text-sm">Las facturas aparecerán aquí</p>
                     </div>
                 </CardContent>
             </Card>
@@ -88,67 +108,69 @@ export function BillingHistoryCard({ data }: BillingHistoryCardProps) {
     }
 
     return (
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-zinc-900/50 border-zinc-800 h-full w-full flex flex-col">
             <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-blue-400" />
+                <CardTitle className="text-white">
                     Historial de Facturación
                 </CardTitle>
             </CardHeader>
 
-            <CardContent>
-                <div className="space-y-3">
+            <CardContent className="flex-1 flex flex-col min-h-0">
+                <div className="space-y-2 flex-1 overflow-y-auto pr-2">
                     {billing_history.map((bill) => (
                         <div
                             key={bill.id}
-                            className="p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg hover:bg-zinc-800/70 transition-colors"
+                            onClick={() => bill.stripe_invoice_id && handleViewInvoice(bill.stripe_invoice_id)}
+                            className={`p-4 bg-zinc-800/50 border border-zinc-700 rounded-lg transition-colors ${bill.stripe_invoice_id
+                                ? 'hover:bg-zinc-800/70 cursor-pointer'
+                                : 'cursor-default'
+                                }`}
                         >
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex-shrink-0">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-start gap-3 flex-1 min-w-0">
+                                    <div className="shrink-0 mt-0.5">
                                         {getStatusIcon(bill.status)}
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-white font-medium">
+                                    <div className="flex-1 min-w-0 space-y-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-white font-medium text-sm">
                                                 {bill.description}
                                             </span>
                                             <Badge
-                                                className={`text-xs ${getStatusColor(bill.status)}`}
+                                                className={`text-xs px-2 py-0.5 ${getStatusColor(bill.status)} shrink-0`}
                                             >
                                                 {getStatusText(bill.status)}
                                             </Badge>
                                         </div>
-                                        <div className="text-sm text-zinc-400">
-                                            {formatDate(bill.created_at)}
+                                        <div className="flex items-center gap-2 text-xs text-zinc-400">
+                                            <Calendar className="h-3.5 w-3.5 shrink-0" />
+                                            <span>{formatDate(bill.created_at)}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-start gap-3 shrink-0">
                                     <div className="text-right">
-                                        <div className="text-white font-medium">
+                                        <div className="text-white font-semibold text-base">
                                             {formatPrice(bill.amount, bill.currency)}
                                         </div>
-                                        <div className="text-zinc-400 text-sm">
+                                        <div className="text-zinc-400 text-xs mt-0.5">
                                             {bill.currency}
                                         </div>
                                     </div>
 
-                                    <div className="flex gap-2">
+                                    {bill.stripe_invoice_id && (
                                         <button
-                                            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
-                                            title="Ver detalles"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDownloadInvoice(bill.stripe_invoice_id, bill.invoice_pdf);
+                                            }}
+                                            className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-lg transition-colors shrink-0"
                                             title="Descargar factura"
                                         >
                                             <Download className="h-4 w-4" />
                                         </button>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -156,13 +178,26 @@ export function BillingHistoryCard({ data }: BillingHistoryCardProps) {
                 </div>
 
                 {billing_history.length > 5 && (
-                    <div className="mt-4 pt-4 border-t border-zinc-800">
+                    <div className="mt-4 pt-4 border-t border-zinc-800 shrink-0">
                         <button className="w-full py-2 text-zinc-400 hover:text-white text-sm transition-colors">
                             Ver más facturas
                         </button>
                     </div>
                 )}
             </CardContent>
+
+            {/* Modal de Factura */}
+            {selectedInvoiceId && (
+                <SubscriptionInvoice
+                    isOpen={isInvoiceModalOpen}
+                    onClose={() => {
+                        setIsInvoiceModalOpen(false);
+                        setSelectedInvoiceId(null);
+                    }}
+                    studioSlug={studioSlug}
+                    invoiceId={selectedInvoiceId}
+                />
+            )}
         </Card>
     );
 }

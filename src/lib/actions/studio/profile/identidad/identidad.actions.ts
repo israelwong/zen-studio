@@ -46,6 +46,14 @@ export async function obtenerIdentidadStudio(studioSlug: string) {
                 presentation: true,
                 keywords: true,
                 logo_url: true,
+                subscription_status: true,
+                plan_id: true,
+                plan: {
+                    select: {
+                        name: true,
+                        slug: true,
+                    },
+                },
             },
         });
 
@@ -71,6 +79,8 @@ export async function obtenerIdentidadStudio(studioSlug: string) {
         return {
             ...studio,
             palabras_clave: palabrasClave,
+            subscription_status: studio.subscription_status,
+            plan_name: studio.plan?.name || null,
         };
     });
 }

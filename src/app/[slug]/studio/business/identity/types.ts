@@ -16,6 +16,8 @@ export interface IdentidadData {
     logo_url: string | null;
     pagina_web?: string | null;
     faq?: FAQItem[];
+    subscription_status?: string | null;
+    plan_name?: string | null;
 }
 
 export interface IdentidadUpdate {

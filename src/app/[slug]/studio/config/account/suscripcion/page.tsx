@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { CreditCard } from 'lucide-react';
+import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent } from '@/components/ui/zen';
 import { SubscriptionDataLoader } from './components';
 
 export default function SuscripcionPage() {
@@ -14,20 +15,16 @@ export default function SuscripcionPage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
+    <ZenCard>
+      <ZenCardHeader>
         <div className="flex items-center gap-3">
-          <CreditCard className="h-8 w-8 text-green-400" />
-          <h1 className="text-3xl font-bold text-white">Suscripción</h1>
+          <CreditCard className="h-6 w-6 text-emerald-400" />
+          <ZenCardTitle>Suscripción</ZenCardTitle>
         </div>
-        <p className="text-zinc-400 text-lg">
-          Gestiona tu plan de suscripción y revisa el historial de facturación.
-        </p>
-      </div>
-
-      {/* Subscription Data Loader */}
-      <SubscriptionDataLoader studioSlug={studioSlug} />
-    </div>
+      </ZenCardHeader>
+      <ZenCardContent>
+        <SubscriptionDataLoader studioSlug={studioSlug} />
+      </ZenCardContent>
+    </ZenCard>
   );
 }

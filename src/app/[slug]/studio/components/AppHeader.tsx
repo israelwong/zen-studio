@@ -10,6 +10,7 @@ import { NotificationsDropdown } from '@/components/shared/notifications/Notific
 import { ZenButton, useZenSidebar } from '@/components/ui/zen';
 import { useStudioData } from '@/hooks/useStudioData';
 import { SubscriptionPopover } from './SubscriptionPopover';
+import { SubscriptionBadge } from '@/components/shared/subscription/SubscriptionBadge';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
 import { GoogleStatusPopover } from '@/components/shared/integrations/GoogleStatusPopover';
 
@@ -121,9 +122,10 @@ export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContacts
                                 {identidadData?.studio_name || studioSlug}
                             </span>
                             {/* Plan Badge */}
-                            <span className="inline-flex items-center px-2.5 rounded-full text-[10px] font-bold bg-emerald-900/20 text-emerald-500 border border-emerald-500/50 shadow-sm shadow-emerald-600/20">
-                                PRO
-                            </span>
+                            <SubscriptionBadge
+                                status={identidadData?.subscription_status || undefined}
+                                planName={identidadData?.plan_name || undefined}
+                            />
                             {/* Chevron Icon */}
                             <ChevronDown className="h-4 w-4 text-zinc-400" />
                         </button>
@@ -133,9 +135,10 @@ export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContacts
                         <span className="text-sm font-medium text-zinc-300 truncate">
                             {identidadData?.studio_name || studioSlug}
                         </span>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-gradient-to-br from-emerald-600 to-emerald-700 text-white border border-emerald-500/50 shadow-sm shadow-emerald-600/20">
-                            PRO
-                        </span>
+                        <SubscriptionBadge
+                            status={identidadData?.subscription_status || undefined}
+                            planName={identidadData?.plan_name || undefined}
+                        />
                     </div>
                 )}
 

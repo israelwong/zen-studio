@@ -37,6 +37,7 @@ model platform_config {
   google_oauth_client_secret String?
   google_oauth_redirect_uri  String?
   google_drive_api_key       String?
+  invitation_base_cost       Decimal?  @default(0)
 }
 
 model platform_modules {
@@ -441,7 +442,8 @@ model platform_plans {
   description        String?
   price_monthly      Decimal?
   price_yearly       Decimal?
-  stripe_price_id    String?              @unique
+  stripe_price_id    String?              @unique  // Price ID mensual
+  stripe_price_id_yearly String?          @unique  // Price ID anual
   stripe_product_id  String?
   created_at         DateTime             @default(now())
   updated_at         DateTime             @updatedAt
@@ -454,6 +456,7 @@ model platform_plans {
 
   @@index([active, order])
   @@index([stripe_price_id])
+  @@index([stripe_price_id_yearly])
 }
 
 model plan_limits {
@@ -708,10 +711,14 @@ model studios {
   subscription_status                             SubscriptionStatus               @default(TRIAL)
   subscription_start                              DateTime?
   subscription_end                                DateTime?
+  data_retention_until                            DateTime?                        // Fecha hasta la cual se mantendrán los datos después de cancelación (30 días)
   stripe_customer_id                              String?                          @unique
   stripe_subscription_id                          String?                          @unique
   stripe_account_id                               String?                          @unique
+  stripe_payment_method_id                        String?
+  stripe_invoice_id                               String?
   stripe_onboarding_complete                      Boolean                          @default(false)
+  billing_email                                   String?
   commission_rate                                 Decimal                          @default(0.30)
   is_active                                       Boolean                          @default(true)
   created_at                                      DateTime                         @default(now())
@@ -805,6 +812,7 @@ model studios {
   subscriptions                                   subscriptions[]
   usage_tracking                                  usage_tracking[]
   user_studio_roles                               user_studio_roles[]
+  external_service_sales                          studio_external_service_sales[]
 
   @@index([plan_id])
   @@index([slug])
@@ -1238,6 +1246,7 @@ model studio_contacts {
   studioOfferSubmissions studio_offer_submissions[]
   pagos                  studio_pagos[]
   promises               studio_promises[]
+  external_service_sales  studio_external_service_sales[]
 
   @@unique([studio_id, phone])
   @@index([studio_id, email])
@@ -1417,6 +1426,7 @@ model studio_events {
   nominas              studio_nominas[]
   notifications        studio_notifications[]
   scheduler            studio_scheduler_event_instances?
+  external_service_sales studio_external_service_sales[]
 
   @@index([contact_id])
   @@index([cotizacion_id])
@@ -1664,8 +1674,9 @@ model studio_scheduler_event_tasks {
   cotizacion_item       studio_cotizacion_items?         @relation("CotizacionItemSchedulerTask", fields: [cotizacion_item_id], references: [id])
   depends_on            studio_scheduler_event_tasks?    @relation("EventTaskDependency", fields: [depends_on_task_id], references: [id])
   dependent_tasks       studio_scheduler_event_tasks[]   @relation("EventTaskDependency")
-  scheduler_instance    studio_scheduler_event_instances @relation(fields: [scheduler_instance_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  scheduler_instance      studio_scheduler_event_instances @relation(fields: [scheduler_instance_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   activity_log          studio_scheduler_task_activity[]
+  external_service_sale studio_external_service_sales?
 
   @@index([scheduler_instance_id, status])
   @@index([sync_status])
@@ -2374,6 +2385,43 @@ model studio_revenue_transactions {
 
   @@index([status])
   @@index([studio_id, transaction_date])
+}
+
+model studio_external_service_sales {
+  id                    String   @id @default(cuid())
+  studio_id             String
+  contact_id            String?
+  customer_name_cache   String?
+  event_id              String?
+  scheduler_task_id     String?  @unique
+  service_type          String
+  amount_total          Decimal
+  base_cost             Decimal
+  stripe_fee            Decimal
+  studio_amount         Decimal
+  platform_amount       Decimal
+  stripe_payment_intent_id String? @unique
+  stripe_transfer_id    String?
+  stripe_charge_id      String?
+  status                String   @default("pending")
+  payment_date          DateTime?
+  transfer_date         DateTime?
+  description           String?
+  metadata              Json?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+  studio                studios  @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  contact               studio_contacts? @relation(fields: [contact_id], references: [id], onDelete: SetNull)
+  event                 studio_events? @relation(fields: [event_id], references: [id], onDelete: SetNull)
+  scheduler_task        studio_scheduler_event_tasks? @relation(fields: [scheduler_task_id], references: [id], onDelete: SetNull)
+
+  @@index([studio_id, status])
+  @@index([studio_id, payment_date])
+  @@index([contact_id])
+  @@index([event_id])
+  @@index([scheduler_task_id])
+  @@index([stripe_payment_intent_id])
+  @@index([status, payment_date])
 }
 
 model studio_portfolios {
@@ -3240,6 +3288,7 @@ enum InvitationStatus {
   PENDING
   ACCEPTED
   DECLINED
+  PAID
 }
 
 enum TaskAction {

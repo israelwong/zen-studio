@@ -59,12 +59,16 @@ export function SubscriptionDataLoader({ studioSlug }: SubscriptionDataLoaderPro
     }
 
     return (
-        <div className="space-y-6">
-            {/* Current Plan */}
-            <CurrentPlanCard data={data} studioSlug={studioSlug} />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
+            {/* Col 1: Plan Actual */}
+            <div className="flex w-full">
+                <CurrentPlanCard data={data} studioSlug={studioSlug} />
+            </div>
 
-            {/* Billing History */}
-            <BillingHistoryCard data={data} />
+                    {/* Col 2: Historial de Facturación */}
+                    <div className="flex w-full">
+                        <BillingHistoryCard data={data} studioSlug={studioSlug} />
+                    </div>
         </div>
     );
 }

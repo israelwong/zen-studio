@@ -9,6 +9,8 @@ export interface Plan {
     description: string;
     price_monthly: number;
     price_yearly: number;
+    stripe_price_id: string | null;
+    stripe_price_id_yearly: string | null;
     features: {
         highlights: string[];
         modules: string[];
@@ -36,6 +38,7 @@ export interface Subscription {
     current_period_start: Date;
     current_period_end: Date;
     billing_cycle_anchor: Date;
+    billing_interval?: 'month' | 'year'; // Intervalo de facturación (mensual o anual)
     created_at: Date;
     updated_at: Date;
     plan: Plan;
@@ -65,6 +68,12 @@ export interface BillingHistory {
     status: 'paid' | 'pending' | 'failed';
     description: string;
     created_at: Date;
+    // Campos adicionales para invoices de Stripe
+    stripe_invoice_id?: string;
+    invoice_pdf?: string | null;
+    invoice_url?: string | null;
+    period_start?: Date;
+    period_end?: Date;
 }
 
 export interface SuscripcionData {

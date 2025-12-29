@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { getStripe } from '@/lib/stripe';
 import { SuscripcionData } from './types';
 
 // Tipos específicos para las consultas de Prisma
@@ -75,12 +76,12 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
             };
         }
 
-        // Obtener la suscripción activa del studio
+        // Obtener la suscripción (activa, trial o cancelada para reactivación)
         const subscription = await prisma.subscriptions.findFirst({
             where: {
                 studio_id: studio.id,
                 status: {
-                    in: ['ACTIVE', 'TRIAL']
+                    in: ['ACTIVE', 'TRIAL', 'CANCELLED']
                 }
             },
             include: {
@@ -137,6 +138,7 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                     billing_cycle_anchor: studio.subscription_start || new Date(),
                     created_at: new Date(),
                     updated_at: new Date(),
+                    billing_interval: undefined, // No hay suscripción activa, no se puede determinar
                     plan: {
                         id: plan.id,
                         name: plan.name,
@@ -144,6 +146,8 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                         description: plan.description || '',
                         price_monthly: Number(plan.price_monthly || 0),
                         price_yearly: Number(plan.price_yearly || 0),
+                        stripe_price_id: plan.stripe_price_id || null,
+                        stripe_price_id_yearly: plan.stripe_price_id_yearly || null,
                         features: features as { highlights: string[]; modules: string[] },
                         popular: plan.popular,
                         active: plan.active,
@@ -157,6 +161,8 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                     description: plan.description || '',
                     price_monthly: Number(plan.price_monthly || 0),
                     price_yearly: Number(plan.price_yearly || 0),
+                    stripe_price_id: plan.stripe_price_id || null,
+                    stripe_price_id_yearly: plan.stripe_price_id_yearly || null,
                     features: features as { highlights: string[]; modules: string[] },
                     popular: plan.popular,
                     active: plan.active,
@@ -193,12 +199,66 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
             where: { plan_id: subscription.plan_id }
         });
 
-        // Obtener el historial de facturación
-        const billingHistory = await prisma.platform_billing_cycles.findMany({
-            where: { subscription_id: subscription.id },
-            orderBy: { created_at: 'desc' },
-            take: 10
-        });
+        // Obtener el historial de facturación desde Stripe
+        let billingHistory: any[] = [];
+        if (subscription.stripe_customer_id) {
+            try {
+                const stripe = getStripe();
+                const invoices = await stripe.invoices.list({
+                    customer: subscription.stripe_customer_id,
+                    limit: 10,
+                    expand: ['data.subscription', 'data.payment_intent']
+                });
+
+                billingHistory = invoices.data.map((invoice) => ({
+                    id: invoice.id,
+                    subscription_id: subscription.id,
+                    amount: invoice.amount_paid / 100, // Convertir de centavos
+                    currency: invoice.currency.toUpperCase(),
+                    status: invoice.status === 'paid' ? 'paid' : invoice.status === 'open' ? 'pending' : 'failed',
+                    description: invoice.description || `Factura ${invoice.number || invoice.id.slice(0, 8)}`,
+                    created_at: new Date(invoice.created * 1000),
+                    stripe_invoice_id: invoice.id,
+                    invoice_pdf: invoice.invoice_pdf,
+                    invoice_url: invoice.hosted_invoice_url,
+                    period_start: invoice.period_start ? new Date(invoice.period_start * 1000) : undefined,
+                    period_end: invoice.period_end ? new Date(invoice.period_end * 1000) : undefined,
+                }));
+            } catch (error) {
+                console.warn('⚠️ Error obteniendo invoices de Stripe:', error);
+                // Si falla, usar datos locales como fallback
+                const localBillingHistory = await prisma.platform_billing_cycles.findMany({
+                    where: { subscription_id: subscription.id },
+                    orderBy: { created_at: 'desc' },
+                    take: 10
+                });
+                billingHistory = localBillingHistory.map((bill) => ({
+                    id: bill.id,
+                    subscription_id: bill.subscription_id,
+                    amount: Number(bill.amount),
+                    currency: 'USD',
+                    status: bill.status as 'paid' | 'pending' | 'failed',
+                    description: `Ciclo de facturación ${bill.period_start.toLocaleDateString()} - ${bill.period_end.toLocaleDateString()}`,
+                    created_at: bill.created_at
+                }));
+            }
+        } else {
+            // Si no hay stripe_customer_id, usar datos locales
+            const localBillingHistory = await prisma.platform_billing_cycles.findMany({
+                where: { subscription_id: subscription.id },
+                orderBy: { created_at: 'desc' },
+                take: 10
+            });
+            billingHistory = localBillingHistory.map((bill) => ({
+                id: bill.id,
+                subscription_id: bill.subscription_id,
+                amount: Number(bill.amount),
+                currency: 'USD',
+                status: bill.status as 'paid' | 'pending' | 'failed',
+                description: `Ciclo de facturación ${bill.period_start.toLocaleDateString()} - ${bill.period_end.toLocaleDateString()}`,
+                created_at: bill.created_at
+            }));
+        }
 
         const subscriptionWithRelations = subscription as unknown as SubscriptionWithRelations;
 
@@ -209,6 +269,41 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
             price_yearly: subscriptionWithRelations.plans.price_yearly,
             order: (subscriptionWithRelations.plans as any).order
         });
+
+        // Determinar intervalo de facturación (mensual o anual)
+        let billingInterval: 'month' | 'year' | undefined = undefined;
+        if (subscriptionWithRelations.stripe_subscription_id) {
+            try {
+                const stripe = getStripe();
+                const stripeSubscription = await stripe.subscriptions.retrieve(
+                    subscriptionWithRelations.stripe_subscription_id
+                );
+                
+                if (stripeSubscription.items.data.length > 0) {
+                    const priceId = stripeSubscription.items.data[0].price.id;
+                    const planData = subscriptionWithRelations.plans as any;
+                    
+                    // Comparar con stripe_price_id y stripe_price_id_yearly
+                    if (planData.stripe_price_id === priceId) {
+                        billingInterval = 'month';
+                    } else if (planData.stripe_price_id_yearly === priceId) {
+                        billingInterval = 'year';
+                    } else {
+                        // Si no coincide, verificar desde Stripe directamente
+                        const price = stripeSubscription.items.data[0].price;
+                        if (price.recurring?.interval === 'year') {
+                            billingInterval = 'year';
+                        } else {
+                            billingInterval = 'month'; // Default a mensual
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ Error obteniendo suscripción de Stripe para determinar intervalo:', error);
+                // Si falla, asumir mensual por defecto
+                billingInterval = 'month';
+            }
+        }
 
         // Parsear features si es Json
         const features = subscriptionWithRelations.plans.features
@@ -230,6 +325,7 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                 billing_cycle_anchor: subscriptionWithRelations.billing_cycle_anchor,
                 created_at: subscriptionWithRelations.created_at,
                 updated_at: subscriptionWithRelations.updated_at,
+                billing_interval: billingInterval,
                 plan: {
                     id: subscriptionWithRelations.plans.id,
                     name: subscriptionWithRelations.plans.name,
@@ -237,6 +333,8 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                     description: subscriptionWithRelations.plans.description || '',
                     price_monthly: Number(subscriptionWithRelations.plans.price_monthly || 0),
                     price_yearly: Number(subscriptionWithRelations.plans.price_yearly || 0),
+                    stripe_price_id: (subscriptionWithRelations.plans as any).stripe_price_id || null,
+                    stripe_price_id_yearly: (subscriptionWithRelations.plans as any).stripe_price_id_yearly || null,
                     features: features as { highlights: string[]; modules: string[] },
                     popular: subscriptionWithRelations.plans.popular,
                     active: subscriptionWithRelations.plans.active,
@@ -250,6 +348,8 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                 description: subscriptionWithRelations.plans.description || '',
                 price_monthly: Number(subscriptionWithRelations.plans.price_monthly || 0),
                 price_yearly: Number(subscriptionWithRelations.plans.price_yearly || 0),
+                stripe_price_id: (subscriptionWithRelations.plans as any).stripe_price_id || null,
+                stripe_price_id_yearly: (subscriptionWithRelations.plans as any).stripe_price_id_yearly || null,
                 features: features as { highlights: string[]; modules: string[] },
                 popular: subscriptionWithRelations.plans.popular,
                 active: subscriptionWithRelations.plans.active,
@@ -277,15 +377,7 @@ export async function getSubscriptionData(studioSlug: string): Promise<GetSubscr
                 activated_at: item.activated_at,
                 deactivated_at: item.deactivated_at ?? undefined
             })),
-            billing_history: billingHistory.map(bill => ({
-                id: bill.id,
-                subscription_id: bill.subscription_id,
-                amount: Number(bill.amount),
-                currency: 'USD', // Default currency since it's not in the schema
-                status: bill.status as 'paid' | 'pending' | 'failed',
-                description: `Ciclo de facturación ${bill.period_start.toLocaleDateString()} - ${bill.period_end.toLocaleDateString()}`,
-                created_at: bill.created_at
-            }))
+            billing_history: billingHistory
         };
 
         console.log('✅ Datos de suscripción obtenidos exitosamente');

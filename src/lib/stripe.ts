@@ -1,60 +1,151 @@
 import Stripe from "stripe";
 
-// Función para obtener la instancia de Stripe de manera segura
-function getStripeInstance() {
-    if (!process.env.STRIPE_SECRET_KEY) {
-        throw new Error("STRIPE_SECRET_KEY is not set");
-    }
+// Patrón Singleton para instancia única de Stripe
+class StripeSingleton {
+  private static instance: Stripe | null = null;
+  private static webhookSecret: string | null = null;
 
-    return new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  private constructor() {}
+
+  public static getInstance(): Stripe {
+    if (!StripeSingleton.instance) {
+      const secretKey = process.env.STRIPE_SECRET_KEY;
+      if (!secretKey) {
+        throw new Error("STRIPE_SECRET_KEY is not set");
+      }
+
+      StripeSingleton.instance = new Stripe(secretKey, {
         apiVersion: "2025-02-24.acacia",
         typescript: true,
-    });
+      });
+    }
+
+    return StripeSingleton.instance;
+  }
+
+  public static getWebhookSecret(): string {
+    if (!StripeSingleton.webhookSecret) {
+      const secret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!secret) {
+        throw new Error("STRIPE_WEBHOOK_SECRET is not set");
+      }
+      StripeSingleton.webhookSecret = secret;
+    }
+
+    return StripeSingleton.webhookSecret;
+  }
+
+  public static resetInstance(): void {
+    StripeSingleton.instance = null;
+    StripeSingleton.webhookSecret = null;
+  }
 }
 
-// Exportar una función que retorna la instancia de Stripe
-export const getStripe = getStripeInstance;
+// Exportar función que retorna la instancia única
+export const getStripe = (): Stripe => StripeSingleton.getInstance();
 
-// Para compatibilidad con código existente, exportar stripe como una función
+// Exportar función para obtener webhook secret
+export const getStripeWebhookSecret = (): string => StripeSingleton.getWebhookSecret();
+
+// Para compatibilidad con código existente, exportar stripe como objeto proxy
 export const stripe = {
     webhooks: {
-        constructEvent: (body: string, signature: string, secret: string) => {
-            const stripeInstance = getStripeInstance();
-            return stripeInstance.webhooks.constructEvent(body, signature, secret);
+        constructEvent: (body: string, signature: string, secret?: string) => {
+            const stripeInstance = getStripe();
+            const webhookSecret = secret || getStripeWebhookSecret();
+            return stripeInstance.webhooks.constructEvent(body, signature, webhookSecret);
         }
     },
     products: {
         create: async (params: Stripe.ProductCreateParams) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.products.create(params);
         }
     },
     prices: {
         create: async (params: Stripe.PriceCreateParams) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.prices.create(params);
         },
         list: async (params?: Stripe.PriceListParams) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.prices.list(params);
         }
     },
     subscriptions: {
         create: async (params: Stripe.SubscriptionCreateParams) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.subscriptions.create(params);
         },
         retrieve: async (id: string) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.subscriptions.retrieve(id);
         },
         update: async (id: string, params: Stripe.SubscriptionUpdateParams) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.subscriptions.update(id, params);
         },
         cancel: async (id: string) => {
-            const stripeInstance = getStripeInstance();
+            const stripeInstance = getStripe();
             return stripeInstance.subscriptions.cancel(id);
+        }
+    },
+    invoices: {
+        list: async (params?: Stripe.InvoiceListParams) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.invoices.list(params);
+        },
+        retrieve: async (id: string) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.invoices.retrieve(id);
+        },
+        retrieveUpcoming: async (params: Stripe.InvoiceRetrieveUpcomingParams) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.invoices.retrieveUpcoming(params);
+        }
+    },
+    paymentIntents: {
+        retrieve: async (id: string) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.paymentIntents.retrieve(id);
+        }
+    },
+    transfers: {
+        create: async (params: Stripe.TransferCreateParams) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.transfers.create(params);
+        }
+    },
+    balanceTransactions: {
+        retrieve: async (id: string) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.balanceTransactions.retrieve(id);
+        }
+    },
+    billingPortal: {
+        sessions: {
+            create: async (params: Stripe.BillingPortal.SessionCreateParams) => {
+                const stripeInstance = getStripe();
+                return stripeInstance.billingPortal.sessions.create(params);
+            }
+        }
+    },
+    checkout: {
+        sessions: {
+            create: async (params: Stripe.Checkout.SessionCreateParams) => {
+                const stripeInstance = getStripe();
+                return stripeInstance.checkout.sessions.create(params);
+            }
+        }
+    },
+    customers: {
+        create: async (params: Stripe.CustomerCreateParams) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.customers.create(params);
+        },
+        retrieve: async (id: string) => {
+            const stripeInstance = getStripe();
+            return stripeInstance.customers.retrieve(id);
         }
     }
 };
@@ -127,7 +218,7 @@ export type PlanType = keyof typeof SUBSCRIPTION_PLANS;
 
 // Función para crear productos y precios en Stripe
 export async function createStripeProducts() {
-    const stripeInstance = getStripeInstance();
+    const stripeInstance = getStripe();
     const products = [];
 
     for (const [planKey, plan] of Object.entries(SUBSCRIPTION_PLANS)) {
@@ -183,7 +274,7 @@ export async function createStripeProducts() {
 
 // Función para obtener precios de un plan
 export async function getPlanPrices(planType: PlanType) {
-    const stripeInstance = getStripeInstance();
+    const stripeInstance = getStripe();
     const prices = await stripeInstance.prices.list({
         active: true,
     });
@@ -203,7 +294,7 @@ export async function createSubscription(
     priceId: string,
     studioId: string
 ) {
-    const stripeInstance = getStripeInstance();
+    const stripeInstance = getStripe();
     const subscription = await stripeInstance.subscriptions.create({
         customer: customerId,
         items: [{ price: priceId }],
@@ -223,7 +314,7 @@ export async function updateSubscription(
     subscriptionId: string,
     newPriceId: string
 ) {
-    const stripeInstance = getStripeInstance();
+    const stripeInstance = getStripe();
     const subscription = await stripeInstance.subscriptions.retrieve(subscriptionId);
 
     const updatedSubscription = await stripeInstance.subscriptions.update(subscriptionId, {
