@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useCommercialName } from "@/hooks/usePlatformConfig";
 import { ArrowLeft, FileText, Layout, MessageSquare, MoreVertical, Trash2, HardDrive, Save, ExternalLink, RotateCcw } from "lucide-react";
 import {
   ZenButton,
@@ -36,6 +37,7 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const commercialName = useCommercialName();
   const { activeTab, setActiveTab, isSaving, setIsSaving, formData, contentBlocks, leadformData, updateFormData, updateContentBlocks, updateLeadformData, getOfferData, savedOfferId, setSavedOfferId } = useOfferEditor();
   const { triggerRefresh } = useStorageRefresh(studioSlug);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -44,15 +46,15 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   const [currentMode, setCurrentMode] = useState<"create" | "edit">(mode);
   const [currentOffer, setCurrentOffer] = useState<StudioOffer | undefined>(offer);
 
-  // Asegurar que el título se mantenga como "ZEN Studio"
+  // Actualizar título de página
   useEffect(() => {
     const updateTitle = () => {
       if (offer && offer.name) {
-        document.title = `ZEN Studio - ${offer.name}`;
+        document.title = `${commercialName} - ${offer.name}`;
       } else if (mode === 'edit') {
-        document.title = 'ZEN Studio - Oferta';
+        document.title = `${commercialName} - Oferta`;
       } else {
-        document.title = 'ZEN Studio - Nueva Oferta';
+        document.title = `${commercialName} - Nueva Oferta`;
       }
     };
 

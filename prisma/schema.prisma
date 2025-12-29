@@ -8,36 +8,62 @@ datasource db {
 
 model platform_config {
   id                         String   @id @default(cuid())
+  
+  // Branding - Información de marca centralizada
+  company_name               String   // Nombre legal: "Zen México"
+  company_name_long          String?  // Nombre largo: "ZEN México"
+  commercial_name            String?  // Nombre comercial: "Zen Studio"
+  commercial_name_short      String?  // Nombre corto: "ZEN" (para AppHeader, UI)
+  domain                     String?  // Dominio: "www.zenn.mx"
+  
+  // Assets visuales
   logo_url                   String?
   favicon_url                String?
+  // Contacto comercial
   comercial_email            String?
   comercial_whatsapp         String?
+  commercial_phone           String?
+  
+  // Soporte
   soporte_email              String?
-  soporte_chat_url           String?
-  timezone                   String   @default("America/Mexico_City")
-  facebook_url               String?
-  instagram_url              String?
-  twitter_url                String?
-  linkedin_url               String?
-  terminos_condiciones       String?
-  politica_privacidad        String?
-  aviso_legal                String?
-  meta_description           String?
-  meta_keywords              String?
-  google_analytics_id        String?
-  google_tag_manager_id      String?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  soporte_chat_url           String? // TODO: Remove this field
+  support_phone              String?
+  
+  // Ubicación y horarios
   address                    String?
   business_hours             String?
-  commercial_phone           String?
-  company_name               String
-  support_phone              String?
-  google_oauth_client_id     String?
-  google_oauth_client_secret String?
-  google_oauth_redirect_uri  String?
-  google_drive_api_key       String?
-  invitation_base_cost       Decimal?  @default(0)
+  timezone                   String   @default("America/Mexico_City")
+  
+  // Redes sociales - DEPRECATED (simplificado, no usar)
+  facebook_url               String?  // @deprecated
+  instagram_url              String?  // @deprecated
+  twitter_url                String?  // @deprecated TODO: Remove this field
+  linkedin_url               String?  // @deprecated
+  // Legal - DEPRECATED (mover a CMS o archivos estáticos)
+  terminos_condiciones       String? // TODO: Remove this field
+  politica_privacidad        String? // TODO: Remove this field
+  aviso_legal                String? // TODO: Remove this field
+  
+  // SEO
+  meta_description           String?
+  meta_keywords              String?
+  
+  // Analytics - DEPRECATED
+  google_analytics_id        String? // TODO: Remove this field
+  google_tag_manager_id      String? // TODO: Remove this field
+  
+  // Integraciones Google
+  google_oauth_client_id     String? // TODO: revisar si se usa en alguna parte
+  google_oauth_client_secret String? // TODO: revisar si se usa en alguna parte
+  google_oauth_redirect_uri  String? // TODO: revisar si se usa en alguna parte
+  google_drive_api_key       String? // TODO: revisar si se usa en alguna parte
+  
+  // Pricing
+  invitation_base_cost       Decimal? @default(0) // TODO: revisar si se usa en alguna parte
+  
+  // Timestamps
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
 }
 
 model platform_modules {

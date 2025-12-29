@@ -514,9 +514,9 @@ export async function createPromise(
     });
 
     // Crear promesa asociada
-    // Normalizar event_location: si viene vacío o undefined pero hay event_type_id, usar "Pendiente"
-    const eventLocation = validatedData.event_type_id
-      ? (validatedData.event_location?.trim() || 'Pendiente')
+    // event_location es opcional, puede ser null si está vacío
+    const eventLocation = validatedData.event_type_id && validatedData.event_location
+      ? validatedData.event_location.trim() || null
       : null;
 
     // Parsear fecha de forma segura (sin cambios por zona horaria)
@@ -590,7 +590,44 @@ export async function createPromise(
       last_log: null,
     };
 
+    // Revalidar tanto la lista como la página individual de la promesa
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    revalidatePath(`/${studioSlug}/studio/commercial/promises/${promise.id}`);
+
+    // Crear log automático de creación de promesa
+    try {
+      const { logPromiseAction } = await import('./promise-logs.actions');
+      
+      // Obtener nombre del canal de adquisición
+      let channelName = 'canal desconocido';
+      if (validatedData.acquisition_channel_id) {
+        const channel = await prisma.platform_acquisition_channels.findUnique({
+          where: { id: validatedData.acquisition_channel_id },
+          select: { name: true },
+        });
+        if (channel) {
+          channelName = channel.name;
+        }
+      }
+
+      await logPromiseAction(
+        studioSlug,
+        promise.id,
+        'promise_created',
+        'system',
+        null,
+        {
+          contactName: contact.name,
+          channelName: channelName,
+        }
+      ).catch((error) => {
+        // No fallar si el log falla, solo registrar error
+        console.error('[PROMISES] Error registrando log de promesa creada:', error);
+      });
+    } catch (logError) {
+      console.error('[PROMISES] Error creando log de promesa:', logError);
+      // No fallar la creación de la promesa si falla el log
+    }
 
     // Crear notificación
     try {
@@ -748,9 +785,9 @@ export async function updatePromise(
     // Actualizar o crear promesa
     let promise;
     if (latestPromise) {
-      // Normalizar event_location: si viene vacío o undefined pero hay event_type_id, usar "Pendiente"
+      // event_location es opcional, puede ser null si está vacío
       const eventLocationUpdate = validatedData.event_type_id && validatedData.event_location !== undefined
-        ? (validatedData.event_location?.trim() || 'Pendiente')
+        ? (validatedData.event_location?.trim() || null)
         : validatedData.event_location !== undefined ? validatedData.event_location || null : undefined;
 
       // Construir objeto data condicionalmente usando tipo específico de Prisma
@@ -835,9 +872,9 @@ export async function updatePromise(
           select: { id: true },
         }))?.id || null;
 
-      // Normalizar event_location: si viene vacío o undefined pero hay event_type_id, usar "Pendiente"
-      const eventLocationCreate = validatedData.event_type_id
-        ? (validatedData.event_location?.trim() || 'Pendiente')
+      // event_location es opcional, puede ser null si está vacío
+      const eventLocationCreate = validatedData.event_type_id && validatedData.event_location
+        ? validatedData.event_location.trim() || null
         : null;
 
       promise = await prisma.studio_promises.create({

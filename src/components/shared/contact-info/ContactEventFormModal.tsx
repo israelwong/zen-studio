@@ -481,13 +481,7 @@ export function ContactEventFormModal({
             newErrors.event_type_id = 'El tipo de evento es requerido';
         }
 
-        // Validar lugar del evento (obligatorio si hay tipo de evento seleccionado)
-        if (formData.event_type_id && formData.event_type_id !== 'none') {
-            const eventLocation = (formData.event_location || '').trim();
-            if (!eventLocation || eventLocation === '') {
-                newErrors.event_location = 'El lugar del evento es requerido (puedes usar "Pendiente")';
-            }
-        }
+        // Lugar del evento es opcional, no se valida
 
         if (!formData.acquisition_channel_id || formData.acquisition_channel_id === '' || formData.acquisition_channel_id === 'none') {
             newErrors.acquisition_channel_id = 'El canal de adquisición es requerido';
@@ -509,9 +503,9 @@ export function ContactEventFormModal({
         setLoading(true);
 
         try {
-            // Normalizar lugar del evento: si está vacío o solo espacios, usar "Pendiente"
+            // Lugar del evento es opcional, puede ser undefined si está vacío
             const eventLocation = formData.event_type_id && formData.event_type_id !== 'none'
-                ? (formData.event_location || '').trim() || 'Pendiente'
+                ? (formData.event_location || '').trim() || undefined
                 : undefined;
 
             // Normalizar teléfono antes de enviar
@@ -750,8 +744,7 @@ export function ContactEventFormModal({
                                         event_type_id: newEventTypeId,
                                         // Limpiar lugar del evento si se deselecciona el tipo
                                         ...(newEventTypeId === '' ? { event_location: '' } : {}),
-                                        // Si se selecciona un tipo y no hay lugar, poner "Pendiente"
-                                        ...(newEventTypeId !== '' && !prev.event_location ? { event_location: 'Pendiente' } : {}),
+                                        // No auto-completar event_location, es opcional
                                     }));
                                     if (errors.event_type_id) {
                                         setErrors((prev) => ({ ...prev, event_type_id: '' }));
@@ -780,11 +773,11 @@ export function ContactEventFormModal({
 
                         <div>
                             <label className="text-sm font-medium text-zinc-300 block mb-2">
-                                Lugar del Evento <span className="text-red-500">*</span>
+                                Lugar del Evento
                             </label>
                             <ZenInput
                                 type="text"
-                                placeholder="Ej: Salón de eventos, Playa, Jardín... (o 'Pendiente')"
+                                placeholder="Ej: Salón de eventos, Playa, Jardín... (opcional)"
                                 value={formData.event_location || ''}
                                 onChange={(e) => {
                                     setFormData((prev) => ({
@@ -792,7 +785,6 @@ export function ContactEventFormModal({
                                         event_location: e.target.value,
                                     }));
                                 }}
-                                required
                                 disabled={!formData.event_type_id || formData.event_type_id === 'none'}
                                 className="w-full h-10 disabled:opacity-50 disabled:cursor-not-allowed"
                                 error={errors.event_location}

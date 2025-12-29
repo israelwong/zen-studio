@@ -1,37 +1,44 @@
 /**
  * Configuración centralizada de branding ZEN Studio
  * 
+ * @deprecated Este archivo mantiene valores por defecto para compatibilidad.
+ * Preferir usar hooks de usePlatformConfig para obtener datos desde BD:
+ * - useCommercialName() - Nombre comercial
+ * - useCommercialNameShort() - Nombre corto
+ * - usePlatformDomain() - Dominio
+ * - usePlatformBranding() - Información completa
+ * 
  * ESTRATEGIA:
- * - Marca: "ZEN" / "ZEN Studio" (en textos, UI, copyright)
- * - Dominio: "zenn.com" (solo en URLs clickeables)
+ * - Marca: "ZEN" / "Zen Studio" (en textos, UI, copyright)
+ * - Dominio: "www.zenn.mx" (desde BD)
  */
 
 export const BRANDING = {
-  // Marca principal
+  // Marca principal (valores por defecto, usar BD cuando esté disponible)
   name: 'ZEN',
-  fullName: 'ZEN Studio',
+  fullName: 'Zen Studio',
   tagline: 'Plataforma para fotógrafos profesionales',
   
-  // Dominio comercial
-  domain: 'zenn.com',
-  websiteUrl: 'https://zenn.com',
+  // Dominio comercial (valores por defecto)
+  domain: 'www.zenn.mx',
+  websiteUrl: 'https://www.zenn.mx',
   
   // Copyright
   copyrightYear: new Date().getFullYear(),
-  copyrightText: `© ${new Date().getFullYear()} ZEN Studio. Todos los derechos reservados.`,
+  copyrightText: `© ${new Date().getFullYear()} Zen Studio. Todos los derechos reservados.`,
   
   // Email
   emailFrom: 'ZEN',
-  emailDomain: 'zenn.com',
+  emailDomain: 'zenn.mx',
   
-  // SEO
+  // SEO (valores por defecto)
   seo: {
-    title: 'ZEN Studio - Plataforma para fotógrafos profesionales',
+    title: 'Zen Studio - Plataforma para fotógrafos profesionales',
     description: 'Plataforma modular SaaS para estudios fotográficos. Gestiona tu negocio, portafolio, clientes y más.',
     keywords: ['fotografía', 'gestión', 'estudios fotográficos', 'saas', 'portfolio'],
   },
   
-  // Social
+  // Social (deprecated - no usar)
   social: {
     twitter: '@zenstudio',
     instagram: '@zenstudio',
@@ -40,7 +47,7 @@ export const BRANDING = {
   
   // Legal
   legal: {
-    companyName: 'ZEN Studio',
+    companyName: 'Zen México',
     country: 'México',
   }
 } as const;

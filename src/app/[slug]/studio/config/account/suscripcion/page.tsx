@@ -1,18 +1,16 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
 import { CreditCard } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent } from '@/components/ui/zen';
 import { SubscriptionDataLoader } from './components';
+import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function SuscripcionPage() {
   const params = useParams();
   const studioSlug = params.slug as string;
-
-  useEffect(() => {
-    document.title = 'ZEN Studio - Suscripción';
-  }, []);
+  usePageTitle('Suscripción');
 
   return (
     <ZenCard>

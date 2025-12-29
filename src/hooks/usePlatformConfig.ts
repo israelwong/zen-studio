@@ -2,29 +2,43 @@ import { useState, useEffect } from 'react';
 
 interface PlatformConfig {
     id: string;
-    nombre_empresa: string;
+    // Branding
+    company_name: string; // Nombre legal: "Zen México"
+    company_name_long: string | null; // Nombre largo: "ZEN México"
+    commercial_name: string | null; // Nombre comercial: "Zen Studio"
+    commercial_name_short: string | null; // Nombre corto: "ZEN"
+    domain: string | null; // Dominio: "www.zenn.mx"
+    // Assets
     logo_url: string | null;
     favicon_url: string | null;
-    comercial_telefono: string | null;
+    // Contacto comercial
     comercial_email: string | null;
     comercial_whatsapp: string | null;
-    soporte_telefono: string | null;
+    commercial_phone: string | null;
+    // Soporte
     soporte_email: string | null;
     soporte_chat_url: string | null;
-    direccion: string | null;
-    horarios_atencion: string | null;
+    support_phone: string | null;
+    // Ubicación
+    address: string | null;
+    business_hours: string | null;
     timezone: string;
+    // Redes sociales (deprecated)
     facebook_url: string | null;
     instagram_url: string | null;
     twitter_url: string | null;
     linkedin_url: string | null;
+    // Legal (deprecated)
     terminos_condiciones: string | null;
     politica_privacidad: string | null;
     aviso_legal: string | null;
+    // SEO
     meta_description: string | null;
     meta_keywords: string | null;
+    // Analytics (deprecated)
     google_analytics_id: string | null;
     google_tag_manager_id: string | null;
+    // Timestamps
     createdAt: Date;
     updatedAt: Date;
 }
@@ -43,17 +57,21 @@ let globalPromise: Promise<PlatformConfig | null> | null = null;
 // Configuración por defecto
 const getDefaultConfig = (): PlatformConfig => ({
     id: 'default',
-    nombre_empresa: 'ProSocial Platform',
+    company_name: 'Zen México',
+    company_name_long: 'ZEN México',
+    commercial_name: 'Zen Studio',
+    commercial_name_short: 'ZEN',
+    domain: 'www.zenn.mx',
     logo_url: null,
     favicon_url: null,
-    comercial_telefono: null,
     comercial_email: null,
     comercial_whatsapp: null,
-    soporte_telefono: null,
+    commercial_phone: null,
     soporte_email: null,
     soporte_chat_url: null,
-    direccion: null,
-    horarios_atencion: null,
+    support_phone: null,
+    address: null,
+    business_hours: null,
     timezone: 'America/Mexico_City',
     facebook_url: null,
     instagram_url: null,
@@ -185,7 +203,25 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
 // Hook para obtener solo el nombre de la empresa (más ligero)
 export function usePlatformName(): string {
     const { config } = usePlatformConfig();
-    return config?.nombre_empresa || 'ProSocial Platform';
+    return config?.company_name || 'Zen México';
+}
+
+// Hook para obtener el nombre comercial
+export function useCommercialName(): string {
+    const { config } = usePlatformConfig();
+    return config?.commercial_name || config?.company_name || 'Zen Studio';
+}
+
+// Hook para obtener el nombre corto (para UI)
+export function useCommercialNameShort(): string {
+    const { config } = usePlatformConfig();
+    return config?.commercial_name_short || 'ZEN';
+}
+
+// Hook para obtener el dominio
+export function usePlatformDomain(): string {
+    const { config } = usePlatformConfig();
+    return config?.domain || 'www.zenn.mx';
 }
 
 // Hook para obtener solo el logo (más ligero)
@@ -204,7 +240,11 @@ export function usePlatformIsotipo(): string | null {
 export function usePlatformBranding() {
     const { config } = usePlatformConfig();
     return {
-        nombre: config?.nombre_empresa || 'ProSocial Platform',
+        companyName: config?.company_name || 'Zen México',
+        companyNameLong: config?.company_name_long || 'ZEN México',
+        commercialName: config?.commercial_name || 'Zen Studio',
+        commercialNameShort: config?.commercial_name_short || 'ZEN',
+        domain: config?.domain || 'www.zenn.mx',
         isotipo: config?.favicon_url || null, // Isotipo = solo el icono (favicon)
         logotipo: config?.logo_url || null, // Logotipo = icono + nombre (logo_url)
         favicon: config?.favicon_url || null,
@@ -216,12 +256,12 @@ export function usePlatformContact() {
     const { config } = usePlatformConfig();
     return {
         comercial: {
-            telefono: config?.comercial_telefono || null,
+            telefono: config?.commercial_phone || null,
             email: config?.comercial_email || null,
             whatsapp: config?.comercial_whatsapp || null,
         },
         soporte: {
-            telefono: config?.soporte_telefono || null,
+            telefono: config?.support_phone || null,
             email: config?.soporte_email || null,
             chat_url: config?.soporte_chat_url || null,
         }

@@ -4,25 +4,86 @@ import { prisma } from '@/lib/prisma'
 // GET - Obtener configuración de la plataforma
 export async function GET() {
     try {
-        const config = await prisma.platform_config.findFirst({
-            orderBy: { createdAt: 'desc' }
-        })
+        // Intentar obtener con todos los campos primero
+        let config;
+        try {
+            config = await prisma.platform_config.findFirst({
+                orderBy: { createdAt: 'desc' }
+            })
+        } catch (prismaError: any) {
+            // Si falla por campos que no existen, intentar con select explícito
+            if (prismaError?.code === 'P2022' || prismaError?.message?.includes('does not exist')) {
+                console.warn('Algunos campos nuevos no existen, usando select explícito');
+                config = await prisma.platform_config.findFirst({
+                    orderBy: { createdAt: 'desc' },
+                    select: {
+                        id: true,
+                        company_name: true,
+                        logo_url: true,
+                        favicon_url: true,
+                        comercial_email: true,
+                        comercial_whatsapp: true,
+                        commercial_phone: true,
+                        soporte_email: true,
+                        soporte_chat_url: true,
+                        support_phone: true,
+                        address: true,
+                        business_hours: true,
+                        timezone: true,
+                        facebook_url: true,
+                        instagram_url: true,
+                        twitter_url: true,
+                        linkedin_url: true,
+                        terminos_condiciones: true,
+                        politica_privacidad: true,
+                        aviso_legal: true,
+                        meta_description: true,
+                        meta_keywords: true,
+                        google_analytics_id: true,
+                        google_tag_manager_id: true,
+                        google_oauth_client_id: true,
+                        google_oauth_client_secret: true,
+                        google_oauth_redirect_uri: true,
+                        google_drive_api_key: true,
+                        invitation_base_cost: true,
+                        createdAt: true,
+                        updatedAt: true,
+                    }
+                })
+                // Agregar campos nuevos con valores null si no existen
+                if (config) {
+                    config = {
+                        ...config,
+                        company_name_long: null,
+                        commercial_name: null,
+                        commercial_name_short: null,
+                        domain: null,
+                    } as any
+                }
+            } else {
+                throw prismaError;
+            }
+        }
 
         if (!config) {
             // Si no existe configuración, devolver valores por defecto
             return NextResponse.json({
                 id: 'default',
-                nombre_empresa: 'ProSocial Platform',
+                company_name: 'Zen México',
+                company_name_long: 'ZEN México',
+                commercial_name: 'Zen Studio',
+                commercial_name_short: 'ZEN',
+                domain: 'www.zenn.mx',
                 logo_url: null,
                 favicon_url: null,
-                comercial_telefono: null,
                 comercial_email: null,
                 comercial_whatsapp: null,
-                soporte_telefono: null,
+                commercial_phone: null,
                 soporte_email: null,
                 soporte_chat_url: null,
-                direccion: null,
-                horarios_atencion: null,
+                support_phone: null,
+                address: null,
+                business_hours: null,
                 timezone: 'America/Mexico_City',
                 facebook_url: null,
                 instagram_url: null,
@@ -69,7 +130,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
 
         // Validar campos requeridos
-        if (!body.nombre_empresa) {
+        if (!body.company_name) {
             return NextResponse.json(
                 { error: 'El nombre de la empresa es requerido' },
                 { status: 400 }

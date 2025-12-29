@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
-import { PromiseForm, type PromiseFormRef } from '../components/PromiseForm';
+import { PromiseFormModal, type PromiseFormRef } from '../components/PromiseFormModal';
 import { PromiseQuickActions } from '../components/PromiseQuickActions';
 import { useRouter } from 'next/navigation';
 
@@ -76,7 +76,7 @@ export default function NuevaPromesaPage() {
           </div>
         </ZenCardHeader>
         <ZenCardContent className="p-6">
-          <PromiseForm
+          <PromiseFormModal
             ref={formRef}
             studioSlug={studioSlug}
             onLoadingChange={setIsLoading}

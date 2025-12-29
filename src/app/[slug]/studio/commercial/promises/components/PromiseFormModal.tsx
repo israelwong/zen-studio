@@ -50,7 +50,7 @@ export interface PromiseFormRef {
   } | null;
 }
 
-export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
+export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
   studioSlug,
   initialData,
   onSuccess,
@@ -405,11 +405,7 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
 
           // Si es creación (no estaba en modo edición), navegar a la página de la promesa
           if (!isEditMode && promiseResult.success && promiseResult.data) {
-            // Esperar un momento para que la revalidación se complete antes de navegar
-            // Esto asegura que la página individual tenga los datos disponibles
-            setTimeout(() => {
-              router.push(`/${studioSlug}/studio/commercial/promises/${promiseResult.data.promise_id}`);
-            }, 100);
+            router.push(`/${studioSlug}/studio/commercial/promises/${promiseResult.data.promise_id}`);
           }
         }
 
@@ -1065,5 +1061,5 @@ export const PromiseForm = forwardRef<PromiseFormRef, PromiseFormProps>(({
   );
 });
 
-PromiseForm.displayName = 'PromiseForm';
+PromiseFormModal.displayName = 'PromiseFormModal';
 

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
+import { PromiseNotesButton } from '../components/PromiseNotesButton';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
 import { PromiseCardView } from '../components/PromiseCardView';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
@@ -536,6 +537,13 @@ export default function EditarPromesaPage() {
                       promiseId={promiseId}
                     />
                   )}
+                {promiseId && (
+                  <PromiseNotesButton
+                    studioSlug={studioSlug}
+                    promiseId={promiseId}
+                    contactId={contactData?.contactId}
+                  />
+                )}
                 <ZenDropdownMenu>
                   <ZenDropdownMenuTrigger asChild>
                     <ZenButton

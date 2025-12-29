@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { StudioPublicInfo } from '@/lib/actions/cliente';
+import { usePlatformName, usePlatformDomain } from '@/hooks/usePlatformConfig';
 
 interface AvisoPrivacidadFooterProps {
   studioInfo: StudioPublicInfo | null;
@@ -10,6 +11,9 @@ interface AvisoPrivacidadFooterProps {
 export function AvisoPrivacidadFooter({ studioInfo }: AvisoPrivacidadFooterProps) {
   const currentYear = new Date().getFullYear();
   const studioName = studioInfo?.studio_name || 'Portal de Cliente';
+  const companyName = usePlatformName();
+  const domain = usePlatformDomain();
+  const domainUrl = domain ? `https://${domain}` : 'https://www.zenn.mx';
 
   return (
     <footer className="border-t border-zinc-800 bg-zinc-900/95 px-4 py-4">
@@ -21,12 +25,12 @@ export function AvisoPrivacidadFooter({ studioInfo }: AvisoPrivacidadFooterProps
           <p className="text-center text-[10px] text-zinc-600">
             Powered by{' '}
             <a
-              href="https://www.zenn.mx"
+              href={domainUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="font-medium text-zinc-500 hover:text-zinc-400 transition-colors"
             >
-              ZEN México
+              {companyName}
             </a>
           </p>
         </div>

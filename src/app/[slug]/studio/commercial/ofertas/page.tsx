@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Megaphone, Plus } from 'lucide-react';
+import { usePageTitle } from '@/hooks/usePageTitle';
 import {
     ZenCard,
     ZenCardContent,
@@ -46,9 +47,7 @@ export default function OfertasPage() {
         conversion_rate: number;
     }>>({});
 
-    useEffect(() => {
-        document.title = 'ZEN Studio - Ofertas';
-    }, []);
+    usePageTitle('Ofertas');
 
     useEffect(() => {
         loadOffers();

@@ -24,11 +24,11 @@ export async function sendAgentCredentialsEmail(data: AgentCredentialsData) {
 
         // Datos dinámicos de la plataforma
         const platformData = {
-            nombre: platformConfig?.nombre_empresa || 'Zen Studio',
-            logotipo: platformConfig?.logo_url || 'https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/ProSocialPlatform/platform/logotipo.svg',
-            isotipo: platformConfig?.favicon_url || 'https://fhwfdwrrnwkbnwxabkcq.supabase.co/storage/v1/object/public/ProSocialPlatform/platform/isotipo.svg',
-            sitio_web: platformConfig?.sitio_web || 'https://prosocialmx.com',
-            soporte_email: platformConfig?.soporte_email || 'soporte@prosocialmx.com',
+            nombre: platformConfig?.commercial_name || platformConfig?.company_name || 'Zen Studio',
+            logotipo: platformConfig?.logo_url || null,
+            isotipo: platformConfig?.favicon_url || null,
+            sitio_web: platformConfig?.domain ? `https://${platformConfig.domain}` : 'https://www.zenn.mx',
+            soporte_email: platformConfig?.soporte_email || 'soporte@zenn.mx',
         };
 
         // Renderizar el template de React a HTML
@@ -59,8 +59,8 @@ export async function sendAgentCredentialsEmail(data: AgentCredentialsData) {
         const result = await sendEmail({
             to: data.email,
             subject: data.isNewAgent
-                ? '🎉 Bienvenido a Zen Studio - Credenciales de Acceso'
-                : '🔑 Credenciales Actualizadas - Zen Studio',
+                ? `🎉 Bienvenido a ${platformData.nombre} - Credenciales de Acceso`
+                : `🔑 Credenciales Actualizadas - ${platformData.nombre}`,
             html: emailHtml,
             text: generatePlainTextVersion(data, loginUrl, platformData),
         });
@@ -143,8 +143,8 @@ function generateSimpleHtml(data: AgentCredentialsData, loginUrl: string, platfo
     <hr style="border: none; border-top: 1px solid #e6ebf1; margin: 20px 0;">
     <p style="text-align: center; color: #8898aa; font-size: 12px;">
         © 2024 ${platformData.nombre}. Todos los derechos reservados.<br>
-        <a href="${platformData.sitio_web || 'https://prosocialmx.com'}" style="color: #556cd6;">Sitio Web</a> • 
-        <a href="mailto:${platformData.soporte_email || 'soporte@prosocialmx.com'}" style="color: #556cd6;">Soporte</a>
+        <a href="${platformData.sitio_web || 'https://www.zenn.mx'}" style="color: #556cd6;">Sitio Web</a> • 
+        <a href="mailto:${platformData.soporte_email || 'soporte@zenn.mx'}" style="color: #556cd6;">Soporte</a>
     </p>
 </body>
 </html>`.trim();
@@ -186,8 +186,8 @@ Saludos,
 Equipo ${platformData.nombre}
 
 © 2024 ${platformData.nombre}. Todos los derechos reservados.
-Sitio Web: ${platformData.sitio_web || 'https://prosocialmx.com'}
-Soporte: ${platformData.soporte_email || 'soporte@prosocialmx.com'}
+Sitio Web: ${platformData.sitio_web || 'https://www.zenn.mx'}
+Soporte: ${platformData.soporte_email || 'soporte@zenn.mx'}
 `.trim();
 }
 

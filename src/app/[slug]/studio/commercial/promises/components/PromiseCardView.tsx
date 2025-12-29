@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { ContactEventInfoCard } from '@/components/shared/contact-info';
-import { PromiseLogsPanelCompact } from './PromiseLogsPanelCompact';
 import { PromiseQuotesPanel } from './PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
 import { PromiseAgendamiento } from './PromiseAgendamiento';
@@ -135,7 +134,7 @@ export function PromiseCardView({
             )}
           </div>
 
-          {/* Columna 3: Agendamiento y Notas */}
+          {/* Columna 3: Agendamiento */}
           <div className="lg:col-span-1 space-y-6">
             {/* Agendamiento (solo si está guardado) */}
             {isSaved && promiseId && (
@@ -143,18 +142,6 @@ export function PromiseCardView({
                 <PromiseAgendamiento
                   studioSlug={studioSlug}
                   promiseId={promiseId}
-                  isSaved={isSaved}
-                />
-              </div>
-            )}
-
-            {/* Bitácora */}
-            {isSaved && promiseId && (
-              <div>
-                <PromiseLogsPanelCompact
-                  studioSlug={studioSlug}
-                  promiseId={promiseId}
-                  contactId={contactId}
                   isSaved={isSaved}
                 />
               </div>

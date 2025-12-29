@@ -13,6 +13,7 @@ import { SubscriptionPopover } from './SubscriptionPopover';
 import { SubscriptionBadge } from '@/components/shared/subscription/SubscriptionBadge';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
 import { GoogleStatusPopover } from '@/components/shared/integrations/GoogleStatusPopover';
+import { useCommercialNameShort } from '@/hooks/usePlatformConfig';
 
 interface AppHeaderProps {
     studioSlug: string;
@@ -27,6 +28,7 @@ export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContacts
     const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
     const { toggleSidebar } = useZenSidebar();
     const { identidadData } = useStudioData({ studioSlug });
+    const commercialNameShort = useCommercialNameShort();
 
     // Evitar problemas de hidratación con Radix UI
     useEffect(() => {
@@ -100,12 +102,12 @@ export function AppHeader({ studioSlug, onCommandOpen, onAgendaClick, onContacts
                     <Menu className="h-5 w-5" />
                 </ZenButton>
 
-                {/* ZEN Logo + Brand (no clickeable) */}
+                {/* Logo + Brand (no clickeable) */}
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="flex items-center justify-center w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500 to-emerald-600">
                         <Zap className="w-4 h-4 text-white" />
                     </div>
-                    <span className="font-bold text-white text-sm hidden sm:inline">ZEN</span>
+                    <span className="font-bold text-white text-sm hidden sm:inline">{commercialNameShort}</span>
                 </div>
 
                 {/* Divider */}

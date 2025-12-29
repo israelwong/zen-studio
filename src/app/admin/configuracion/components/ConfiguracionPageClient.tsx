@@ -13,29 +13,43 @@ import { Loader2, Save, Building2, Phone, Headphones, MapPin, Share2, FileText, 
 
 interface PlatformConfig {
     id: string;
-    nombre_empresa: string;
+    // Branding
+    company_name: string;
+    company_name_long: string | null;
+    commercial_name: string | null;
+    commercial_name_short: string | null;
+    domain: string | null;
+    // Assets
     logo_url: string | null;
     favicon_url: string | null;
-    comercial_telefono: string | null;
+    // Contacto comercial
     comercial_email: string | null;
     comercial_whatsapp: string | null;
-    soporte_telefono: string | null;
+    commercial_phone: string | null;
+    // Soporte
     soporte_email: string | null;
     soporte_chat_url: string | null;
-    direccion: string | null;
-    horarios_atencion: string | null;
+    support_phone: string | null;
+    // Ubicación
+    address: string | null;
+    business_hours: string | null;
     timezone: string;
+    // Redes sociales (deprecated)
     facebook_url: string | null;
     instagram_url: string | null;
     twitter_url: string | null;
     linkedin_url: string | null;
+    // Legal (deprecated)
     terminos_condiciones: string | null;
     politica_privacidad: string | null;
     aviso_legal: string | null;
+    // SEO
     meta_description: string | null;
     meta_keywords: string | null;
+    // Analytics (deprecated)
     google_analytics_id: string | null;
     google_tag_manager_id: string | null;
+    // Timestamps
     createdAt: Date;
     updatedAt: Date;
 }
@@ -169,32 +183,78 @@ export function ConfiguracionPageClient({ initialConfig }: ConfiguracionPageClie
 
                         {/* Información General */}
                         <TabsContent value="general" className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <ZenInput
-                                    id="nombre_empresa"
-                                    label="Nombre de la Empresa"
-                                    required
-                                    value={config.nombre_empresa}
-                                    onChange={(e) => handleInputChange('nombre_empresa', e.target.value)}
-                                    className="bg-zinc-800 border-zinc-700 text-white"
-                                    placeholder="Nombre de la empresa"
-                                />
-                                <ZenInput
-                                    id="logo_url"
-                                    label="URL del Logo"
-                                    value={config.logo_url || ''}
-                                    onChange={(e) => handleInputChange('logo_url', e.target.value)}
-                                    className="bg-zinc-800 border-zinc-700 text-white"
-                                    placeholder="https://ejemplo.com/logo.png"
-                                />
-                                <ZenInput
-                                    id="favicon_url"
-                                    label="URL del Favicon"
-                                    value={config.favicon_url || ''}
-                                    onChange={(e) => handleInputChange('favicon_url', e.target.value)}
-                                    className="bg-zinc-800 border-zinc-700 text-white"
-                                    placeholder="https://ejemplo.com/favicon.ico"
-                                />
+                            <div className="space-y-4">
+                                <div className="border-b border-zinc-700 pb-2">
+                                    <h3 className="text-lg font-semibold text-white">Branding</h3>
+                                    <p className="text-sm text-zinc-400">Información de marca centralizada</p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <ZenInput
+                                        id="company_name"
+                                        label="Nombre Legal"
+                                        required
+                                        value={config.company_name}
+                                        onChange={(e) => handleInputChange('company_name', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="Zen México"
+                                    />
+                                    <ZenInput
+                                        id="company_name_long"
+                                        label="Nombre Largo"
+                                        value={config.company_name_long || ''}
+                                        onChange={(e) => handleInputChange('company_name_long', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="ZEN México"
+                                    />
+                                    <ZenInput
+                                        id="commercial_name"
+                                        label="Nombre Comercial"
+                                        value={config.commercial_name || ''}
+                                        onChange={(e) => handleInputChange('commercial_name', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="Zen Studio"
+                                    />
+                                    <ZenInput
+                                        id="commercial_name_short"
+                                        label="Nombre Corto (UI)"
+                                        value={config.commercial_name_short || ''}
+                                        onChange={(e) => handleInputChange('commercial_name_short', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="ZEN"
+                                    />
+                                    <ZenInput
+                                        id="domain"
+                                        label="Dominio"
+                                        value={config.domain || ''}
+                                        onChange={(e) => handleInputChange('domain', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="www.zenn.mx"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <div className="border-b border-zinc-700 pb-2">
+                                    <h3 className="text-lg font-semibold text-white">Assets Visuales</h3>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <ZenInput
+                                        id="logo_url"
+                                        label="URL del Logo"
+                                        value={config.logo_url || ''}
+                                        onChange={(e) => handleInputChange('logo_url', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="https://ejemplo.com/logo.png"
+                                    />
+                                    <ZenInput
+                                        id="favicon_url"
+                                        label="URL del Favicon"
+                                        value={config.favicon_url || ''}
+                                        onChange={(e) => handleInputChange('favicon_url', e.target.value)}
+                                        className="bg-zinc-800 border-zinc-700 text-white"
+                                        placeholder="https://ejemplo.com/favicon.ico"
+                                    />
+                                </div>
+                            </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="timezone" className="text-white">
                                         Zona Horaria
@@ -222,10 +282,10 @@ export function ConfiguracionPageClient({ initialConfig }: ConfiguracionPageClie
                         <TabsContent value="comercial" className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <ZenInput
-                                    id="comercial_telefono"
+                                    id="commercial_phone"
                                     label="Teléfono Comercial"
-                                    value={config.comercial_telefono || ''}
-                                    onChange={(e) => handleInputChange('comercial_telefono', e.target.value)}
+                                    value={config.commercial_phone || ''}
+                                    onChange={(e) => handleInputChange('commercial_phone', e.target.value)}
                                     className="bg-zinc-800 border-zinc-700 text-white"
                                     placeholder="+52 55 1234 5678"
                                 />
@@ -253,10 +313,10 @@ export function ConfiguracionPageClient({ initialConfig }: ConfiguracionPageClie
                         <TabsContent value="soporte" className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <ZenInput
-                                    id="soporte_telefono"
+                                    id="support_phone"
                                     label="Teléfono de Soporte"
-                                    value={config.soporte_telefono || ''}
-                                    onChange={(e) => handleInputChange('soporte_telefono', e.target.value)}
+                                    value={config.support_phone || ''}
+                                    onChange={(e) => handleInputChange('support_phone', e.target.value)}
                                     className="bg-zinc-800 border-zinc-700 text-white"
                                     placeholder="+52 55 1234 5678"
                                 />
@@ -284,26 +344,26 @@ export function ConfiguracionPageClient({ initialConfig }: ConfiguracionPageClie
                         <TabsContent value="ubicacion" className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="direccion" className="text-white">
+                                    <Label htmlFor="address" className="text-white">
                                         Dirección
                                     </Label>
                                     <Textarea
-                                        id="direccion"
-                                        value={config.direccion || ''}
-                                        onChange={(e) => handleInputChange('direccion', e.target.value)}
+                                        id="address"
+                                        value={config.address || ''}
+                                        onChange={(e) => handleInputChange('address', e.target.value)}
                                         className="bg-zinc-800 border-zinc-700 text-white"
                                         placeholder="Dirección completa de la empresa"
                                         rows={3}
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="horarios_atencion" className="text-white">
+                                    <Label htmlFor="business_hours" className="text-white">
                                         Horarios de Atención
                                     </Label>
                                     <Textarea
-                                        id="horarios_atencion"
-                                        value={config.horarios_atencion || ''}
-                                        onChange={(e) => handleInputChange('horarios_atencion', e.target.value)}
+                                        id="business_hours"
+                                        value={config.business_hours || ''}
+                                        onChange={(e) => handleInputChange('business_hours', e.target.value)}
                                         className="bg-zinc-800 border-zinc-700 text-white"
                                         placeholder="Lunes a Viernes: 9:00 AM - 6:00 PM"
                                         rows={3}

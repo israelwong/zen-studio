@@ -18,6 +18,7 @@ export type CreatePromiseLogData = z.infer<typeof createPromiseLogSchema>;
  * Tipos de acciones que pueden generar logs automáticos
  */
 export type PromiseLogAction =
+  | 'promise_created'
   | 'stage_change'
   | 'whatsapp_sent'
   | 'call_made'
@@ -42,6 +43,11 @@ const LOG_ACTIONS: Record<
   PromiseLogAction,
   (metadata?: Record<string, unknown>) => string
 > = {
+  promise_created: (meta) => {
+    const contactName = (meta?.contactName as string) || 'Prospecto';
+    const channelName = (meta?.channelName as string) || 'canal desconocido';
+    return `Prospecto ${contactName} registrado desde canal ${channelName}`;
+  },
   stage_change: (meta) => {
     const from = (meta?.from as string) || 'desconocida';
     const to = (meta?.to as string) || 'desconocida';

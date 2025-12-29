@@ -2,12 +2,17 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePlatformName, usePlatformDomain } from '@/hooks/usePlatformConfig';
 
 /**
  * ZenCreditsCard - Versión minimalista del ProfileFooter para sidebar desktop
  * Sin card, solo línea decorativa y créditos ZEN México
  */
 export function ZenCreditsCard() {
+    const companyName = usePlatformName();
+    const domain = usePlatformDomain();
+    const domainUrl = domain ? `https://${domain}` : '/';
+
     return (
         <div className="pt-4">
             {/* Línea decorativa superior */}
@@ -16,16 +21,16 @@ export function ZenCreditsCard() {
             {/* Créditos ZEN - Minimalista */}
             <div className="text-center space-y-1">
                 <p className="text-zinc-500 text-xs font-light">
-                    by <Link href="/" className="font-semibold text-zinc-400 hover:text-zinc-300 transition-colors">Zen México</Link> 2025
+                    by <Link href={domainUrl} className="font-semibold text-zinc-400 hover:text-zinc-300 transition-colors">{companyName}</Link> {new Date().getFullYear()}
                 </p>
                 <p className="text-zinc-500 text-xs font-light">
                     todos los derechos reservados
                 </p>
                 <Link
-                    href="/"
+                    href={domainUrl}
                     className="block text-zinc-500 text-xs font-light hover:text-zinc-400 transition-colors duration-200"
                 >
-                    www.zenn.mx
+                    {domain || 'www.zenn.mx'}
                 </Link>
             </div>
         </div>
