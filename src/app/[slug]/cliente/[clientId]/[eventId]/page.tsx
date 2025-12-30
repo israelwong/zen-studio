@@ -12,6 +12,8 @@ import { BalanceFinancieroCard } from './components/BalanceFinancieroCard';
 import { EstatusEntregablesCard } from './components/EstatusEntregablesCard';
 import { EntregaDigitalCard } from './components/EntregaDigitalCard';
 import { InformacionEventoCard } from './components/InformacionEventoCard';
+import { ConfirmClientDataCard } from './components/ConfirmClientDataCard';
+import { ClientContractViewCard } from './components/ClientContractViewCard';
 import type { DashboardInfo } from '@/lib/actions/cliente/dashboard.actions';
 
 export default function EventoResumenPage() {
@@ -124,6 +126,50 @@ export default function EventoResumenPage() {
           eventId={eventId}
         />
       </div>
+
+      {/* Flujo de Contrato - Mostrar según estado de cotización */}
+      {dashboardInfo?.cotizacion && (
+        <>
+          {/* Confirmar datos (si contract_pending) */}
+          {dashboardInfo.cotizacion.status === 'contract_pending' && (
+            <div className="mb-6">
+              <ConfirmClientDataCard
+                studioSlug={slug}
+                promiseId={dashboardInfo.cotizacion.promise_id || ''}
+                contactId={clientId}
+                initialData={{
+                  name: dashboardInfo.contact?.name || '',
+                  phone: dashboardInfo.contact?.phone || '',
+                  email: dashboardInfo.contact?.email || null,
+                  address: dashboardInfo.contact?.address || null,
+                }}
+                onSuccess={() => {
+                  // Recargar dashboard
+                  window.location.reload();
+                }}
+              />
+            </div>
+          )}
+
+          {/* Ver/Firmar contrato (si contract_generated o contract_signed) */}
+          {(dashboardInfo.cotizacion.status === 'contract_generated' || 
+            dashboardInfo.cotizacion.status === 'contract_signed') && 
+            dashboardInfo.contract && (
+            <div className="mb-6">
+              <ClientContractViewCard
+                studioSlug={slug}
+                contactId={clientId}
+                contract={dashboardInfo.contract}
+                cotizacionStatus={dashboardInfo.cotizacion.status}
+                onSuccess={() => {
+                  // Recargar dashboard
+                  window.location.reload();
+                }}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       {/* Dashboard Cards */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

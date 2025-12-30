@@ -20,6 +20,24 @@ export interface DashboardInfo {
     total_count: number;
     last_delivery_date: string | null;
   };
+  cotizacion?: {
+    id: string;
+    status: string;
+    promise_id: string | null;
+  } | null;
+  contract?: {
+    id: string;
+    content: string;
+    status: string;
+    created_at: Date;
+    signed_at: Date | null;
+  } | null;
+  contact?: {
+    name: string;
+    phone: string;
+    email: string | null;
+    address: string | null;
+  } | null;
 }
 
 /**
@@ -102,11 +120,89 @@ export async function obtenerDashboardInfo(
       };
     }
 
+    // Obtener cotización autorizada (si existe)
+    let cotizacion = null;
+    let contract = null;
+    let contact = null;
+
+    if (event) {
+      // Buscar cotización asociada al evento
+      const cotizacionData = await prisma.studio_cotizaciones.findFirst({
+        where: {
+          OR: [
+            { evento_id: event.id },
+            { promise_id: eventIdOrPromiseId },
+          ],
+          status: {
+            in: ['contract_pending', 'contract_generated', 'contract_signed', 'autorizada', 'aprobada'],
+          },
+        },
+        select: {
+          id: true,
+          status: true,
+          promise_id: true,
+        },
+        orderBy: {
+          updated_at: 'desc',
+        },
+      });
+
+      if (cotizacionData) {
+        cotizacion = cotizacionData;
+
+        // Si la cotización está en estados de contrato, buscar el contrato
+        if (['contract_generated', 'contract_signed'].includes(cotizacionData.status)) {
+          const contractData = await prisma.studio_event_contracts.findFirst({
+            where: {
+              event_id: event.id,
+              status: {
+                not: 'CANCELLED',
+              },
+            },
+            select: {
+              id: true,
+              content: true,
+              status: true,
+              created_at: true,
+              signed_at: true,
+            },
+            orderBy: {
+              created_at: 'desc',
+            },
+          });
+
+          if (contractData) {
+            contract = contractData;
+          }
+        }
+      }
+
+      // Obtener información del contacto
+      const contactData = await prisma.studio_contacts.findUnique({
+        where: {
+          id: contactId,
+        },
+        select: {
+          name: true,
+          phone: true,
+          email: true,
+          address: true,
+        },
+      });
+
+      if (contactData) {
+        contact = contactData;
+      }
+    }
+
     return {
       success: true,
       data: {
         pipeline_stages,
         entregables_status,
+        cotizacion,
+        contract,
+        contact,
       },
     };
   } catch (error) {
