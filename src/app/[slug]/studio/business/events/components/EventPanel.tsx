@@ -4,7 +4,6 @@ import React from 'react';
 import { ContactEventInfoCard } from '@/components/shared/contact-info';
 import { EventCotizacionesCard } from '../[eventId]/components/EventCotizacionesCard';
 import { EventPaymentsCard } from '../[eventId]/components/EventPaymentsCard';
-import { EventContractCard } from '../[eventId]/components/EventContractCard';
 import { EventAgendamiento } from '../[eventId]/components/EventAgendamiento';
 import { EventDeliverablesCard } from '../[eventId]/components/EventDeliverablesCard';
 // import { EventTodoCard } from '../[eventId]/components/EventTodoCard';
@@ -107,20 +106,13 @@ export function EventPanel({
           />
         </div>
 
-        {/* Columna 3: Agenda + Contrato + Entregables + TODO */}
+        {/* Columna 3: Agenda + Entregables + TODO */}
         <div className="lg:col-span-1 space-y-6">
           <EventAgendamiento
             studioSlug={studioSlug}
             eventId={eventId}
             eventDate={eventData.promise?.event_date || eventData.event_date}
             onAgendaUpdated={onEventUpdated}
-          />
-
-          <EventContractCard
-            studioSlug={studioSlug}
-            eventId={eventId}
-            eventTypeId={eventData.event_type_id || undefined}
-            onContractUpdated={onEventUpdated}
           />
 
           <EventDeliverablesCard

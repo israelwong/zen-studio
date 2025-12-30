@@ -10,7 +10,7 @@ import { CONTRACT_PREVIEW_STYLES } from "@/lib/utils/contract-styles";
 import type { EventContract } from "@/types/contracts";
 import { toast } from "sonner";
 
-interface EventContractViewModalProps {
+interface PromiseContractViewModalProps {
   isOpen: boolean;
   onClose: () => void;
   onContractUpdated?: () => void;
@@ -19,14 +19,14 @@ interface EventContractViewModalProps {
   contract: EventContract;
 }
 
-export function EventContractViewModal({
+export function PromiseContractViewModal({
   isOpen,
   onClose,
   onContractUpdated,
   studioSlug,
   eventId,
   contract,
-}: EventContractViewModalProps) {
+}: PromiseContractViewModalProps) {
   const [eventData, setEventData] = useState<EventContractDataWithConditions | null>(null);
   const [renderedContent, setRenderedContent] = useState("");
   const [loading, setLoading] = useState(true);

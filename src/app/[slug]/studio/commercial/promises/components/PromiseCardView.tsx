@@ -6,6 +6,7 @@ import { PromiseQuotesPanel } from './PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
 import { PromiseAgendamiento } from './PromiseAgendamiento';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
+import { PromiseContractCard } from '../[promiseId]/components/PromiseContractCard';
 
 interface PromiseCardViewProps {
   studioSlug: string;
@@ -134,7 +135,7 @@ export function PromiseCardView({
             )}
           </div>
 
-          {/* Columna 3: Agendamiento */}
+          {/* Columna 3: Agendamiento + Contrato */}
           <div className="lg:col-span-1 space-y-6">
             {/* Agendamiento (solo si está guardado) */}
             {isSaved && promiseId && (
@@ -143,6 +144,17 @@ export function PromiseCardView({
                   studioSlug={studioSlug}
                   promiseId={promiseId}
                   isSaved={isSaved}
+                />
+              </div>
+            )}
+
+            {/* Contrato (solo si está guardado) */}
+            {isSaved && promiseId && (
+              <div>
+                <PromiseContractCard
+                  studioSlug={studioSlug}
+                  eventId={promiseId}
+                  eventTypeId={data.event_type_id || undefined}
                 />
               </div>
             )}

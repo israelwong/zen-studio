@@ -44,24 +44,24 @@ const formatDateTime = (date: Date | string): string => {
 };
 import { ContractTemplateSelectorModal } from './ContractTemplateSelectorModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
-import { EventContractViewModal } from './EventContractViewModal';
+import { PromiseContractViewModal } from './PromiseContractViewModal';
 import { ContractVersionsModal } from './ContractVersionsModal';
 import { getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
 import { getEventContract, getAllEventContracts, generateEventContract, updateEventContract, deleteEventContract, publishEventContract, requestContractCancellationByStudio, confirmContractCancellationByStudio, rejectContractCancellationByStudio, getContractCancellationLogs, getContractVersions } from '@/lib/actions/studio/business/contracts/contracts.actions';
 
-interface EventContractCardProps {
+interface PromiseContractCardProps {
   studioSlug: string;
   eventId: string;
   eventTypeId?: string;
   onContractUpdated?: () => void;
 }
 
-export function EventContractCard({
+export function PromiseContractCard({
   studioSlug,
   eventId,
   eventTypeId,
   onContractUpdated,
-}: EventContractCardProps) {
+}: PromiseContractCardProps) {
   const [contract, setContract] = useState<EventContract | null>(null);
   const [allContracts, setAllContracts] = useState<EventContract[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,7 +137,7 @@ export function EventContractCard({
         await subscribeToChannel(contractsChannel);
         contractsChannelRef.current = contractsChannel;
       } catch (error) {
-        console.error('[EventContractCard] Error configurando realtime:', error);
+        console.error('[PromiseContractCard] Error configurando realtime:', error);
       }
     };
 
@@ -871,7 +871,7 @@ export function EventContractCard({
 
       {contract && (
         <>
-          <EventContractViewModal
+          <PromiseContractViewModal
             isOpen={showViewModal}
             onClose={() => setShowViewModal(false)}
             onContractUpdated={async () => {
