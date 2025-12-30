@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ZenDialog, ZenButton, ZenInput, ZenCard, ZenCardContent, ZenSwitch } from '@/components/ui/zen';
+import { ZenDialog, ZenButton, ZenInput, ZenCard, ZenCardContent, ZenSwitch, SeparadorZen } from '@/components/ui/zen';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import {
@@ -30,6 +30,7 @@ import { autorizarCotizacionLegacy } from '@/lib/actions/studio/commercial/promi
 import { getPromiseByIdAsPromiseWithContact } from '@/lib/actions/studio/commercial/promises/promises.actions';
 import { CondicionComercialSelectorModal } from './CondicionComercialSelectorModal';
 import { ResumenCotizacion } from '@/components/shared/cotizaciones';
+import { ContactEventFormModal } from '@/components/shared/contact-info/ContactEventFormModal';
 
 interface Cotizacion {
   id: string;
@@ -101,9 +102,9 @@ export function AuthorizeCotizacionModal({
   const [showCotizacionPreview, setShowCotizacionPreview] = useState(false);
   const [cotizacionCompleta, setCotizacionCompleta] = useState<any>(null);
   const [loadingCotizacion, setLoadingCotizacion] = useState(false);
-  const [showDatosCliente, setShowDatosCliente] = useState(false);
   const [promiseData, setPromiseData] = useState<any>(null);
   const [loadingPromise, setLoadingPromise] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Calcular balance con descuento de condición comercial
   const subtotal = cotizacion.price;
@@ -252,335 +253,350 @@ export function AuthorizeCotizacionModal({
     }
   };
 
+  const handleEditSuccess = () => {
+    setShowEditModal(false);
+    loadPromiseData(); // Recargar datos después de editar
+  };
+
   return (
-    <ZenDialog
-      isOpen={isOpen}
-      onClose={onClose}
-      title="Autorizar Cotización"
-      description={
-        isClienteNuevo
-          ? 'El cliente pre-autorizó esta cotización. Confirma para habilitar el flujo de contrato digital.'
-          : 'Autoriza esta cotización y crea el evento inmediatamente.'
-      }
-      maxWidth="lg"
-      onSave={handleAutorizar}
-      saveLabel={isLoading ? 'Autorizando...' : 'Autorizar y Crear Evento'}
-      cancelLabel="Cancelar"
-      isLoading={isLoading}
-      saveVariant="primary"
-    >
-      <div className="space-y-4">
-        {/* SECCIÓN 0: Datos del Cliente (Colapsable) */}
-        <div className="border-b border-zinc-700 pb-3">
-          <button
-            onClick={() => setShowDatosCliente(!showDatosCliente)}
-            className="flex items-center justify-between w-full hover:bg-zinc-800/30 p-2 rounded-lg transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <ChevronDown
-                className={`w-4 h-4 text-zinc-400 transition-transform ${
-                  showDatosCliente ? '' : '-rotate-90'
-                }`}
-              />
-              <User className="w-4 h-4 text-zinc-400" />
-              <span className="text-sm font-medium text-white">Datos del Cliente</span>
+    <>
+      <ZenDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        title="Autorizar Cotización"
+        description={
+          isClienteNuevo
+            ? 'El cliente pre-autorizó esta cotización. Confirma para habilitar el flujo de contrato digital.'
+            : 'Autoriza esta cotización y crea el evento inmediatamente.'
+        }
+        maxWidth="lg"
+        onSave={handleAutorizar}
+        saveLabel={isLoading ? 'Autorizando...' : 'Autorizar y Crear Evento'}
+        cancelLabel="Cancelar"
+        isLoading={isLoading}
+        saveVariant="primary"
+      >
+        <div className="space-y-4">
+          {/* ============================================ */}
+          {/* BLOQUE 1: RESUMEN DEL EVENTO */}
+          {/* ============================================ */}
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Resumen del Evento</h3>
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowEditModal(true)}
+                className="h-7 px-2"
+              >
+                <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                Editar
+              </ZenButton>
             </div>
-            {!showDatosCliente && !loadingPromise && promiseData && (
-              <span className="text-xs text-zinc-400 truncate max-w-xs">
-                {promiseData.contact?.name} • {promiseData.contact?.phone}
-              </span>
-            )}
-          </button>
 
-          {showDatosCliente && (
-            <div className="mt-3 space-y-3">
-              {loadingPromise ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+            {loadingPromise ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
+              </div>
+            ) : promiseData ? (
+              <div className="space-y-4">
+                {/* Datos del Contacto */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                    Datos del Contacto
+                  </h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                      <span className="text-sm text-white">
+                        {promiseData.contact?.name || 'Sin nombre'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                      <span className="text-sm text-white">
+                        {promiseData.contact?.phone || 'Sin teléfono'}
+                      </span>
+                    </div>
+                    {promiseData.contact?.email && (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        <span className="text-sm text-white truncate">
+                          {promiseData.contact.email}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ) : promiseData ? (
-                <>
-                  {/* Card Cliente */}
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3">
-                    <div className="flex items-start justify-between mb-3">
-                      <h5 className="text-xs font-medium text-zinc-400 uppercase">Cliente</h5>
-                      <button
-                        onClick={() => toast.info('Funcionalidad de edición próximamente')}
-                        className="p-1 hover:bg-zinc-700 rounded transition-colors"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-zinc-400" />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-zinc-500 shrink-0" />
-                        <span className="text-sm text-white">
-                          {promiseData.contact?.name || 'Sin nombre'}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-zinc-500 shrink-0" />
-                        <span className="text-sm text-white">
-                          {promiseData.contact?.phone || 'Sin teléfono'}
-                        </span>
-                      </div>
-                      {promiseData.contact?.email && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-zinc-500 shrink-0" />
-                          <span className="text-sm text-white truncate">
-                            {promiseData.contact.email}
-                          </span>
-                        </div>
-                      )}
-                      {promiseData.contact?.address && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-zinc-500 shrink-0" />
-                          <span className="text-sm text-white">
-                            {promiseData.contact.address}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Card Evento */}
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-3">
-                    <h5 className="text-xs font-medium text-zinc-400 uppercase mb-3">Evento</h5>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-zinc-500 shrink-0" />
-                        <span className="text-sm text-white">
-                          {promiseData.event_type?.name || 'Sin tipo de evento'}
-                        </span>
+                <SeparadorZen spacing="sm" variant="subtle" />
+
+                {/* Detalles del Evento */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
+                    Detalles del Evento
+                  </h4>
+                  <div className="space-y-1.5">
+                    {promiseData.name && (
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-0.5">Nombre del Evento</label>
+                        <p className="text-sm text-white font-medium">{promiseData.name}</p>
                       </div>
-                      {promiseData.event_date && (
-                        <div className="flex items-center gap-2">
-                          <CalendarLucide className="w-4 h-4 text-zinc-500 shrink-0" />
-                          <span className="text-sm text-white">
-                            {format(new Date(promiseData.event_date), 'PPP', { locale: es })}
-                          </span>
+                    )}
+                    {promiseData.event_type?.name && (
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-0.5">Tipo de Evento</label>
+                        <p className="text-sm text-white">{promiseData.event_type.name}</p>
+                      </div>
+                    )}
+                    {promiseData.event_location && (
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-0.5">Locación</label>
+                        <p className="text-sm text-white">{promiseData.event_location}</p>
+                      </div>
+                    )}
+                    {promiseData.event_date && (
+                      <div>
+                        <label className="text-xs text-zinc-500 block mb-0.5">Fecha</label>
+                        <p className="text-sm text-white">
+                          {format(new Date(promiseData.event_date), 'PPP', { locale: es })}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-sm text-zinc-500">No se pudieron cargar los datos</p>
+              </div>
+            )}
+          </div>
+
+          {/* ============================================ */}
+          {/* BLOQUE 2: COTIZACIÓN */}
+          {/* ============================================ */}
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">Cotización</h3>
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenPreview}
+                loading={loadingCotizacion}
+                className="h-7 px-2"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Ver detalle
+              </ZenButton>
+            </div>
+
+            <div className="space-y-4">
+              {/* Nombre de la Cotización */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-1">Nombre</label>
+                <p className="text-sm text-white font-medium">{cotizacion.name}</p>
+              </div>
+
+              {/* Condiciones Comerciales */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-zinc-500">Condiciones Comerciales</label>
+                  {!isClienteNuevo && selectedCondicionId && (
+                    <button
+                      onClick={() => setShowCondicionSelector(true)}
+                      className="text-xs text-zinc-400 hover:text-white transition-colors"
+                    >
+                      Cambiar
+                    </button>
+                  )}
+                </div>
+
+                {selectedCondicionId ? (
+                  <div className={`rounded-lg p-2.5 border ${isClienteNuevo
+                    ? 'bg-emerald-500/10 border-emerald-500/20'
+                    : 'bg-zinc-800/50 border-zinc-700'
+                    }`}>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className={`w-4 h-4 shrink-0 ${isClienteNuevo ? 'text-emerald-400' : 'text-emerald-500'
+                        }`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-white">
+                          {condicionesComerciales.find(cc => cc.id === selectedCondicionId)?.name ||
+                            cotizacion.condiciones_comerciales?.name ||
+                            'Sin condiciones'}
                         </div>
-                      )}
+                        {!isClienteNuevo && (() => {
+                          const condicion = condicionesComerciales.find(cc => cc.id === selectedCondicionId);
+                          return condicion && (
+                            <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
+                              {condicion.advance_percentage && condicion.advance_percentage > 0 && (
+                                <span>Anticipo {condicion.advance_percentage}%</span>
+                              )}
+                              <span>•</span>
+                              <span>Desc. {condicion.discount_percentage ?? 0}%</span>
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-sm text-zinc-500">No se pudieron cargar los datos</p>
+                ) : (
+                  <button
+                    onClick={() => setShowCondicionSelector(true)}
+                    className="w-full border border-dashed border-zinc-700 rounded-lg p-3 text-center hover:border-zinc-600 hover:bg-zinc-800/30 transition-colors"
+                  >
+                    <p className="text-sm text-zinc-400">
+                      Seleccionar condiciones comerciales
+                    </p>
+                  </button>
+                )}
+              </div>
+
+              {/* Resumen Financiero */}
+              <div>
+                <label className="text-xs text-zinc-500 block mb-2">Resumen Financiero</label>
+                <div className="bg-zinc-900/50 border border-zinc-700 rounded-lg p-3">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-zinc-400">Precio base:</span>
+                      <span className="text-white">
+                        ${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    {descuento > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-zinc-400">Descuento:</span>
+                        <span className="text-emerald-500">
+                          -${descuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-base font-bold pt-2 border-t border-zinc-700">
+                      <span className="text-white">Total a pagar:</span>
+                      <span className="text-emerald-500">
+                        ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estado Contrato (SOLO Cliente Nuevo) */}
+              {isClienteNuevo && (
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
+                  <div className="flex items-start gap-2">
+                    <FileText className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-medium text-white">Contrato Digital</h4>
+                      <p className="text-xs text-zinc-400 mt-1">
+                        El cliente recibirá el contrato en su portal después de confirmar sus datos
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-          )}
-        </div>
-
-        {/* SECCIÓN 1: Preview Cotización */}
-        <div className="flex justify-between items-center pb-4 border-b border-zinc-700">
-          <div>
-            <h3 className="text-base font-semibold text-white">{cotizacion.name}</h3>
-            <p className="text-sm text-zinc-400 mt-0.5">
-              Precio base: ${cotizacion.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-            </p>
-          </div>
-          <ZenButton
-            variant="ghost"
-            size="sm"
-            onClick={handleOpenPreview}
-            loading={loadingCotizacion}
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Ver detalle
-          </ZenButton>
-        </div>
-
-        {/* SECCIÓN 2: Condiciones Comerciales */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-medium text-zinc-300">Condiciones Comerciales</h4>
-            {!isClienteNuevo && selectedCondicionId && (
-              <button
-                onClick={() => setShowCondicionSelector(true)}
-                className="text-xs text-zinc-400 hover:text-white transition-colors"
-              >
-                Cambiar
-              </button>
-            )}
           </div>
 
-          {selectedCondicionId ? (
-            // Mostrar condición seleccionada
-            <div className={`rounded-lg p-2.5 border ${isClienteNuevo
-              ? 'bg-emerald-500/10 border-emerald-500/20'
-              : 'bg-zinc-800/50 border-zinc-700'
-              }`}>
-              <div className="flex items-center gap-2">
-                <CheckCircle2 className={`w-4 h-4 shrink-0 ${isClienteNuevo ? 'text-emerald-400' : 'text-emerald-500'
-                  }`} />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white">
-                    {condicionesComerciales.find(cc => cc.id === selectedCondicionId)?.name ||
-                      cotizacion.condiciones_comerciales?.name ||
-                      'Sin condiciones'}
-                  </div>
-                  {!isClienteNuevo && (() => {
-                    const condicion = condicionesComerciales.find(cc => cc.id === selectedCondicionId);
-                    return condicion && (
-                      <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5">
-                        {condicion.advance_percentage && condicion.advance_percentage > 0 && (
-                          <span>Anticipo {condicion.advance_percentage}%</span>
-                        )}
-                        <span>•</span>
-                        <span>Desc. {condicion.discount_percentage ?? 0}%</span>
-                      </div>
-                    );
-                  })()}
+          {/* ============================================ */}
+          {/* BLOQUE 3: REGISTRAR PAGO */}
+          {/* ============================================ */}
+          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-white mb-4">Registrar Pago</h3>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 border border-zinc-700 rounded-lg bg-zinc-900/50">
+                <div className="flex-1">
+                  <label className="font-medium text-white text-sm block">
+                    Registrar pago ahora
+                  </label>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    {registrarPago
+                      ? 'El cliente ya realizó el pago'
+                      : 'Se guardará con promesa de pago'}
+                  </p>
                 </div>
+                <ZenSwitch
+                  checked={registrarPago}
+                  onCheckedChange={setRegistrarPago}
+                />
               </div>
-            </div>
-          ) : (
-            // No hay condición seleccionada (solo Cliente Legacy)
-            <button
-              onClick={() => setShowCondicionSelector(true)}
-              className="w-full border border-dashed border-zinc-700 rounded-lg p-3 text-center hover:border-zinc-600 hover:bg-zinc-800/30 transition-colors"
-            >
-              <p className="text-sm text-zinc-400">
-                Seleccionar condiciones comerciales
-              </p>
-            </button>
-          )}
-        </div>
 
-        {/* SECCIÓN 3: Resumen Balance */}
-        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-zinc-400">Subtotal:</span>
-              <span className="text-white">
-                ${subtotal.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-            {descuento > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-400">Descuento:</span>
-                <span className="text-emerald-500">
-                  -${descuento.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-                </span>
-              </div>
-            )}
-            <div className="flex justify-between text-base font-bold pt-2 border-t border-zinc-700">
-              <span className="text-white">Total:</span>
-              <span className="text-emerald-500">
-                ${total.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
-              </span>
-            </div>
-          </div>
-        </div>
+              {/* Formulario de Pago */}
+              {registrarPago && (
+                <div className="space-y-3 p-3 bg-zinc-800/30 rounded-lg border border-zinc-700">
+                  <ZenInput
+                    label="Concepto"
+                    value={pagoConcepto}
+                    onChange={(e) => setPagoConcepto(e.target.value)}
+                    placeholder="Ej: Anticipo 50%"
+                  />
 
-        {/* SECCIÓN 4: Estado Contrato (SOLO Cliente Nuevo) */}
-        {isClienteNuevo && (
-          <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <FileText className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h4 className="text-sm font-medium text-white">Contrato Digital</h4>
-                <p className="text-xs text-zinc-400 mt-1">
-                  El cliente recibirá el contrato en su portal después de confirmar sus datos
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+                  <ZenInput
+                    type="number"
+                    label="Monto"
+                    value={pagoMonto}
+                    onChange={(e) => setPagoMonto(e.target.value)}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
 
-        {/* SECCIÓN 5: Registro de Pago */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 border border-zinc-700 rounded-lg bg-zinc-900/50">
-            <div className="flex-1">
-              <label className="font-medium text-white text-sm block">
-                Registrar pago ahora
-              </label>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                {registrarPago
-                  ? 'El cliente ya realizó el pago'
-                  : 'Se guardará con promesa de pago'}
-              </p>
-            </div>
-            <ZenSwitch
-              checked={registrarPago}
-              onCheckedChange={setRegistrarPago}
-            />
-          </div>
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300 block mb-1.5">
+                      Fecha de pago
+                    </label>
+                    <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex items-center justify-between"
+                        >
+                          <span className={!pagoFecha ? 'text-zinc-500' : ''}>
+                            {pagoFecha ? format(pagoFecha, 'PPP', { locale: es }) : 'Seleccionar fecha'}
+                          </span>
+                          <CalendarIcon className="h-4 w-4 text-zinc-400" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-zinc-900 border-zinc-700" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={pagoFecha}
+                          onSelect={(date) => {
+                            setPagoFecha(date);
+                            setCalendarOpen(false);
+                          }}
+                          locale={es}
+                          className="rounded-md border-0"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
-          {/* Formulario de Pago */}
-          {registrarPago && (
-            <div className="space-y-3 p-3 bg-zinc-800/30 rounded-lg border border-zinc-700">
-              <ZenInput
-                label="Concepto"
-                value={pagoConcepto}
-                onChange={(e) => setPagoConcepto(e.target.value)}
-                placeholder="Ej: Anticipo 50%"
-              />
-
-              <ZenInput
-                type="number"
-                label="Monto"
-                value={pagoMonto}
-                onChange={(e) => setPagoMonto(e.target.value)}
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-              />
-
-              <div>
-                <label className="text-sm font-medium text-zinc-300 block mb-1.5">
-                  Fecha de pago
-                </label>
-                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 hover:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 flex items-center justify-between"
+                  <div>
+                    <label className="text-sm font-medium text-zinc-300 block mb-1.5">
+                      Método de pago
+                    </label>
+                    <select
+                      value={paymentMethodId}
+                      onChange={(e) => setPaymentMethodId(e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     >
-                      <span className={!pagoFecha ? 'text-zinc-500' : ''}>
-                        {pagoFecha ? format(pagoFecha, 'PPP', { locale: es }) : 'Seleccionar fecha'}
-                      </span>
-                      <CalendarIcon className="h-4 w-4 text-zinc-400" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 bg-zinc-900 border-zinc-700" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={pagoFecha}
-                      onSelect={(date) => {
-                        setPagoFecha(date);
-                        setCalendarOpen(false);
-                      }}
-                      locale={es}
-                      className="rounded-md border-0"
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-zinc-300 block mb-1.5">
-                  Método de pago
-                </label>
-                <select
-                  value={paymentMethodId}
-                  onChange={(e) => setPaymentMethodId(e.target.value)}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="">Seleccionar método de pago</option>
-                  {paymentMethods.map((pm) => (
-                    <option key={pm.id} value={pm.id}>
-                      {pm.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                      <option value="">Seleccionar método de pago</option>
+                      {paymentMethods.map((pm) => (
+                        <option key={pm.id} value={pm.id}>
+                          {pm.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </ZenDialog>
 
       {/* Modal Selector de Condiciones Comerciales */}
       {!isClienteNuevo && (
@@ -634,7 +650,31 @@ export function AuthorizeCotizacionModal({
           </div>
         </div>
       )}
-    </ZenDialog>
+
+      {/* Modal de Edición de Contacto/Evento */}
+      {promiseData && (
+        <ContactEventFormModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          studioSlug={studioSlug}
+          context="promise"
+          initialData={{
+            id: promiseData.id,
+            name: promiseData.contact?.name || '',
+            phone: promiseData.contact?.phone || '',
+            email: promiseData.contact?.email || undefined,
+            event_type_id: promiseData.event_type_id || undefined,
+            event_location: promiseData.event_location || undefined,
+            event_name: promiseData.name || undefined,
+            interested_dates: promiseData.interested_dates || undefined,
+            acquisition_channel_id: promiseData.acquisition_channel_id || undefined,
+            social_network_id: promiseData.social_network_id || undefined,
+            referrer_contact_id: promiseData.referrer_contact_id || undefined,
+            referrer_name: promiseData.referrer_name || undefined,
+          }}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+    </>
   );
 }
-
