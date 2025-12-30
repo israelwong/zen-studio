@@ -254,7 +254,6 @@ export function ConfiguracionPageClient({ initialConfig }: ConfiguracionPageClie
                                         placeholder="https://ejemplo.com/favicon.ico"
                                     />
                                 </div>
-                            </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="timezone" className="text-white">
                                         Zona Horaria

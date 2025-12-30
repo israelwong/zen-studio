@@ -7,7 +7,7 @@ export const ConfirmClientDataSchema = z.object({
   phone: z.string().min(10, "El teléfono debe tener al menos 10 dígitos").max(20, "Máximo 20 dígitos"),
   email: z.string().email("Email inválido").min(1, "El email es requerido"),
   address: z.string().min(1, "La dirección es requerida").max(500, "Máximo 500 caracteres"),
-  ip_address: z.string().ip("IP inválida"),
+  ip_address: z.string().min(1, "IP requerida"),
 });
 
 export type ConfirmClientDataInput = z.infer<typeof ConfirmClientDataSchema>;
@@ -15,7 +15,7 @@ export type ConfirmClientDataInput = z.infer<typeof ConfirmClientDataSchema>;
 // Schema para firmar contrato
 export const SignContractSchema = z.object({
   contract_id: z.string().cuid("ID de contrato inválido"),
-  ip_address: z.string().ip("IP inválida"),
+  ip_address: z.string().min(1, "IP requerida"),
 });
 
 export type SignContractInput = z.infer<typeof SignContractSchema>;

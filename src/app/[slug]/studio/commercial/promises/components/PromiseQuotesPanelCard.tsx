@@ -29,6 +29,7 @@ import {
   cancelarCotizacionYEvento,
   type CotizacionListItem,
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { AuthorizeCotizacionModal } from './AuthorizeCotizacionModal';
 
 interface PromiseQuotesPanelCardProps {
   cotizacion: CotizacionListItem;
@@ -68,11 +69,23 @@ export function PromiseQuotesPanelCard({
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showUnarchiveModal, setShowUnarchiveModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showAuthorizeModal, setShowAuthorizeModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState(cotizacion.name);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
+  
+  // Estados para el modal de autorización
+  const [condicionesComerciales, setCondicionesComerciales] = useState<Array<{
+    id: string; 
+    name: string;
+    description?: string | null;
+    advance_percentage?: number | null;
+    discount_percentage?: number | null;
+  }>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{id: string; name: string}>>([]);
+  const [isLoadingModalData, setIsLoadingModalData] = useState(false);
 
   // Sincronizar editingName cuando cambie cotizacion.name (solo si no está editando)
   useEffect(() => {
@@ -382,12 +395,38 @@ export function PromiseQuotesPanelCard({
       return;
     }
 
-    // Redirigir según tipo: revisión → /revision/autorizar, normal → /autorizar
-    const authorizePath = isRevision
-      ? `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/revision/autorizar`
-      : `/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/autorizar`;
+    // Cargar datos necesarios para el modal
+    setIsLoadingModalData(true);
+    try {
+      const { obtenerCondicionesComerciales } = await import('@/lib/actions/studio/config/condiciones-comerciales.actions');
+      const { getPaymentMethodsForAuthorization } = await import('@/lib/actions/studio/commercial/promises/authorize-legacy.actions');
 
-    router.push(authorizePath);
+      const [condicionesResult, paymentMethodsResult] = await Promise.all([
+        obtenerCondicionesComerciales(studioSlug),
+        getPaymentMethodsForAuthorization(studioSlug),
+      ]);
+
+      if (condicionesResult.success && condicionesResult.data) {
+        setCondicionesComerciales(condicionesResult.data.map(cc => ({ 
+          id: cc.id, 
+          name: cc.name,
+          description: cc.description,
+          advance_percentage: cc.advance_percentage,
+          discount_percentage: cc.discount_percentage,
+        })));
+      }
+
+      if (paymentMethodsResult.success && paymentMethodsResult.data) {
+        setPaymentMethods(paymentMethodsResult.data);
+      }
+
+      setShowAuthorizeModal(true);
+    } catch (error) {
+      console.error('[handleAuthorize] Error cargando datos del modal:', error);
+      toast.error('Error al cargar datos para autorización');
+    } finally {
+      setIsLoadingModalData(false);
+    }
   };
 
   const handleCancelOnly = async () => {
@@ -796,6 +835,30 @@ export function PromiseQuotesPanelCard({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Autorización */}
+      {showAuthorizeModal && promiseId && (
+        <AuthorizeCotizacionModal
+          isOpen={showAuthorizeModal}
+          onClose={() => setShowAuthorizeModal(false)}
+          cotizacion={{
+            id: cotizacion.id,
+            name: cotizacion.name,
+            price: cotizacion.price,
+            status: cotizacion.status,
+            selected_by_prospect: cotizacion.selected_by_prospect || false,
+            condiciones_comerciales_id: cotizacion.condiciones_comerciales_id,
+            condiciones_comerciales: cotizacion.condiciones_comerciales,
+          }}
+          promiseId={promiseId}
+          studioSlug={studioSlug}
+          condicionesComerciales={condicionesComerciales}
+          paymentMethods={paymentMethods}
+          onSuccess={() => {
+            onUpdate?.(cotizacion.id);
+          }}
+        />
       )}
     </>
   );
