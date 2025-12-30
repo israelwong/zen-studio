@@ -3,11 +3,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2, Loader2 } from 'lucide-react';
-import { PromiseNotesButton } from '../components/PromiseNotesButton';
+import { PromiseNotesButton } from './components/PromiseNotesButton';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal } from '@/components/ui/zen';
-import { PromiseCardView } from '../components/PromiseCardView';
+import { PromiseCardView } from './components/PromiseCardView';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
-import { PromiseQuickActions } from '../components/PromiseQuickActions';
 import { getPromiseById, archivePromise, unarchivePromise, deletePromise, getPipelineStages, movePromise } from '@/lib/actions/studio/commercial/promises';
 import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 import { toast } from 'sonner';
@@ -520,23 +519,6 @@ export default function EditarPromesaPage() {
                 );
               })()}
               <div className="flex items-center gap-2">
-                {contactData && !loading && promiseData && (() => {
-                  const currentStage = pipelineStages.find((s) => s.id === currentPipelineStageId);
-                  const isApprovedStage = currentStage?.slug === 'approved' || currentStage?.slug === 'aprobado' ||
-                    currentStage?.name.toLowerCase().includes('aprobado');
-                  const hasEvent = promiseData.has_event || false;
-                  const isRestricted = isApprovedStage && hasEvent;
-                  return !isRestricted;
-                })() && (
-                    <PromiseQuickActions
-                      studioSlug={studioSlug}
-                      contactId={contactData.contactId}
-                      contactName={contactData.contactName}
-                      phone={contactData.phone}
-                      email={contactData.email}
-                      promiseId={promiseId}
-                    />
-                  )}
                 {promiseId && (
                   <PromiseNotesButton
                     studioSlug={studioSlug}

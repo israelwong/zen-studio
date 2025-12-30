@@ -56,13 +56,14 @@ export function PromiseNotesButton({
   return (
     <>
       <ZenButton
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="h-8 w-8 p-0"
-        title="Notas"
+        className="gap-2"
+        title="Bitácora"
         onClick={() => setIsSheetOpen(true)}
       >
         <StickyNote className="h-4 w-4" />
+        <span>Bitácora</span>
       </ZenButton>
 
       <BitacoraSheet

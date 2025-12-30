@@ -11,10 +11,6 @@ import { es } from 'date-fns/locale';
 import { CalendarIcon } from 'lucide-react';
 import { createPromise, updatePromise, getEventTypes, getPromiseIdByContactId } from '@/lib/actions/studio/commercial/promises';
 import { getContacts, getAcquisitionChannels, getSocialNetworks } from '@/lib/actions/studio/commercial/contacts';
-import { PromiseLogsPanelCompact } from './PromiseLogsPanelCompact';
-import { PromiseQuotesPanel } from './PromiseQuotesPanel';
-import { PromiseTags } from './PromiseTags';
-import { PromiseAgendamiento } from './PromiseAgendamiento';
 import type { CreatePromiseData, UpdatePromiseData } from '@/lib/actions/schemas/promises-schemas';
 
 interface PromiseFormProps {

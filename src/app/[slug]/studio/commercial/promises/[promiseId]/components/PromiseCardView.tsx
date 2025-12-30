@@ -6,7 +6,8 @@ import { PromiseQuotesPanel } from './PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
 import { PromiseAgendamiento } from './PromiseAgendamiento';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
-import { PromiseContractCard } from '../[promiseId]/components/PromiseContractCard';
+import { PromiseContractCard } from './PromiseContractCard';
+import { PromiseQuickActions } from './PromiseQuickActions';
 
 interface PromiseCardViewProps {
   studioSlug: string;
@@ -113,15 +114,27 @@ export function PromiseCardView({
             />
           </div>
 
-          {/* Columna 2: Cotizaciones y Etiquetas */}
+          {/* Columna 2: Acciones Rápidas + Agendamiento + Etiquetas */}
           <div className="lg:col-span-1 space-y-6">
-            <PromiseQuotesPanel
-              studioSlug={studioSlug}
-              promiseId={promiseId}
-              eventTypeId={data.event_type_id || null}
-              isSaved={isSaved}
-              contactId={contactId}
-            />
+            {/* Acciones Rápidas (solo si está guardado) */}
+            {isSaved && promiseId && (
+              <PromiseQuickActions
+                studioSlug={studioSlug}
+                promiseId={promiseId}
+                contactName={data.name}
+              />
+            )}
+
+            {/* Agendamiento (solo si está guardado) */}
+            {isSaved && promiseId && (
+              <div>
+                <PromiseAgendamiento
+                  studioSlug={studioSlug}
+                  promiseId={promiseId}
+                  isSaved={isSaved}
+                />
+              </div>
+            )}
 
             {/* Etiquetas (solo si está guardado) */}
             {isSaved && promiseId && (
@@ -135,18 +148,15 @@ export function PromiseCardView({
             )}
           </div>
 
-          {/* Columna 3: Agendamiento + Contrato */}
+          {/* Columna 3: Cotizaciones + Contrato */}
           <div className="lg:col-span-1 space-y-6">
-            {/* Agendamiento (solo si está guardado) */}
-            {isSaved && promiseId && (
-              <div>
-                <PromiseAgendamiento
-                  studioSlug={studioSlug}
-                  promiseId={promiseId}
-                  isSaved={isSaved}
-                />
-              </div>
-            )}
+            <PromiseQuotesPanel
+              studioSlug={studioSlug}
+              promiseId={promiseId}
+              eventTypeId={data.event_type_id || null}
+              isSaved={isSaved}
+              contactId={contactId}
+            />
 
             {/* Contrato (solo si está guardado) */}
             {isSaved && promiseId && (

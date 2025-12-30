@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, Copy, Check, Eye } from 'lucide-react';
+import { Settings, Copy, Check, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   logProfileShared,
 } from '@/lib/actions/studio/commercial/promises';
 import { PromiseShareOptionsModal } from './PromiseShareOptionsModal';
+import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent } from '@/components/ui/zen';
 
 interface PromiseQuickActionsProps {
   studioSlug: string;
@@ -113,49 +114,60 @@ export function PromiseQuickActions({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={handleCopyLink}
-        className={`px-3 py-2 rounded-lg transition-colors flex items-center gap-2 text-sm ${linkCopied
-          ? 'bg-emerald-600/10 text-emerald-400'
-          : 'bg-zinc-600/10 hover:bg-zinc-600/20 text-zinc-400 hover:text-zinc-300'
-          }`}
-        title={linkCopied ? 'Link copiado' : 'Copiar link'}
-        aria-label={linkCopied ? 'Link copiado' : 'Copiar link'}
-        disabled={!promiseId}
-      >
-        {linkCopied ? (
-          <>
-            <Check className="h-4 w-4" />
-            <span>Link copiado</span>
-          </>
-        ) : (
-          <>
-            <Copy className="h-4 w-4" />
-            <span>Copiar link</span>
-          </>
-        )}
-      </button>
-      <button
-        onClick={handlePreview}
-        className="px-3 py-2 rounded-lg bg-zinc-600/10 hover:bg-zinc-600/20 text-zinc-400 hover:text-zinc-300 transition-colors flex items-center gap-2 text-sm"
-        title="Vista previa"
-        aria-label="Vista previa"
-        disabled={!promiseId}
-      >
-        <Eye className="h-4 w-4" />
-        <span>Vista previa</span>
-      </button>
-      <button
-        onClick={() => setIsShareModalOpen(true)}
-        className="px-3 py-2 rounded-lg bg-zinc-600/10 hover:bg-zinc-600/20 text-zinc-400 hover:text-zinc-300 transition-colors flex items-center gap-2 text-sm"
-        title="Preferencias de compartir"
-        aria-label="Preferencias de compartir"
-        disabled={!promiseId}
-      >
-        <Settings className="h-4 w-4" />
-        <span>Preferencias</span>
-      </button>
+    <>
+      <ZenCard>
+        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
+          <ZenCardTitle className="text-sm font-medium flex items-center pt-1">
+            Acciones Rápidas
+          </ZenCardTitle>
+        </ZenCardHeader>
+        <ZenCardContent className="p-3">
+          <div className="space-y-2.5">
+            <button
+              onClick={handleCopyLink}
+              className={`w-full px-4 py-2 rounded-lg transition-all flex items-center gap-2 text-sm font-medium ${linkCopied
+                ? 'bg-emerald-500/20 text-emerald-400'
+                : 'bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 hover:text-white'
+                }`}
+              title={linkCopied ? 'Link copiado' : 'Copiar link'}
+              aria-label={linkCopied ? 'Link copiado' : 'Copiar link'}
+              disabled={!promiseId}
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="h-4 w-4 shrink-0" />
+                  <span>Copiado</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 shrink-0" />
+                  <span>Copiar link</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={handlePreview}
+              className="w-full px-4 py-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all flex items-center gap-2 text-sm font-medium"
+              title="Vista previa (abre en nueva pestaña)"
+              aria-label="Vista previa (abre en nueva pestaña)"
+              disabled={!promiseId}
+            >
+              <ExternalLink className="h-4 w-4 shrink-0" />
+              <span>Vista previa</span>
+            </button>
+            <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="w-full px-4 py-2 rounded-lg bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 hover:text-white transition-all flex items-center gap-2 text-sm font-medium"
+              title="Preferencias de compartir"
+              aria-label="Preferencias de compartir"
+              disabled={!promiseId}
+            >
+              <Settings className="h-4 w-4 shrink-0" />
+              <span>Preferencias</span>
+            </button>
+          </div>
+        </ZenCardContent>
+      </ZenCard>
       {promiseId && (
         <PromiseShareOptionsModal
           isOpen={isShareModalOpen}
@@ -164,7 +176,7 @@ export function PromiseQuickActions({
           promiseId={promiseId}
         />
       )}
-    </div>
+    </>
   );
 }
 

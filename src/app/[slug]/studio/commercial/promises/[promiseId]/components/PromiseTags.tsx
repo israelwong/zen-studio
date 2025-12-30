@@ -12,7 +12,7 @@ import {
   addTagToPromise as addTagToPromiseAction,
 } from '@/lib/actions/studio/commercial/promises';
 import type { PromiseTag } from '@/lib/actions/studio/commercial/promises/promise-tags.actions';
-import { PromiseTagsManageModal } from './PromiseTagsManageModal';
+import { PromiseTagsManageModal } from '../../components/PromiseTagsManageModal';
 
 interface PromiseTagsProps {
   studioSlug: string;
@@ -446,8 +446,8 @@ export function PromiseTags({
             </ZenButton>
           </div>
         </ZenCardHeader>
-        <ZenCardContent className="p-4">
-          <div className="space-y-3">
+        <ZenCardContent className="p-3">
+          <div className="space-y-2.5">
             {/* Input para agregar tags */}
             <div className="relative">
               <ZenInput
@@ -505,9 +505,9 @@ export function PromiseTags({
                 {[...Array(3)].map((_, index) => (
                   <div
                     key={`skeleton-${index}`}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-800/50 animate-pulse"
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-800/50 animate-pulse"
                   >
-                    <div className="h-4 w-16 bg-zinc-700 rounded-full" />
+                    <div className="h-3 w-14 bg-zinc-700 rounded-full" />
                   </div>
                 ))}
               </div>
