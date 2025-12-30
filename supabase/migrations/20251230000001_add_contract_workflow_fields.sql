@@ -47,22 +47,23 @@ COMMENT ON COLUMN platform_config.require_contract_before_event IS
 -- 3. Agregar referencia de contrato en eventos
 -- =====================================================
 
--- Agregar campo contract_id en studio_events
-ALTER TABLE studio_events
+-- NOTA: La tabla se llama studio_eventos (no studio_events)
+-- Agregar campo contract_id en studio_eventos
+ALTER TABLE studio_eventos
 ADD COLUMN IF NOT EXISTS contract_id TEXT;
 
 -- Agregar foreign key constraint
-ALTER TABLE studio_events
-ADD CONSTRAINT fk_studio_events_contract
+ALTER TABLE studio_eventos
+ADD CONSTRAINT fk_studio_eventos_contract
 FOREIGN KEY (contract_id) 
 REFERENCES studio_event_contracts(id)
 ON DELETE SET NULL;
 
 -- Agregar índice para mejorar performance
-CREATE INDEX IF NOT EXISTS idx_studio_events_contract_id 
-ON studio_events(contract_id);
+CREATE INDEX IF NOT EXISTS idx_studio_eventos_contract_id 
+ON studio_eventos(contract_id);
 
-COMMENT ON COLUMN studio_events.contract_id IS 
+COMMENT ON COLUMN studio_eventos.contract_id IS 
 'Referencia al contrato firmado que autorizó la creación de este evento. NULL para eventos legacy sin contrato.';
 
 -- =====================================================

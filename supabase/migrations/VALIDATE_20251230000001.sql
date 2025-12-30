@@ -27,10 +27,11 @@ WHERE table_name = 'studio_cotizaciones'
   AND column_name = 'status';
 
 -- =====================================================
--- 3. Verificar campo contract_id en studio_events
+-- 3. Verificar campo contract_id en studio_eventos
 -- =====================================================
+-- NOTA: La tabla se llama studio_eventos (no studio_events)
 SELECT 
-    'studio_events.contract_id' as check_name,
+    'studio_eventos.contract_id' as check_name,
     data_type,
     is_nullable,
     CASE 
@@ -38,37 +39,37 @@ SELECT
         ELSE '❌ Incorrecto'
     END as validation
 FROM information_schema.columns 
-WHERE table_name = 'studio_events' 
+WHERE table_name = 'studio_eventos' 
   AND column_name = 'contract_id';
 
 -- =====================================================
--- 4. Verificar foreign key en studio_events
+-- 4. Verificar foreign key en studio_eventos
 -- =====================================================
 SELECT 
-    'studio_events FK' as check_name,
+    'studio_eventos FK' as check_name,
     constraint_name,
     CASE 
-        WHEN constraint_name = 'fk_studio_events_contract' THEN '✅ Correcto'
+        WHEN constraint_name = 'fk_studio_eventos_contract' THEN '✅ Correcto'
         ELSE '❌ Incorrecto'
     END as validation
 FROM information_schema.table_constraints 
-WHERE table_name = 'studio_events'
+WHERE table_name = 'studio_eventos'
   AND constraint_type = 'FOREIGN KEY'
-  AND constraint_name = 'fk_studio_events_contract';
+  AND constraint_name = 'fk_studio_eventos_contract';
 
 -- =====================================================
--- 5. Verificar índice en studio_events
+-- 5. Verificar índice en studio_eventos
 -- =====================================================
 SELECT 
-    'studio_events index' as check_name,
+    'studio_eventos index' as check_name,
     indexname,
     CASE 
-        WHEN indexname = 'idx_studio_events_contract_id' THEN '✅ Correcto'
+        WHEN indexname = 'idx_studio_eventos_contract_id' THEN '✅ Correcto'
         ELSE '❌ Incorrecto'
     END as validation
 FROM pg_indexes 
-WHERE tablename = 'studio_events'
-  AND indexname = 'idx_studio_events_contract_id';
+WHERE tablename = 'studio_eventos'
+  AND indexname = 'idx_studio_eventos_contract_id';
 
 -- =====================================================
 -- 6. Verificar campos en studio_contacts
@@ -102,9 +103,9 @@ WHERE table_name = 'studio_event_contracts'
 SELECT 
     '=== RESUMEN ===' as summary,
     (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'platform_config' AND column_name IN ('auto_generate_contract', 'require_contract_before_event')) as platform_config_fields,
-    (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'studio_events' AND column_name = 'contract_id') as studio_events_field,
-    (SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name = 'studio_events' AND constraint_name = 'fk_studio_events_contract') as studio_events_fk,
-    (SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'studio_events' AND indexname = 'idx_studio_events_contract_id') as studio_events_index,
+    (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'studio_eventos' AND column_name = 'contract_id') as studio_eventos_field,
+    (SELECT COUNT(*) FROM information_schema.table_constraints WHERE table_name = 'studio_eventos' AND constraint_name = 'fk_studio_eventos_contract') as studio_eventos_fk,
+    (SELECT COUNT(*) FROM pg_indexes WHERE tablename = 'studio_eventos' AND indexname = 'idx_studio_eventos_contract_id') as studio_eventos_index,
     (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'studio_contacts' AND column_name IN ('data_confirmed_at', 'data_confirmed_ip')) as studio_contacts_fields,
     (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'studio_event_contracts' AND column_name = 'signed_ip') as contracts_signed_ip;
 

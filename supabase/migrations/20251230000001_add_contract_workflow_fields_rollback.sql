@@ -17,15 +17,17 @@ DROP COLUMN IF EXISTS require_contract_before_event;
 -- 2. Eliminar referencia de contrato en eventos
 -- =====================================================
 
+-- NOTA: La tabla se llama studio_eventos (no studio_events)
+
 -- Eliminar índice
-DROP INDEX IF EXISTS idx_studio_events_contract_id;
+DROP INDEX IF EXISTS idx_studio_eventos_contract_id;
 
 -- Eliminar foreign key constraint
-ALTER TABLE studio_events
-DROP CONSTRAINT IF EXISTS fk_studio_events_contract;
+ALTER TABLE studio_eventos
+DROP CONSTRAINT IF EXISTS fk_studio_eventos_contract;
 
 -- Eliminar columna
-ALTER TABLE studio_events
+ALTER TABLE studio_eventos
 DROP COLUMN IF EXISTS contract_id;
 
 -- =====================================================
