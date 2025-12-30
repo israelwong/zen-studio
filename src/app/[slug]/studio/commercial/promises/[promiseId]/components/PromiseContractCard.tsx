@@ -46,13 +46,18 @@ import { ContractTemplateSelectorModal } from './ContractTemplateSelectorModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { PromiseContractViewModal } from './PromiseContractViewModal';
 import { ContractVersionsModal } from './ContractVersionsModal';
+import { AuthorizeEventModal } from './AuthorizeEventModal';
 import { getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
 import { getEventContract, getAllEventContracts, generateEventContract, updateEventContract, deleteEventContract, publishEventContract, requestContractCancellationByStudio, confirmContractCancellationByStudio, rejectContractCancellationByStudio, getContractCancellationLogs, getContractVersions } from '@/lib/actions/studio/business/contracts/contracts.actions';
 
 interface PromiseContractCardProps {
   studioSlug: string;
-  eventId: string;
+  eventId: string; // En realidad es promiseId
   eventTypeId?: string;
+  cotizacionId?: string;
+  cotizacionStatus?: string;
+  cotizacionName?: string;
+  cotizacionAmount?: number;
   onContractUpdated?: () => void;
 }
 
@@ -60,12 +65,22 @@ export function PromiseContractCard({
   studioSlug,
   eventId,
   eventTypeId,
+  cotizacionId,
+  cotizacionStatus,
+  cotizacionName,
+  cotizacionAmount,
   onContractUpdated,
 }: PromiseContractCardProps) {
   const [contract, setContract] = useState<EventContract | null>(null);
   const [allContracts, setAllContracts] = useState<EventContract[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [authorizedCotizacion, setAuthorizedCotizacion] = useState<{
+    id: string;
+    name: string;
+    price: number;
+    status: string;
+  } | null>(null);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showEditorModal, setShowEditorModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -76,6 +91,7 @@ export function PromiseContractCard({
   const [showCancellationConfirmModal, setShowCancellationConfirmModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [showCancelledContractsModal, setShowCancelledContractsModal] = useState(false);
+  const [showAuthorizeEventModal, setShowAuthorizeEventModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -87,7 +103,40 @@ export function PromiseContractCard({
 
   useEffect(() => {
     loadContract();
+    loadAuthorizedCotizacion();
   }, [eventId, studioSlug]);
+
+  const loadAuthorizedCotizacion = async () => {
+    try {
+      // Importar dinámicamente para evitar dependencias circulares
+      const { getCotizacionesByPromiseId } = await import('@/lib/actions/studio/commercial/promises/cotizaciones.actions');
+      const result = await getCotizacionesByPromiseId(studioSlug, eventId);
+      
+      if (result.success && result.data) {
+        // Buscar cotización autorizada o en proceso de contrato
+        const authorized = result.data.find(c => 
+          c.status === 'contract_pending' || 
+          c.status === 'contract_generated' || 
+          c.status === 'contract_signed' ||
+          c.status === 'autorizada' ||
+          c.status === 'aprobada'
+        );
+        
+        if (authorized) {
+          setAuthorizedCotizacion({
+            id: authorized.id,
+            name: authorized.name,
+            price: authorized.price,
+            status: authorized.status,
+          });
+        } else {
+          setAuthorizedCotizacion(null);
+        }
+      }
+    } catch (error) {
+      console.error('[PromiseContractCard] Error loading authorized cotizacion:', error);
+    }
+  };
 
   // Configurar realtime para escuchar cambios en contratos
   useEffect(() => {
@@ -622,6 +671,20 @@ export function PromiseContractCard({
                 </ZenButton>
               </div>
             )}
+
+            {/* Botón Autorizar Evento visible cuando está firmado y cotización en contract_signed */}
+            {!isCancelled && contractItem.status === 'SIGNED' && authorizedCotizacion?.status === 'contract_signed' && (
+              <div className="mt-3 w-full" onClick={(e) => e.stopPropagation()}>
+                <ZenButton
+                  variant="ghost"
+                  onClick={() => setShowAuthorizeEventModal(true)}
+                  className="bg-transparent focus-visible:ring-zinc-500/50 px-3 py-1.5 h-8 rounded-md w-full gap-2 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/20"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Autorizar Evento
+                </ZenButton>
+              </div>
+            )}
           </div>
 
             {/* Botones de acción - solo para contratos activos */}
@@ -1117,6 +1180,25 @@ export function PromiseContractCard({
             </>
           )}
         </>
+      )}
+
+      {/* Modal de autorizar evento */}
+      {authorizedCotizacion && contract && (
+        <AuthorizeEventModal
+          isOpen={showAuthorizeEventModal}
+          onClose={() => setShowAuthorizeEventModal(false)}
+          studioSlug={studioSlug}
+          promiseId={eventId}
+          cotizacionId={authorizedCotizacion.id}
+          contractId={contract.id}
+          cotizacionName={authorizedCotizacion.name}
+          cotizacionAmount={authorizedCotizacion.price}
+          onSuccess={async () => {
+            await loadContract();
+            await loadAuthorizedCotizacion();
+            onContractUpdated?.();
+          }}
+        />
       )}
 
       {/* Modal de contratos cancelados */}

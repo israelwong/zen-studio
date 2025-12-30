@@ -109,8 +109,18 @@ export function PromiseQuotesPanelCard({
     if (revisionStatus === 'pending_revision') {
       return 'warning';
     }
+    // Estados de contrato (nuevos)
+    if (status === 'contract_signed') {
+      return 'success'; // Verde - listo para autorizar evento
+    }
+    if (status === 'contract_generated') {
+      return 'info'; // Azul - esperando firma del cliente
+    }
+    if (status === 'contract_pending') {
+      return 'warning'; // Ámbar - esperando confirmación de datos
+    }
     // Si está aprobada (incluso si es revisión activa), usar verde
-    if (status === 'aprobada' || status === 'approved') {
+    if (status === 'aprobada' || status === 'approved' || status === 'autorizada') {
       return 'success';
     }
     // Rechazada/Cancelada
@@ -130,9 +140,22 @@ export function PromiseQuotesPanelCard({
     if (revisionStatus === 'pending_revision') {
       return 'Revisión';
     }
+    // Estados de contrato (nuevos)
+    if (status === 'contract_signed') {
+      return 'Contrato Firmado';
+    }
+    if (status === 'contract_generated') {
+      return 'Contrato Generado';
+    }
+    if (status === 'contract_pending') {
+      return 'Contrato Pendiente';
+    }
     // Si está aprobada, mostrar "Aprobada" (independiente si es revisión activa o no)
     if (status === 'aprobada' || status === 'approved') {
       return 'Aprobada';
+    }
+    if (status === 'autorizada') {
+      return 'Autorizada';
     }
     if (status === 'rechazada' || status === 'rejected') {
       return 'Rechazada';
