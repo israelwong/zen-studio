@@ -61,6 +61,10 @@ model platform_config {
   // Pricing
   invitation_base_cost       Decimal? @default(0) // TODO: revisar si se usa en alguna parte
   
+  // Contract Workflow Settings
+  auto_generate_contract     Boolean? @default(false) // Generar contrato automáticamente al confirmar datos
+  require_contract_before_event Boolean? @default(true) // Requerir contrato firmado antes de crear evento
+  
   // Timestamps
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
@@ -1255,6 +1259,8 @@ model studio_contacts {
   referrer_name          String?
   notes                  String?
   google_contact_id      String?
+  data_confirmed_at      DateTime?                      // Timestamp de confirmación de datos
+  data_confirmed_ip      String?                        // IP desde donde confirmó datos
   created_at             DateTime                       @default(now())
   updated_at             DateTime                       @updatedAt
   is_test                Boolean                        @default(false)
@@ -1421,6 +1427,7 @@ model studio_events {
   contact_id           String
   promise_id           String                            @unique
   cotizacion_id        String?                           @unique
+  contract_id          String?                           // Referencia al contrato firmado
   event_type_id        String?
   stage_id             String?
   event_date           DateTime
@@ -1442,6 +1449,7 @@ model studio_events {
   timeline             studio_event_timeline[]
   contact              studio_contacts                   @relation(fields: [contact_id], references: [id])
   cotizacion           studio_cotizaciones?              @relation("EventoCotizacionAutorizada", fields: [cotizacion_id], references: [id])
+  authorized_contract  studio_event_contracts?           @relation("AuthorizedByContract", fields: [contract_id], references: [id])
   event_type           studio_event_types?               @relation(fields: [event_type_id], references: [id])
   promise              studio_promises                   @relation(fields: [promise_id], references: [id], onDelete: Cascade)
   stage                studio_manager_pipeline_stages?   @relation(fields: [stage_id], references: [id])
@@ -1498,6 +1506,7 @@ model studio_event_contracts {
   content                   String
   version                   Int                                     @default(1)
   signed_at                 DateTime?
+  signed_ip                 String?                                 // IP desde donde se firmó
   signed_by_client          Boolean                                 @default(false)
   client_signature_url      String?
   created_by                String?
@@ -1508,6 +1517,7 @@ model studio_event_contracts {
   cancellation_initiated_by String?
   status                    ContractStatus                          @default(DRAFT)
   custom_template_content   String?
+  authorized_events         studio_events[]                         @relation("AuthorizedByContract")
   cancellation_logs         studio_contract_cancellation_logs[]
   modification_requests     studio_contract_modification_requests[]
   versions                  studio_contract_versions[]
