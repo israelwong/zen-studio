@@ -20,8 +20,8 @@ export function renderCotizacionBlock(
   );
 
   seccionesOrdenadas.forEach((seccion) => {
-    html += `<div class="seccion mb-6">`;
-    html += `<h3 class="text-lg font-semibold text-zinc-200 mb-3">${seccion.nombre}</h3>`;
+    html += `<div class="seccion mb-6" style="display: block !important;">`;
+    html += `<h3 class="text-lg font-semibold text-zinc-200 mb-3" style="display: block !important; margin-bottom: 0.75rem !important;">${seccion.nombre}</h3>`;
 
     // Ordenar categorías por orden
     const categoriasOrdenadas = [...seccion.categorias].sort(
@@ -34,17 +34,9 @@ export function renderCotizacionBlock(
       html += `<ul class="list-disc list-inside space-y-1 text-zinc-400 ml-4">`;
 
       categoria.items.forEach((item) => {
-        const subtotalFormateado = new Intl.NumberFormat("es-MX", {
-          style: "currency",
-          currency: "MXN",
-        }).format(item.subtotal);
-
         html += `<li class="mb-1">`;
         html += `<span class="font-medium">${item.nombre}</span>`;
-        if (item.cantidad > 1) {
-          html += ` <span class="text-zinc-500">(x${item.cantidad})</span>`;
-        }
-        html += ` <span class="text-emerald-400">${subtotalFormateado}</span>`;
+        html += ` <span class="text-zinc-500">x${item.cantidad}</span>`;
         html += `</li>`;
 
         if (item.descripcion) {

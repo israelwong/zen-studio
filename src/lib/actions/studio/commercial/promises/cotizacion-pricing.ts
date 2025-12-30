@@ -164,6 +164,7 @@ export async function calcularYGuardarPreciosCotizacion(
     // Crear mapa de item_id -> datos del catálogo
     interface DatosCatalogo {
       nombre: string;
+      descripcion: string | null;
       costo: number;
       gasto: number;
       tipoUtilidad: string;
@@ -176,6 +177,7 @@ export async function calcularYGuardarPreciosCotizacion(
         categoria.servicios.forEach(servicio => {
           catalogoMap.set(servicio.id, {
             nombre: servicio.nombre,
+            descripcion: null, // Los items no tienen descripción en el catálogo actual
             costo: servicio.costo,
             gasto: servicio.gasto,
             tipoUtilidad: servicio.tipo_utilidad,
@@ -217,11 +219,13 @@ export async function calcularYGuardarPreciosCotizacion(
         configPrecios
       );
 
-      // Guardar solo campos operacionales (sin snapshots)
+      // Guardar campos operacionales Y snapshots (estructura completa desde creación)
       await prisma.studio_cotizacion_items.update({
         where: { id: item.id },
         data: {
+          // Campos operacionales (mutables)
           name: datosCatalogo.nombre,
+          description: datosCatalogo.descripcion,
           category_name: datosCatalogo.categoria,
           seccion_name: datosCatalogo.seccion,
           cost: datosCatalogo.costo || 0,
@@ -231,6 +235,17 @@ export async function calcularYGuardarPreciosCotizacion(
           profit: precios.utilidad_base,
           public_price: precios.precio_final,
           profit_type: tipoUtilidadFinal,
+          // Snapshots (inmutables - estructura jerárquica completa)
+          name_snapshot: datosCatalogo.nombre,
+          description_snapshot: datosCatalogo.descripcion,
+          category_name_snapshot: datosCatalogo.categoria,
+          seccion_name_snapshot: datosCatalogo.seccion,
+          cost_snapshot: datosCatalogo.costo || 0,
+          expense_snapshot: datosCatalogo.gasto || 0,
+          unit_price_snapshot: precios.precio_final,
+          profit_snapshot: precios.utilidad_base,
+          public_price_snapshot: precios.precio_final,
+          profit_type_snapshot: tipoUtilidadFinal,
         },
       });
     }

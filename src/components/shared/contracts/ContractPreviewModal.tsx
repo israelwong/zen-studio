@@ -5,8 +5,7 @@ import { Loader2, Download, Edit2 } from "lucide-react";
 import { ZenDialog } from "@/components/ui/zen/modals/ZenDialog";
 import { ZenButton } from "@/components/ui/zen";
 import { ContractPreview } from "@/app/[slug]/studio/config/contratos/components";
-import { getEventContractData, renderContractContent, type EventContractDataWithConditions } from "@/lib/actions/studio/business/contracts/renderer.actions";
-import { generateEventContract, getEventContract, updateEventContractTemplate } from "@/lib/actions/studio/business/contracts/contracts.actions";
+import type { EventContractDataWithConditions } from "@/lib/actions/studio/business/contracts/renderer.actions";
 import { generatePDFFromElement, generateContractFilename } from "@/lib/utils/pdf-generator";
 import type { EventContractData } from "@/types/contracts";
 import { toast } from "sonner";
@@ -60,6 +59,9 @@ export function ContractPreviewModal({
     setLoading(true);
     setRenderedContent(''); // Resetear antes de cargar
     try {
+      // Importar dinámicamente las Server Actions
+      const { getEventContractData, renderContractContent } = await import('@/lib/actions/studio/business/contracts/renderer.actions');
+      
       const result = await getEventContractData(studioSlug, eventId);
       if (result.success && result.data) {
         setEventData(result.data);
@@ -97,6 +99,9 @@ export function ContractPreviewModal({
   const handleConfirm = async () => {
     setIsGenerating(true);
     try {
+      // Importar dinámicamente las Server Actions
+      const { generateEventContract, getEventContract, updateEventContractTemplate } = await import('@/lib/actions/studio/business/contracts/contracts.actions');
+      
       // Verificar si ya existe un contrato para este evento
       const existingContractResult = await getEventContract(studioSlug, eventId);
 

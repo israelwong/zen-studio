@@ -136,6 +136,30 @@ export function ContractPreview({
           .contract-preview svg[class*="Copy"] {
             display: none !important;
           }
+          .contract-preview .cotizacion-block .seccion {
+            display: block !important;
+            margin-bottom: 1.5rem !important;
+          }
+          .contract-preview .cotizacion-block .seccion h3 {
+            display: block !important;
+            font-size: 1.125rem !important;
+            font-weight: 600 !important;
+            color: rgb(212 212 216) !important;
+            margin-bottom: 0.75rem !important;
+            margin-top: 0 !important;
+          }
+          .contract-preview .cotizacion-block .categoria {
+            display: block !important;
+            margin-bottom: 1rem !important;
+            margin-left: 1rem !important;
+          }
+          .contract-preview .cotizacion-block .categoria h4 {
+            display: block !important;
+            font-size: 1rem !important;
+            font-weight: 500 !important;
+            color: rgb(212 212 216) !important;
+            margin-bottom: 0.5rem !important;
+          }
         `}} />
         <div
           className="contract-preview scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent"

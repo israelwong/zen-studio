@@ -162,33 +162,15 @@ export async function getPromiseContractData(
             item_id: true,
             quantity: true,
             unit_price: true,
-            subtotal: true, // ✅ Campo correcto
-            // Campos snapshot (guardados al crear la cotización)
+            subtotal: true,
             name_snapshot: true,
             description_snapshot: true,
             category_name_snapshot: true,
             seccion_name_snapshot: true,
-            // Campos no-snapshot como fallback
             name: true,
             description: true,
             category_name: true,
             seccion_name: true,
-            // Relaciones (fallback adicional)
-            items: {
-              select: {
-                name: true,
-                service_categories: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
-            },
-            service_categories: {
-              select: {
-                name: true,
-              },
-            },
           },
           orderBy: {
             order: "asc",
@@ -201,17 +183,6 @@ export async function getPromiseContractData(
       return { success: false, error: "Cotización no encontrada" };
     }
 
-    console.log('[getPromiseContractData] Cotización loaded:', {
-      id: cotizacion.id,
-      name: cotizacion.name,
-      items_count: cotizacion.cotizacion_items?.length || 0,
-      items: cotizacion.cotizacion_items?.map(item => ({
-        id: item.id,
-        name: item.name_snapshot || item.items?.name,
-        category: item.category_name_snapshot,
-      }))
-    });
-
     // Formatear fecha
     const eventDate = promise.event_date;
     const fechaEvento = eventDate
@@ -223,78 +194,89 @@ export async function getPromiseContractData(
       })
       : "Fecha por definir";
 
-    // Agrupar por Sección → Categoría → Items (para @cotizacion_autorizada)
-    console.log('[getPromiseContractData] Agrupando items:', {
-      total_items: cotizacion.cotizacion_items?.length || 0,
-      primer_item: cotizacion.cotizacion_items?.[0] ? {
-        name_snapshot: cotizacion.cotizacion_items[0].name_snapshot,
-        seccion: cotizacion.cotizacion_items[0].seccion_name_snapshot,
-        categoria: cotizacion.cotizacion_items[0].category_name_snapshot,
-      } : 'No hay items'
-    });
+    // Agrupar items por Sección → Categoría usando snapshots guardados
+    // Usar Map para mantener orden de inserción y asignar orden incremental
+    const seccionesMap = new Map<string, {
+      nombre: string;
+      orden: number;
+      categorias: Map<string, {
+        nombre: string;
+        orden: number;
+        items: Array<{
+          nombre: string;
+          descripcion?: string;
+          cantidad: number;
+          subtotal: number;
+        }>;
+      }>;
+    }>();
 
-    const seccionesMap = new Map<string, Map<string, any[]>>();
-    
+    let seccionOrdenCounter = 0;
+    const seccionOrdenMap = new Map<string, number>();
+    const categoriaOrdenMap = new Map<string, number>();
+
     cotizacion.cotizacion_items.forEach((item) => {
-      // Usar snapshot, luego campo no-snapshot, luego fallback
-      const seccionName = item.seccion_name_snapshot || item.seccion_name || "Sin sección";
-      const categoryName = item.category_name_snapshot || item.category_name || item.service_categories?.name || "Sin categoría";
+      // Usar snapshots primero (más confiables), luego campos operacionales como fallback
+      const seccionNombre = item.seccion_name_snapshot || item.seccion_name || "Sin sección";
+      const categoriaNombre = item.category_name_snapshot || item.category_name || "Sin categoría";
+      const itemNombre = item.name_snapshot || item.name || "Item sin nombre";
+      const itemDescripcion = item.description_snapshot || item.description || undefined;
 
-      if (!seccionesMap.has(seccionName)) {
-        seccionesMap.set(seccionName, new Map());
+      // Asignar orden a sección si es la primera vez que la vemos
+      if (!seccionOrdenMap.has(seccionNombre)) {
+        seccionOrdenMap.set(seccionNombre, seccionOrdenCounter++);
       }
 
-      const categoriasMap = seccionesMap.get(seccionName)!;
-      if (!categoriasMap.has(categoryName)) {
-        categoriasMap.set(categoryName, []);
-      }
-
-      const precioUnitario = Number(item.unit_price || 0);
-      const subtotalItem = Number(item.subtotal || 0);
-      const precio = subtotalItem > 0 ? subtotalItem : precioUnitario * item.quantity;
-
-      categoriasMap.get(categoryName)!.push({
-        nombre: item.name_snapshot || item.name || item.items?.name || "Item sin nombre",
-        descripcion: item.description_snapshot || item.description || undefined,
-        cantidad: item.quantity,
-        subtotal: precio,
-      });
-    });
-
-    // Convertir a formato CotizacionRenderData
-    const secciones: any[] = [];
-    let seccionOrden = 0;
-
-    seccionesMap.forEach((categoriasMap, seccionName) => {
-      const categorias: any[] = [];
-      let categoriaOrden = 0;
-
-      categoriasMap.forEach((items, categoryName) => {
-        categorias.push({
-          nombre: categoryName,
-          orden: categoriaOrden++,
-          items: items,
+      // Obtener o crear sección
+      if (!seccionesMap.has(seccionNombre)) {
+        seccionesMap.set(seccionNombre, {
+          nombre: seccionNombre,
+          orden: seccionOrdenMap.get(seccionNombre)!,
+          categorias: new Map(),
         });
-      });
+      }
 
-      secciones.push({
-        nombre: seccionName,
-        orden: seccionOrden++,
-        categorias: categorias,
+      const seccionData = seccionesMap.get(seccionNombre)!;
+
+      // Asignar orden a categoría dentro de la sección si es la primera vez que la vemos
+      const categoriaKey = `${seccionNombre}::${categoriaNombre}`;
+      if (!categoriaOrdenMap.has(categoriaKey)) {
+        categoriaOrdenMap.set(categoriaKey, seccionData.categorias.size);
+      }
+
+      // Obtener o crear categoría
+      if (!seccionData.categorias.has(categoriaNombre)) {
+        seccionData.categorias.set(categoriaNombre, {
+          nombre: categoriaNombre,
+          orden: categoriaOrdenMap.get(categoriaKey)!,
+          items: [],
+        });
+      }
+
+      // Agregar item a la categoría
+      const categoriaData = seccionData.categorias.get(categoriaNombre)!;
+      categoriaData.items.push({
+        nombre: itemNombre,
+        descripcion: itemDescripcion,
+        cantidad: item.quantity,
+        subtotal: item.subtotal,
       });
     });
 
-    console.log('[getPromiseContractData] Secciones agrupadas:', {
-      secciones_count: secciones.length,
-      estructura: secciones.map(s => ({
-        seccion: s.nombre,
-        categorias_count: s.categorias.length,
-        categorias: s.categorias.map((c: any) => ({
-          categoria: c.nombre,
-          items_count: c.items.length
-        }))
-      }))
-    });
+    // Convertir a formato cotizacionData y ordenar por orden asignado
+    const secciones = Array.from(seccionesMap.values())
+      .sort((a, b) => a.orden - b.orden)
+      .map(seccion => ({
+        nombre: seccion.nombre,
+        orden: seccion.orden,
+        categorias: Array.from(seccion.categorias.values())
+          .sort((a, b) => a.orden - b.orden)
+          .map(categoria => ({
+            nombre: categoria.nombre,
+            orden: categoria.orden,
+            items: categoria.items,
+          })),
+      }));
 
     // Calcular totales
     const subtotal = cotizacion.price;
@@ -367,24 +349,6 @@ export async function getPromiseContractData(
         descuento_aplicado: descuentoAplicado,
       } : undefined,
     };
-
-    console.log('[getPromiseContractData] Event data generated:', {
-      nombre_cliente: eventData.nombre_cliente,
-      fecha_evento: eventData.fecha_evento,
-      secciones_count: secciones.length,
-      total: eventData.total,
-      cotizacionData: {
-        secciones_count: eventData.cotizacionData?.secciones?.length || 0,
-        secciones: eventData.cotizacionData?.secciones?.map(s => ({
-          nombre: s.nombre,
-          categorias_count: s.categorias.length,
-          categorias: s.categorias.map(c => ({
-            nombre: c.nombre,
-            items_count: c.items.length
-          }))
-        }))
-      }
-    });
 
     return { success: true, data: eventData };
   } catch (error) {

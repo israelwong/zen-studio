@@ -152,8 +152,16 @@ export function useContractRenderer({
     }
 
     // Renderizar bloque legacy [SERVICIOS_INCLUIDOS] si existe
+    // Usar cotizacionData si está disponible (tiene estructura completa con secciones)
     if (rendered.includes("[SERVICIOS_INCLUIDOS]")) {
-      const serviciosHtml = renderServiciosBlock(eventData.servicios_incluidos);
+      let serviciosHtml: string;
+      if (cotizacionData && cotizacionData.secciones && cotizacionData.secciones.length > 0) {
+        // Usar estructura completa con secciones
+        serviciosHtml = renderCotizacionBlock(cotizacionData);
+      } else {
+        // Fallback a formato legacy
+        serviciosHtml = renderServiciosBlock(eventData.servicios_incluidos);
+      }
       rendered = rendered.replace("[SERVICIOS_INCLUIDOS]", serviciosHtml);
     }
 
