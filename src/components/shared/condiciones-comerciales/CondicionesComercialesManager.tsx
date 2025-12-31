@@ -555,6 +555,8 @@ export function CondicionesComercialesManager({
           description: result.data.description,
           discount_percentage: result.data.discount_percentage,
           advance_percentage: result.data.advance_percentage,
+          advance_type: result.data.advance_type || null,
+          advance_amount: result.data.advance_amount || null,
           status: result.data.status,
           order: result.data.order,
           type: result.data.type,
@@ -619,6 +621,8 @@ export function CondicionesComercialesManager({
           description: result.data.description,
           discount_percentage: result.data.discount_percentage,
           advance_percentage: result.data.advance_percentage,
+          advance_type: result.data.advance_type || null,
+          advance_amount: result.data.advance_amount || null,
           status: result.data.status,
           order: result.data.order,
           type: result.data.type,
@@ -846,6 +850,8 @@ export function CondicionesComercialesManager({
           description: result.data.description,
           discount_percentage: result.data.discount_percentage,
           advance_percentage: result.data.advance_percentage,
+          advance_type: result.data.advance_type || null,
+          advance_amount: result.data.advance_amount || null,
           status: result.data.status,
           order: result.data.order,
           type: result.data.type,
@@ -909,8 +915,6 @@ export function CondicionesComercialesManager({
         description="Crea y gestiona condiciones comerciales reutilizables"
         maxWidth="xl"
         zIndex={10080}
-        onCancel={handleClose}
-        cancelLabel="Cerrar"
       >
         {viewingOfferCondition ? (
           <div className="space-y-4">
@@ -1172,7 +1176,7 @@ export function CondicionesComercialesManager({
             </div>
 
             {loading ? (
-              <div className="space-y-2 max-h-[350px] overflow-y-auto">
+              <div className="space-y-2 max-h-[480px] overflow-y-auto">
                 {[1, 2, 3].map((i) => (
                   <div
                     key={i}
@@ -1220,7 +1224,7 @@ export function CondicionesComercialesManager({
                   items={condiciones.map((c) => c.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className={`space-y-2 max-h-[350px] overflow-y-auto overflow-x-hidden ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
+                  <div className={`space-y-2 max-h-[480px] overflow-y-auto overflow-x-hidden ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
                     {condiciones.map((condicion, index) => (
                       <SortableCondicionItem
                         key={condicion.id}
@@ -1279,8 +1283,7 @@ export function CondicionesComercialesManager({
           studioSlug={studioSlug}
           onClose={() => {
             setShowUtilidadModal(false);
-            // Recargar configuración después de cerrar el modal para actualizar maxDescuento
-            loadConfiguracion();
+            // El hook useConfiguracionPreciosUpdateListener se encarga de sincronizar automáticamente
           }}
         />
       </ZenDialog>

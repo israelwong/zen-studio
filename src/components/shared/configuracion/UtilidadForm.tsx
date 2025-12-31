@@ -64,21 +64,21 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
         setLoading(true);
         try {
             const result = await obtenerConfiguracionPrecios(studioSlug);
-            
+
             // obtenerConfiguracionPrecios devuelve valores como porcentajes (30, 10, 5, etc.)
             // Redondear a enteros para mostrar en los inputs
             const configData = {
-                utilidad_servicio: result?.utilidad_servicio 
-                    ? String(Math.round(parseFloat(result.utilidad_servicio))) 
+                utilidad_servicio: result?.utilidad_servicio
+                    ? String(Math.round(parseFloat(result.utilidad_servicio)))
                     : '',
-                utilidad_producto: result?.utilidad_producto 
-                    ? String(Math.round(parseFloat(result.utilidad_producto))) 
+                utilidad_producto: result?.utilidad_producto
+                    ? String(Math.round(parseFloat(result.utilidad_producto)))
                     : '',
-                comision_venta: result?.comision_venta 
-                    ? String(Math.round(parseFloat(result.comision_venta))) 
+                comision_venta: result?.comision_venta
+                    ? String(Math.round(parseFloat(result.comision_venta)))
                     : '',
-                sobreprecio: result?.sobreprecio 
-                    ? String(Math.round(parseFloat(result.sobreprecio))) 
+                sobreprecio: result?.sobreprecio
+                    ? String(Math.round(parseFloat(result.sobreprecio)))
                     : ''
             };
             setConfig(configData);
@@ -190,7 +190,20 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                     onClose();
                 }
             } else {
-                toast.error(result.error || 'Error al actualizar configuración');
+                let errorMessage = 'Error al actualizar configuración';
+                if ('error' in result) {
+                    const error = result.error;
+                    if (typeof error === 'string') {
+                        errorMessage = error;
+                    } else if (error && typeof error === 'object') {
+                        // Si es un objeto con fieldErrors, convertir a string
+                        const fieldErrors = Object.values(error).flat();
+                        if (Array.isArray(fieldErrors) && fieldErrors.length > 0 && typeof fieldErrors[0] === 'string') {
+                            errorMessage = fieldErrors[0];
+                        }
+                    }
+                }
+                toast.error(errorMessage);
             }
         } catch (error) {
             console.error('Error updating config:', error);
@@ -202,8 +215,42 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
 
     if (loading) {
         return (
-            <div className="p-8 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500" />
+            <div className="space-y-6">
+                {/* Info Banner Skeleton */}
+                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                    <div className="flex gap-3">
+                        <div className="h-5 w-5 bg-zinc-700 rounded animate-pulse shrink-0" />
+                        <div className="space-y-2 flex-1">
+                            <div className="h-4 w-48 bg-zinc-700 rounded animate-pulse" />
+                            <div className="h-3 w-full bg-zinc-700 rounded animate-pulse" />
+                            <div className="h-3 w-3/4 bg-zinc-700 rounded animate-pulse" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Cards Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <ZenCard key={i}>
+                            <ZenCardHeader className="pb-1 mt-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-5 w-5 bg-zinc-700 rounded animate-pulse" />
+                                    <div className="h-5 w-32 bg-zinc-700 rounded animate-pulse" />
+                                </div>
+                            </ZenCardHeader>
+                            <ZenCardContent className="pt-2 pb-3">
+                                <div className="h-10 w-full bg-zinc-700 rounded animate-pulse" />
+                                <div className="h-3 w-40 bg-zinc-700 rounded animate-pulse mt-1.5" />
+                            </ZenCardContent>
+                        </ZenCard>
+                    ))}
+                </div>
+
+                {/* Actions Skeleton */}
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                    <div className="h-9 w-20 bg-zinc-700 rounded animate-pulse" />
+                    <div className="h-9 w-32 bg-zinc-700 rounded animate-pulse" />
+                </div>
             </div>
         );
     }
@@ -231,16 +278,16 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Utilidad Servicios */}
                 <ZenCard>
-                    <ZenCardHeader>
+                    <ZenCardHeader className="pb-1 mt-1">
                         <ZenCardTitle className="flex items-center gap-2 text-base">
                             <DollarSign className="h-5 w-5 text-emerald-500" />
                             Utilidad Servicios
                         </ZenCardTitle>
                     </ZenCardHeader>
-                    <ZenCardContent>
+                    <ZenCardContent className="pt-2 pb-3">
                         <div className="relative">
                             <ZenInput
                                 type="text"
@@ -251,21 +298,21 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 hint="% de ganancia sobre el costo del servicio"
                             />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                            Ejemplo: Si un servicio cuesta $1,000 y aplicas 30% de utilidad, el precio base será $1,300
+                        <p className="text-xs text-zinc-500 mt-1.5">
+                            Ejemplo: 30% = $1,000 → $1,300
                         </p>
                     </ZenCardContent>
                 </ZenCard>
 
                 {/* Utilidad Productos */}
                 <ZenCard>
-                    <ZenCardHeader>
+                    <ZenCardHeader className="pb-1 mt-1">
                         <ZenCardTitle className="flex items-center gap-2 text-base">
                             <DollarSign className="h-5 w-5 text-emerald-500" />
                             Utilidad Productos
                         </ZenCardTitle>
                     </ZenCardHeader>
-                    <ZenCardContent>
+                    <ZenCardContent className="pt-2 pb-3">
                         <div className="relative">
                             <ZenInput
                                 type="text"
@@ -276,21 +323,21 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 hint="% de ganancia sobre el costo del producto"
                             />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                            Ejemplo: Si un producto cuesta $500 y aplicas 50% de utilidad, el precio base será $750
+                        <p className="text-xs text-zinc-500 mt-1.5">
+                            Ejemplo: 50% = $500 → $750
                         </p>
                     </ZenCardContent>
                 </ZenCard>
 
                 {/* Comisión Venta */}
                 <ZenCard>
-                    <ZenCardHeader>
+                    <ZenCardHeader className="pb-1 mt-1">
                         <ZenCardTitle className="flex items-center gap-2 text-base">
                             <DollarSign className="h-5 w-5 text-blue-500" />
                             Comisión de Venta
                         </ZenCardTitle>
                     </ZenCardHeader>
-                    <ZenCardContent>
+                    <ZenCardContent className="pt-2 pb-3">
                         <div className="relative">
                             <ZenInput
                                 type="text"
@@ -301,21 +348,21 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 hint="% de comisión para el vendedor"
                             />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                            Ejemplo: Si el precio es $1,000 y hay 10% de comisión, se añaden $100 al precio final
+                        <p className="text-xs text-zinc-500 mt-1.5">
+                            Ejemplo: 10% = $1,000 → $1,100
                         </p>
                     </ZenCardContent>
                 </ZenCard>
 
                 {/* Sobreprecio */}
                 <ZenCard>
-                    <ZenCardHeader>
+                    <ZenCardHeader className="py-2 pb-1">
                         <ZenCardTitle className="flex items-center gap-2 text-base">
                             <DollarSign className="h-5 w-5 text-amber-500" />
                             Sobreprecio
                         </ZenCardTitle>
                     </ZenCardHeader>
-                    <ZenCardContent>
+                    <ZenCardContent className="pt-2 pb-3">
                         <div className="relative">
                             <ZenInput
                                 type="text"
@@ -326,9 +373,8 @@ export function UtilidadForm({ studioSlug, onClose }: UtilidadFormProps) {
                                 hint="% de margen de seguridad adicional"
                             />
                         </div>
-                        <p className="text-xs text-zinc-500 mt-2">
-                            <strong className="text-amber-400">Límite de descuento:</strong> Este valor determina el descuento máximo
-                            que se puede aplicar en las condiciones comerciales
+                        <p className="text-xs text-zinc-500 mt-1.5">
+                            <strong className="text-amber-400">Límite de descuento:</strong> Máximo descuento permitido en condiciones comerciales
                         </p>
                     </ZenCardContent>
                 </ZenCard>

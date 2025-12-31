@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ZenDialog, ZenButton, ZenInput, ZenCard, ZenCardContent, ZenSwitch, SeparadorZen } from '@/components/ui/zen';
+import { ZenDialog, ZenButton, ZenInput, ZenCard, ZenCardContent, ZenSwitch, SeparadorZen, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import {
@@ -16,7 +16,9 @@ import {
   Mail,
   Edit2,
   AlertCircle,
-  Plus
+  Plus,
+  Settings,
+  MoreVertical
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -30,6 +32,7 @@ import { ContactEventFormModal } from '@/components/shared/contact-info/ContactE
 import { ContractTemplateSimpleSelectorModal } from './ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from './ContractPreviewForPromiseModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
+import { updateContractTemplate, getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
 import type { ContractTemplate } from '@/types/contracts';
 
 interface Cotizacion {
@@ -106,6 +109,10 @@ export function AuthorizeCotizacionModal({
   const [hasViewedPreview, setHasViewedPreview] = useState(false);
   const [isContractCustomized, setIsContractCustomized] = useState(false);
   const [customizedContent, setCustomizedContent] = useState<string | null>(null);
+  const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
+  const [isUpdatingTemplate, setIsUpdatingTemplate] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Estado para Registro de Pago (toggle único)
   // Solo mostrar pago si puede autorizar
@@ -161,6 +168,26 @@ export function AuthorizeCotizacionModal({
       setPaymentMethodId(paymentMethods[0].id);
     }
   }, [paymentMethods, paymentMethodId]);
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownOpen && dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      // Usar setTimeout para evitar que se cierre inmediatamente al abrir
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 0);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   // Cargar datos de la promesa (contacto + evento)
   useEffect(() => {
@@ -297,11 +324,14 @@ export function AuthorizeCotizacionModal({
 
   const handleTemplateSelected = (template: ContractTemplate) => {
     setSelectedTemplate(template);
-    setShowTemplateSelector(false);
-    // Auto-abrir preview después de seleccionar
+    // Abrir preview primero para que esté listo antes de cerrar el selector
+    // Esto evita que se vea el modal padre durante la transición
+    setShowContractPreview(true);
+    // Cerrar selector después de un pequeño delay para transición suave
+    // El preview tiene z-index mayor (10080) que el selector (10070), así que aparecerá encima
     setTimeout(() => {
-      setShowContractPreview(true);
-    }, 100);
+      setShowTemplateSelector(false);
+    }, 150);
   };
 
   const handlePreviewConfirm = () => {
@@ -310,8 +340,52 @@ export function AuthorizeCotizacionModal({
   };
 
   const handleEditContract = () => {
+    setDropdownOpen(false);
     setShowContractPreview(false);
     setShowContractEditor(true);
+  };
+
+  const handleEditTemplateGeneral = () => {
+    setDropdownOpen(false);
+    if (selectedTemplate) {
+      setShowEditTemplateModal(true);
+    }
+  };
+
+  const handleSaveTemplateGeneral = async (data: { content: string; name?: string; description?: string; is_default?: boolean }) => {
+    if (!selectedTemplate) return;
+
+    setIsUpdatingTemplate(true);
+    try {
+      const result = await updateContractTemplate(
+        studioSlug,
+        selectedTemplate.id,
+        {
+          name: data.name || selectedTemplate.name,
+          description: data.description || selectedTemplate.description || '',
+          content: data.content,
+          is_default: data.is_default ?? selectedTemplate.is_default,
+        }
+      );
+
+      if (result.success && result.data) {
+        toast.success('Plantilla actualizada correctamente');
+        setSelectedTemplate(result.data);
+        setShowEditTemplateModal(false);
+        // Recargar la plantilla actualizada
+        const reloadResult = await getContractTemplate(studioSlug, selectedTemplate.id);
+        if (reloadResult.success && reloadResult.data) {
+          setSelectedTemplate(reloadResult.data);
+        }
+      } else {
+        toast.error(result.error || 'Error al actualizar plantilla');
+      }
+    } catch (error) {
+      console.error('[handleSaveTemplateGeneral] Error:', error);
+      toast.error('Error al actualizar plantilla');
+    } finally {
+      setIsUpdatingTemplate(false);
+    }
   };
 
   const handleSaveCustomContract = async (data: { content: string }) => {
@@ -577,7 +651,6 @@ export function AuthorizeCotizacionModal({
           {/* ============================================ */}
           {/* BLOQUE 3: ESTADO DEL CONTRATO */}
           {/* ============================================ */}
-          {selectedCondicionId && (
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-white mb-4">Contrato</h3>
 
@@ -674,12 +747,15 @@ export function AuthorizeCotizacionModal({
                                 </div>
                               </div>
                             </div>
-                            <button
-                              onClick={() => setShowTemplateSelector(true)}
-                              className="text-xs text-zinc-400 hover:text-white transition-colors"
+                            <ZenButton
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleOpenPreviewFromCard}
+                              className="h-7 px-2 text-xs text-zinc-400 hover:text-white"
                             >
-                              Cambiar
-                            </button>
+                              <Eye className="w-3.5 h-3.5 mr-1.5" />
+                              Previsualizar
+                            </ZenButton>
                           </div>
                           
                           {/* Botones de acción */}
@@ -687,21 +763,43 @@ export function AuthorizeCotizacionModal({
                             <ZenButton
                               variant="outline"
                               size="sm"
-                              onClick={handleOpenPreviewFromCard}
+                              onClick={() => setShowTemplateSelector(true)}
                               className="flex-1"
                             >
-                              <Eye className="w-3.5 h-3.5 mr-1.5" />
-                              Ver preview
+                              Cambiar de plantilla
                             </ZenButton>
-                            <ZenButton
-                              variant="outline"
-                              size="sm"
-                              onClick={handleEditContract}
-                              className="flex-1"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 mr-1.5" />
-                              Editar
-                            </ZenButton>
+                            <div ref={dropdownRef}>
+                              <ZenDropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen} modal={false}>
+                                <ZenDropdownMenuTrigger asChild>
+                                  <ZenButton
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5 mr-1.5" />
+                                    Editar
+                                  </ZenButton>
+                                </ZenDropdownMenuTrigger>
+                                <ZenDropdownMenuContent 
+                                  align="end" 
+                                  className="min-w-[220px]"
+                                >
+                                  <ZenDropdownMenuItem
+                                    onClick={handleEditContract}
+                                    className="cursor-pointer"
+                                  >
+                                    Personalizar para este cliente
+                                  </ZenDropdownMenuItem>
+                                  <ZenDropdownMenuSeparator />
+                                  <ZenDropdownMenuItem
+                                    onClick={handleEditTemplateGeneral}
+                                    className="cursor-pointer"
+                                  >
+                                    Editar plantilla general
+                                  </ZenDropdownMenuItem>
+                                </ZenDropdownMenuContent>
+                              </ZenDropdownMenu>
+                            </div>
                           </div>
                         </div>
 
@@ -729,12 +827,11 @@ export function AuthorizeCotizacionModal({
               </div>
             )}
           </div>
-          )}
 
           {/* ============================================ */}
           {/* BLOQUE 4: REGISTRAR PAGO */}
           {/* ============================================ */}
-          {selectedCondicionId && puedeAutorizar && (
+          {puedeAutorizar && (
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-white mb-4">Registrar Pago</h3>
 
@@ -854,7 +951,7 @@ export function AuthorizeCotizacionModal({
         onClose={() => setShowCotizacionPreview(false)}
         title={`Cotización: ${cotizacion.name}`}
         description="Vista previa completa de la cotización"
-        maxWidth="7xl"
+        maxWidth="4xl"
         onCancel={() => setShowCotizacionPreview(false)}
         cancelLabel="Cerrar"
         zIndex={10070}
@@ -925,7 +1022,7 @@ export function AuthorizeCotizacionModal({
         />
       )}
 
-      {/* Modal Editor de Contrato */}
+      {/* Modal Editor de Contrato (Personalizar para este cliente) */}
       {isClienteLegacy && selectedTemplate && (
         <ContractEditorModal
           isOpen={showContractEditor}
@@ -935,9 +1032,29 @@ export function AuthorizeCotizacionModal({
           initialContent={customizedContent || selectedTemplate.content}
           templateContent={selectedTemplate.content}
           onSave={handleSaveCustomContract}
-          title="Editar Contrato"
+          title="Personalizar Contrato"
           description="Personaliza el contrato para este cliente. Los cambios solo aplicarán a esta promesa."
           saveLabel="Guardar y volver a preview"
+          zIndex={10090}
+        />
+      )}
+
+      {/* Modal Editor de Plantilla General */}
+      {isClienteLegacy && selectedTemplate && (
+        <ContractEditorModal
+          isOpen={showEditTemplateModal}
+          onClose={() => setShowEditTemplateModal(false)}
+          mode="edit-template"
+          studioSlug={studioSlug}
+          initialContent={selectedTemplate.content}
+          initialName={selectedTemplate.name}
+          initialDescription={selectedTemplate.description || ''}
+          initialIsDefault={selectedTemplate.is_default}
+          onSave={handleSaveTemplateGeneral}
+          title="Editar Plantilla General"
+          description="Edita la plantilla base. Los cambios afectarán a todos los contratos futuros que usen esta plantilla."
+          saveLabel="Guardar plantilla"
+          isLoading={isUpdatingTemplate}
           zIndex={10090}
         />
       )}
