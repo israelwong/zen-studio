@@ -27,6 +27,17 @@ export function ContractPreview({
   showVariables = false,
   className = "",
 }: ContractPreviewProps) {
+  // Log para debug
+  console.log('[ContractPreview] Props recibidas:', {
+    hasEventData: !!eventData,
+    hasCotizacionData: !!cotizacionData,
+    hasCondicionesData: !!condicionesData,
+    condicionesData: condicionesData,
+    eventDataKeys: eventData ? Object.keys(eventData) : [],
+    cotizacionDataKeys: cotizacionData ? Object.keys(cotizacionData) : [],
+    condicionesDataKeys: condicionesData ? Object.keys(condicionesData) : [],
+  });
+
   const { renderedContent } = useContractRenderer({
     content,
     eventData,

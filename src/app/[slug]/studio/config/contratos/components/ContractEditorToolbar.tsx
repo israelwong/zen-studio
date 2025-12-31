@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Heading1, Heading2, Type, Bold, Italic, List, ListOrdered, Quote, Indent, Outdent, Undo, Redo } from "lucide-react";
+import { Heading1, Heading2, Type, Bold, List, ListOrdered, Undo, Redo } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ContractEditorToolbarProps {
@@ -63,10 +63,6 @@ export function ContractEditorToolbar({
           formats.add('p');
           foundBlockElement = true;
           break;
-        } else if (tagName === 'blockquote') {
-          formats.add('quote');
-          foundBlockElement = true;
-          break;
         }
         
         element = element.parentElement;
@@ -112,9 +108,6 @@ export function ContractEditorToolbar({
         if (document.queryCommandState('bold')) {
           formats.add('bold');
         }
-        if (document.queryCommandState('italic')) {
-          formats.add('italic');
-        }
       } catch (e) {
         // Fallback: verificar estilos inline del elemento
         const elementToCheck = container.nodeType === Node.ELEMENT_NODE 
@@ -126,9 +119,6 @@ export function ContractEditorToolbar({
           const fontWeight = parseInt(style.fontWeight) || 0;
           if (fontWeight >= 600 || style.fontWeight === 'bold') {
             formats.add('bold');
-          }
-          if (style.fontStyle === 'italic') {
-            formats.add('italic');
           }
         }
       }
@@ -222,10 +212,6 @@ export function ContractEditorToolbar({
         }
         case "bold": {
           document.execCommand("bold", false, undefined);
-          break;
-        }
-        case "italic": {
-          document.execCommand("italic", false, undefined);
           break;
         }
         case "ul": {
@@ -412,22 +398,6 @@ export function ContractEditorToolbar({
           }
           break;
         }
-        case "quote": {
-          if (isActive) {
-            document.execCommand("formatBlock", false, "<p>");
-          } else {
-            document.execCommand("formatBlock", false, "<blockquote>");
-          }
-          break;
-        }
-        case "indent": {
-          document.execCommand("indent", false, undefined);
-          break;
-        }
-        case "outdent": {
-          document.execCommand("outdent", false, undefined);
-          break;
-        }
       }
     } catch (error) {
       console.error("Error applying format:", error);
@@ -550,19 +520,6 @@ export function ContractEditorToolbar({
       >
         <Bold className="h-4 w-4" />
       </button>
-      <button
-        type="button"
-        onClick={() => applyFormat("italic")}
-        className={cn(
-          "p-1.5 rounded transition-colors",
-          activeFormats.has("italic")
-            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-            : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
-        )}
-        title="Cursiva"
-      >
-        <Italic className="h-4 w-4" />
-      </button>
       <div className="w-px h-6 bg-zinc-700" />
       <button
         type="button"
@@ -589,36 +546,6 @@ export function ContractEditorToolbar({
         title="Lista numerada"
       >
         <ListOrdered className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => applyFormat("indent")}
-        className="p-1.5 rounded text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
-        title="Indentar (Tabulador)"
-      >
-        <Indent className="h-4 w-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => applyFormat("outdent")}
-        className="p-1.5 rounded text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
-        title="Reducir tabulación"
-      >
-        <Outdent className="h-4 w-4" />
-      </button>
-      <div className="w-px h-6 bg-zinc-700" />
-      <button
-        type="button"
-        onClick={() => applyFormat("quote")}
-        className={cn(
-          "p-1.5 rounded transition-colors",
-          activeFormats.has("quote")
-            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-            : "text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800"
-        )}
-        title="Cita"
-      >
-        <Quote className="h-4 w-4" />
       </button>
     </div>
   );

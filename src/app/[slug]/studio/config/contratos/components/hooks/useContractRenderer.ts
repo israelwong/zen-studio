@@ -44,12 +44,20 @@ export function useContractRenderer({
       // Si no hay datos, mostrar placeholders
       const placeholders: Record<string, string> = {
         "@nombre_cliente": "{nombre_cliente}",
+        "@email_cliente": "{email_cliente}",
+        "@telefono_cliente": "{telefono_cliente}",
+        "@direccion_cliente": "{direccion_cliente}",
         "@fecha_evento": "{fecha_evento}",
         "@tipo_evento": "{tipo_evento}",
         "@nombre_evento": "{nombre_evento}",
         "@total_contrato": "{total_contrato}",
         "@condiciones_pago": "{condiciones_pago}",
         "@nombre_studio": "{nombre_studio}",
+        "@nombre_representante": "{nombre_representante}",
+        "@telefono_studio": "{telefono_studio}",
+        "@correo_studio": "{correo_studio}",
+        "@direccion_studio": "{direccion_studio}",
+        "@fecha_firma_cliente": "{fecha_firma_cliente}",
       };
 
       Object.entries(placeholders).forEach(([key, placeholder]) => {
@@ -89,40 +97,74 @@ export function useContractRenderer({
       return rendered;
     }
 
-    // Reemplazar variables simples
-    const variables: Record<string, string> = {
-      "@nombre_cliente": eventData.nombre_cliente,
+    // Variables de cliente (se convertirán a mayúsculas)
+    const clienteVars: Record<string, string> = {
+      "@nombre_cliente": eventData.nombre_cliente.toUpperCase(),
+      "@email_cliente": (eventData.email_cliente || "").toUpperCase(),
+      "@telefono_cliente": (eventData.telefono_cliente || "").toUpperCase(),
+      "@direccion_cliente": (eventData.direccion_cliente || "").toUpperCase(),
+    };
+
+    // Variables de estudio (se convertirán a mayúsculas)
+    const studioVars: Record<string, string> = {
+      "@nombre_studio": eventData.nombre_studio.toUpperCase(),
+      "@nombre_representante": (eventData.nombre_representante || "").toUpperCase(),
+      "@telefono_studio": (eventData.telefono_studio || "").toUpperCase(),
+      "@correo_studio": (eventData.correo_studio || "").toUpperCase(),
+      "@direccion_studio": (eventData.direccion_studio || "").toUpperCase(),
+    };
+
+    // Variables de negocio/comerciales (sin mayúsculas)
+    // NO incluir @condiciones_pago aquí, se reemplazará después con el bloque completo si hay condicionesData
+    const comercialesVars: Record<string, string> = {
+      "@total_contrato": eventData.total_contrato,
+    };
+
+    // Variables de evento (sin mayúsculas)
+    const eventoVars: Record<string, string> = {
       "@fecha_evento": eventData.fecha_evento,
       "@tipo_evento": eventData.tipo_evento,
       "@nombre_evento": eventData.nombre_evento,
-      "@total_contrato": eventData.total_contrato,
-      "@condiciones_pago": eventData.condiciones_pago,
-      "@nombre_studio": eventData.nombre_studio,
+      "@fecha_firma_cliente": eventData.fecha_firma_cliente || "",
     };
 
-    // También soportar sintaxis {variable}
+    // Combinar todas las variables
+    const variables: Record<string, string> = {
+      ...clienteVars,
+      ...studioVars,
+      ...comercialesVars,
+      ...eventoVars,
+    };
+
+    // También soportar sintaxis {variable} con las mismas conversiones
+    // NO incluir {condiciones_pago} aquí, se reemplazará después con el bloque completo si hay condicionesData
     const braceVariables: Record<string, string> = {
-      "{nombre_cliente}": eventData.nombre_cliente,
+      "{nombre_cliente}": eventData.nombre_cliente.toUpperCase(),
+      "{email_cliente}": (eventData.email_cliente || "").toUpperCase(),
+      "{telefono_cliente}": (eventData.telefono_cliente || "").toUpperCase(),
+      "{direccion_cliente}": (eventData.direccion_cliente || "").toUpperCase(),
       "{fecha_evento}": eventData.fecha_evento,
       "{tipo_evento}": eventData.tipo_evento,
       "{nombre_evento}": eventData.nombre_evento,
       "{total_contrato}": eventData.total_contrato,
-      "{condiciones_pago}": eventData.condiciones_pago,
-      "{nombre_studio}": eventData.nombre_studio,
+      "{nombre_studio}": eventData.nombre_studio.toUpperCase(),
+      "{nombre_representante}": (eventData.nombre_representante || "").toUpperCase(),
+      "{telefono_studio}": (eventData.telefono_studio || "").toUpperCase(),
+      "{correo_studio}": (eventData.correo_studio || "").toUpperCase(),
+      "{direccion_studio}": (eventData.direccion_studio || "").toUpperCase(),
+      "{fecha_firma_cliente}": eventData.fecha_firma_cliente || "",
     };
 
     // Reemplazar variables @variable
     Object.entries(variables).forEach(([key, value]) => {
-      // Usar regex para reemplazar incluso si hay espacios alrededor
-      const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      rendered = rendered.replace(regex, value);
+      // Usar replaceAll para reemplazar todas las ocurrencias
+      rendered = rendered.replaceAll(key, value);
     });
 
     // Reemplazar variables {variable}
     Object.entries(braceVariables).forEach(([key, value]) => {
-      // Usar regex para reemplazar incluso si hay espacios alrededor
-      const regex = new RegExp(key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-      rendered = rendered.replace(regex, value);
+      // Usar replaceAll para reemplazar todas las ocurrencias
+      rendered = rendered.replaceAll(key, value);
     });
 
     // Renderizar bloque de cotización
@@ -139,10 +181,38 @@ export function useContractRenderer({
     }
 
     // Renderizar bloque de condiciones comerciales
+    console.log('[useContractRenderer] Condiciones comerciales:', {
+      hasCondicionesData: !!condicionesData,
+      condicionesData: condicionesData,
+      condicionesDataKeys: condicionesData ? Object.keys(condicionesData) : [],
+      condicionesDataValues: condicionesData ? {
+        nombre: condicionesData.nombre,
+        descripcion: condicionesData.descripcion,
+        porcentaje_descuento: condicionesData.porcentaje_descuento,
+        descuento_aplicado: condicionesData.descuento_aplicado,
+        total_contrato: condicionesData.total_contrato,
+        total_final: condicionesData.total_final,
+        monto_anticipo: condicionesData.monto_anticipo,
+      } : null,
+    });
+
     if (condicionesData) {
       const condicionesHtml = renderCondicionesComercialesBlock(condicionesData);
+      console.log('[useContractRenderer] HTML generado para condiciones:', condicionesHtml.substring(0, 200));
+      
+      // Reemplazar @condiciones_comerciales o {condiciones_comerciales}
       rendered = rendered.replace("@condiciones_comerciales", condicionesHtml);
       rendered = rendered.replace("{condiciones_comerciales}", condicionesHtml);
+      
+      // También reemplazar @condiciones_pago con el bloque completo si existe
+      // Esto permite que el template use @condiciones_pago pero muestre el bloque completo con desglose
+      if (rendered.includes("@condiciones_pago")) {
+        // Reemplazar @condiciones_pago con el bloque completo
+        rendered = rendered.replace("@condiciones_pago", condicionesHtml);
+      }
+      if (rendered.includes("{condiciones_pago}")) {
+        rendered = rendered.replace("{condiciones_pago}", condicionesHtml);
+      }
     } else {
       // Placeholder si no hay datos
       const placeholder =
@@ -162,6 +232,8 @@ export function useContractRenderer({
         // Fallback a formato legacy
         serviciosHtml = renderServiciosBlock(eventData.servicios_incluidos);
       }
+      // Agregar divisor antes y después del bloque de servicios
+      serviciosHtml = '<div class="mb-6 pb-4 border-b border-zinc-800"></div>' + serviciosHtml + '<div class="mt-6 pt-4 border-t border-zinc-800"></div>';
       rendered = rendered.replace("[SERVICIOS_INCLUIDOS]", serviciosHtml);
     }
 

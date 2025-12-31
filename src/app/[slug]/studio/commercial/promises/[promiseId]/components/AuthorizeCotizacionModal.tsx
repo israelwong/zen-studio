@@ -100,6 +100,11 @@ export function AuthorizeCotizacionModal({
     cotizacion.condiciones_comerciales_id || ''
   );
 
+  // Sincronizar condiciones comerciales locales con las props
+  useEffect(() => {
+    setLocalCondicionesComerciales(condicionesComerciales);
+  }, [condicionesComerciales]);
+
   // Estado para gestión de contrato (solo cliente legacy)
   const [generarContrato, setGenerarContrato] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
@@ -129,6 +134,50 @@ export function AuthorizeCotizacionModal({
   const [promiseData, setPromiseData] = useState<any>(null);
   const [loadingPromise, setLoadingPromise] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [localCondicionesComerciales, setLocalCondicionesComerciales] = useState<CondicionComercial[]>(condicionesComerciales);
+
+  // Validación de datos del cliente para contratos
+  interface ClientContractDataValidation {
+    isValid: boolean;
+    missingFields: Array<{
+      field: string;
+      label: string;
+      section: 'contacto' | 'evento';
+    }>;
+  }
+
+  function validateClientContractData(promiseData: any): ClientContractDataValidation {
+    const missingFields: Array<{field: string; label: string; section: 'contacto' | 'evento'}> = [];
+
+    // Validar datos del contacto
+    if (!promiseData?.name?.trim()) {
+      missingFields.push({ field: 'name', label: 'Nombre', section: 'contacto' });
+    }
+    if (!promiseData?.phone?.trim()) {
+      missingFields.push({ field: 'phone', label: 'Teléfono', section: 'contacto' });
+    }
+    if (!promiseData?.email?.trim()) {
+      missingFields.push({ field: 'email', label: 'Correo electrónico', section: 'contacto' });
+    }
+    // Nota: address viene de studio_contacts.address, pero no está en promiseData directamente
+    // Se validará en el flujo de generación de contrato
+
+    // Validar datos del evento
+    if (!promiseData?.event_name?.trim()) {
+      missingFields.push({ field: 'event_name', label: 'Nombre del evento', section: 'evento' });
+    }
+    if (!promiseData?.event_type_id) {
+      missingFields.push({ field: 'event_type_id', label: 'Tipo de evento', section: 'evento' });
+    }
+    if (!promiseData?.event_date) {
+      missingFields.push({ field: 'event_date', label: 'Fecha del evento', section: 'evento' });
+    }
+
+    return {
+      isValid: missingFields.length === 0,
+      missingFields,
+    };
+  }
 
   // Calcular balance con descuento de condición comercial
   const subtotal = cotizacion.price;
@@ -146,7 +195,7 @@ export function AuthorizeCotizacionModal({
   // Calcular descuento y total cuando cambie la condición comercial
   useEffect(() => {
     if (isClienteLegacy && selectedCondicionId) {
-      const condicion = condicionesComerciales.find(cc => cc.id === selectedCondicionId);
+      const condicion = localCondicionesComerciales.find(cc => cc.id === selectedCondicionId);
       if (condicion && condicion.discount_percentage) {
         const descuentoCalculado = subtotal * (condicion.discount_percentage / 100);
         setDescuento(descuentoCalculado);
@@ -244,6 +293,17 @@ export function AuthorizeCotizacionModal({
     if (!puedeAutorizar) {
       toast.error('No se puede autorizar hasta que el cliente firme el contrato');
       return;
+    }
+
+    // Validar datos del cliente para contratos
+    if (promiseData) {
+      const clientValidation = validateClientContractData(promiseData);
+      if (!clientValidation.isValid) {
+        const fieldsList = clientValidation.missingFields.map(f => f.label).join(', ');
+        toast.error(`Completa los datos faltantes: ${fieldsList}`);
+        setShowEditModal(true);
+        return;
+      }
     }
 
     // Validaciones
@@ -448,6 +508,57 @@ export function AuthorizeCotizacionModal({
               </div>
             ) : promiseData ? (
               <div className="space-y-4">
+                {/* Alerta de datos faltantes */}
+                {(() => {
+                  const validation = validateClientContractData(promiseData);
+                  if (!validation.isValid) {
+                    const contactoFields = validation.missingFields.filter(f => f.section === 'contacto');
+                    const eventoFields = validation.missingFields.filter(f => f.section === 'evento');
+                    
+                    return (
+                      <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex gap-3 items-start">
+                        <AlertCircle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm text-amber-300 font-medium mb-2">
+                            Datos incompletos para generar contrato
+                          </p>
+                          <div className="space-y-2 text-xs text-amber-400/80">
+                            {contactoFields.length > 0 && (
+                              <div>
+                                <p className="font-medium mb-1">Datos del contacto faltantes:</p>
+                                <ul className="list-disc list-inside space-y-0.5 ml-2">
+                                  {contactoFields.map((field) => (
+                                    <li key={field.field}>{field.label}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {eventoFields.length > 0 && (
+                              <div>
+                                <p className="font-medium mb-1">Datos del evento faltantes:</p>
+                                <ul className="list-disc list-inside space-y-0.5 ml-2">
+                                  {eventoFields.map((field) => (
+                                    <li key={field.field}>{field.label}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                          <ZenButton
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowEditModal(true)}
+                            className="mt-3 text-amber-300 border-amber-500/50 hover:bg-amber-500/10"
+                          >
+                            Completar datos
+                          </ZenButton>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 {/* Datos del Contacto */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wide">
@@ -570,12 +681,12 @@ export function AuthorizeCotizacionModal({
                           }`} />
                         <div className="flex-1 min-w-0">
                           <div className="text-sm font-medium text-white truncate">
-                            {condicionesComerciales.find(cc => cc.id === selectedCondicionId)?.name ||
+                            {localCondicionesComerciales.find(cc => cc.id === selectedCondicionId)?.name ||
                               cotizacion.condiciones_comerciales?.name ||
                               'Sin condiciones'}
                           </div>
                           {!isClienteNuevo && (() => {
-                            const condicion = condicionesComerciales.find(cc => cc.id === selectedCondicionId);
+                            const condicion = localCondicionesComerciales.find(cc => cc.id === selectedCondicionId);
                             return condicion && (
                               <div className="flex items-center gap-1.5 text-xs text-zinc-400 mt-0.5">
                                 {condicion.advance_percentage && condicion.advance_percentage > 0 && (
@@ -934,13 +1045,21 @@ export function AuthorizeCotizacionModal({
         <CondicionComercialSelectorModal
           isOpen={showCondicionSelector}
           onClose={() => setShowCondicionSelector(false)}
-          condiciones={condicionesComerciales}
+          condiciones={localCondicionesComerciales}
           selectedId={selectedCondicionId}
           onSelect={setSelectedCondicionId}
           studioSlug={studioSlug}
           onRefresh={async () => {
-            // Recargar condiciones comerciales desde el componente padre si es necesario
-            // Por ahora solo actualizamos el estado local
+            // Refrescar condiciones comerciales locales cuando se actualiza una condición
+            try {
+              const { obtenerTodasCondicionesComerciales } = await import('@/lib/actions/studio/config/condiciones-comerciales.actions');
+              const result = await obtenerTodasCondicionesComerciales(studioSlug);
+              if (result.success && result.data) {
+                setLocalCondicionesComerciales(result.data);
+              }
+            } catch (error) {
+              console.error('Error refreshing condiciones:', error);
+            }
           }}
         />
       )}

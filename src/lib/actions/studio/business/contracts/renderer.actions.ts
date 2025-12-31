@@ -98,7 +98,14 @@ export async function getPromiseContractData(
   try {
     const studio = await prisma.studios.findUnique({
       where: { slug: studioSlug },
-      select: { id: true, studio_name: true },
+      select: { 
+        id: true, 
+        studio_name: true,
+        representative_name: true,
+        phone: true,
+        email: true,
+        address: true,
+      },
     });
 
     if (!studio) {
@@ -191,23 +198,60 @@ export async function getPromiseContractData(
     );
 
     // Calcular totales
-    const subtotal = cotizacion.price;
-    const descuento = cotizacion.discount || 0;
-    const total = subtotal - descuento;
+    // El precio base es el precio de la cotización (puede incluir descuentos previos)
+    // Para el cálculo correcto, necesitamos el precio base antes de descuentos
+    const precioBase = cotizacion.price;
+    const descuentoExistente = cotizacion.discount || 0;
+    // Si hay descuento en la cotización, el precio base real es precio + descuento
+    const precioBaseReal = descuentoExistente > 0 ? precioBase + descuentoExistente : precioBase;
+    
     const secciones = estructura.secciones;
 
     // Usar condiciones comerciales pasadas o de la cotización
-    const condiciones = condicionesComerciales || cotizacion.condiciones_comerciales;
+    // Siempre obtener datos completos desde la base de datos si tenemos un ID
+    let condiciones = condicionesComerciales || cotizacion.condiciones_comerciales;
+    
+    // Si tenemos un ID de condiciones comerciales, obtener datos completos desde la base de datos
+    // Esto asegura que siempre tengamos todos los campos necesarios (advance_type, advance_amount, etc.)
+    const condicionId = condiciones?.id || condicionesComerciales?.id || cotizacion.condiciones_comerciales_id;
+    
+    if (condicionId) {
+      const condicionCompleta = await prisma.studio_condiciones_comerciales.findUnique({
+        where: { id: condicionId },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          discount_percentage: true,
+          advance_percentage: true,
+          advance_type: true,
+          advance_amount: true,
+        },
+      });
+      if (condicionCompleta) {
+        condiciones = condicionCompleta;
+      }
+    }
 
     // Calcular anticipo si hay condiciones
     let montoAnticipo: number | undefined;
-    let totalFinal = total;
-    let descuentoAplicado = descuento;
+    let totalFinal = precioBase;
+    let descuentoAplicado = descuentoExistente;
 
     if (condiciones) {
+      // Calcular descuento si hay porcentaje de descuento en condiciones comerciales
       if (condiciones.discount_percentage) {
-        descuentoAplicado = (subtotal * condiciones.discount_percentage) / 100;
-        totalFinal = subtotal - descuentoAplicado;
+        // El descuento se calcula sobre el precio base real (antes de cualquier descuento)
+        descuentoAplicado = (precioBaseReal * condiciones.discount_percentage) / 100;
+        totalFinal = precioBaseReal - descuentoAplicado;
+      } else if (descuentoExistente > 0) {
+        // Si ya hay descuento calculado desde la cotización, usarlo
+        totalFinal = precioBase;
+        descuentoAplicado = descuentoExistente;
+      } else {
+        // Sin descuento, el total final es el precio base
+        totalFinal = precioBase;
+        descuentoAplicado = 0;
       }
 
       if (condiciones.advance_type === "percentage" && condiciones.advance_percentage) {
@@ -232,6 +276,18 @@ export async function getPromiseContractData(
       });
     });
 
+    // Formatear fecha de firma
+    // Si selected_by_prospect es true: undefined (aún no se ha firmado)
+    // Si selected_by_prospect es false: usar fecha de hoy (generación manual del estudio)
+    const fechaFirmaCliente = cotizacion.selected_by_prospect
+      ? undefined // Prospecto seleccionó: no hay fecha de firma aún (se establecerá cuando firme)
+      : new Date().toLocaleDateString("es-ES", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
     const eventData: EventContractDataWithConditions = {
       nombre_studio: studio.studio_name,
       nombre_representante: studio.representative_name || undefined,
@@ -245,10 +301,11 @@ export async function getPromiseContractData(
       nombre_evento: promise.name || "Evento",
       tipo_evento: promise.event_type?.name || "Evento",
       fecha_evento: fechaEvento,
+      fecha_firma_cliente: fechaFirmaCliente,
       servicios_incluidos: serviciosLegacy, // Formato legacy para [SERVICIOS_INCLUIDOS]
       total_contrato: `$${totalFinal.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`,
       condiciones_pago: condiciones?.description || "Por definir",
-      subtotal,
+      subtotal: precioBaseReal,
       descuento: descuentoAplicado,
       total: totalFinal,
       cotizacionData: {
@@ -262,9 +319,9 @@ export async function getPromiseContractData(
         porcentaje_anticipo: condiciones.advance_percentage || undefined,
         tipo_anticipo: (condiciones.advance_type as "percentage" | "fixed_amount") || undefined,
         monto_anticipo: montoAnticipo,
-        total_contrato: subtotal,
-        total_final: totalFinal,
-        descuento_aplicado: descuentoAplicado,
+        total_contrato: precioBaseReal, // Precio base antes de descuentos
+        total_final: totalFinal, // Precio después de descuentos
+        descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado
       } : undefined,
     };
 
@@ -572,15 +629,29 @@ export async function getEventContractData(
       };
     }
 
-    // Formatear fecha de firma si existe
-    const fechaFirmaCliente = event.contracts?.[0]?.signed_at
-      ? new Date(event.contracts[0].signed_at).toLocaleDateString("es-ES", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : undefined;
+    // Formatear fecha de firma
+    // Si selected_by_prospect es true: usar fecha de firma del contrato (si existe)
+    // Si selected_by_prospect es false: usar fecha de hoy (generación manual del estudio)
+    let fechaFirmaCliente: string | undefined;
+    if (cotizacionAprobada.selected_by_prospect) {
+      // Prospecto seleccionó: usar fecha de firma real si existe
+      fechaFirmaCliente = event.contracts?.[0]?.signed_at
+        ? new Date(event.contracts[0].signed_at).toLocaleDateString("es-ES", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })
+        : undefined;
+    } else {
+      // Estudio genera manualmente: usar fecha de hoy
+      fechaFirmaCliente = new Date().toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
 
     const contractData: EventContractDataWithConditions = {
       nombre_cliente: event.promise.contact.name,
@@ -706,7 +777,9 @@ export async function renderContractContent(
     // Renderizar bloque especial de servicios
     if (rendered.includes("[SERVICIOS_INCLUIDOS]")) {
       const servicios = eventData.servicios_incluidos || [];
-      const serviciosHtml = renderServiciosBlock(servicios);
+      let serviciosHtml = renderServiciosBlock(servicios);
+      // Agregar divisor antes y después del bloque de servicios
+      serviciosHtml = '<div class="mb-6 pb-4 border-b border-zinc-800"></div>' + serviciosHtml + '<div class="mt-6 pt-4 border-t border-zinc-800"></div>';
       rendered = rendered.replace("[SERVICIOS_INCLUIDOS]", serviciosHtml);
     }
 
