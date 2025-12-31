@@ -18,7 +18,9 @@ import {
   AlertCircle,
   Plus,
   Settings,
-  MoreVertical
+  MoreVertical,
+  X,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -312,14 +314,16 @@ export function AuthorizeCotizacionModal({
       return;
     }
 
-    if (isClienteLegacy && !selectedCondicionId) {
-      toast.error('Selecciona las condiciones comerciales');
-      return;
-    }
-
-    if (isClienteLegacy && generarContrato && !selectedTemplate) {
-      toast.error('Selecciona una plantilla de contrato');
-      return;
+    // Validar contrato solo si se va a generar y hay condición comercial
+    if (isClienteLegacy && generarContrato) {
+      if (!selectedCondicionId) {
+        toast.error('Selecciona las condiciones comerciales para generar el contrato');
+        return;
+      }
+      if (!selectedTemplate) {
+        toast.error('Selecciona una plantilla de contrato');
+        return;
+      }
     }
 
     setIsLoading(true);
@@ -344,11 +348,14 @@ export function AuthorizeCotizacionModal({
         }
       } else {
         // FLUJO LEGACY: Crea evento inmediatamente
+        // Solo generar contrato si hay condición comercial seleccionada
+        const generarContratoConCondicion = generarContrato && selectedCondicionId;
+        
         const result = await autorizarCotizacionLegacy({
           studio_slug: studioSlug,
           cotizacion_id: cotizacion.id,
           promise_id: promiseId,
-          condiciones_comerciales_id: selectedCondicionId,
+          condiciones_comerciales_id: selectedCondicionId || null,
           monto: total,
           registrar_pago: registrarPago,
           pago_data: registrarPago ? {
@@ -357,8 +364,8 @@ export function AuthorizeCotizacionModal({
             fecha: pagoFecha!,
             payment_method_id: paymentMethodId,
           } : undefined,
-          generar_contrato: generarContrato,
-          contract_template_id: generarContrato ? selectedTemplate?.id : undefined,
+          generar_contrato: generarContratoConCondicion,
+          contract_template_id: generarContratoConCondicion ? selectedTemplate?.id : undefined,
         });
 
         if (result.success && result.data?.eventId) {
@@ -644,19 +651,17 @@ export function AuthorizeCotizacionModal({
           <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">Cotización</h3>
-              {/* Botón Ver detalle solo si hay condición comercial definida */}
-              {selectedCondicionId && (
-                <ZenButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleOpenPreview}
-                  loading={loadingCotizacion}
-                  className="h-7 px-2"
-                >
-                  <Eye className="w-3.5 h-3.5 mr-1.5" />
-                  Ver detalle
-                </ZenButton>
-              )}
+              {/* Botón Ver detalle siempre visible */}
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={handleOpenPreview}
+                loading={loadingCotizacion}
+                className="h-7 px-2"
+              >
+                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                Ver detalle
+              </ZenButton>
             </div>
 
             <div className="space-y-4">
@@ -702,13 +707,26 @@ export function AuthorizeCotizacionModal({
                         </div>
                       </div>
                       {!isClienteNuevo && (
-                        <button
-                          onClick={() => setShowCondicionSelector(true)}
-                          className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700/50 transition-colors"
-                          title="Cambiar condiciones"
-                        >
-                          <Plus className="w-3.5 h-3.5 text-zinc-400" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setShowCondicionSelector(true)}
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md border border-zinc-600 hover:border-zinc-500 hover:bg-zinc-700/50 transition-colors"
+                            title="Cambiar condiciones"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-zinc-400" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedCondicionId('');
+                              setDescuento(0);
+                              setTotal(subtotal);
+                            }}
+                            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-md border border-zinc-600 hover:border-red-500 hover:bg-red-500/10 transition-colors"
+                            title="Quitar condiciones comerciales"
+                          >
+                            <X className="w-3.5 h-3.5 text-zinc-400 hover:text-red-400" />
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -820,18 +838,35 @@ export function AuthorizeCotizacionModal({
                     </label>
                     <p className="text-xs text-zinc-400 mt-0.5">
                       {generarContrato
-                        ? 'Se generará contrato después de crear el evento'
+                        ? selectedCondicionId
+                          ? 'Se generará contrato después de crear el evento'
+                          : 'Selecciona condiciones comerciales para generar contrato'
                         : 'Crear evento sin contrato'}
                     </p>
                   </div>
                   <ZenSwitch
                     checked={generarContrato}
                     onCheckedChange={setGenerarContrato}
+                    disabled={false}
                   />
                 </div>
 
-                {/* Selector de Plantilla */}
-                {generarContrato && (
+                {/* Mensaje informativo si quiere generar contrato pero no hay condición comercial */}
+                {generarContrato && !selectedCondicionId && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-xs text-amber-300">
+                          Para generar el contrato, primero selecciona las condiciones comerciales.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Selector de Plantilla - Solo si hay condición comercial */}
+                {generarContrato && selectedCondicionId && (
                   <div>
                     <label className="text-xs text-zinc-500 block mb-2">Plantilla de Contrato</label>
                     {selectedTemplate ? (
@@ -871,6 +906,20 @@ export function AuthorizeCotizacionModal({
                           
                           {/* Botones de acción */}
                           <div className="flex gap-2">
+                            <ZenButton
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedTemplate(null);
+                                setGenerarContrato(false);
+                                setIsContractCustomized(false);
+                                setCustomizedContent(null);
+                              }}
+                              className="shrink-0"
+                              title="Quitar plantilla"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-zinc-400" />
+                            </ZenButton>
                             <ZenButton
                               variant="outline"
                               size="sm"
