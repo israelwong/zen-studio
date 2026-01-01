@@ -76,8 +76,8 @@ export async function iniciarConexionGoogle(
 
     // State contiene el studioSlug, returnUrl y resourceType para recuperarlos en el callback
     const state = Buffer.from(
-      JSON.stringify({ 
-        studioSlug, 
+      JSON.stringify({
+        studioSlug,
         returnUrl: returnUrl || null,
         resourceType: 'drive'
       })
@@ -208,7 +208,7 @@ export async function procesarCallbackGoogle(
       console.warn('[procesarCallbackGoogle] No se recibieron scopes en la respuesta del token, usando scopes solicitados');
       scopes = ['https://www.googleapis.com/auth/drive'];
     }
-    
+
     console.log('[procesarCallbackGoogle] Scopes recibidos:', scopes);
 
     // Obtener scopes existentes para combinarlos (autorización incremental)
@@ -230,7 +230,7 @@ export async function procesarCallbackGoogle(
     }
 
     // Determinar qué integraciones están habilitadas según los scopes
-    const hasDriveScope = 
+    const hasDriveScope =
       scopesFinales.includes('https://www.googleapis.com/auth/drive.readonly') ||
       scopesFinales.includes('https://www.googleapis.com/auth/drive');
     const hasCalendarScope =
@@ -376,7 +376,7 @@ export async function desconectarGoogleDrive(
               if (!entregable.google_folder_id) return;
 
               try {
-                const { revocarPermisosPublicos } = await import('@/lib/integrations/google-drive.client');
+                const { revocarPermisosPublicos } = await import('@/lib/integrations/google/clients/drive.client');
                 const result = await revocarPermisosPublicos(studioSlug, entregable.google_folder_id, true);
 
                 if (result.success) {
@@ -510,7 +510,7 @@ export async function desconectarGoogleDrive(
     console.log(
       `[desconectarGoogleDrive] ✅ Google Drive desconectado de ${studioSlug}. Permisos revocados: ${permisosRevocados}, Entregables limpiados: ${entregablesLimpios}`
     );
-    
+
     // Verificar que realmente se desconectó
     const studioVerificado = await prisma.studios.findUnique({
       where: { slug: studioSlug },
@@ -520,17 +520,17 @@ export async function desconectarGoogleDrive(
         google_integrations_config: true,
       },
     });
-    
+
     const tieneDriveScopes = studioVerificado?.google_oauth_scopes
       ? JSON.parse(studioVerificado.google_oauth_scopes as string).some((s: string) => s.includes('drive'))
       : false;
-    
+
     if (tieneDriveScopes) {
       console.warn('[desconectarGoogleDrive] ⚠️ Aún hay scopes de Drive después de desconectar. Reintentando limpieza...');
       // Forzar limpieza de scopes de Drive
       const scopesActuales = JSON.parse(studioVerificado.google_oauth_scopes as string) as string[];
       const scopesSinDrive = scopesActuales.filter((s: string) => !s.includes('drive'));
-      
+
       await prisma.studios.update({
         where: { slug: studioSlug },
         data: {
@@ -539,7 +539,7 @@ export async function desconectarGoogleDrive(
         },
       });
     }
-    
+
     return {
       success: true,
       permisosRevocados,
@@ -605,16 +605,16 @@ export async function obtenerEstadoConexion(studioSlug: string): Promise<GoogleC
     );
 
     // Cada recurso es independiente: necesita scope + token + email
-    const driveConnected = hasDriveScope && 
-      studio.google_oauth_refresh_token !== null && 
+    const driveConnected = hasDriveScope &&
+      studio.google_oauth_refresh_token !== null &&
       studio.google_oauth_email !== null;
-    
-    const calendarConnected = hasCalendarScope && 
-      studio.google_oauth_refresh_token !== null && 
+
+    const calendarConnected = hasCalendarScope &&
+      studio.google_oauth_refresh_token !== null &&
       studio.google_oauth_email !== null;
-    
-    const contactsConnected = hasContactsScope && 
-      studio.google_oauth_refresh_token !== null && 
+
+    const contactsConnected = hasContactsScope &&
+      studio.google_oauth_refresh_token !== null &&
       studio.google_oauth_email !== null;
 
     // isConnected general: debe tener token Y email Y al menos un recurso conectado
@@ -682,7 +682,7 @@ export async function listarCarpetasDrive(
     return { success: true, data: folders };
   } catch (error) {
     console.error('[listarCarpetasDrive] Error:', error);
-    
+
     // Si el error es de permisos insuficientes, retornar error específico
     if (error instanceof Error && error.message.includes('Permisos insuficientes')) {
       return {
@@ -690,7 +690,7 @@ export async function listarCarpetasDrive(
         error: 'Permisos insuficientes. Por favor, reconecta Google Drive desde la configuración de integraciones para actualizar los permisos.',
       };
     }
-    
+
     // Verificar si hay conexión existente o entregables vinculados
     const studio = await prisma.studios.findUnique({
       where: { slug: studioSlug },
@@ -731,25 +731,25 @@ export async function listarCarpetasDrive(
         const mensaje = tieneEntregablesDrive
           ? 'Google Drive estaba conectado anteriormente pero los permisos se perdieron. Por favor, reconecta Google Drive desde la configuración de integraciones para restaurar el acceso a tus entregables.'
           : 'Google está conectado pero no tiene permisos de Drive. Por favor, conecta Google Drive desde la configuración de integraciones para agregar los permisos necesarios.';
-        
+
         return {
           success: false,
           error: mensaje,
         };
       }
-      
+
       if (error.message.includes('403') || error.message.includes('Insufficient Permission')) {
         const mensaje = tieneEntregablesDrive
           ? 'Los permisos de Google Drive expiraron o fueron revocados. Por favor, reconecta Google Drive desde la configuración de integraciones para restaurar el acceso.'
           : 'No tienes permisos para acceder a Google Drive. Por favor, conecta Google Drive desde la configuración de integraciones.';
-        
+
         return {
           success: false,
           error: mensaje,
         };
       }
     }
-    
+
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al listar carpetas',
@@ -766,8 +766,8 @@ export async function obtenerContenidoCarpeta(
 ): Promise<GoogleFolderContentsResult> {
   try {
     const result = await listFolderContents(studioSlug, folderId);
-    return { 
-      success: true, 
+    return {
+      success: true,
       data: result.files,
     };
   } catch (error) {
@@ -833,7 +833,7 @@ export async function listarSubcarpetas(
       }
     }
 
-    const { listSubfolders } = await import('@/lib/integrations/google-drive.client');
+    const { listSubfolders } = await import('@/lib/integrations/google/clients/drive.client');
     const folders = await listSubfolders(studioSlug, folderId);
     return { success: true, data: folders };
   } catch (error) {
@@ -865,7 +865,7 @@ export async function obtenerDetallesCarpeta(
   folderId: string
 ): Promise<{ success: true; data: { id: string; name: string; mimeType: string } } | { success: false; error: string; folderNotFound?: boolean }> {
   try {
-    const { getFolderById } = await import('@/lib/integrations/google-drive.client');
+    const { getFolderById } = await import('@/lib/integrations/google/clients/drive.client');
     const folder = await getFolderById(studioSlug, folderId);
 
     if (!folder) {
@@ -881,14 +881,14 @@ export async function obtenerDetallesCarpeta(
     const errorMessage = error instanceof Error ? error.message : 'Error al obtener detalles de la carpeta';
     const isNotFound = errorMessage === 'CARPETA_NO_ENCONTRADA';
     const noPermissions = errorMessage === 'CARPETA_SIN_PERMISOS';
-    const noDriveConnected = errorMessage.includes('Studio no tiene Google Drive conectado') || 
-                             errorMessage.includes('no tiene permisos de Drive');
-    
+    const noDriveConnected = errorMessage.includes('Studio no tiene Google Drive conectado') ||
+      errorMessage.includes('no tiene permisos de Drive');
+
     // No loguear errores esperados (Google Drive no conectado)
     if (!noDriveConnected) {
       console.error('[obtenerDetallesCarpeta] Error:', error);
     }
-    
+
     if (isNotFound) {
       return {
         success: false,
@@ -896,7 +896,7 @@ export async function obtenerDetallesCarpeta(
         folderNotFound: true,
       };
     }
-    
+
     if (noPermissions) {
       return {
         success: false,
@@ -904,7 +904,7 @@ export async function obtenerDetallesCarpeta(
         folderNotFound: false,
       };
     }
-    
+
     if (noDriveConnected) {
       return {
         success: false,
@@ -912,7 +912,7 @@ export async function obtenerDetallesCarpeta(
         folderNotFound: false,
       };
     }
-    
+
     return {
       success: false,
       error: errorMessage,

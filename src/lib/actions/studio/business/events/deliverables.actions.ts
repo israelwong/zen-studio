@@ -359,7 +359,7 @@ export async function vincularCarpetaDrive(
     // Validar que la carpeta existe, tiene permisos y obtener metadata inicial
     try {
       const { obtenerDetallesCarpeta, obtenerContenidoCarpeta } = await import('@/lib/actions/studio/integrations/google-drive.actions');
-      const { establecerPermisosPublicos } = await import('@/lib/integrations/google-drive.client');
+      const { establecerPermisosPublicos } = await import('@/lib/integrations/google/clients/drive.client');
       
       // Primero validar que tenemos acceso a la carpeta
       const detallesResult = await obtenerDetallesCarpeta(studioSlug, folderId);

@@ -143,19 +143,9 @@ export function ContractTemplateManagerModal({
         ...(eventTypeId && { eventTypeId }),
         // No filtrar por isActive para mostrar todas (activas e inactivas)
       });
-      
-      console.log('[ContractTemplateManagerModal] Cargando plantillas:', {
-        studioSlug,
-        eventTypeId,
-        filters: { eventTypeId },
-        result: result.success ? { count: result.data?.length, templates: result.data } : { error: result.error },
-      });
 
       if (result.success && result.data) {
         setTemplates(result.data);
-        if (result.data.length === 0) {
-          console.warn('[ContractTemplateManagerModal] No se encontraron plantillas para el studio:', studioSlug);
-        }
       } else {
         toast.error(result.error || "Error al cargar plantillas");
       }
