@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ContactEventInfoCard } from '@/components/shared/contact-info';
 import { PromiseQuotesPanel } from './PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
 import { PromiseAgendamiento } from './PromiseAgendamiento';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
 import { PromiseQuickActions } from './PromiseQuickActions';
+import { AuthorizeCotizacionModal } from './AuthorizeCotizacionModal';
 
 interface PromiseCardViewProps {
   studioSlug: string;
@@ -45,6 +46,82 @@ export function PromiseCardView({
   isSaved,
 }: PromiseCardViewProps) {
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showAuthorizeModal, setShowAuthorizeModal] = useState(false);
+  const [condicionesComerciales, setCondicionesComerciales] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string | null;
+    advance_percentage?: number | null;
+    discount_percentage?: number | null;
+  }>>([]);
+  const [paymentMethods, setPaymentMethods] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedCotizacion, setSelectedCotizacion] = useState<{
+    id: string;
+    name: string;
+    price: number;
+    status: string;
+    selected_by_prospect: boolean;
+    condiciones_comerciales_id: string | null;
+    condiciones_comerciales?: {
+      id: string;
+      name: string;
+    } | null;
+  } | null>(null);
+
+  // Cargar datos necesarios para el modal de autorización
+  useEffect(() => {
+    if (showAuthorizeModal) {
+      loadAuthorizationData();
+    }
+  }, [showAuthorizeModal]);
+
+  const loadAuthorizationData = async () => {
+    try {
+      const { obtenerCondicionesComerciales } = await import('@/lib/actions/studio/config/condiciones-comerciales.actions');
+      const { getPaymentMethodsForAuthorization } = await import('@/lib/actions/studio/commercial/promises/authorize-legacy.actions');
+      const { getCotizacionesByPromiseId } = await import('@/lib/actions/studio/commercial/promises/cotizaciones.actions');
+
+      const [condicionesResult, paymentMethodsResult, cotizacionesResult] = await Promise.all([
+        obtenerCondicionesComerciales(studioSlug),
+        getPaymentMethodsForAuthorization(studioSlug),
+        promiseId ? getCotizacionesByPromiseId(promiseId) : Promise.resolve({ success: false, data: [] }),
+      ]);
+
+      if (condicionesResult.success && condicionesResult.data) {
+        setCondicionesComerciales(condicionesResult.data.map(cc => ({
+          id: cc.id,
+          name: cc.name,
+          description: cc.description,
+          advance_percentage: cc.advance_percentage,
+          discount_percentage: cc.discount_percentage,
+        })));
+      }
+
+      if (paymentMethodsResult.success && paymentMethodsResult.data) {
+        setPaymentMethods(paymentMethodsResult.data);
+      }
+
+      // Encontrar la cotización aprobada
+      if (cotizacionesResult.success && cotizacionesResult.data) {
+        const approvedQuote = cotizacionesResult.data.find(
+          (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
+        );
+        if (approvedQuote) {
+          setSelectedCotizacion({
+            id: approvedQuote.id,
+            name: approvedQuote.name,
+            price: approvedQuote.price,
+            status: approvedQuote.status,
+            selected_by_prospect: approvedQuote.selected_by_prospect || false,
+            condiciones_comerciales_id: approvedQuote.condiciones_comerciales_id,
+            condiciones_comerciales: approvedQuote.condiciones_comerciales,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('[loadAuthorizationData] Error:', error);
+    }
+  };
 
   const handleEdit = () => {
     if (onEdit) {
@@ -161,6 +238,17 @@ export function PromiseCardView({
               eventTypeId={data.event_type_id || null}
               isSaved={isSaved}
               contactId={contactId}
+              promiseData={{
+                name: data.name,
+                phone: data.phone,
+                email: data.email,
+                address: data.address || null,
+                event_date: data.event_date || null,
+                event_name: data.event_name || null,
+                event_type_name: data.event_type_name || null,
+              }}
+              isLoadingPromiseData={false}
+              onAuthorizeClick={() => setShowAuthorizeModal(true)}
             />
 
           </div>
@@ -191,6 +279,24 @@ export function PromiseCardView({
             referrer_name: data.referrer_name || undefined,
           }}
           onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Modal de Autorización */}
+      {showAuthorizeModal && selectedCotizacion && promiseId && (
+        <AuthorizeCotizacionModal
+          isOpen={showAuthorizeModal}
+          onClose={() => setShowAuthorizeModal(false)}
+          cotizacion={selectedCotizacion}
+          promiseId={promiseId}
+          studioSlug={studioSlug}
+          condicionesComerciales={condicionesComerciales}
+          paymentMethods={paymentMethods}
+          onSuccess={() => {
+            setShowAuthorizeModal(false);
+            // Recargar página para reflejar cambios
+            window.location.reload();
+          }}
         />
       )}
     </>

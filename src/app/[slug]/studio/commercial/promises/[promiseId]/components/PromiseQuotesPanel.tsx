@@ -36,6 +36,7 @@ import {
   reorderCotizaciones,
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { PromiseQuotesPanelCard } from './PromiseQuotesPanelCard';
+import { PromiseClosingProcessCard } from './PromiseClosingProcessCard';
 import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
@@ -47,6 +48,17 @@ interface PromiseQuotesPanelProps {
   eventTypeId: string | null;
   isSaved: boolean;
   contactId?: string | null;
+  promiseData?: {
+    name: string;
+    phone: string;
+    email: string | null;
+    address: string | null;
+    event_date: Date | null;
+    event_name: string | null;
+    event_type_name: string | null;
+  } | null;
+  isLoadingPromiseData?: boolean;
+  onAuthorizeClick?: () => void;
 }
 
 export function PromiseQuotesPanel({
@@ -55,6 +67,9 @@ export function PromiseQuotesPanel({
   eventTypeId,
   isSaved,
   contactId,
+  promiseData,
+  isLoadingPromiseData = false,
+  onAuthorizeClick,
 }: PromiseQuotesPanelProps) {
   const router = useRouter();
   const [packages, setPackages] = useState<Array<{ id: string; name: string; precio: number | null }>>([]);
@@ -262,8 +277,32 @@ export function PromiseQuotesPanel({
     (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived && c.status !== 'cancelada'
   );
 
+  // Obtener la cotización aprobada para el card de cierre
+  const approvedQuote = cotizaciones.find(
+    (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived && c.status !== 'cancelada'
+  );
+
+  // Filtrar cotizaciones para el listado (excluir la aprobada)
+  const cotizacionesParaListado = cotizaciones.filter(
+    (c) => !(c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') || c.archived || c.status === 'cancelada'
+  );
+
   return (
-    <ZenCard className="min-h-[300px] flex flex-col">
+    <>
+      {/* Card "En Proceso de Cierre" - Solo si hay cotización aprobada */}
+      {approvedQuote && promiseData && onAuthorizeClick && (
+        <PromiseClosingProcessCard
+          cotizacion={approvedQuote}
+          promiseData={promiseData}
+          studioSlug={studioSlug}
+          promiseId={promiseId || ''}
+          onAuthorizeClick={onAuthorizeClick}
+          isLoadingPromiseData={isLoadingPromiseData}
+        />
+      )}
+
+      {/* Card "Cotizaciones" */}
+      <ZenCard className="min-h-[300px] flex flex-col">
       <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <ZenCardTitle className="text-sm font-medium flex items-center pt-1">Cotizaciones</ZenCardTitle>
@@ -322,7 +361,7 @@ export function PromiseQuotesPanel({
         <div
           className="relative overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb:hover]:bg-zinc-500"
           style={{
-            maxHeight: cotizaciones.length > 3 ? '450px' : 'none',
+            maxHeight: cotizacionesParaListado.length > 3 ? '450px' : 'none',
             scrollbarWidth: 'thin',
             scrollbarColor: '#52525b transparent',
           }}
@@ -356,7 +395,7 @@ export function PromiseQuotesPanel({
                 </div>
               ))}
             </div>
-          ) : cotizaciones.length === 0 ? (
+          ) : cotizacionesParaListado.length === 0 ? (
             <div className="flex flex-col items-center justify-center min-h-[200px]">
               {!eventTypeId ? (
                 <p className="text-xs text-zinc-500 text-center px-4">
@@ -381,7 +420,7 @@ export function PromiseQuotesPanel({
                   (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
                 );
                 
-                return cotizaciones.map((cotizacion) => {
+                return cotizacionesParaListado.map((cotizacion) => {
                   // Esta cotización es aprobada, entonces no hay otra aprobada para ella
                   const isThisApproved = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
                   const hasOtherApproved = hasApprovedQuote && !isThisApproved;
@@ -466,7 +505,7 @@ export function PromiseQuotesPanel({
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={cotizaciones.map((c) => c.id)}
+                items={cotizacionesParaListado.map((c) => c.id)}
                 strategy={verticalListSortingStrategy}
               >
                 <div className={`space-y-2 ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
@@ -476,7 +515,7 @@ export function PromiseQuotesPanel({
                       (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
                     );
                     
-                    return cotizaciones.map((cotizacion) => {
+                    return cotizacionesParaListado.map((cotizacion) => {
                       // Esta cotización es aprobada, entonces no hay otra aprobada para ella
                       const isThisApproved = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
                       const hasOtherApproved = hasApprovedQuote && !isThisApproved;
@@ -549,12 +588,13 @@ export function PromiseQuotesPanel({
             </DndContext>
           )}
           {/* Gradiente inferior - 1/4 de la altura del área scrollable (450px / 4 = 112.5px) */}
-          {cotizaciones.length > 3 && (
+          {cotizacionesParaListado.length > 3 && (
             <div className="sticky bottom-0 h-[112.5px] pointer-events-none bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent z-10" />
           )}
         </div>
       </ZenCardContent>
     </ZenCard>
+    </>
   );
 }
 
