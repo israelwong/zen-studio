@@ -47,6 +47,7 @@ export function PromiseCardView({
 }: PromiseCardViewProps) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAuthorizeModal, setShowAuthorizeModal] = useState(false);
+  const [refreshClosingSection, setRefreshClosingSection] = useState(0);
   const [condicionesComerciales, setCondicionesComerciales] = useState<Array<{
     id: string;
     name: string;
@@ -112,9 +113,12 @@ export function PromiseCardView({
             name: approvedQuote.name,
             price: approvedQuote.price,
             status: approvedQuote.status,
-            selected_by_prospect: approvedQuote.selected_by_prospect || false,
-            condiciones_comerciales_id: approvedQuote.condiciones_comerciales_id,
-            condiciones_comerciales: approvedQuote.condiciones_comerciales,
+            selected_by_prospect: approvedQuote.selected_by_prospect ?? false,
+            condiciones_comerciales_id: approvedQuote.condiciones_comerciales_id ?? null,
+            condiciones_comerciales: approvedQuote.condiciones_comerciales ? {
+              id: approvedQuote.condiciones_comerciales.id,
+              name: approvedQuote.condiciones_comerciales.name,
+            } : null,
           });
         }
       }
@@ -197,6 +201,7 @@ export function PromiseCardView({
           <div className="lg:col-span-1 space-y-6">
             {/* Cotizaciones */}
             <PromiseQuotesPanel
+              key={refreshClosingSection}
               studioSlug={studioSlug}
               promiseId={promiseId}
               eventTypeId={data.event_type_id || null}
@@ -213,6 +218,14 @@ export function PromiseCardView({
               }}
               isLoadingPromiseData={false}
               onAuthorizeClick={() => setShowAuthorizeModal(true)}
+              onCierreIniciado={(cotizacionId) => {
+                // Cuando se pasa a cierre, forzar recarga del proceso de cierre
+                setRefreshClosingSection((prev) => prev + 1);
+              }}
+              onCierreCancelado={(cotizacionId) => {
+                // Cuando se cancela cierre, forzar recarga del proceso de cierre
+                setRefreshClosingSection((prev) => prev + 1);
+              }}
             />
 
             {/* Agendamiento (solo si está guardado) */}
@@ -241,6 +254,7 @@ export function PromiseCardView({
           {/* Columna 3: Proceso de Cierre */}
           <div className="lg:col-span-1 flex flex-col h-full">
             <PromiseClosingProcessSection
+              key={refreshClosingSection}
               studioSlug={studioSlug}
               promiseId={promiseId}
               promiseData={{
@@ -252,7 +266,16 @@ export function PromiseCardView({
                 event_name: data.event_name || null,
                 event_type_name: data.event_type_name || null,
               }}
-              onAuthorizeClick={() => setShowAuthorizeClick(true)}
+              onAuthorizeClick={() => setShowAuthorizeModal(true)}
+              onCierreIniciado={(cotizacionId) => {
+                // Cuando se inicia cierre, el realtime ya actualizará, pero forzamos recarga por si acaso
+                setRefreshClosingSection((prev) => prev + 1);
+              }}
+              onCierreCancelado={(cotizacionId) => {
+                // Cuando se cancela cierre, forzar recarga de ambos componentes
+                // El realtime también actualizará, pero esto asegura sincronización inmediata
+                setRefreshClosingSection((prev) => prev + 1);
+              }}
             />
           </div>
         </div>
@@ -305,3 +328,5 @@ export function PromiseCardView({
     </>
   );
 }
+
+export default PromiseCardView;

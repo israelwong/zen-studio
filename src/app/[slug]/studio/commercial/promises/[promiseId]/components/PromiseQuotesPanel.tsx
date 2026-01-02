@@ -58,6 +58,8 @@ interface PromiseQuotesPanelProps {
   } | null;
   isLoadingPromiseData?: boolean;
   onAuthorizeClick?: () => void;
+  onCierreIniciado?: (cotizacionId: string) => void;
+  onCierreCancelado?: (cotizacionId: string) => void;
 }
 
 export function PromiseQuotesPanel({
@@ -69,6 +71,8 @@ export function PromiseQuotesPanel({
   promiseData,
   isLoadingPromiseData = false,
   onAuthorizeClick,
+  onCierreIniciado,
+  onCierreCancelado,
 }: PromiseQuotesPanelProps) {
   const router = useRouter();
   const [packages, setPackages] = useState<Array<{ id: string; name: string; precio: number | null }>>([]);
@@ -480,6 +484,61 @@ export function PromiseQuotesPanel({
                           prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
                         );
                       }}
+                      onPasarACierre={(cotizacionId) => {
+                        // Actualización local optimista: pasar a cierre y archivar otras pendientes
+                        setCotizaciones((prev) => {
+                          const updated = prev.map((c) => {
+                            if (c.id === cotizacionId) {
+                              // Cambiar status a en_cierre
+                              return { ...c, status: 'en_cierre' as const };
+                            } else if (
+                              c.status === 'pendiente' &&
+                              !c.archived &&
+                              c.id !== cotizacionId
+                            ) {
+                              // Archivar otras cotizaciones pendientes
+                              return { ...c, archived: true };
+                            }
+                            return c;
+                          });
+                          // Reordenar: no archivadas primero, luego archivadas
+                          return updated.sort((a, b) => {
+                            if (a.archived && !b.archived) return 1;
+                            if (!a.archived && b.archived) return -1;
+                            const orderA = a.order ?? 0;
+                            const orderB = b.order ?? 0;
+                            return orderA - orderB;
+                          });
+                        });
+                        // Notificar al padre para actualizar proceso de cierre
+                        onCierreIniciado?.(cotizacionId);
+                      }}
+                      onCierreCancelado={(cotizacionId) => {
+                        // Actualización local optimista: regresar a pendiente y desarchivar otras
+                        setCotizaciones((prev) => {
+                          const updated = prev.map((c) => {
+                            if (c.id === cotizacionId) {
+                              // Regresar a pendiente
+                              return { ...c, status: 'pendiente' as const };
+                            } else if (
+                              c.status === 'pendiente' &&
+                              c.archived
+                            ) {
+                              // Desarchivar otras cotizaciones pendientes que fueron archivadas
+                              return { ...c, archived: false };
+                            }
+                            return c;
+                          });
+                          // Reordenar: no archivadas primero, luego archivadas
+                          return updated.sort((a, b) => {
+                            if (a.archived && !b.archived) return 1;
+                            if (!a.archived && b.archived) return -1;
+                            const orderA = a.order ?? 0;
+                            const orderB = b.order ?? 0;
+                            return orderA - orderB;
+                          });
+                        });
+                      }}
                     />
                   );
                 });
@@ -565,6 +624,61 @@ export function PromiseQuotesPanel({
                             setCotizaciones((prev) =>
                               prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
                             );
+                          }}
+                          onPasarACierre={(cotizacionId) => {
+                            // Actualización local optimista: pasar a cierre y archivar otras pendientes
+                            setCotizaciones((prev) => {
+                              const updated = prev.map((c) => {
+                                if (c.id === cotizacionId) {
+                                  // Cambiar status a en_cierre
+                                  return { ...c, status: 'en_cierre' as const };
+                                } else if (
+                                  c.status === 'pendiente' &&
+                                  !c.archived &&
+                                  c.id !== cotizacionId
+                                ) {
+                                  // Archivar otras cotizaciones pendientes
+                                  return { ...c, archived: true };
+                                }
+                                return c;
+                              });
+                              // Reordenar: no archivadas primero, luego archivadas
+                              return updated.sort((a, b) => {
+                                if (a.archived && !b.archived) return 1;
+                                if (!a.archived && b.archived) return -1;
+                                const orderA = a.order ?? 0;
+                                const orderB = b.order ?? 0;
+                                return orderA - orderB;
+                              });
+                            });
+                            // Notificar al padre para actualizar proceso de cierre
+                            onCierreIniciado?.(cotizacionId);
+                          }}
+                          onCierreCancelado={(cotizacionId) => {
+                            // Actualización local optimista: regresar a pendiente y desarchivar otras
+                            setCotizaciones((prev) => {
+                              const updated = prev.map((c) => {
+                                if (c.id === cotizacionId) {
+                                  // Regresar a pendiente
+                                  return { ...c, status: 'pendiente' as const };
+                                } else if (
+                                  c.status === 'pendiente' &&
+                                  c.archived
+                                ) {
+                                  // Desarchivar otras cotizaciones pendientes que fueron archivadas
+                                  return { ...c, archived: false };
+                                }
+                                return c;
+                              });
+                              // Reordenar: no archivadas primero, luego archivadas
+                              return updated.sort((a, b) => {
+                                if (a.archived && !b.archived) return 1;
+                                if (!a.archived && b.archived) return -1;
+                                const orderA = a.order ?? 0;
+                                const orderB = b.order ?? 0;
+                                return orderA - orderB;
+                              });
+                            });
                           }}
                         />
                       );

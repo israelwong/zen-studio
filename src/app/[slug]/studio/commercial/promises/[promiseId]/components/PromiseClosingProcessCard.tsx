@@ -41,6 +41,7 @@ interface PromiseClosingProcessCardProps {
   promiseId: string;
   onAuthorizeClick: () => void;
   isLoadingPromiseData?: boolean;
+  onCierreCancelado?: (cotizacionId: string) => void;
 }
 
 export function PromiseClosingProcessCard({
@@ -50,6 +51,7 @@ export function PromiseClosingProcessCard({
   promiseId,
   onAuthorizeClick,
   isLoadingPromiseData = false,
+  onCierreCancelado,
 }: PromiseClosingProcessCardProps) {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
@@ -111,7 +113,8 @@ export function PromiseClosingProcessCard({
       if (result.success) {
         toast.success('Proceso de cierre cancelado. Cotización regresada a pendiente.');
         setShowCancelModal(false);
-        // El componente padre se actualizará automáticamente vía Realtime
+        // Notificar al padre para actualizar el panel de cotizaciones
+        onCierreCancelado?.(cotizacion.id);
       } else {
         toast.error(result.error || 'Error al cancelar cierre');
       }

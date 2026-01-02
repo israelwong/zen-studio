@@ -14,6 +14,7 @@ import {
   ZenDropdownMenuSeparator,
   ZenConfirmModal,
   ZenInput,
+  ZenDialog,
 } from '@/components/ui/zen';
 import {
   useSortable,
@@ -31,6 +32,7 @@ import {
   type CotizacionListItem,
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { AuthorizeCotizacionModal } from './AuthorizeCotizacionModal';
+import { ClosingProcessInfoModal, getClosingProcessInfoDismissed } from './ClosingProcessInfoModal';
 
 interface PromiseQuotesPanelCardProps {
   cotizacion: CotizacionListItem;
@@ -46,6 +48,8 @@ interface PromiseQuotesPanelCardProps {
   onArchive?: (id: string) => void;
   onUnarchive?: (id: string) => void;
   onNameUpdate?: (id: string, newName: string) => void;
+  onPasarACierre?: (id: string) => void;
+  onCierreCancelado?: (id: string) => void;
   hasApprovedQuote?: boolean; // Indica si ya hay una cotización aprobada
 }
 
@@ -63,6 +67,8 @@ export function PromiseQuotesPanelCard({
   onArchive,
   onUnarchive,
   onNameUpdate,
+  onPasarACierre,
+  onCierreCancelado,
   hasApprovedQuote = false,
 }: PromiseQuotesPanelCardProps) {
   const router = useRouter();
@@ -70,26 +76,29 @@ export function PromiseQuotesPanelCard({
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showUnarchiveModal, setShowUnarchiveModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [showClosingProcessInfoModal, setShowClosingProcessInfoModal] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
   const [editingName, setEditingName] = useState(cotizacion.name);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
 
-  // Sincronizar editingName cuando cambie cotizacion.name (solo si no está editando)
+  // Sincronizar editingName cuando cambie cotizacion.name (solo si el modal no está abierto)
   useEffect(() => {
-    if (!isEditingName) {
+    if (!showEditNameModal) {
       setEditingName(cotizacion.name);
     }
-  }, [cotizacion.name, isEditingName]);
+  }, [cotizacion.name, showEditNameModal]);
 
-  // Seleccionar texto cuando se entra en modo edición
+  // Seleccionar texto cuando se abre el modal
   useEffect(() => {
-    if (isEditingName && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    if (showEditNameModal && inputRef.current) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 100);
     }
-  }, [isEditingName]);
+  }, [showEditNameModal]);
 
   const {
     attributes,
@@ -184,10 +193,6 @@ export function PromiseQuotesPanelCard({
   };
 
   const handleClick = () => {
-    // No navegar si está editando el nombre
-    if (isEditingName) {
-      return;
-    }
 
     // Si la cotización está autorizada y tiene evento_id, enrutar al evento
     const isAuthorized = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
@@ -312,8 +317,8 @@ export function PromiseQuotesPanelCard({
 
   const handleStartEditName = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsEditingName(true);
     setEditingName(cotizacion.name);
+    setShowEditNameModal(true);
   };
 
   const handleSaveName = async () => {
@@ -324,12 +329,12 @@ export function PromiseQuotesPanelCard({
 
     const trimmedName = editingName.trim();
     if (trimmedName === cotizacion.name) {
-      setIsEditingName(false);
+      setShowEditNameModal(false);
       return;
     }
 
-    // Salir del modo edición primero para mostrar el cambio
-    setIsEditingName(false);
+    // Cerrar modal primero
+    setShowEditNameModal(false);
 
     // Actualización optimista: actualizar en el padre inmediatamente
     onNameUpdate?.(cotizacion.id, trimmedName);
@@ -357,7 +362,25 @@ export function PromiseQuotesPanelCard({
 
   const handleCancelEditName = () => {
     setEditingName(cotizacion.name);
-    setIsEditingName(false);
+    setShowEditNameModal(false);
+  };
+
+  const handlePasarACierreClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!promiseId) {
+      toast.error('No se puede pasar a cierre sin una promesa asociada');
+      return;
+    }
+
+    // Verificar si el usuario ya marcó "no volver a mostrar"
+    const isDismissed = getClosingProcessInfoDismissed();
+    if (isDismissed) {
+      // Ejecutar directamente
+      handlePasarACierre();
+    } else {
+      // Mostrar modal informativo
+      setShowClosingProcessInfoModal(true);
+    }
   };
 
   const handlePasarACierre = async () => {
@@ -366,12 +389,18 @@ export function PromiseQuotesPanelCard({
       return;
     }
 
+    setShowClosingProcessInfoModal(false);
     setLoading(true);
     try {
       const result = await pasarACierre(studioSlug, cotizacion.id);
       if (result.success) {
         toast.success('Cotización pasada a proceso de cierre');
-        onUpdate?.(cotizacion.id);
+        // Usar callback específico si existe, sino usar onUpdate como fallback
+        if (onPasarACierre) {
+          onPasarACierre(cotizacion.id);
+        } else {
+          onUpdate?.(cotizacion.id);
+        }
       } else {
         toast.error(result.error || 'Error al pasar cotización a cierre');
       }
@@ -438,7 +467,7 @@ export function PromiseQuotesPanelCard({
         className={`p-3 border rounded-lg transition-colors relative ${cotizacion.archived
           ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50 grayscale'
           : 'bg-zinc-800/50 border-zinc-700'
-          } ${isEditingName ? 'cursor-default' : cotizacion.archived ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-800'
+          } ${cotizacion.archived ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-800'
           }`}
         onClick={handleClick}
       >
@@ -460,65 +489,10 @@ export function PromiseQuotesPanelCard({
             <GripVertical className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            {isEditingName ? (
-              <div
-                className="flex items-center gap-2 mb-1"
-                onClick={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-              >
-                <ZenInput
-                  ref={inputRef}
-                  value={editingName}
-                  onChange={(e) => setEditingName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSaveName();
-                    }
-                    if (e.key === 'Escape') {
-                      e.preventDefault();
-                      handleCancelEditName();
-                    }
-                  }}
-                  className="flex-1 h-7 text-sm"
-                  autoFocus
-                  disabled={loading}
-                  onClick={(e) => e.stopPropagation()}
-                  onMouseDown={(e) => e.stopPropagation()}
-                />
-                <ZenButton
-                  variant="primary"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleSaveName();
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  disabled={loading || !editingName.trim()}
-                  className="h-7 px-2"
-                >
-                  ✓
-                </ZenButton>
-                <ZenButton
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleCancelEditName();
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  disabled={loading}
-                  className="h-7 px-2"
-                >
-                  ✕
-                </ZenButton>
-              </div>
-            ) : (
-              <h4 className={`text-sm font-medium truncate mb-1 ${cotizacion.archived ? 'text-zinc-500' : 'text-zinc-200'
-                }`}>
-                {cotizacion.name}
-              </h4>
-            )}
+            <h4 className={`text-sm font-medium truncate mb-1 ${cotizacion.archived ? 'text-zinc-500' : 'text-zinc-200'
+              }`}>
+              {cotizacion.name}
+            </h4>
             {cotizacion.description && (
               <p className={`text-xs line-clamp-1 mb-2 ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-400'
                 }`}>
@@ -617,7 +591,7 @@ export function PromiseQuotesPanelCard({
                         e.stopPropagation();
                         handleStartEditName(e);
                       }}
-                      disabled={loading || isDuplicating || isEditingName}
+                      disabled={loading || isDuplicating}
                     >
                       <Edit2 className="h-4 w-4 mr-2" />
                       Editar nombre
@@ -633,7 +607,7 @@ export function PromiseQuotesPanelCard({
                           const queryString = params.toString();
                           router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}${queryString ? `?${queryString}` : ''}`);
                         }}
-                        disabled={loading || isDuplicating || isEditingName}
+                        disabled={loading || isDuplicating}
                       >
                         <Edit2 className="h-4 w-4 mr-2" />
                         Editar
@@ -641,9 +615,22 @@ export function PromiseQuotesPanelCard({
                     )}
                     {/* Duplicar: NO mostrar si es aprobada o revisión */}
                     {!isAuthorized && !isRevision && (
-                      <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating || isEditingName}>
+                      <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
                         <Copy className="h-4 w-4 mr-2" />
                         Duplicar
+                      </ZenDropdownMenuItem>
+                    )}
+                    {/* Archivar: NO mostrar si es aprobada */}
+                    {!isAuthorized && (
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowArchiveModal(true);
+                        }}
+                        disabled={loading || isDuplicating}
+                      >
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archivar
                       </ZenDropdownMenuItem>
                     )}
                     <ZenDropdownMenuSeparator />
@@ -653,7 +640,7 @@ export function PromiseQuotesPanelCard({
                           e.stopPropagation();
                           setShowCancelModal(true);
                         }}
-                        disabled={loading || isDuplicating || isEditingName}
+                        disabled={loading || isDuplicating}
                         className="text-red-400 focus:text-red-300"
                       >
                         <XCircle className="h-4 w-4 mr-2" />
@@ -663,11 +650,8 @@ export function PromiseQuotesPanelCard({
                       // Solo mostrar botón Pasar a Cierre si no hay otra cotización aprobada o en cierre
                       !hasApprovedQuote && (
                         <ZenDropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePasarACierre();
-                          }}
-                          disabled={loading || isDuplicating || isEditingName || !promiseId}
+                          onClick={handlePasarACierreClick}
+                          disabled={loading || isDuplicating || !promiseId}
                           className="text-emerald-400 focus:text-emerald-300"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -676,20 +660,9 @@ export function PromiseQuotesPanelCard({
                       )
                     )}
 
-                    {/* Archivar y Eliminar: NO mostrar si es aprobada */}
+                    {/* Eliminar: NO mostrar si es aprobada */}
                     {!isAuthorized && (
                       <>
-                        <ZenDropdownMenuSeparator />
-                        <ZenDropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowArchiveModal(true);
-                          }}
-                          disabled={loading || isDuplicating}
-                        >
-                          <Archive className="h-4 w-4 mr-2" />
-                          Archivar
-                        </ZenDropdownMenuItem>
                         <ZenDropdownMenuSeparator />
                         <ZenDropdownMenuItem
                           onClick={(e) => {
@@ -803,6 +776,55 @@ export function PromiseQuotesPanelCard({
           </div>
         </div>
       )}
+
+      {/* Modal de edición de nombre */}
+      <ZenDialog
+        isOpen={showEditNameModal}
+        onClose={handleCancelEditName}
+        title="Editar nombre de cotización"
+        description="Ingresa el nuevo nombre para esta cotización"
+        maxWidth="md"
+        onSave={handleSaveName}
+        onCancel={handleCancelEditName}
+        saveLabel="Guardar"
+        cancelLabel="Cancelar"
+        isLoading={loading}
+        closeOnClickOutside={false}
+      >
+        <div className="space-y-4">
+          <ZenInput
+            ref={inputRef}
+            label="Nombre"
+            value={editingName}
+            onChange={(e) => setEditingName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleSaveName();
+              }
+              if (e.key === 'Escape') {
+                e.preventDefault();
+                handleCancelEditName();
+              }
+            }}
+            placeholder="Nombre de la cotización"
+            disabled={loading}
+          />
+        </div>
+      </ZenDialog>
+
+      {/* Modal informativo de proceso de cierre */}
+      <ClosingProcessInfoModal
+        isOpen={showClosingProcessInfoModal}
+        onClose={() => setShowClosingProcessInfoModal(false)}
+        onConfirm={handlePasarACierre}
+        onCancel={() => {
+          setShowClosingProcessInfoModal(false);
+          onCierreCancelado?.(cotizacion.id);
+        }}
+        showDismissCheckbox={true}
+        cotizacionName={cotizacion.name}
+      />
 
     </>
   );

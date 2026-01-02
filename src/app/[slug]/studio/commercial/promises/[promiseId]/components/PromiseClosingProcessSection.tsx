@@ -1,12 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
-import { FileText, Loader2 } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
+import { FileText, Loader2, HelpCircle } from 'lucide-react';
 import { PromiseClosingProcessCard } from './PromiseClosingProcessCard';
 import { getCotizacionesByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { ClosingProcessInfoModal } from './ClosingProcessInfoModal';
 
 interface PromiseClosingProcessSectionProps {
   studioSlug: string;
@@ -21,6 +22,8 @@ interface PromiseClosingProcessSectionProps {
     event_type_name: string | null;
   };
   onAuthorizeClick: () => void;
+  onCierreIniciado?: (cotizacionId: string) => void;
+  onCierreCancelado?: (cotizacionId: string) => void;
 }
 
 export function PromiseClosingProcessSection({
@@ -28,9 +31,12 @@ export function PromiseClosingProcessSection({
   promiseId,
   promiseData,
   onAuthorizeClick,
+  onCierreIniciado,
+  onCierreCancelado,
 }: PromiseClosingProcessSectionProps) {
   const [cotizaciones, setCotizaciones] = useState<CotizacionListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const loadCotizaciones = React.useCallback(async () => {
     if (!promiseId) {
@@ -64,6 +70,7 @@ export function PromiseClosingProcessSection({
       loadCotizaciones();
     },
     onCotizacionUpdated: () => {
+      // Recargar siempre para obtener el estado actualizado
       loadCotizaciones();
     },
     onCotizacionDeleted: () => {
@@ -78,23 +85,40 @@ export function PromiseClosingProcessSection({
         c.status === 'aprobada' ||
         c.status === 'autorizada' ||
         c.status === 'approved') &&
-      !c.archived &&
-      c.status !== 'cancelada'
+      !c.archived
   );
 
   if (loading) {
     return (
-      <ZenCard className="h-full flex flex-col">
-        <ZenCardHeader className="border-b border-zinc-800 py-3 px-4 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-zinc-600 shrink-0" />
-            <ZenCardTitle className="text-sm">Proceso de Cierre</ZenCardTitle>
-          </div>
-        </ZenCardHeader>
-        <ZenCardContent className="p-4 flex-1 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
-        </ZenCardContent>
-      </ZenCard>
+      <>
+        <ZenCard className="h-full flex flex-col">
+          <ZenCardHeader className="border-b border-zinc-800 py-3 px-4 shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-zinc-600 shrink-0" />
+                <ZenCardTitle className="text-sm">Proceso de Cierre</ZenCardTitle>
+              </div>
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowInfoModal(true)}
+                className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-300"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </ZenButton>
+            </div>
+          </ZenCardHeader>
+          <ZenCardContent className="p-4 flex-1 flex items-center justify-center">
+            <Loader2 className="h-6 w-6 text-emerald-500 animate-spin" />
+          </ZenCardContent>
+        </ZenCard>
+        <ClosingProcessInfoModal
+          isOpen={showInfoModal}
+          onClose={() => setShowInfoModal(false)}
+          onConfirm={() => setShowInfoModal(false)}
+          showDismissCheckbox={false}
+        />
+      </>
     );
   }
 
@@ -108,31 +132,55 @@ export function PromiseClosingProcessSection({
         promiseId={promiseId}
         onAuthorizeClick={onAuthorizeClick}
         isLoadingPromiseData={false}
+        onCierreCancelado={(cotizacionId) => {
+          // Recargar cotizaciones para actualizar el estado
+          loadCotizaciones();
+          // Notificar al padre para que actualice el panel de cotizaciones
+          onCierreCancelado?.(cotizacionId);
+        }}
       />
     );
   }
 
   // Si no hay cotización en cierre, mostrar mensaje informativo
   return (
-    <ZenCard className="h-full flex flex-col">
-      <ZenCardHeader className="border-b border-zinc-800 py-3 px-4 shrink-0">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-zinc-600 shrink-0" />
-          <ZenCardTitle className="text-sm">Proceso de Cierre</ZenCardTitle>
-        </div>
-      </ZenCardHeader>
-      <ZenCardContent className="p-6 flex-1 flex items-center justify-center">
-        <div className="flex flex-col items-center text-center">
-          <FileText className="h-12 w-12 text-zinc-600 mb-3" />
-          <p className="text-sm text-zinc-400">
-            No tienes cotización en proceso de cierre
-          </p>
-          <p className="text-xs text-zinc-500 mt-2">
-            Selecciona "Pasar a Cierre" en una cotización pendiente para iniciar el proceso
-          </p>
-        </div>
-      </ZenCardContent>
-    </ZenCard>
+    <>
+      <ZenCard className="h-full flex flex-col">
+        <ZenCardHeader className="border-b border-zinc-800 py-3 px-4 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-zinc-600 shrink-0" />
+              <ZenCardTitle className="text-sm">Proceso de Cierre</ZenCardTitle>
+            </div>
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowInfoModal(true)}
+              className="h-6 w-6 p-0 text-zinc-400 hover:text-zinc-300"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </ZenButton>
+          </div>
+        </ZenCardHeader>
+        <ZenCardContent className="p-6 flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center text-center">
+            <FileText className="h-12 w-12 text-zinc-600 mb-3" />
+            <p className="text-sm text-zinc-400">
+              No tienes cotización en proceso de cierre
+            </p>
+            <p className="text-xs text-zinc-500 mt-2">
+              Selecciona "Pasar a Cierre" en una cotización pendiente para iniciar el proceso
+            </p>
+          </div>
+        </ZenCardContent>
+      </ZenCard>
+      <ClosingProcessInfoModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        onConfirm={() => setShowInfoModal(false)}
+        showDismissCheckbox={false}
+      />
+    </>
   );
 }
 
