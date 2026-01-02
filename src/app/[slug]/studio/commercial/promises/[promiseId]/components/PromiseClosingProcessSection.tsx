@@ -22,8 +22,6 @@ interface PromiseClosingProcessSectionProps {
     event_type_name: string | null;
   };
   onAuthorizeClick: () => void;
-  onCierreIniciado?: (cotizacionId: string) => void;
-  onCierreCancelado?: (cotizacionId: string) => void;
 }
 
 export function PromiseClosingProcessSection({
@@ -31,8 +29,6 @@ export function PromiseClosingProcessSection({
   promiseId,
   promiseData,
   onAuthorizeClick,
-  onCierreIniciado,
-  onCierreCancelado,
 }: PromiseClosingProcessSectionProps) {
   const [cotizaciones, setCotizaciones] = useState<CotizacionListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,10 +129,9 @@ export function PromiseClosingProcessSection({
         onAuthorizeClick={onAuthorizeClick}
         isLoadingPromiseData={false}
         onCierreCancelado={(cotizacionId) => {
-          // Recargar cotizaciones para actualizar el estado
+          // Actualización local optimista
           loadCotizaciones();
-          // Notificar al padre para que actualice el panel de cotizaciones
-          onCierreCancelado?.(cotizacionId);
+          // Realtime sincronizará automáticamente el panel de cotizaciones
         }}
       />
     );

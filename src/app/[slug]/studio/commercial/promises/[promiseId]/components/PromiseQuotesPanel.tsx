@@ -58,8 +58,6 @@ interface PromiseQuotesPanelProps {
   } | null;
   isLoadingPromiseData?: boolean;
   onAuthorizeClick?: () => void;
-  onCierreIniciado?: (cotizacionId: string) => void;
-  onCierreCancelado?: (cotizacionId: string) => void;
 }
 
 export function PromiseQuotesPanel({
@@ -71,8 +69,6 @@ export function PromiseQuotesPanel({
   promiseData,
   isLoadingPromiseData = false,
   onAuthorizeClick,
-  onCierreIniciado,
-  onCierreCancelado,
 }: PromiseQuotesPanelProps) {
   const router = useRouter();
   const [packages, setPackages] = useState<Array<{ id: string; name: string; precio: number | null }>>([]);
@@ -510,8 +506,7 @@ export function PromiseQuotesPanel({
                             return orderA - orderB;
                           });
                         });
-                        // Notificar al padre para actualizar proceso de cierre
-                        onCierreIniciado?.(cotizacionId);
+                        // Realtime sincronizará automáticamente el proceso de cierre
                       }}
                       onCierreCancelado={(cotizacionId) => {
                         // Actualización local optimista: regresar a pendiente y desarchivar otras
@@ -651,8 +646,7 @@ export function PromiseQuotesPanel({
                                 return orderA - orderB;
                               });
                             });
-                            // Notificar al padre para actualizar proceso de cierre
-                            onCierreIniciado?.(cotizacionId);
+                            // Realtime sincronizará automáticamente el proceso de cierre
                           }}
                           onCierreCancelado={(cotizacionId) => {
                             // Actualización local optimista: regresar a pendiente y desarchivar otras
