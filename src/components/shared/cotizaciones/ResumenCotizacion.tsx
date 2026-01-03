@@ -53,6 +53,7 @@ interface ResumenCotizacionProps {
     advance_type: string | null;
     advance_amount: number | null;
   } | null;
+  hideSubtotals?: boolean;
 }
 
 /**
@@ -63,7 +64,7 @@ interface ResumenCotizacionProps {
  * cotizaciones asociadas a la misma promesa para mantener solo una cotización activa.
  */
 
-export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, promiseId: propPromiseId, onEditar: propOnEditar, isRevision = false, condicionesComerciales }: ResumenCotizacionProps) {
+export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, promiseId: propPromiseId, onEditar: propOnEditar, isRevision = false, condicionesComerciales, hideSubtotals = false }: ResumenCotizacionProps) {
   const params = useParams();
   const router = useRouter();
   const studioSlug = propStudioSlug || (params.slug as string);
@@ -239,9 +240,11 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
                                   <span className="text-sm font-medium text-zinc-400">{categoria.nombre}</span>
                                 </div>
                                 {/* Mostrar subtotal por categoría */}
-                                <span className="text-sm font-semibold text-blue-400 ml-auto pl-4">
-                                  {formatearMoneda(subtotalCategoria)}
-                                </span>
+                                {!hideSubtotals && (
+                                  <span className="text-sm font-semibold text-blue-400 ml-auto pl-4">
+                                    {formatearMoneda(subtotalCategoria)}
+                                  </span>
+                                )}
                               </button>
 
                               {/* Contenido de la categoría */}
@@ -254,15 +257,17 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
                                       return (
                                         <div
                                           key={item.id || item.item_id || `item-${item.nombre}`}
-                                          className="grid grid-cols-[1fr_60px_100px] gap-2 items-baseline py-1.5 px-2 text-sm text-zinc-300 rounded hover:bg-zinc-800/30 transition-colors"
+                                          className={`grid gap-2 items-baseline py-1.5 px-2 text-sm text-zinc-300 rounded hover:bg-zinc-800/30 transition-colors ${hideSubtotals ? 'grid-cols-[1fr_60px]' : 'grid-cols-[1fr_60px_100px]'}`}
                                         >
                                           <span className="wrap-break-word text-zinc-300">{nombre}</span>
                                           <span className="text-emerald-400 font-medium whitespace-nowrap text-right">
                                             x{item.cantidad}
                                           </span>
-                                          <span className="text-zinc-400 whitespace-nowrap text-right">
-                                            {formatearMoneda(item.subtotal)}
-                                          </span>
+                                          {!hideSubtotals && (
+                                            <span className="text-zinc-400 whitespace-nowrap text-right">
+                                              {formatearMoneda(item.subtotal)}
+                                            </span>
+                                          )}
                                         </div>
                                       );
                                     })}

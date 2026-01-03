@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, AlertCircle, Loader2, XCircle, Eye, MoreVertical, Edit2, HelpCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Loader2, XCircle, Eye, MoreVertical, Edit2, HelpCircle, Share2 } from 'lucide-react';
 import {
   ZenCard,
   ZenCardContent,
@@ -33,6 +33,7 @@ import { getCotizacionById } from '@/lib/actions/studio/commercial/promises/coti
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { toast } from 'sonner';
 import { ClosingProcessInfoModal } from './ClosingProcessInfoModal';
+import { PromiseShareOptionsModal } from '../PromiseShareOptionsModal';
 
 interface PromiseClosingProcessCardProps {
   cotizacion: CotizacionListItem;
@@ -72,6 +73,7 @@ export function PromiseClosingProcessCard({
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [showConfirmAutorizarModal, setShowConfirmAutorizarModal] = useState(false);
   const [showCondicionesModal, setShowCondicionesModal] = useState(false);
   const [showContratoModal, setShowContratoModal] = useState(false);
   const [showContratoPreview, setShowContratoPreview] = useState(false);
@@ -84,6 +86,7 @@ export function PromiseClosingProcessCard({
   const [isRemovingCondiciones, setIsRemovingCondiciones] = useState(false);
   const [showEditPromiseModal, setShowEditPromiseModal] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [showShareOptionsModal, setShowShareOptionsModal] = useState(false);
   const [localPromiseData, setLocalPromiseData] = useState(promiseData);
   
   // Estado del registro de cierre
@@ -272,13 +275,16 @@ export function PromiseClosingProcessCard({
     if (!promiseData?.email?.trim()) {
       missingFields.push({ field: 'email', label: 'Correo electrónico', section: 'contacto' });
     }
+    if (!promiseData?.address?.trim()) {
+      missingFields.push({ field: 'address', label: 'Dirección', section: 'contacto' });
+    }
 
     // Validar datos del evento
     if (!promiseData?.event_name?.trim()) {
       missingFields.push({ field: 'event_name', label: 'Nombre del evento', section: 'evento' });
     }
-    if (!eventTypeId) {
-      missingFields.push({ field: 'event_type_id', label: 'Tipo de evento', section: 'evento' });
+    if (!promiseData?.event_location?.trim() && !promiseData?.address?.trim()) {
+      missingFields.push({ field: 'event_location', label: 'Locación del evento', section: 'evento' });
     }
     if (!promiseData?.event_date) {
       missingFields.push({ field: 'event_date', label: 'Fecha del evento', section: 'evento' });
@@ -290,27 +296,166 @@ export function PromiseClosingProcessCard({
     };
   }
 
-  const handleAutorizar = async () => {
-    // Detectar tipo de cliente
+  // Validaciones pre-autorización según caso de uso
+  interface PreAuthorizationValidation {
+    isValid: boolean;
+    errors: string[];
+    warnings: string[];
+  }
+
+  function validatePreAuthorization(): PreAuthorizationValidation {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    
+    // Detectar caso de uso
+    const isClienteNuevo = cotizacion.selected_by_prospect === true; // Caso 1 y 2
+    const isClienteExistente = !cotizacion.selected_by_prospect; // Caso 3
+
+    if (isClienteNuevo) {
+      // Caso 1 y 2: Contacto directo o Leadform
+      // Debe tener condiciones comerciales (seleccionadas por prospecto)
+      if (!cotizacion.condiciones_comerciales_id && !registroCierre?.condiciones_comerciales_id) {
+        errors.push('La cotización debe tener condiciones comerciales asociadas');
+      }
+
+      // Debe poder generar contrato (validar datos del cliente)
+      const clientValidation = validateClientContractData(localPromiseData);
+      if (!clientValidation.isValid) {
+        const fieldsList = clientValidation.missingFields.map(f => f.label).join(', ');
+        errors.push(`Completa los datos faltantes para generar el contrato: ${fieldsList}`);
+      }
+
+      // Validar estado del contrato
+      if (cotizacion.status !== 'contract_signed') {
+        errors.push('No se puede autorizar hasta que el cliente firme el contrato');
+      }
+
+      // Pago es opcional (warning)
+      if (!registroCierre?.pago_registrado) {
+        warnings.push('No se ha registrado un pago inicial. Se creará como promesa de pago.');
+      }
+    } else {
+      // Caso 3: Cliente existente
+      // Validar completitud de datos requeridos
+      const clientValidation = validateClientContractData(localPromiseData);
+      if (!clientValidation.isValid) {
+        const fieldsList = clientValidation.missingFields.map(f => f.label).join(', ');
+        errors.push(`Completa los datos requeridos: ${fieldsList}`);
+      }
+
+      // Si quiere generar contrato pero no hay condiciones comerciales
+      const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
+      if (generarContrato && !registroCierre?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
+        errors.push('Se requieren condiciones comerciales para generar el contrato');
+      }
+
+      // Si no hay completitud de datos, no puede generar contrato
+      if (!clientValidation.isValid && generarContrato) {
+        errors.push('No se puede generar contrato sin completar todos los datos requeridos');
+      }
+
+      // Condiciones comerciales son opcionales (warning)
+      if (!registroCierre?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
+        warnings.push('No se han definido condiciones comerciales.');
+      }
+
+      // Pago es opcional (warning)
+      if (!registroCierre?.pago_registrado) {
+        warnings.push('No se ha registrado un pago inicial. Se creará como promesa de pago.');
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      warnings,
+    };
+  }
+
+  // Generar mensaje de confirmación según caso de uso
+  function getConfirmMessage(): { title: string; description: React.ReactNode } {
     const isClienteNuevo = cotizacion.selected_by_prospect === true;
-    const isClienteLegacy = !cotizacion.selected_by_prospect;
+    const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
+    const tienePago = registroCierre?.pago_registrado;
 
-    // Validar si puede autorizar según el estado del contrato (solo cliente nuevo)
-    if (isClienteNuevo && cotizacion.status !== 'contract_signed') {
-      toast.error('No se puede autorizar hasta que el cliente firme el contrato');
+    if (isClienteNuevo) {
+      return {
+        title: '¿Autorizar cotización y crear evento?',
+        description: (
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-300">
+              Al autorizar esta cotización:
+            </p>
+            <ul className="text-sm text-zinc-400 space-y-2 list-disc list-inside">
+              <li>Se creará el evento asociado a esta cotización</li>
+              <li>La cotización pasará a estado <strong className="text-zinc-300">Autorizada</strong></li>
+              {generarContrato && (
+                <li>Se generará el contrato con la plantilla seleccionada</li>
+              )}
+              {tienePago && (
+                <li>Se registrará el pago inicial definido</li>
+              )}
+              <li>Otras cotizaciones de esta promesa serán archivadas</li>
+            </ul>
+            <p className="text-sm text-zinc-400 mt-3">
+              ¿Deseas continuar?
+            </p>
+          </div>
+        ),
+      };
+    } else {
+      return {
+        title: '¿Autorizar cotización y crear evento?',
+        description: (
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-300">
+              Al autorizar esta cotización:
+            </p>
+            <ul className="text-sm text-zinc-400 space-y-2 list-disc list-inside">
+              <li>Se creará el evento asociado a esta cotización</li>
+              <li>La cotización pasará a estado <strong className="text-zinc-300">Autorizada</strong></li>
+              {generarContrato && (
+                <li>Se generará el contrato con la plantilla seleccionada</li>
+              )}
+              {tienePago && (
+                <li>Se registrará el pago inicial definido</li>
+              )}
+              <li>Otras cotizaciones de esta promesa serán archivadas</li>
+            </ul>
+            <p className="text-sm text-zinc-400 mt-3">
+              ¿Deseas continuar?
+            </p>
+          </div>
+        ),
+      };
+    }
+  }
+
+  const handleAutorizar = () => {
+    // Validar pre-autorización según caso de uso
+    const validation = validatePreAuthorization();
+    
+    if (!validation.isValid) {
+      // Mostrar errores
+      validation.errors.forEach(error => toast.error(error));
+      // Si hay errores de datos faltantes, abrir modal de edición
+      const hasDataErrors = validation.errors.some(e => e.includes('Completa los datos'));
+      if (hasDataErrors) {
+        setShowEditPromiseModal(true);
+      }
       return;
     }
 
-    // Validar datos del cliente para contratos
-    const clientValidation = validateClientContractData(localPromiseData);
-    if (!clientValidation.isValid) {
-      const fieldsList = clientValidation.missingFields.map(f => f.label).join(', ');
-      toast.error(`Completa los datos faltantes: ${fieldsList}`);
-      setShowEditPromiseModal(true);
-      return;
-    }
+    // Mostrar warnings si hay
+    validation.warnings.forEach(warning => toast.warning(warning, { duration: 5000 }));
 
+    // Mostrar modal de confirmación
+    setShowConfirmAutorizarModal(true);
+  };
+
+  const handleConfirmAutorizar = async () => {
     setIsAuthorizing(true);
+    setShowConfirmAutorizarModal(false);
 
     try {
       // Calcular monto total con descuentos
@@ -375,7 +520,7 @@ export function PromiseClosingProcessCard({
         }
       }
     } catch (error) {
-      console.error('[handleAutorizar] Error:', error);
+      console.error('[handleConfirmAutorizar] Error:', error);
       toast.error('Error al autorizar cotización');
     } finally {
       setIsAuthorizing(false);
@@ -545,17 +690,26 @@ export function PromiseClosingProcessCard({
       </ZenCardHeader>
 
       <ZenCardContent className="p-4 flex-1 overflow-y-auto">
-        {/* Header: Nombre + Preview */}
+        {/* Header: Nombre + Preview y Editar */}
         <div className="mb-4 flex items-start justify-between gap-3">
           <h4 className="text-base font-semibold text-white flex-1">{cotizacion.name}</h4>
-          <button
-            onClick={handleOpenPreview}
-            disabled={loadingCotizacion}
-            className="flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 transition-colors text-xs text-zinc-300 hover:text-white shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Eye className="h-3 w-3" />
-            {loadingCotizacion ? 'Cargando...' : 'Preview'}
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}`)}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 transition-colors text-xs text-zinc-300 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Edit2 className="h-3 w-3" />
+              Editar
+            </button>
+            <button
+              onClick={handleOpenPreview}
+              disabled={loadingCotizacion}
+              className="flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 hover:border-zinc-600 transition-colors text-xs text-zinc-300 hover:text-white shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Eye className="h-3 w-3" />
+              {loadingCotizacion ? 'Cargando...' : 'Preview'}
+            </button>
+          </div>
         </div>
 
         <div className="space-y-2 mb-4">
@@ -840,6 +994,19 @@ export function PromiseClosingProcessCard({
         loading={isCancelling}
       />
 
+      {/* Modal de Confirmación Autorizar y Crear Evento */}
+      <ZenConfirmModal
+        isOpen={showConfirmAutorizarModal}
+        onClose={() => setShowConfirmAutorizarModal(false)}
+        onConfirm={handleConfirmAutorizar}
+        title={getConfirmMessage().title}
+        description={getConfirmMessage().description}
+        confirmText={isAuthorizing ? 'Autorizando...' : 'Sí, autorizar y crear evento'}
+        cancelText="Cancelar"
+        variant="primary"
+        loading={isAuthorizing}
+      />
+
       {/* Modal Condiciones Comerciales */}
       <CondicionesComercialeSelectorSimpleModal
         isOpen={showCondicionesModal}
@@ -886,22 +1053,55 @@ export function PromiseClosingProcessCard({
         cancelLabel="Cerrar"
         zIndex={10070}
       >
-        {loadingCotizacion ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+        <div className="space-y-4">
+          {/* Label y botones */}
+          <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
+            <div>
+              <p className="text-sm font-medium text-amber-400">
+                Vista informativa de uso interno
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <ZenButton
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}`)}
+                className="flex items-center gap-2"
+              >
+                <Edit2 className="h-4 w-4" />
+                Editar cotización
+              </ZenButton>
+              <ZenButton
+                variant="outline"
+                size="sm"
+                onClick={() => setShowShareOptionsModal(true)}
+                className="flex items-center gap-2"
+              >
+                <Share2 className="h-4 w-4" />
+                Revisa lo que ve el cliente
+              </ZenButton>
+            </div>
           </div>
-        ) : cotizacionCompleta ? (
-          <ResumenCotizacion
-            cotizacion={cotizacionCompleta}
-            studioSlug={studioSlug}
-            promiseId={promiseId}
-            condicionesComerciales={registroCierre?.condiciones_comerciales as any}
-          />
-        ) : (
-          <div className="text-center py-8 text-zinc-400">
-            No se pudo cargar la cotización
-          </div>
-        )}
+
+          {/* Contenido de la cotización */}
+          {loadingCotizacion ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
+            </div>
+          ) : cotizacionCompleta ? (
+            <ResumenCotizacion
+              cotizacion={cotizacionCompleta}
+              studioSlug={studioSlug}
+              promiseId={promiseId}
+              condicionesComerciales={registroCierre?.condiciones_comerciales as any}
+              hideSubtotals={true}
+            />
+          ) : (
+            <div className="text-center py-8 text-zinc-400">
+              No se pudo cargar la cotización
+            </div>
+          )}
+        </div>
       </ZenDialog>
 
       {/* Modal Preview de Contrato */}
@@ -953,6 +1153,14 @@ export function PromiseClosingProcessCard({
         onClose={() => setShowInfoModal(false)}
         onConfirm={() => setShowInfoModal(false)}
         showDismissCheckbox={false}
+      />
+
+      {/* Modal Opciones para Compartir */}
+      <PromiseShareOptionsModal
+        isOpen={showShareOptionsModal}
+        onClose={() => setShowShareOptionsModal(false)}
+        studioSlug={studioSlug}
+        promiseId={promiseId}
       />
     </ZenCard>
   );

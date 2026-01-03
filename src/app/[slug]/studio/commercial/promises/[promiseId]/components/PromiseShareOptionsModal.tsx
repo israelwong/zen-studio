@@ -115,6 +115,7 @@ export function PromiseShareOptionsModal({
       title="Opciones de compartir"
       description="Configura cómo se mostrará la información de las cotizaciones al prospecto"
       maxWidth="md"
+      zIndex={10080}
     >
       <div className="space-y-4">
         {loading ? (

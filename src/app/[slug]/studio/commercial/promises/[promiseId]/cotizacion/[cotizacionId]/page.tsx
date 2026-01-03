@@ -33,6 +33,7 @@ export default function EditarCotizacionPage() {
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [cotizacionStatus, setCotizacionStatus] = useState<string | null>(null);
   const [cotizacionName, setCotizacionName] = useState<string>('');
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [condicionComercial, setCondicionComercial] = useState<{
     id: string;
     name: string;
@@ -50,6 +51,7 @@ export default function EditarCotizacionPage() {
   useEffect(() => {
     const loadCotizacionStatus = async () => {
       try {
+        setIsLoadingStatus(true);
         const result = await getCotizacionById(cotizacionId, studioSlug);
         if (result.success && result.data) {
           setCotizacionStatus(result.data.status);
@@ -74,6 +76,8 @@ export default function EditarCotizacionPage() {
         }
       } catch (error) {
         console.error('Error loading cotizacion status:', error);
+      } finally {
+        setIsLoadingStatus(false);
       }
     };
 
@@ -120,6 +124,12 @@ export default function EditarCotizacionPage() {
     cotizacionStatus === 'autorizada' ||
     cotizacionStatus === 'aprobada' ||
     cotizacionStatus === 'approved';
+  
+  // Solo mostrar botón "Pasar a Cierre" si:
+  // 1. El estado ya se cargó (no está cargando)
+  // 2. NO está en cierre
+  // 3. NO está autorizada/aprobada
+  const canShowPasarACierre = !isLoadingStatus && !isInCierre && !isAlreadyAuthorized;
 
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -151,7 +161,7 @@ export default function EditarCotizacionPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isInCierre && !isAlreadyAuthorized && (
+              {canShowPasarACierre && (
                 <ZenButton
                   variant="primary"
                   size="md"
@@ -164,7 +174,7 @@ export default function EditarCotizacionPage() {
                   Pasar a Cierre
                 </ZenButton>
               )}
-              {isMounted ? (
+              {!isInCierre && isMounted && (
                 <ZenDropdownMenu>
                   <ZenDropdownMenuTrigger asChild>
                     <ZenButton
@@ -195,15 +205,6 @@ export default function EditarCotizacionPage() {
                     </ZenDropdownMenuItem>
                   </ZenDropdownMenuContent>
                 </ZenDropdownMenu>
-              ) : (
-                <ZenButton
-                  variant="ghost"
-                  size="md"
-                  disabled={isFormLoading || isActionLoading || isPassingToCierre}
-                  className="h-9 w-9 p-0"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </ZenButton>
               )}
             </div>
           </div>
