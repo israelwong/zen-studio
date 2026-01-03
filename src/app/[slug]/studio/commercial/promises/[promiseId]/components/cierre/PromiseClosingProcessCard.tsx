@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle, Loader2, XCircle, Eye, MoreVertical, Edit2, HelpCircle } from 'lucide-react';
 import {
   ZenCard,
@@ -15,7 +16,8 @@ import {
   ZenDropdownMenuItem,
 } from '@/components/ui/zen';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
-import { cancelarCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { cancelarCierre, autorizarCotizacion } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { autorizarCotizacionLegacy } from '@/lib/actions/studio/commercial/promises/authorize-legacy.actions';
 import { obtenerRegistroCierre, quitarCondicionesCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import { CondicionesComercialeSelectorSimpleModal } from '../condiciones-comerciales/CondicionesComercialeSelectorSimpleModal';
 import { ContractTemplateSimpleSelectorModal } from '../contratos/ContractTemplateSimpleSelectorModal';
@@ -46,7 +48,7 @@ interface PromiseClosingProcessCardProps {
   };
   studioSlug: string;
   promiseId: string;
-  onAuthorizeClick: () => void;
+  onAuthorizeClick?: () => void;
   isLoadingPromiseData?: boolean;
   onCierreCancelado?: (cotizacionId: string) => void;
   contactId?: string;
@@ -66,8 +68,10 @@ export function PromiseClosingProcessCard({
   eventTypeId,
   acquisitionChannelId,
 }: PromiseClosingProcessCardProps) {
+  const router = useRouter();
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [showCondicionesModal, setShowCondicionesModal] = useState(false);
   const [showContratoModal, setShowContratoModal] = useState(false);
   const [showContratoPreview, setShowContratoPreview] = useState(false);
@@ -242,6 +246,139 @@ export function PromiseClosingProcessCard({
       setShowCotizacionPreview(false);
     } finally {
       setLoadingCotizacion(false);
+    }
+  };
+
+  // Validación de datos del cliente para contratos
+  interface ClientContractDataValidation {
+    isValid: boolean;
+    missingFields: Array<{
+      field: string;
+      label: string;
+      section: 'contacto' | 'evento';
+    }>;
+  }
+
+  function validateClientContractData(promiseData: typeof localPromiseData): ClientContractDataValidation {
+    const missingFields: Array<{field: string; label: string; section: 'contacto' | 'evento'}> = [];
+
+    // Validar datos del contacto
+    if (!promiseData?.name?.trim()) {
+      missingFields.push({ field: 'name', label: 'Nombre', section: 'contacto' });
+    }
+    if (!promiseData?.phone?.trim()) {
+      missingFields.push({ field: 'phone', label: 'Teléfono', section: 'contacto' });
+    }
+    if (!promiseData?.email?.trim()) {
+      missingFields.push({ field: 'email', label: 'Correo electrónico', section: 'contacto' });
+    }
+
+    // Validar datos del evento
+    if (!promiseData?.event_name?.trim()) {
+      missingFields.push({ field: 'event_name', label: 'Nombre del evento', section: 'evento' });
+    }
+    if (!eventTypeId) {
+      missingFields.push({ field: 'event_type_id', label: 'Tipo de evento', section: 'evento' });
+    }
+    if (!promiseData?.event_date) {
+      missingFields.push({ field: 'event_date', label: 'Fecha del evento', section: 'evento' });
+    }
+
+    return {
+      isValid: missingFields.length === 0,
+      missingFields,
+    };
+  }
+
+  const handleAutorizar = async () => {
+    // Detectar tipo de cliente
+    const isClienteNuevo = cotizacion.selected_by_prospect === true;
+    const isClienteLegacy = !cotizacion.selected_by_prospect;
+
+    // Validar si puede autorizar según el estado del contrato (solo cliente nuevo)
+    if (isClienteNuevo && cotizacion.status !== 'contract_signed') {
+      toast.error('No se puede autorizar hasta que el cliente firme el contrato');
+      return;
+    }
+
+    // Validar datos del cliente para contratos
+    const clientValidation = validateClientContractData(localPromiseData);
+    if (!clientValidation.isValid) {
+      const fieldsList = clientValidation.missingFields.map(f => f.label).join(', ');
+      toast.error(`Completa los datos faltantes: ${fieldsList}`);
+      setShowEditPromiseModal(true);
+      return;
+    }
+
+    setIsAuthorizing(true);
+
+    try {
+      // Calcular monto total con descuentos
+      let montoTotal = cotizacion.price;
+      if (registroCierre?.condiciones_comerciales?.discount_percentage) {
+        const descuento = cotizacion.price * (registroCierre.condiciones_comerciales.discount_percentage / 100);
+        montoTotal = cotizacion.price - descuento;
+      }
+
+      if (isClienteNuevo) {
+        // FLUJO DIGITAL: No crea evento, cambia a contract_pending
+        const result = await autorizarCotizacion({
+          studio_slug: studioSlug,
+          cotizacion_id: cotizacion.id,
+          promise_id: promiseId,
+          condiciones_comerciales_id: registroCierre?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id || '',
+          monto: montoTotal,
+        });
+
+        if (result.success) {
+          toast.success('Cotización autorizada. Cliente recibirá acceso a su portal.');
+          onAuthorizeClick?.();
+        } else {
+          toast.error(result.error || 'Error al autorizar cotización');
+        }
+      } else {
+        // FLUJO LEGACY: Crea evento inmediatamente
+        const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
+        const condicionesComercialesId = registroCierre?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id;
+        
+        // Validar que haya condiciones comerciales si se requiere generar contrato
+        if (generarContrato && !condicionesComercialesId) {
+          toast.error('Se requieren condiciones comerciales para generar el contrato');
+          return;
+        }
+        
+        // Si no hay condiciones comerciales, usar cadena vacía (el schema lo requiere)
+        const condicionesIdFinal = condicionesComercialesId || '';
+        
+        const result = await autorizarCotizacionLegacy({
+          studio_slug: studioSlug,
+          cotizacion_id: cotizacion.id,
+          promise_id: promiseId,
+          condiciones_comerciales_id: condicionesIdFinal,
+          monto: montoTotal,
+          registrar_pago: registroCierre?.pago_registrado || false,
+          pago_data: registroCierre?.pago_registrado && registroCierre?.pago_monto && registroCierre?.pago_fecha && registroCierre?.pago_metodo_id ? {
+            concepto: registroCierre.pago_concepto || 'Anticipo',
+            monto: registroCierre.pago_monto,
+            fecha: new Date(registroCierre.pago_fecha),
+            payment_method_id: registroCierre.pago_metodo_id,
+          } : undefined,
+          generar_contrato: generarContrato || false,
+          contract_template_id: generarContrato ? registroCierre?.contract_template_id : undefined,
+        });
+
+        if (result.success && result.data?.eventId) {
+          toast.success('Evento creado exitosamente');
+          router.push(`/${studioSlug}/studio/business/events/${result.data.eventId}`);
+        } else {
+          toast.error(result.error || 'Error al autorizar cotización');
+        }
+      }
+    } catch (error) {
+      console.error('[handleAutorizar] Error:', error);
+      toast.error('Error al autorizar cotización');
+    } finally {
+      setIsAuthorizing(false);
     }
   };
   // Calcular completitud de datos del cliente para contrato (usar datos locales)
@@ -658,7 +795,13 @@ export function PromiseClosingProcessCard({
 
         {/* CTAs */}
         <div className="space-y-2">
-          <ZenButton variant="primary" className="w-full" onClick={onAuthorizeClick}>
+          <ZenButton 
+            variant="primary" 
+            className="w-full" 
+            onClick={handleAutorizar}
+            disabled={isAuthorizing || loadingRegistro}
+            loading={isAuthorizing}
+          >
             Autorizar y Crear Evento
           </ZenButton>
           <ZenButton

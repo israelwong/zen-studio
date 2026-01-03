@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
@@ -39,6 +39,7 @@ interface CotizacionFormProps {
   onAutorizar?: () => void | Promise<void>;
   isAutorizando?: boolean;
   isAlreadyAuthorized?: boolean;
+  isDisabled?: boolean;
 }
 
 export function CotizacionForm({
@@ -57,6 +58,7 @@ export function CotizacionForm({
   onAutorizar,
   isAutorizando = false,
   isAlreadyAuthorized = false,
+  isDisabled = false,
   onCreateAsRevision,
   revisionOriginalId,
 }: CotizacionFormProps & {
@@ -71,6 +73,12 @@ export function CotizacionForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const isEditMode = !!cotizacionId;
+  const onLoadingChangeRef = useRef(onLoadingChange);
+  
+  // Mantener referencia actualizada sin causar re-renders
+  useEffect(() => {
+    onLoadingChangeRef.current = onLoadingChange;
+  }, [onLoadingChange]);
 
   // Estado del formulario
   const [nombre, setNombre] = useState('');
@@ -249,14 +257,15 @@ export function CotizacionForm({
       console.warn('[CotizacionForm] studioSlug no disponible, no se pueden cargar datos');
       setCargandoCatalogo(false);
     }
-  }, [studioSlug, packageId, cotizacionId, promiseId, contactId, revisionOriginalId, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studioSlug, packageId, cotizacionId, promiseId, contactId, revisionOriginalId]);
 
   // Notificar cambios en el estado de carga
   useEffect(() => {
-    if (onLoadingChange) {
-      onLoadingChange(cargandoCatalogo);
+    if (onLoadingChangeRef.current) {
+      onLoadingChangeRef.current(cargandoCatalogo);
     }
-  }, [cargandoCatalogo, onLoadingChange]);
+  }, [cargandoCatalogo]);
 
   // Crear mapa de servicios para acceso rápido
   const configKey = useMemo(() => {
@@ -1126,7 +1135,7 @@ export function CotizacionForm({
                   type="button"
                   variant="secondary"
                   onClick={handleCancelClick}
-                  disabled={loading}
+                  disabled={loading || isDisabled}
                   className="flex-1"
                 >
                   Cancelar
@@ -1136,7 +1145,7 @@ export function CotizacionForm({
                   variant="primary"
                   loading={loading}
                   loadingText="Guardando..."
-                  disabled={loading}
+                  disabled={loading || isDisabled}
                   className="flex-1"
                 >
                   {isEditMode ? 'Actualizar' : 'Crear'} Cotización

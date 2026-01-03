@@ -5,11 +5,12 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, MoreVertical, Archive, Trash2 } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenConfirmModal, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { CotizacionForm } from '../../../components/CotizacionForm';
-import { archiveCotizacion, deleteCotizacion, getCotizacionById } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
-import { getPromiseById } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
+import { archiveCotizacion, deleteCotizacion, getCotizacionById, pasarACierre } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { obtenerCondicionComercial } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
+import { ClosingProcessInfoModal, getClosingProcessInfoDismissed } from '../../components/cierre/ClosingProcessInfoModal';
 import { ZenBadge } from '@/components/ui/zen';
 import { toast } from 'sonner';
+import { CheckCircle } from 'lucide-react';
 
 export default function EditarCotizacionPage() {
   const params = useParams();
@@ -20,15 +21,18 @@ export default function EditarCotizacionPage() {
   const cotizacionId = params.cotizacionId as string;
   const contactId = searchParams.get('contactId');
 
+  const [isMounted, setIsMounted] = useState(false);
+
   useEffect(() => {
+    setIsMounted(true);
     document.title = 'ZEN Studio - Cotización';
   }, []);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isFormLoading, setIsFormLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [isValidatingDate, setIsValidatingDate] = useState(false);
   const [cotizacionStatus, setCotizacionStatus] = useState<string | null>(null);
+  const [cotizacionName, setCotizacionName] = useState<string>('');
   const [condicionComercial, setCondicionComercial] = useState<{
     id: string;
     name: string;
@@ -39,6 +43,8 @@ export default function EditarCotizacionPage() {
     discount_percentage: number | null;
   } | null>(null);
   const [selectedByProspect, setSelectedByProspect] = useState(false);
+  const [showClosingProcessInfoModal, setShowClosingProcessInfoModal] = useState(false);
+  const [isPassingToCierre, setIsPassingToCierre] = useState(false);
 
   // Cargar estado de la cotización y condición comercial
   useEffect(() => {
@@ -47,6 +53,7 @@ export default function EditarCotizacionPage() {
         const result = await getCotizacionById(cotizacionId, studioSlug);
         if (result.success && result.data) {
           setCotizacionStatus(result.data.status);
+          setCotizacionName(result.data.name || '');
           setSelectedByProspect(result.data.selected_by_prospect || false);
 
           // Cargar condición comercial si existe
@@ -73,47 +80,42 @@ export default function EditarCotizacionPage() {
     loadCotizacionStatus();
   }, [cotizacionId, studioSlug]);
 
-  const handleAutorizar = async () => {
-    // Validar que la cotización no esté ya autorizada
-    if (isAlreadyAuthorized) {
-      toast.error('Esta cotización ya está autorizada');
+  const handlePasarACierreClick = () => {
+    if (!promiseId) {
+      toast.error('No se puede pasar a cierre sin una promesa asociada');
       return;
     }
 
-    // Validar que exista al menos una fecha definida
+    // Siempre mostrar modal de confirmación
+    setShowClosingProcessInfoModal(true);
+  };
+
+  const handlePasarACierre = async () => {
+    if (!promiseId) {
+      toast.error('No se puede pasar a cierre sin una promesa asociada');
+      return;
+    }
+
+    setShowClosingProcessInfoModal(false);
+    setIsPassingToCierre(true);
     try {
-      setIsValidatingDate(true);
-      const result = await getPromiseById(promiseId);
-
-      if (result.success && result.data) {
-        // Usar event_date como campo principal (estándar actual)
-        // También verificar defined_date e interested_dates como fallback para compatibilidad
-        const hasDate = result.data.event_date ||
-          result.data.defined_date ||
-          (result.data.interested_dates && result.data.interested_dates.length > 0);
-
-        if (!hasDate) {
-          toast.error('Debe existir al menos una fecha definida para autorizar la cotización');
-          setIsValidatingDate(false);
-          return;
-        }
-
-        // Si hay fecha, redirigir
-        router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacionId}/autorizar`);
+      const result = await pasarACierre(studioSlug, cotizacionId);
+      if (result.success) {
+        toast.success('Cotización pasada a proceso de cierre');
+        router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
       } else {
-        toast.error('Error al validar la promesa');
+        toast.error(result.error || 'Error al pasar cotización a cierre');
       }
     } catch (error) {
-      console.error('Error validating promise:', error);
-      toast.error('Error al validar la promesa');
+      console.error('[handlePasarACierre] Error:', error);
+      toast.error('Error al pasar cotización a cierre');
     } finally {
-      setIsValidatingDate(false);
+      setIsPassingToCierre(false);
     }
   };
 
-  // Verificar si la cotización ya está autorizada o aprobada
-  // Regla de negocio: Solo se puede autorizar si la cotización NO está autorizada/aprobada
-  // Una promesa puede tener múltiples cotizaciones aprobadas, así que no restringimos por otras cotizaciones
+  // Verificar si la cotización ya está en cierre o autorizada
+  const isInCierre = cotizacionStatus === 'en_cierre';
   const isAlreadyAuthorized =
     cotizacionStatus === 'autorizada' ||
     cotizacionStatus === 'aprobada' ||
@@ -129,6 +131,7 @@ export default function EditarCotizacionPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
+                disabled={isPassingToCierre}
                 className="p-2"
               >
                 <ArrowLeft className="h-4 w-4" />
@@ -148,48 +151,60 @@ export default function EditarCotizacionPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!isAlreadyAuthorized && (
+              {!isInCierre && !isAlreadyAuthorized && (
                 <ZenButton
                   variant="primary"
                   size="md"
-                  onClick={handleAutorizar}
-                  disabled={isFormLoading || isActionLoading || isValidatingDate}
-                  loading={isValidatingDate}
+                  onClick={handlePasarACierreClick}
+                  disabled={isFormLoading || isActionLoading || isPassingToCierre}
+                  loading={isPassingToCierre}
                   className="bg-emerald-600 hover:bg-emerald-700 text-white focus-visible:ring-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Autorizar ahora
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Pasar a Cierre
                 </ZenButton>
               )}
-              <ZenDropdownMenu>
-                <ZenDropdownMenuTrigger asChild>
-                  <ZenButton
-                    variant="ghost"
-                    size="md"
-                    disabled={isFormLoading || isActionLoading}
-                    className="h-9 w-9 p-0"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </ZenButton>
-                </ZenDropdownMenuTrigger>
-                <ZenDropdownMenuContent align="end">
-                  <ZenDropdownMenuItem
-                    onClick={() => setShowArchiveModal(true)}
-                    disabled={isActionLoading}
-                  >
-                    <Archive className="h-4 w-4 mr-2" />
-                    Archivar
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuSeparator />
-                  <ZenDropdownMenuItem
-                    onClick={() => setShowDeleteModal(true)}
-                    disabled={isActionLoading}
-                    className="text-red-400 focus:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar
-                  </ZenDropdownMenuItem>
-                </ZenDropdownMenuContent>
-              </ZenDropdownMenu>
+              {isMounted ? (
+                <ZenDropdownMenu>
+                  <ZenDropdownMenuTrigger asChild>
+                    <ZenButton
+                      variant="ghost"
+                      size="md"
+                      disabled={isFormLoading || isActionLoading || isPassingToCierre}
+                      className="h-9 w-9 p-0"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </ZenButton>
+                  </ZenDropdownMenuTrigger>
+                  <ZenDropdownMenuContent align="end">
+                    <ZenDropdownMenuItem
+                      onClick={() => setShowArchiveModal(true)}
+                      disabled={isActionLoading || isPassingToCierre}
+                    >
+                      <Archive className="h-4 w-4 mr-2" />
+                      Archivar
+                    </ZenDropdownMenuItem>
+                    <ZenDropdownMenuSeparator />
+                    <ZenDropdownMenuItem
+                      onClick={() => setShowDeleteModal(true)}
+                      disabled={isActionLoading || isPassingToCierre}
+                      className="text-red-400 focus:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Eliminar
+                    </ZenDropdownMenuItem>
+                  </ZenDropdownMenuContent>
+                </ZenDropdownMenu>
+              ) : (
+                <ZenButton
+                  variant="ghost"
+                  size="md"
+                  disabled={isFormLoading || isActionLoading || isPassingToCierre}
+                  className="h-9 w-9 p-0"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </ZenButton>
+              )}
             </div>
           </div>
         </ZenCardHeader>
@@ -203,9 +218,8 @@ export default function EditarCotizacionPage() {
             onLoadingChange={setIsFormLoading}
             condicionComercialPreAutorizada={condicionComercial}
             isPreAutorizada={selectedByProspect}
-            onAutorizar={handleAutorizar}
-            isAutorizando={isValidatingDate}
             isAlreadyAuthorized={isAlreadyAuthorized}
+            isDisabled={isPassingToCierre}
           />
         </ZenCardContent>
       </ZenCard>
@@ -264,6 +278,17 @@ export default function EditarCotizacionPage() {
         cancelText="Cancelar"
         variant="destructive"
         loading={isActionLoading}
+      />
+
+      {/* Modal de Información de Proceso de Cierre */}
+      <ClosingProcessInfoModal
+        isOpen={showClosingProcessInfoModal}
+        onClose={() => setShowClosingProcessInfoModal(false)}
+        onConfirm={handlePasarACierre}
+        onCancel={() => setShowClosingProcessInfoModal(false)}
+        showDismissCheckbox={true}
+        cotizacionName={cotizacionName}
+        isLoading={isPassingToCierre}
       />
     </div>
   );

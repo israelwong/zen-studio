@@ -759,6 +759,22 @@ export async function updatePromise(
       }
     }
 
+    // Validar que el teléfono no esté en uso por otro contacto del mismo estudio
+    if (validatedData.phone !== oldContact.phone) {
+      const existingContact = await prisma.studio_contacts.findFirst({
+        where: {
+          studio_id: studio.id,
+          phone: validatedData.phone,
+          id: { not: validatedData.id }, // Excluir el contacto actual
+        },
+        select: { id: true },
+      });
+
+      if (existingContact) {
+        return { success: false, error: 'Este teléfono ya está registrado para otro contacto en este estudio' };
+      }
+    }
+
     // Detectar cambios
     const changes: string[] = [];
     if (oldContact.name !== validatedData.name) {

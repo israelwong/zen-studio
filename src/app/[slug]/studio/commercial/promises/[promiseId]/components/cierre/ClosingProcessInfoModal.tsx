@@ -11,6 +11,7 @@ interface ClosingProcessInfoModalProps {
   onCancel?: () => void;
   showDismissCheckbox?: boolean;
   cotizacionName?: string;
+  isLoading?: boolean;
 }
 
 const STORAGE_KEY = 'zen-closing-process-info-dismissed';
@@ -44,6 +45,7 @@ export function ClosingProcessInfoModal({
   onCancel,
   showDismissCheckbox = true,
   cotizacionName,
+  isLoading = false,
 }: ClosingProcessInfoModalProps) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
@@ -75,6 +77,7 @@ export function ClosingProcessInfoModal({
       saveLabel="Continuar"
       cancelLabel="Cancelar"
       closeOnClickOutside={false}
+      isLoading={isLoading}
     >
       <div className="space-y-4">
         <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 space-y-3">

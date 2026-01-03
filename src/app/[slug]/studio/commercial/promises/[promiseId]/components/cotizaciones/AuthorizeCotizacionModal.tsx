@@ -501,6 +501,7 @@ export function AuthorizeCotizacionModal({
       <ZenDialog
         isOpen={isOpen}
         onClose={onClose}
+        onCancel={onClose}
         title="Autorizar Cotización"
         description={
           isClienteNuevo

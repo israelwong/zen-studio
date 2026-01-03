@@ -8,8 +8,8 @@ import { getCotizacionById } from '@/lib/actions/studio/commercial/promises/coti
 import { getPromiseById } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 import { toast } from 'sonner';
 import { ResumenCotizacion } from '@/components/shared/cotizaciones';
-import { DatosContratante } from './components/DatosContratante';
-import { CondicionesComercialesSelector } from './components/CondicionesComercialesSelector';
+import { DatosContratante } from '../../[promiseId]/cotizacion/[cotizacionId]/autorizar/components/DatosContratante';
+import { CondicionesComercialesSelector } from '../../[promiseId]/cotizacion/[cotizacionId]/autorizar/components/CondicionesComercialesSelector';
 import { autorizarCotizacion } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 
 export default function AutorizarCotizacionPage() {
