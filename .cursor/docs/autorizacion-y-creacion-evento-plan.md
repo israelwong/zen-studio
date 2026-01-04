@@ -54,7 +54,11 @@ studio_promises:
 
 ### 1. Migración: Agregar Campos Snapshot
 
-**Archivo:** `supabase/migrations/[timestamp]_add_authorization_snapshots.sql`
+**Ubicación:** `/Users/israelwong/Documents/Desarrollo/zen-platform/supabase/migrations/`
+
+**Archivo:** `[timestamp]_add_authorization_snapshots.sql`
+
+**Nota:** Las migraciones se crean manualmente en SQL en el directorio de migraciones de Supabase.
 
 ```sql
 -- ============================================
@@ -745,7 +749,7 @@ export function CotizacionAutorizadaCard({
             </div>
           )}
 
-          {/* Botón para gestionar evento */}
+          {/* Botón para ir al evento */}
           <ZenButton
             variant="primary"
             onClick={() => router.push(`/${studioSlug}/studio/business/events/${eventoId}`)}
@@ -754,6 +758,10 @@ export function CotizacionAutorizadaCard({
             <ArrowRight className="w-4 h-4 mr-2" />
             Gestionar Evento
           </ZenButton>
+          
+          <p className="text-xs text-zinc-500 text-center mt-2">
+            Este evento ya fue creado y está en gestión
+          </p>
         </div>
       </ZenCardContent>
     </ZenCard>
@@ -765,32 +773,28 @@ export function CotizacionAutorizadaCard({
 
 **Archivo:** `PromiseQuotesPanel.tsx`
 
-```typescript
-// Filtrar cotizaciones autorizadas
-const cotizacionesActivas = cotizaciones.filter(
-  cot => cot.status !== 'autorizada' && cot.status !== 'archivada'
-);
+**Lógica:**
+- Solo mostrar cotizaciones: `pendiente`, `en_cierre`
+- NO mostrar: `autorizada` (se muestra en card de evento autorizado)
+- NO mostrar: `archivada` (histórico, no relevante)
 
-// Mostrar badge si hay cotización autorizada
-const cotizacionAutorizada = cotizaciones.find(cot => cot.status === 'autorizada');
+```typescript
+// Filtrar solo cotizaciones activas (pendiente, en_cierre)
+const cotizacionesActivas = cotizaciones.filter(
+  cot => cot.status === 'pendiente' || cot.status === 'en_cierre'
+);
 
 return (
   <div>
-    {cotizacionAutorizada && (
-      <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          <p className="text-sm text-emerald-300">
-            Cotización autorizada - Evento creado
-          </p>
-        </div>
+    {cotizacionesActivas.length === 0 ? (
+      <div className="text-center py-8 text-zinc-400 text-sm">
+        No hay cotizaciones activas
       </div>
+    ) : (
+      cotizacionesActivas.map(cot => (
+        <CotizacionCard key={cot.id} cotizacion={cot} />
+      ))
     )}
-    
-    {/* Mostrar solo cotizaciones activas */}
-    {cotizacionesActivas.map(cot => (
-      <CotizacionCard key={cot.id} cotizacion={cot} />
-    ))}
   </div>
 );
 ```
@@ -800,9 +804,9 @@ return (
 ## ✅ Checklist de Implementación
 
 ### Fase 1: Base de Datos
-- [ ] Crear migración con campos snapshot
+- [ ] Crear migración SQL manualmente en `/supabase/migrations/`
 - [ ] Ejecutar migración en desarrollo
-- [ ] Actualizar Prisma schema
+- [ ] Actualizar Prisma schema con campos snapshot
 - [ ] Generar tipos de Prisma (`npx prisma generate`)
 
 ### Fase 2: Server Actions
@@ -822,10 +826,11 @@ return (
 
 ### Fase 4: UI - Vista Post-Autorización
 - [ ] Implementar redirección automática al evento después de autorizar
-- [ ] Crear `CotizacionAutorizadaCard` para mostrar en Promise
-- [ ] Actualizar `PromiseClosingProcessSection` para mostrar card apropiado según status
-- [ ] Ocultar cotizaciones autorizadas del panel de cotizaciones activas
-- [ ] Agregar badge/indicador de cotización autorizada en panel
+- [ ] Crear `CotizacionAutorizadaCard` con botón "Gestionar Evento"
+- [ ] Actualizar `PromiseClosingProcessSection` para mostrar card según status
+- [ ] Botón "Gestionar Evento" redirige a `/events/[eventoId]`
+- [ ] Filtrar panel de cotizaciones: solo `pendiente` y `en_cierre`
+- [ ] NO mostrar cotizaciones `autorizada` ni `archivada` en panel
 
 ### Fase 5: Actualizar Queries Existentes
 - [ ] Identificar componentes que leen condiciones comerciales
@@ -886,8 +891,9 @@ router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
 ```
 
 **En el panel de cotizaciones:**
-- Ocultar cotización autorizada de la lista activa
-- Mostrar badge: "Cotización autorizada - Ver resumen"
+- Solo mostrar cotizaciones: `pendiente`, `en_cierre`
+- NO mostrar: `autorizada` (ya está en card de evento autorizado)
+- NO mostrar: `archivada` (histórico)
 
 ---
 
@@ -961,6 +967,34 @@ router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
 │  • Timeline del proyecto                │
 └─────────────────────────────────────────┘
 ```
+
+---
+
+---
+
+## 📌 Resumen Ejecutivo
+
+### Flujo Completo
+1. Usuario en Promise → Cotización en cierre
+2. Click "Autorizar y Crear Evento" → Validaciones
+3. Transacción atómica → Crear snapshots + Evento
+4. Redirigir a `/events/[eventoId]`
+5. Promise muestra `CotizacionAutorizadaCard` con botón "Gestionar Evento"
+
+### Panel de Cotizaciones
+- ✅ Mostrar: `pendiente`, `en_cierre`
+- ❌ NO mostrar: `autorizada`, `archivada`
+
+### Card de Evento Autorizado (en Promise)
+- Resumen de cotización
+- Condiciones comerciales (snapshot)
+- Contrato firmado (snapshot)
+- Botón "Gestionar Evento" → `/events/[eventoId]`
+
+### Migraciones
+- Crear manualmente en `/supabase/migrations/`
+- Campos snapshot en `studio_cotizaciones`
+- Actualizar Prisma schema
 
 ---
 
