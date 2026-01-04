@@ -218,15 +218,11 @@ export function PromiseClosingProcessCard({
     promiseId: promiseId || null,
     ignoreCierreEvents: false, // Queremos escuchar eventos de cierre
     onCotizacionUpdated: useCallback((cotizacionId: string, payload?: unknown) => {
-      // Solo actualizar si es la cotización actual y es un evento de cierre (contrato)
+      // Solo actualizar si es la cotización actual
       if (cotizacionId === cotizacion.id) {
-        const p = payload as any;
-        const isCierreEvent = p?.table === 'studio_cotizaciones_cierre' || p?.payload?.table === 'studio_cotizaciones_cierre';
-
-        if (isCierreEvent) {
-          // Solo actualizar el contrato localmente, no recargar todo
-          updateContractLocally();
-        }
+        // Actualizar el contrato localmente para reflejar cambios (firma, regeneración, etc.)
+        // Esto incluye cambios en studio_cotizaciones_cierre que disparan updated_at en studio_cotizaciones
+        updateContractLocally();
       }
     }, [cotizacion.id, updateContractLocally]),
   });
