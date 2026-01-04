@@ -821,11 +821,11 @@ return (
 - [ ] Implementar redirección al evento
 
 ### Fase 4: UI - Vista Post-Autorización
-- [ ] **Opción A:** Implementar redirección automática al evento
-- [ ] **Opción B (alternativa):** Crear `CotizacionAutorizadaCard`
-- [ ] Actualizar `PromiseClosingProcessSection` para mostrar card apropiado
-- [ ] Ocultar cotizaciones autorizadas del panel de cotizaciones
-- [ ] Agregar badge/indicador de cotización autorizada
+- [ ] Implementar redirección automática al evento después de autorizar
+- [ ] Crear `CotizacionAutorizadaCard` para mostrar en Promise
+- [ ] Actualizar `PromiseClosingProcessSection` para mostrar card apropiado según status
+- [ ] Ocultar cotizaciones autorizadas del panel de cotizaciones activas
+- [ ] Agregar badge/indicador de cotización autorizada en panel
 
 ### Fase 5: Actualizar Queries Existentes
 - [ ] Identificar componentes que leen condiciones comerciales
@@ -853,28 +853,41 @@ return (
 
 ---
 
-## 🎯 Decisión de UI: Recomendación
+## 🎯 Decisión de UI: Implementación Completa
 
-**Opción Recomendada: Redirigir al Evento (Opción A)**
+**Flujo después de autorizar:**
 
-**Razones:**
-1. ✅ **Flujo lineal:** Promise → Cierre → Evento (sin vuelta atrás)
-2. ✅ **Simplicidad:** No duplicar información en dos lugares
-3. ✅ **Foco:** El usuario debe concentrarse en gestionar el evento
-4. ✅ **Menos mantenimiento:** No crear componentes adicionales
-5. ✅ **UX clara:** Siguiente paso obvio después de autorizar
+1. **Redirigir al evento** (para continuar gestión)
+2. **Mostrar card de resumen en Promise** (para consulta posterior)
+
+**Razones para mantener card en Promise:**
+- ✅ Estudio puede consultar qué se autorizó
+- ✅ Antecedente visible del cierre
+- ✅ Acceso rápido al evento desde promise
+- ✅ Resumen de cotización, condiciones y contrato
 
 **Implementación:**
+
 ```typescript
-// Después de autorización exitosa
+// 1. Después de autorización exitosa
 toast.success('¡Cotización autorizada y evento creado!');
 router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
+
+// 2. En Promise: Reemplazar PromiseClosingProcessCard con CotizacionAutorizadaCard
+{cotizacion.status === 'autorizada' && cotizacion.evento_id ? (
+  <CotizacionAutorizadaCard
+    cotizacion={cotizacion}
+    eventoId={cotizacion.evento_id}
+    studioSlug={studioSlug}
+  />
+) : (
+  <PromiseClosingProcessCard {...props} />
+)}
 ```
 
-**En la vista de Promise:**
-- Mostrar badge: "Cotización autorizada - Ver evento →"
-- Ocultar cotización del panel de cotizaciones activas
-- Mantener acceso desde historial/logs si es necesario
+**En el panel de cotizaciones:**
+- Ocultar cotización autorizada de la lista activa
+- Mostrar badge: "Cotización autorizada - Ver resumen"
 
 ---
 
