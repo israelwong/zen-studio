@@ -268,58 +268,158 @@ export function PublicQuoteAuthorizedView({
 
   return (
     <>
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Card con nombre, descripción y desglose financiero */}
-        <PublicQuoteFinancialCard
-          cotizacionName={cotizacion.name}
-          cotizacionDescription={cotizacion.description}
-          cotizacionPrice={cotizacion.price}
-          cotizacionDiscount={cotizacion.discount}
-          condicionesComerciales={condicionesComerciales}
-        />
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Header del proceso */}
+        <div className="mb-8 text-center">
+          <h2 className="text-2xl font-bold text-zinc-100 mb-2">
+            Proceso de Contratación
+          </h2>
+          <p className="text-zinc-400">
+            Sigue estos 3 pasos para completar tu contratación
+          </p>
+        </div>
 
-        {/* Contrato Digital */}
-        {(isContractGenerated || isEnCierre) && (
-          <PublicContractCard
-            contract={currentContract || null}
-            isContractSigned={isContractSigned}
-            isRegeneratingContract={isRegeneratingContract}
-            isUpdatingData={isUpdatingData}
-            onEditData={() => setShowEditDataModal(true)}
-            onViewContract={() => setShowContractView(true)}
-          />
-        )}
+        {/* Flujo vertical con pasos */}
+        <div className="relative space-y-6">
+          {/* Línea vertical conectora */}
+          <div className="absolute left-[19px] top-12 bottom-12 w-0.5 bg-zinc-800 hidden md:block" />
 
-        {/* Información Bancaria */}
-        <ZenCard>
-          <div className="p-6">
-            <h3 className="text-lg font-semibold text-zinc-100 mb-3 flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Información de Pago
-            </h3>
-            <p className="text-sm text-zinc-400 mb-4">
-              Consulta los datos bancarios del estudio para realizar tu pago.
-            </p>
-            <ZenButton
-              onClick={handleShowBankInfo}
-              disabled={loadingBankInfo}
-              variant="outline"
-              className="w-full"
-            >
-              {loadingBankInfo ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Cargando...
-                </>
-              ) : (
-                <>
-                  <Building2 className="h-4 w-4 mr-2" />
-                  Ver Cuenta CLABE
-                </>
-              )}
-            </ZenButton>
+          {/* PASO 1: Cotización Autorizada */}
+          <div className="relative">
+            <div className="flex items-start gap-4">
+              {/* Número del paso */}
+              <div className="shrink-0 w-10 h-10 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center relative z-10">
+                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              </div>
+              
+              {/* Contenido */}
+              <div className="flex-1 min-w-0">
+                <div className="mb-2">
+                  <h3 className="text-lg font-semibold text-zinc-100">
+                    Paso 1: Cotización Autorizada
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    Has seleccionado tu cotización y condiciones comerciales
+                  </p>
+                </div>
+                <PublicQuoteFinancialCard
+                  cotizacionName={cotizacion.name}
+                  cotizacionDescription={cotizacion.description}
+                  cotizacionPrice={cotizacion.price}
+                  cotizacionDiscount={cotizacion.discount}
+                  condicionesComerciales={condicionesComerciales}
+                />
+              </div>
+            </div>
           </div>
-        </ZenCard>
+
+          {/* PASO 2: Firma de Contrato */}
+          {(isContractGenerated || isEnCierre) && (
+            <div className="relative">
+              <div className="flex items-start gap-4">
+                {/* Número del paso */}
+                <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center relative z-10 ${
+                  isContractSigned 
+                    ? 'bg-emerald-500/20 border-2 border-emerald-500' 
+                    : 'bg-blue-500/20 border-2 border-blue-500'
+                }`}>
+                  {isContractSigned ? (
+                    <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                  ) : (
+                    <span className="text-sm font-bold text-blue-400">2</span>
+                  )}
+                </div>
+                
+                {/* Contenido */}
+                <div className="flex-1 min-w-0">
+                  <div className="mb-2">
+                    <h3 className="text-lg font-semibold text-zinc-100">
+                      Paso 2: Firma de Contrato
+                    </h3>
+                    <p className="text-sm text-zinc-400">
+                      {isContractSigned 
+                        ? '✓ Contrato firmado exitosamente' 
+                        : 'Revisa y firma tu contrato digital'}
+                    </p>
+                  </div>
+                  <PublicContractCard
+                    contract={currentContract || null}
+                    isContractSigned={isContractSigned}
+                    isRegeneratingContract={isRegeneratingContract}
+                    isUpdatingData={isUpdatingData}
+                    onEditData={() => setShowEditDataModal(true)}
+                    onViewContract={() => setShowContractView(true)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PASO 3: Realiza tu Pago */}
+          <div className="relative">
+            <div className="flex items-start gap-4">
+              {/* Número del paso */}
+              <div className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center relative z-10 ${
+                isContractSigned
+                  ? 'bg-blue-500/20 border-2 border-blue-500'
+                  : 'bg-zinc-800 border-2 border-zinc-700'
+              }`}>
+                <span className={`text-sm font-bold ${
+                  isContractSigned ? 'text-blue-400' : 'text-zinc-500'
+                }`}>3</span>
+              </div>
+              
+              {/* Contenido */}
+              <div className="flex-1 min-w-0">
+                <div className="mb-2">
+                  <h3 className="text-lg font-semibold text-zinc-100">
+                    Paso 3: Realiza tu Pago
+                  </h3>
+                  <p className="text-sm text-zinc-400">
+                    Realiza el pago de tu anticipo y confirma tu compromiso con el estudio
+                  </p>
+                </div>
+                <ZenCard>
+                  <div className="p-6">
+                    {!isContractSigned && (
+                      <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                        <p className="text-sm text-amber-400">
+                          ⚠️ Primero debes firmar el contrato para continuar con el pago
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-sm text-zinc-300 mb-4">
+                      Consulta los datos bancarios del estudio para realizar tu transferencia SPEI.
+                    </p>
+                    <ZenButton
+                      onClick={handleShowBankInfo}
+                      disabled={loadingBankInfo || !isContractSigned}
+                      variant={isContractSigned ? "primary" : "outline"}
+                      className="w-full"
+                    >
+                      {loadingBankInfo ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Cargando...
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="h-4 w-4 mr-2" />
+                          Ver Cuenta CLABE para Pago
+                        </>
+                      )}
+                    </ZenButton>
+                    {isContractSigned && (
+                      <p className="text-xs text-zinc-500 mt-3 text-center">
+                        💡 Recuerda guardar tu comprobante de pago
+                      </p>
+                    )}
+                  </div>
+                </ZenCard>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Vista de Contrato */}
