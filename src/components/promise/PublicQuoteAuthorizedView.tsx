@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { Loader2, CheckCircle2, Building2 } from 'lucide-react';
+import { useState, useCallback, useEffect } from 'react';
+import { Loader2, CheckCircle2, Building2, Copy, Check } from 'lucide-react';
 import { ZenButton, ZenDialog, ZenCard } from '@/components/ui/zen';
 import { PublicPromiseDataForm } from '@/components/shared/promise/PublicPromiseDataForm';
 import { PublicContractView } from './PublicContractView';
@@ -59,6 +59,7 @@ export function PublicQuoteAuthorizedView({
   const [showBankInfoModal, setShowBankInfoModal] = useState(false);
   const [bankInfo, setBankInfo] = useState<{ banco?: string | null; titular?: string | null; clabe?: string | null } | null>(null);
   const [loadingBankInfo, setLoadingBankInfo] = useState(false);
+  const [copiedClabe, setCopiedClabe] = useState(false);
 
   // Estado separado para el contrato (se actualiza independientemente)
   const [contractData, setContractData] = useState<{
@@ -99,6 +100,29 @@ export function PublicQuoteAuthorizedView({
   // Obtener condiciones comerciales (priorizar desde contract, sino desde cotizacion directamente)
   // Esto cubre el caso cuando el contrato fue generado manualmente por el estudio
   const condicionesComerciales = currentContract?.condiciones_comerciales || null;
+
+  // Cargar información bancaria automáticamente cuando el contrato esté firmado
+  useEffect(() => {
+    if (isContractSigned && !bankInfo && !loadingBankInfo && studio.id) {
+      setLoadingBankInfo(true);
+      obtenerInfoBancariaStudio(studio.id)
+        .then((result) => {
+          if (result.success && result.data) {
+            setBankInfo({
+              banco: result.data.banco,
+              titular: result.data.titular,
+              clabe: result.data.clabe,
+            });
+          }
+        })
+        .catch((error) => {
+          console.error('[PublicQuoteAuthorizedView] Error loading bank info:', error);
+        })
+        .finally(() => {
+          setLoadingBankInfo(false);
+        });
+    }
+  }, [isContractSigned, bankInfo, loadingBankInfo, studio.id]);
 
   const handleShowBankInfo = useCallback(async () => {
     if (!studio.id) {
@@ -410,41 +434,124 @@ export function PublicQuoteAuthorizedView({
                 </div>
                 <ZenCard>
                   <div className="p-6">
-                    {!isContractSigned && (
-                      <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                        <p className="text-sm text-amber-400">
-                          ⚠️ Primero debes firmar el contrato para continuar con el pago
+                    {!isContractSigned ? (
+                      <>
+                        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                          <p className="text-sm text-amber-400">
+                            ⚠️ Primero debes firmar el contrato para continuar con el pago
+                          </p>
+                        </div>
+                        <p className="text-sm text-zinc-300 mb-4">
+                          Consulta los datos bancarios del estudio para realizar tu transferencia SPEI.
                         </p>
-                      </div>
-                    )}
-                    <p className="text-sm text-zinc-300 mb-4">
-                      Consulta los datos bancarios del estudio para realizar tu transferencia SPEI.
-                    </p>
-                    <ZenButton
-                      onClick={handleShowBankInfo}
-                      disabled={loadingBankInfo || !isContractSigned}
-                      variant={isContractSigned ? "primary" : "outline"}
-                      className="w-full"
-                    >
-                      {loadingBankInfo ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Cargando...
-                        </>
-                      ) : (
-                        <>
-                          <Building2 className="h-4 w-4 mr-2" />
-                          Ver Cuenta CLABE para Pago
-                        </>
-                      )}
-                    </ZenButton>
-                    {isContractSigned && (
-                      <p className="text-xs text-zinc-500 mt-3 text-center">
-                        💡 Recuerda guardar tu comprobante de pago
-                      </p>
+                        <ZenButton
+                          onClick={handleShowBankInfo}
+                          disabled={loadingBankInfo}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {loadingBankInfo ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                              Cargando...
+                            </>
+                          ) : (
+                            <>
+                              <Building2 className="h-4 w-4 mr-2" />
+                              Ver Cuenta CLABE para Pago
+                            </>
+                          )}
+                        </ZenButton>
+                      </>
+                    ) : (
+                      <>
+                        {loadingBankInfo ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="h-5 w-5 animate-spin text-blue-400 mr-2" />
+                            <p className="text-sm text-zinc-400">Cargando información bancaria...</p>
+                          </div>
+                        ) : bankInfo ? (
+                          <div className="space-y-4">
+                            <p className="text-sm text-zinc-400">
+                              Datos bancarios de <span className="text-zinc-200 font-medium">{studio.studio_name}</span>
+                            </p>
+
+                            <div className="space-y-3 text-sm">
+                              {bankInfo.banco && (
+                                <div>
+                                  <span className="text-zinc-400">Banco:</span>
+                                  <p className="text-zinc-100 font-medium mt-1">{bankInfo.banco}</p>
+                                </div>
+                              )}
+
+                              {bankInfo.titular && (
+                                <div>
+                                  <span className="text-zinc-400">Titular:</span>
+                                  <p className="text-zinc-100 font-medium mt-1">{bankInfo.titular}</p>
+                                </div>
+                              )}
+
+                              {bankInfo.clabe ? (
+                                <div>
+                                  <span className="text-zinc-400">CLABE Interbancaria:</span>
+                                  <div className="flex items-center gap-2 mt-1 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
+                                    <p className="text-zinc-100 font-mono text-base font-bold flex-1">
+                                      {bankInfo.clabe}
+                                    </p>
+                                    <ZenButton
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        navigator.clipboard.writeText(bankInfo.clabe!);
+                                        setCopiedClabe(true);
+                                        toast.success('CLABE copiada al portapapeles');
+                                        setTimeout(() => setCopiedClabe(false), 2000);
+                                      }}
+                                      className="shrink-0"
+                                    >
+                                      {copiedClabe ? (
+                                        <Check className="h-4 w-4 text-emerald-400" />
+                                      ) : (
+                                        <Copy className="h-4 w-4" />
+                                      )}
+                                    </ZenButton>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                                  <p className="text-sm text-yellow-400">
+                                    Información bancaria no disponible. Contacta al estudio.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {bankInfo.clabe && (
+                              <div className="pt-4 border-t border-zinc-800">
+                                <p className="text-xs text-zinc-500">
+                                  💡 Usa esta CLABE para realizar transferencias SPEI. Recuerda guardar tu comprobante de pago.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                            <p className="text-sm text-yellow-400">
+                              No se pudo cargar la información bancaria. Contacta al estudio.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </ZenCard>
+                {isContractSigned && (
+                  <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                    <p className="text-sm text-blue-400 text-center">
+                      ✅ Confirmado tu pago por el estudio tendrás acceso a tu portal de cliente
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
