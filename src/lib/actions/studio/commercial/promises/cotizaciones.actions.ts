@@ -1597,11 +1597,13 @@ export async function pasarACierre(
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Pasar cotización a cierre
+      // 1. Pasar cotización a cierre y marcar como seleccionada por prospecto
       await tx.studio_cotizaciones.update({
         where: { id: cotizacionId },
         data: {
           status: 'en_cierre',
+          selected_by_prospect: true,
+          selected_at: new Date(),
           updated_at: new Date(),
         },
       });

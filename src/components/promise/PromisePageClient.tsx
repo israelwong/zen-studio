@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Calendar } from 'lucide-react';
 import { PromiseHeroSection } from './PromiseHeroSection';
 import { CotizacionesSectionRealtime } from './CotizacionesSectionRealtime';
@@ -10,6 +10,8 @@ import { PortafoliosCard } from './PortafoliosCard';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
 import { PublicQuoteAuthorizedView } from './PublicQuoteAuthorizedView';
 import { usePromiseSettingsRealtime } from '@/hooks/usePromiseSettingsRealtime';
+import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
+import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 
 interface PromiseShareSettings {
@@ -104,10 +106,39 @@ export function PromisePageClient({
   promiseId,
 }: PromisePageClientProps) {
   const [shareSettings, setShareSettings] = useState<PromiseShareSettings>(initialShareSettings);
+  const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
 
   const handleSettingsUpdated = useCallback((settings: PromiseShareSettings) => {
     setShareSettings(settings);
   }, []);
+
+  // Sincronizar cotizaciones cuando cambian las iniciales (SSR)
+  useEffect(() => {
+    setCotizaciones(initialCotizaciones);
+  }, [initialCotizaciones]);
+
+  // Función para recargar cotizaciones cuando hay cambios en tiempo real
+  const reloadCotizaciones = useCallback(async () => {
+    try {
+      const result = await getPublicPromiseData(studioSlug, promiseId);
+      if (result.success && result.data?.cotizaciones) {
+        setCotizaciones(result.data.cotizaciones);
+      }
+    } catch (error) {
+      console.error('[PromisePageClient] Error en reloadCotizaciones:', error);
+    }
+  }, [studioSlug, promiseId]);
+
+  // Escuchar cambios en tiempo real de cotizaciones
+  useCotizacionesRealtime({
+    studioSlug,
+    promiseId,
+    onCotizacionInserted: reloadCotizaciones,
+    onCotizacionUpdated: reloadCotizaciones,
+    onCotizacionDeleted: (cotizacionId) => {
+      setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
+    },
+  });
 
   usePromiseSettingsRealtime({
     studioSlug,
@@ -126,14 +157,14 @@ export function PromisePageClient({
 
   // Detectar si hay cotización autorizada (en_cierre, contract_generated, contract_signed)
   const cotizacionAutorizada = useMemo(() => {
-    return initialCotizaciones.find(
+    return cotizaciones.find(
       (cot) =>
         cot.selected_by_prospect &&
         (cot.status === 'en_cierre' ||
           cot.status === 'contract_generated' ||
           cot.status === 'contract_signed')
     );
-  }, [initialCotizaciones]);
+  }, [cotizaciones]);
 
   // Filtrar condiciones comerciales según settings en tiempo real
   const condicionesFiltradas = useMemo(() => {
@@ -252,9 +283,9 @@ export function PromisePageClient({
             )}
 
             {/* Cotizaciones personalizadas */}
-            {initialCotizaciones.length > 0 && (
+            {cotizaciones.length > 0 && (
               <CotizacionesSectionRealtime
-                initialCotizaciones={initialCotizaciones}
+                initialCotizaciones={cotizaciones}
                 promiseId={promiseId}
                 studioSlug={studioSlug}
                 condicionesComerciales={condicionesFiltradas}
@@ -297,9 +328,9 @@ export function PromisePageClient({
             )}
 
             {/* Comparador */}
-            {(initialCotizaciones.length + (shareSettings.show_packages ? paquetes.length : 0) >= 2) && (
+            {(cotizaciones.length + (shareSettings.show_packages ? paquetes.length : 0) >= 2) && (
               <ComparadorButton
-                cotizaciones={initialCotizaciones}
+                cotizaciones={cotizaciones}
                 paquetes={shareSettings.show_packages ? paquetes : []}
                 promiseId={promiseId}
                 studioSlug={studioSlug}

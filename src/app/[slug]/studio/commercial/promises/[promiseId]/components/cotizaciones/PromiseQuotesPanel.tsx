@@ -172,13 +172,16 @@ export function PromiseQuotesPanel({
   }, [loadCotizaciones]);
 
   // Suscribirse a cambios en tiempo real de cotizaciones
+  // NOTA: Ignoramos eventos de studio_cotizaciones_cierre (contratos, pagos, etc.)
+  // porque esos cambios solo afectan al componente PromiseClosingProcessCard
   useCotizacionesRealtime({
     studioSlug,
     promiseId: promiseId || null,
+    ignoreCierreEvents: true, // Ignorar eventos de proceso de cierre (contratos, pagos, etc.)
     onCotizacionInserted: () => {
       loadCotizaciones();
     },
-    onCotizacionUpdated: (cotizacionId) => {
+    onCotizacionUpdated: () => {
       loadCotizaciones();
     },
     onCotizacionDeleted: (cotizacionId) => {

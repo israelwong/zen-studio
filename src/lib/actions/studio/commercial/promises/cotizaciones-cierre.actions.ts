@@ -352,6 +352,161 @@ export async function obtenerDatosContratoCierre(
     };
   }
 }
+
+/**
+ * Obtener solo datos de condiciones comerciales para actualización local
+ */
+export async function obtenerDatosCondicionesCierre(
+  studioSlug: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    condiciones_comerciales_id?: string | null;
+    condiciones_comerciales_definidas?: boolean;
+    condiciones_comerciales?: {
+      id: string;
+      name: string;
+      description?: string | null;
+      discount_percentage?: number | null;
+      advance_type?: string;
+      advance_percentage?: number | null;
+      advance_amount?: number | null;
+    } | null;
+  };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotización no encontrada' };
+    }
+
+    const registro = await prisma.studio_cotizaciones_cierre.findUnique({
+      where: { cotizacion_id: cotizacionId },
+      select: {
+        condiciones_comerciales_id: true,
+        condiciones_comerciales_definidas: true,
+        condiciones_comerciales: true,
+      },
+    });
+
+    if (!registro) {
+      return { success: false, error: 'Registro de cierre no encontrado' };
+    }
+
+    return {
+      success: true,
+      data: {
+        condiciones_comerciales_id: registro.condiciones_comerciales_id,
+        condiciones_comerciales_definidas: registro.condiciones_comerciales_definidas,
+        condiciones_comerciales: registro.condiciones_comerciales ? {
+          id: registro.condiciones_comerciales.id,
+          name: registro.condiciones_comerciales.name,
+          description: registro.condiciones_comerciales.description,
+          discount_percentage: registro.condiciones_comerciales.discount_percentage ? Number(registro.condiciones_comerciales.discount_percentage) : null,
+          advance_type: registro.condiciones_comerciales.advance_type || undefined,
+          advance_percentage: registro.condiciones_comerciales.advance_percentage ? Number(registro.condiciones_comerciales.advance_percentage) : null,
+          advance_amount: registro.condiciones_comerciales.advance_amount ? Number(registro.condiciones_comerciales.advance_amount) : null,
+        } : null,
+      },
+    };
+  } catch (error) {
+    console.error('[obtenerDatosCondicionesCierre] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener datos de condiciones',
+    };
+  }
+}
+
+/**
+ * Obtener solo datos de pago para actualización local
+ */
+export async function obtenerDatosPagoCierre(
+  studioSlug: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    pago_registrado?: boolean;
+    pago_concepto?: string | null;
+    pago_monto?: number | null;
+    pago_fecha?: Date | null;
+    pago_metodo_id?: string | null;
+  };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotización no encontrada' };
+    }
+
+    const registro = await prisma.studio_cotizaciones_cierre.findUnique({
+      where: { cotizacion_id: cotizacionId },
+      select: {
+        pago_registrado: true,
+        pago_concepto: true,
+        pago_monto: true,
+        pago_fecha: true,
+        pago_metodo_id: true,
+      },
+    });
+
+    if (!registro) {
+      return { success: false, error: 'Registro de cierre no encontrado' };
+    }
+
+    return {
+      success: true,
+      data: {
+        pago_registrado: registro.pago_registrado,
+        pago_concepto: registro.pago_concepto,
+        pago_monto: registro.pago_monto ? Number(registro.pago_monto) : null,
+        pago_fecha: registro.pago_fecha,
+        pago_metodo_id: registro.pago_metodo_id,
+      },
+    };
+  } catch (error) {
+    console.error('[obtenerDatosPagoCierre] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener datos de pago',
+    };
+  }
+}
+
 /**
  * Quitar condiciones comerciales del proceso de cierre
  */

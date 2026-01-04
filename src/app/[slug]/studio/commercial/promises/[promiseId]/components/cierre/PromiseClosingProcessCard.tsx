@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle, Loader2, XCircle, Eye, MoreVertical, Edit2, HelpCircle, Share2 } from 'lucide-react';
 import {
@@ -18,11 +18,14 @@ import {
 import { ContactEventFormModal } from '@/components/shared/contact-info';
 import { cancelarCierre, autorizarCotizacion } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { autorizarCotizacionLegacy } from '@/lib/actions/studio/commercial/promises/authorize-legacy.actions';
-import { obtenerRegistroCierre, quitarCondicionesCierre, obtenerDatosContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
+import { obtenerRegistroCierre, quitarCondicionesCierre, obtenerDatosContratoCierre, obtenerDatosCondicionesCierre, obtenerDatosPagoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import { CondicionesComercialeSelectorSimpleModal } from '../condiciones-comerciales/CondicionesComercialeSelectorSimpleModal';
 import { ContractTemplateSimpleSelectorModal } from '../contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from '../contratos/ContractPreviewForPromiseModal';
 import { ContratoGestionCard } from './ContratoGestionCard';
+import { ContratoSection } from './ContratoSection';
+import { CondicionesSection } from './CondicionesSection';
+import { PagoSection } from './PagoSection';
 import { RegistroPagoModal } from './RegistroPagoModal';
 import { actualizarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import type { ContractTemplate } from '@/types/contracts';
@@ -33,6 +36,7 @@ import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promise
 import { toast } from 'sonner';
 import { ClosingProcessInfoModal } from './ClosingProcessInfoModal';
 import { PromiseShareOptionsModal } from '../PromiseShareOptionsModal';
+import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 
 interface PromiseClosingProcessCardProps {
   cotizacion: CotizacionListItem;
@@ -88,18 +92,10 @@ export function PromiseClosingProcessCard({
   const [showShareOptionsModal, setShowShareOptionsModal] = useState(false);
   const [localPromiseData, setLocalPromiseData] = useState(promiseData);
 
-  // Estado del registro de cierre
-  const [registroCierre, setRegistroCierre] = useState<{
+  // Estados separados para cada sección (evita re-renders completos)
+  const [condicionesData, setCondicionesData] = useState<{
     condiciones_comerciales_id?: string | null;
     condiciones_comerciales_definidas?: boolean;
-    contract_template_id?: string | null;
-    contract_version?: number;
-    contrato_definido?: boolean;
-    pago_registrado?: boolean;
-    pago_concepto?: string | null;
-    pago_monto?: number | null;
-    pago_fecha?: Date | null;
-    pago_metodo_id?: string | null;
     condiciones_comerciales?: {
       id: string;
       name: string;
@@ -109,6 +105,13 @@ export function PromiseClosingProcessCard({
       advance_percentage?: number | null;
       advance_amount?: number | null;
     } | null;
+  } | null>(null);
+
+  const [contractData, setContractData] = useState<{
+    contract_template_id?: string | null;
+    contract_content?: string | null;
+    contract_version?: number;
+    contrato_definido?: boolean;
     ultima_version_info?: {
       version: number;
       change_reason: string | null;
@@ -116,6 +119,15 @@ export function PromiseClosingProcessCard({
       created_at: Date;
     } | null;
   } | null>(null);
+
+  const [pagoData, setPagoData] = useState<{
+    pago_registrado?: boolean;
+    pago_concepto?: string | null;
+    pago_monto?: number | null;
+    pago_fecha?: Date | null;
+    pago_metodo_id?: string | null;
+  } | null>(null);
+
   const [loadingRegistro, setLoadingRegistro] = useState(true);
 
   // Sincronizar promiseData local con prop
@@ -123,17 +135,35 @@ export function PromiseClosingProcessCard({
     setLocalPromiseData(promiseData);
   }, [promiseData]);
 
-  // Cargar registro de cierre
-  useEffect(() => {
-    loadRegistroCierre();
-  }, [cotizacion.id]);
-
   const loadRegistroCierre = async () => {
     setLoadingRegistro(true);
     try {
       const result = await obtenerRegistroCierre(studioSlug, cotizacion.id);
       if (result.success && result.data) {
-        setRegistroCierre(result.data as any);
+        const data = result.data as any;
+
+        // Separar datos en estados independientes
+        setCondicionesData({
+          condiciones_comerciales_id: data.condiciones_comerciales_id,
+          condiciones_comerciales_definidas: data.condiciones_comerciales_definidas,
+          condiciones_comerciales: data.condiciones_comerciales,
+        });
+
+        setContractData({
+          contract_template_id: data.contract_template_id,
+          contract_content: data.contract_content,
+          contract_version: data.contract_version,
+          contrato_definido: data.contrato_definido,
+          ultima_version_info: data.ultima_version_info,
+        });
+
+        setPagoData({
+          pago_registrado: data.pago_registrado,
+          pago_concepto: data.pago_concepto,
+          pago_monto: data.pago_monto,
+          pago_fecha: data.pago_fecha,
+          pago_metodo_id: data.pago_metodo_id,
+        });
       }
     } catch (error) {
       console.error('[loadRegistroCierre] Error:', error);
@@ -141,6 +171,49 @@ export function PromiseClosingProcessCard({
       setLoadingRegistro(false);
     }
   };
+
+  // Actualizar solo los datos del contrato localmente (sin recargar todo el registro)
+  const updateContractLocally = useCallback(async () => {
+    try {
+      const result = await obtenerDatosContratoCierre(studioSlug, cotizacion.id);
+      if (result.success && result.data) {
+        setContractData({
+          contract_version: result.data.contract_version,
+          contract_template_id: result.data.contract_template_id,
+          contract_content: result.data.contract_content,
+          contrato_definido: result.data.contrato_definido,
+          ultima_version_info: result.data.ultima_version_info,
+        });
+      }
+    } catch (error) {
+      console.error('[updateContractLocally] Error:', error);
+    }
+  }, [studioSlug, cotizacion.id]);
+
+  // Cargar registro de cierre
+  useEffect(() => {
+    loadRegistroCierre();
+  }, [cotizacion.id]);
+
+  // Escuchar cambios en tiempo real del proceso de cierre (contratos, pagos, etc.)
+  // Solo actualizar localmente sin recargar todo el componente
+  useCotizacionesRealtime({
+    studioSlug,
+    promiseId: promiseId || null,
+    ignoreCierreEvents: false, // Queremos escuchar eventos de cierre
+    onCotizacionUpdated: useCallback((cotizacionId: string, payload?: unknown) => {
+      // Solo actualizar si es la cotización actual y es un evento de cierre (contrato)
+      if (cotizacionId === cotizacion.id) {
+        const p = payload as any;
+        const isCierreEvent = p?.table === 'studio_cotizaciones_cierre' || p?.payload?.table === 'studio_cotizaciones_cierre';
+
+        if (isCierreEvent) {
+          // Solo actualizar el contrato localmente, no recargar todo
+          updateContractLocally();
+        }
+      }
+    }, [cotizacion.id, updateContractLocally]),
+  });
 
   const handleCancelarCierre = async () => {
     setIsCancelling(true);
@@ -162,33 +235,19 @@ export function PromiseClosingProcessCard({
     }
   };
 
-  const handleCondicionesSuccess = () => {
-    loadRegistroCierre();
-  };
-
-  // Actualizar solo los datos del contrato localmente (sin recargar todo el registro)
-  const updateContractLocally = async () => {
-    try {
-      const result = await obtenerDatosContratoCierre(studioSlug, cotizacion.id);
-      if (result.success && result.data) {
-        setRegistroCierre(prev => prev ? {
-          ...prev,
-          contract_version: result.data!.contract_version,
-          contract_template_id: result.data!.contract_template_id,
-          contract_content: result.data!.contract_content,
-          contrato_definido: result.data!.contrato_definido,
-          ultima_version_info: result.data!.ultima_version_info,
-        } : null);
-      }
-    } catch (error) {
-      console.error('[updateContractLocally] Error:', error);
+  const handleCondicionesSuccess = useCallback(async () => {
+    const result = await obtenerDatosCondicionesCierre(studioSlug, cotizacion.id);
+    if (result.success && result.data) {
+      setCondicionesData(result.data);
     }
-  };
+  }, [studioSlug, cotizacion.id]);
 
-  const handleContratoSuccess = () => {
-    // Actualizar solo el contrato localmente en lugar de recargar todo
-    updateContractLocally();
-  };
+  const handleContratoSuccess = useCallback(async () => {
+    const result = await obtenerDatosContratoCierre(studioSlug, cotizacion.id);
+    if (result.success && result.data) {
+      setContractData(result.data);
+    }
+  }, [studioSlug, cotizacion.id]);
 
   const handleTemplateSelected = (template: ContractTemplate) => {
     setSelectedTemplate(template);
@@ -213,15 +272,40 @@ export function PromiseClosingProcessCard({
       toast.success('Plantilla de contrato seleccionada');
       setShowContratoPreview(false);
       setSelectedTemplate(null);
-      loadRegistroCierre();
+      // Actualizar solo el contrato localmente, no recargar todo el registro
+      updateContractLocally();
     } else {
       toast.error(result.error || 'Error al guardar plantilla');
     }
   };
 
-  const handlePagoSuccess = () => {
-    loadRegistroCierre();
-  };
+  const handlePagoSuccess = useCallback(async () => {
+    const result = await obtenerDatosPagoCierre(studioSlug, cotizacion.id);
+    if (result.success && result.data) {
+      setPagoData(result.data);
+    }
+  }, [studioSlug, cotizacion.id]);
+
+  // Memoizar callbacks para evitar re-renders de componentes hijos
+  const handleDefinirCondiciones = useCallback(() => {
+    setShowCondicionesModal(true);
+  }, []);
+
+  const handleContratoButtonClick = useCallback(() => {
+    if (contractData?.contract_template_id) {
+      setShowContratoOptionsModal(true);
+    } else {
+      setShowContratoModal(true);
+    }
+  }, [contractData?.contract_template_id]);
+
+  const handleCloseContratoOptions = useCallback(() => {
+    setShowContratoOptionsModal(false);
+  }, []);
+
+  const handleRegistrarPagoClick = useCallback(() => {
+    setShowPagoModal(true);
+  }, []);
 
   const handleQuitarCondiciones = async () => {
     setIsRemovingCondiciones(true);
@@ -229,7 +313,11 @@ export function PromiseClosingProcessCard({
       const result = await quitarCondicionesCierre(studioSlug, cotizacion.id);
       if (result.success) {
         toast.success('Condiciones comerciales removidas');
-        loadRegistroCierre();
+        // Actualizar solo condiciones
+        const condiciones = await obtenerDatosCondicionesCierre(studioSlug, cotizacion.id);
+        if (condiciones.success && condiciones.data) {
+          setCondicionesData(condiciones.data);
+        }
       } else {
         toast.error(result.error || 'Error al quitar condiciones');
       }
@@ -335,7 +423,7 @@ export function PromiseClosingProcessCard({
     if (isClienteNuevo) {
       // Caso 1 y 2: Contacto directo o Leadform
       // Debe tener condiciones comerciales (seleccionadas por prospecto)
-      if (!cotizacion.condiciones_comerciales_id && !registroCierre?.condiciones_comerciales_id) {
+      if (!cotizacion.condiciones_comerciales_id && !condicionesData?.condiciones_comerciales_id) {
         errors.push('La cotización debe tener condiciones comerciales asociadas');
       }
 
@@ -352,7 +440,7 @@ export function PromiseClosingProcessCard({
       }
 
       // Pago es opcional (warning)
-      if (!registroCierre?.pago_registrado) {
+      if (!pagoData?.pago_registrado) {
         warnings.push('No se ha registrado un pago inicial. Se creará como promesa de pago.');
       }
     } else {
@@ -365,8 +453,8 @@ export function PromiseClosingProcessCard({
       }
 
       // Si quiere generar contrato pero no hay condiciones comerciales
-      const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
-      if (generarContrato && !registroCierre?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
+      const generarContrato = contractData?.contrato_definido && contractData?.contract_template_id;
+      if (generarContrato && !condicionesData?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
         errors.push('Se requieren condiciones comerciales para generar el contrato');
       }
 
@@ -376,12 +464,12 @@ export function PromiseClosingProcessCard({
       }
 
       // Condiciones comerciales son opcionales (warning)
-      if (!registroCierre?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
+      if (!condicionesData?.condiciones_comerciales_id && !cotizacion.condiciones_comerciales_id) {
         warnings.push('No se han definido condiciones comerciales.');
       }
 
       // Pago es opcional (warning)
-      if (!registroCierre?.pago_registrado) {
+      if (!pagoData?.pago_registrado) {
         warnings.push('No se ha registrado un pago inicial. Se creará como promesa de pago.');
       }
     }
@@ -396,8 +484,8 @@ export function PromiseClosingProcessCard({
   // Generar mensaje de confirmación según caso de uso
   function getConfirmMessage(): { title: string; description: React.ReactNode } {
     const isClienteNuevo = cotizacion.selected_by_prospect === true;
-    const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
-    const tienePago = registroCierre?.pago_registrado;
+    const generarContrato = contractData?.contrato_definido && contractData?.contract_template_id;
+    const tienePago = pagoData?.pago_registrado;
 
     if (isClienteNuevo) {
       return {
@@ -481,18 +569,19 @@ export function PromiseClosingProcessCard({
     try {
       // Calcular monto total con descuentos
       let montoTotal = cotizacion.price;
-      if (registroCierre?.condiciones_comerciales?.discount_percentage) {
-        const descuento = cotizacion.price * (registroCierre.condiciones_comerciales.discount_percentage / 100);
+      if (condicionesData?.condiciones_comerciales?.discount_percentage) {
+        const descuento = cotizacion.price * (condicionesData.condiciones_comerciales.discount_percentage / 100);
         montoTotal = cotizacion.price - descuento;
       }
 
+      const isClienteNuevo = cotizacion.selected_by_prospect === true;
       if (isClienteNuevo) {
         // FLUJO DIGITAL: No crea evento, cambia a contract_pending
         const result = await autorizarCotizacion({
           studio_slug: studioSlug,
           cotizacion_id: cotizacion.id,
           promise_id: promiseId,
-          condiciones_comerciales_id: registroCierre?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id || '',
+          condiciones_comerciales_id: condicionesData?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id || '',
           monto: montoTotal,
         });
 
@@ -504,8 +593,8 @@ export function PromiseClosingProcessCard({
         }
       } else {
         // FLUJO LEGACY: Crea evento inmediatamente
-        const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
-        const condicionesComercialesId = registroCierre?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id;
+        const generarContrato = contractData?.contrato_definido && contractData?.contract_template_id;
+        const condicionesComercialesId = condicionesData?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id;
 
         // Validar que haya condiciones comerciales si se requiere generar contrato
         if (generarContrato && !condicionesComercialesId) {
@@ -522,15 +611,15 @@ export function PromiseClosingProcessCard({
           promise_id: promiseId,
           condiciones_comerciales_id: condicionesIdFinal,
           monto: montoTotal,
-          registrar_pago: registroCierre?.pago_registrado || false,
-          pago_data: registroCierre?.pago_registrado && registroCierre?.pago_monto && registroCierre?.pago_fecha && registroCierre?.pago_metodo_id ? {
-            concepto: registroCierre.pago_concepto || 'Anticipo',
-            monto: registroCierre.pago_monto,
-            fecha: new Date(registroCierre.pago_fecha),
-            payment_method_id: registroCierre.pago_metodo_id,
+          registrar_pago: pagoData?.pago_registrado || false,
+          pago_data: pagoData?.pago_registrado && pagoData?.pago_monto && pagoData?.pago_fecha && pagoData?.pago_metodo_id ? {
+            concepto: pagoData.pago_concepto || 'Anticipo',
+            monto: pagoData.pago_monto,
+            fecha: new Date(pagoData.pago_fecha),
+            payment_method_id: pagoData.pago_metodo_id,
           } : undefined,
           generar_contrato: !!generarContrato,
-          contract_template_id: generarContrato ? (registroCierre?.contract_template_id || undefined) : undefined,
+          contract_template_id: generarContrato ? (contractData?.contract_template_id || undefined) : undefined,
         });
 
         if (result.success && result.data?.eventId) {
@@ -565,9 +654,9 @@ export function PromiseClosingProcessCard({
   const hasCondiciones = !!cotizacion.condiciones_comerciales_id;
 
   const getCondicionTexto = () => {
-    if (!registroCierre?.condiciones_comerciales) return 'No definidas';
+    if (!condicionesData?.condiciones_comerciales) return 'No definidas';
 
-    const condicion = registroCierre.condiciones_comerciales;
+    const condicion = condicionesData.condiciones_comerciales;
     const partes: string[] = [];
 
     // Nombre base
@@ -599,105 +688,6 @@ export function PromiseClosingProcessCard({
   };
 
   const condicionTexto = getCondicionTexto();
-
-  // Determinar estado del contrato
-  const isClienteNuevo = cotizacion.selected_by_prospect === true;
-
-  let contratoIcon: React.ReactNode;
-  let contratoEstado: string;
-  let contratoColor: string;
-  let contratoBoton: string | null = null;
-
-  if (isClienteNuevo) {
-    // Para cliente nuevo, verificar primero el registro de cierre para determinar el estado real
-    const tieneContratoGenerado = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
-
-    switch (cotizacion.status) {
-      case 'contract_pending':
-        contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
-        contratoEstado = 'Pendiente de confirmación del cliente';
-        contratoColor = 'text-amber-400';
-        contratoBoton = null; // No editable en flujo automático
-        break;
-      case 'contract_generated':
-        contratoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
-        contratoEstado = 'Generado, esperando firma del cliente';
-        contratoColor = 'text-blue-400';
-        contratoBoton = null; // No editable en flujo automático
-        break;
-      case 'contract_signed':
-        contratoIcon = <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />;
-        contratoEstado = 'Firmado por el cliente';
-        contratoColor = 'text-emerald-400';
-        contratoBoton = null; // No editable en flujo automático
-        break;
-      case 'en_cierre':
-        // Cuando está en_cierre y no hay contrato generado, está pendiente de generación
-        // El estudio puede generar el contrato manualmente
-        if (tieneContratoGenerado) {
-          // Si hay contrato generado pero el status sigue en en_cierre, mostrar estado del contrato
-          contratoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
-          contratoEstado = 'Generado, esperando firma del cliente';
-          contratoColor = 'text-blue-400';
-          contratoBoton = 'Editar'; // Permitir editar si ya está generado
-        } else {
-          // No hay contrato generado aún, está pendiente de generación por el estudio
-          contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
-          contratoEstado = 'Pendiente de generación';
-          contratoColor = 'text-amber-400';
-          contratoBoton = 'Generar'; // Permitir generar manualmente
-        }
-        break;
-      default:
-        // Para otros estados, verificar si hay contrato generado
-        if (tieneContratoGenerado) {
-          contratoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
-          contratoEstado = 'Generado, esperando firma del cliente';
-          contratoColor = 'text-blue-400';
-          contratoBoton = 'Editar'; // Permitir editar si ya está generado
-        } else {
-          contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
-          contratoEstado = 'Pendiente de generación';
-          contratoColor = 'text-amber-400';
-          contratoBoton = 'Generar'; // Permitir generar manualmente
-        }
-    }
-  } else {
-    // Cliente Legacy - Manual
-    if (registroCierre?.contrato_definido && registroCierre?.contract_template_id) {
-      contratoIcon = <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />;
-      contratoEstado = ''; // No mostrar texto, la plantilla se muestra abajo
-      contratoColor = 'text-emerald-400';
-      contratoBoton = 'Editar';
-    } else {
-      contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
-      contratoEstado = 'No definido';
-      contratoColor = 'text-amber-400';
-      contratoBoton = 'Definir';
-    }
-  }
-
-  // Determinar estado del pago
-  let pagoIcon: React.ReactNode;
-  let pagoEstado: string;
-  let pagoColor: string;
-
-  // Si hay concepto y monto, es pago registrado
-  if (registroCierre?.pago_concepto && registroCierre?.pago_monto) {
-    pagoIcon = <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />;
-    pagoEstado = `${registroCierre.pago_concepto}: $${registroCierre.pago_monto.toLocaleString('es-MX')}`;
-    pagoColor = 'text-emerald-400';
-  } else if (registroCierre?.pago_registrado === false) {
-    // Si pago_registrado es explícitamente false, es promesa de pago
-    pagoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
-    pagoEstado = 'Promesa de pago';
-    pagoColor = 'text-blue-400';
-  } else {
-    // Si no hay nada definido
-    pagoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
-    pagoEstado = 'No definido';
-    pagoColor = 'text-amber-400';
-  }
 
   if (isLoadingPromiseData) {
     return (
@@ -762,65 +752,14 @@ export function PromiseClosingProcessCard({
 
         <div className="space-y-2 mb-4">
           {/* CONDICIONES COMERCIALES */}
-          {registroCierre?.condiciones_comerciales_definidas && registroCierre?.condiciones_comerciales ? (
-            <CondicionesFinancierasResumen
-              precioBase={cotizacion.price}
-              condicion={registroCierre.condiciones_comerciales as any}
-              dropdownMenu={
-                <ZenDropdownMenu>
-                  <ZenDropdownMenuTrigger asChild>
-                    <button
-                      className="h-5 w-5 p-0 rounded hover:bg-zinc-700/50 transition-colors flex items-center justify-center"
-                      disabled={isRemovingCondiciones}
-                    >
-                      <MoreVertical className="h-3.5 w-3.5 text-zinc-400" />
-                    </button>
-                  </ZenDropdownMenuTrigger>
-                  <ZenDropdownMenuContent align="end">
-                    <ZenDropdownMenuItem
-                      onClick={() => setShowCondicionesModal(true)}
-                      disabled={isRemovingCondiciones}
-                    >
-                      Cambiar condición comercial
-                    </ZenDropdownMenuItem>
-                    <ZenDropdownMenuItem
-                      onClick={handleQuitarCondiciones}
-                      disabled={isRemovingCondiciones}
-                      className="text-red-400 focus:text-red-300"
-                    >
-                      {isRemovingCondiciones ? 'Desasociando...' : 'Desasociar condición comercial'}
-                    </ZenDropdownMenuItem>
-                  </ZenDropdownMenuContent>
-                </ZenDropdownMenu>
-              }
-            />
-          ) : (
-            <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                {loadingRegistro ? (
-                  <Loader2 className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5 animate-spin" />
-                ) : (
-                  <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">
-                      Condiciones Comerciales
-                    </span>
-                    <button
-                      onClick={() => setShowCondicionesModal(true)}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      Definir
-                    </button>
-                  </div>
-                  <span className="text-sm text-zinc-300">
-                    No definidas
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+          <CondicionesSection
+            condicionesData={condicionesData}
+            loadingRegistro={loadingRegistro}
+            precioBase={cotizacion.price}
+            onDefinirClick={handleDefinirCondiciones}
+            onQuitarCondiciones={handleQuitarCondiciones}
+            isRemovingCondiciones={isRemovingCondiciones}
+          />
 
           {/* DATOS REQUERIDOS PARA CONTRATO */}
           <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-3">
@@ -907,110 +846,29 @@ export function PromiseClosingProcessCard({
           </div>
 
           {/* CONTRATO DIGITAL */}
-          <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              {loadingRegistro ? (
-                <Loader2 className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5 animate-spin" />
-              ) : (
-                contratoIcon
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">
-                    Contrato Digital
-                  </span>
-                  {contratoBoton && (
-                    <button
-                      onClick={() => {
-                        if (registroCierre?.contract_template_id) {
-                          setShowContratoOptionsModal(true);
-                        } else {
-                          setShowContratoModal(true);
-                        }
-                      }}
-                      className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      {contratoBoton}
-                    </button>
-                  )}
-                </div>
-                {!registroCierre?.contrato_definido && (
-                  <span className="text-sm text-zinc-300">
-                    No definido
-                  </span>
-                )}
-                {contratoEstado && (
-                  <div className={`text-xs ${!registroCierre?.contrato_definido ? 'mt-1' : ''} ${contratoColor}`}>
-                    <p>{contratoEstado}</p>
-                    {registroCierre?.contract_version && (
-                      <p className="text-zinc-500 mt-0.5">
-                        Versión {registroCierre.contract_version}
-                        {registroCierre.contract_version > 1 && registroCierre.ultima_version_info && (
-                          <>
-                            {registroCierre.ultima_version_info.change_type === 'AUTO_REGENERATE' &&
-                              registroCierre.ultima_version_info.change_reason?.includes('actualización de datos') && (
-                                <span className="ml-1">• Regenerado por actualización de datos del cliente</span>
-                              )}
-                            {registroCierre.ultima_version_info.change_type === 'MANUAL_EDIT' && (
-                              <span className="ml-1">• Editado manualmente por el estudio</span>
-                            )}
-                          </>
-                        )}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Card de gestión de contrato */}
-            {contratoBoton && registroCierre?.contract_template_id && (
-              <div className="mt-2 pt-2 border-t border-zinc-700/50">
-                <ContratoGestionCard
-                  studioSlug={studioSlug}
-                  promiseId={promiseId}
-                  cotizacionId={cotizacion.id}
-                  eventTypeId={eventTypeId || null}
-                  selectedTemplateId={registroCierre?.contract_template_id}
-                  condicionesComerciales={registroCierre?.condiciones_comerciales as any}
-                  promiseData={promiseData}
-                  onSuccess={handleContratoSuccess}
-                  showOptionsModal={showContratoOptionsModal}
-                  onCloseOptionsModal={() => setShowContratoOptionsModal(false)}
-                />
-              </div>
-            )}
-          </div>
+          <ContratoSection
+            contractData={contractData}
+            loadingRegistro={loadingRegistro}
+            cotizacionStatus={cotizacion.status}
+            isClienteNuevo={cotizacion.selected_by_prospect === true}
+            onContratoButtonClick={handleContratoButtonClick}
+            showContratoOptionsModal={showContratoOptionsModal}
+            onCloseContratoOptionsModal={handleCloseContratoOptions}
+            onContratoSuccess={handleContratoSuccess}
+            studioSlug={studioSlug}
+            promiseId={promiseId}
+            cotizacionId={cotizacion.id}
+            eventTypeId={eventTypeId || null}
+            condicionesComerciales={condicionesData?.condiciones_comerciales || null}
+            promiseData={localPromiseData}
+          />
 
           {/* PAGO INICIAL */}
-          <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              {loadingRegistro ? (
-                <Loader2 className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5 animate-spin" />
-              ) : (
-                pagoIcon
-              )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">
-                    Pago Inicial
-                  </span>
-                  <button
-                    onClick={() => setShowPagoModal(true)}
-                    className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
-                  >
-                    {registroCierre?.pago_registrado ? 'Editar' : 'Registrar'}
-                  </button>
-                </div>
-                {!registroCierre?.pago_registrado && (
-                  <span className="text-sm text-zinc-300">
-                    No registrado
-                  </span>
-                )}
-                <p className={`text-xs ${!registroCierre?.pago_registrado ? 'mt-1' : ''} ${pagoColor}`}>{pagoEstado}</p>
-              </div>
-            </div>
-          </div>
+          <PagoSection
+            pagoData={pagoData}
+            loadingRegistro={loadingRegistro}
+            onRegistrarPagoClick={handleRegistrarPagoClick}
+          />
         </div>
 
         {/* CTAs */}
@@ -1079,7 +937,7 @@ export function PromiseClosingProcessCard({
         onClose={() => setShowCondicionesModal(false)}
         studioSlug={studioSlug}
         cotizacionId={cotizacion.id}
-        selectedId={registroCierre?.condiciones_comerciales_id}
+        selectedId={condicionesData?.condiciones_comerciales_id}
         onSuccess={handleCondicionesSuccess}
       />
 
@@ -1098,11 +956,11 @@ export function PromiseClosingProcessCard({
         onClose={() => setShowPagoModal(false)}
         studioSlug={studioSlug}
         cotizacionId={cotizacion.id}
-        pagoData={(registroCierre?.pago_concepto || registroCierre?.pago_monto) ? {
-          concepto: registroCierre.pago_concepto || null,
-          monto: registroCierre.pago_monto || null,
-          fecha: registroCierre.pago_fecha || null,
-          metodo_id: registroCierre.pago_metodo_id || null,
+        pagoData={(pagoData?.pago_concepto || pagoData?.pago_monto) ? {
+          concepto: pagoData.pago_concepto || null,
+          monto: pagoData.pago_monto || null,
+          fecha: pagoData.pago_fecha || null,
+          metodo_id: pagoData.pago_metodo_id || null,
         } : null}
         paymentMethods={[]}
         onSuccess={handlePagoSuccess}
@@ -1159,7 +1017,7 @@ export function PromiseClosingProcessCard({
               cotizacion={cotizacionCompleta}
               studioSlug={studioSlug}
               promiseId={promiseId}
-              condicionesComerciales={registroCierre?.condiciones_comerciales as any}
+              condicionesComerciales={condicionesData?.condiciones_comerciales as any}
               hideSubtotals={true}
             />
           ) : (
@@ -1185,7 +1043,7 @@ export function PromiseClosingProcessCard({
           cotizacionId={cotizacion.id}
           template={selectedTemplate}
           customContent={null}
-          condicionesComerciales={registroCierre?.condiciones_comerciales as any}
+          condicionesComerciales={condicionesData?.condiciones_comerciales as any}
         />
       )}
 

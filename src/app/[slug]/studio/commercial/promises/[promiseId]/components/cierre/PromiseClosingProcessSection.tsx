@@ -69,12 +69,20 @@ export function PromiseClosingProcessSection({
   useCotizacionesRealtime({
     studioSlug,
     promiseId: promiseId || null,
+    ignoreCierreEvents: true, // Ignorar eventos de cierre (contrato, pago, condiciones)
     onCotizacionInserted: () => {
       loadCotizaciones();
     },
-    onCotizacionUpdated: () => {
-      // Recargar siempre para obtener el estado actualizado
-      loadCotizaciones();
+    onCotizacionUpdated: (cotizacionId: string, payload?: unknown) => {
+      // Solo recargar si NO es un evento de cierre
+      const p = payload as any;
+      const isCierreEvent = p?.table === 'studio_cotizaciones_cierre' || p?.payload?.table === 'studio_cotizaciones_cierre';
+      
+      if (!isCierreEvent) {
+        // Es un cambio en la cotización (status, nombre, etc.) → recargar
+        loadCotizaciones();
+      }
+      // Si es evento de cierre → PromiseClosingProcessCard lo maneja internamente
     },
     onCotizacionDeleted: () => {
       loadCotizaciones();

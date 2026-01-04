@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { ZenButton, ZenDialog } from '@/components/ui/zen';
 import { FileText, Eye, Edit2, Trash2, Loader2, Settings, GitBranch } from 'lucide-react';
 import { ContractTemplateSimpleSelectorModal } from '../contratos/ContractTemplateSimpleSelectorModal';
@@ -45,7 +45,7 @@ interface ContratoGestionCardProps {
   onCloseOptionsModal?: () => void;
 }
 
-export function ContratoGestionCard({
+export const ContratoGestionCard = memo(function ContratoGestionCard({
   studioSlug,
   promiseId,
   cotizacionId,
@@ -413,5 +413,20 @@ export function ContratoGestionCard({
 
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // Solo re-renderizar si cambian estas props específicas
+  // Ignorar onSuccess y onCloseOptionsModal ya que son funciones memoizadas
+  return (
+    prevProps.studioSlug === nextProps.studioSlug &&
+    prevProps.promiseId === nextProps.promiseId &&
+    prevProps.cotizacionId === nextProps.cotizacionId &&
+    prevProps.eventTypeId === nextProps.eventTypeId &&
+    prevProps.selectedTemplateId === nextProps.selectedTemplateId &&
+    prevProps.contractContent === nextProps.contractContent &&
+    prevProps.showOptionsModal === nextProps.showOptionsModal &&
+    JSON.stringify(prevProps.condicionesComerciales) === JSON.stringify(nextProps.condicionesComerciales) &&
+    JSON.stringify(prevProps.promiseData) === JSON.stringify(nextProps.promiseData)
+    // onSuccess y onCloseOptionsModal se ignoran porque son funciones memoizadas
+  );
+});
 

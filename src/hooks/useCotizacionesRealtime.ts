@@ -13,8 +13,9 @@ interface UseCotizacionesRealtimeProps {
   studioSlug: string;
   promiseId?: string | null;
   onCotizacionInserted?: () => void;
-  onCotizacionUpdated?: (cotizacionId: string) => void;
+  onCotizacionUpdated?: (cotizacionId: string, payload?: unknown) => void;
   onCotizacionDeleted?: (cotizacionId: string) => void;
+  ignoreCierreEvents?: boolean; // Si es true, ignora eventos de studio_cotizaciones_cierre
 }
 
 export function useCotizacionesRealtime({
@@ -23,6 +24,7 @@ export function useCotizacionesRealtime({
   onCotizacionInserted,
   onCotizacionUpdated,
   onCotizacionDeleted,
+  ignoreCierreEvents = false,
 }: UseCotizacionesRealtimeProps) {
   const supabase = createClient();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
@@ -133,14 +135,21 @@ export function useCotizacionesRealtime({
       
       // Detectar si es un cambio en studio_cotizaciones_cierre
       // El trigger emite eventos con table: 'studio_cotizaciones_cierre'
-      if (p.table === 'studio_cotizaciones_cierre' || p.payload?.table === 'studio_cotizaciones_cierre') {
+      const isCierreEvent = p.table === 'studio_cotizaciones_cierre' || p.payload?.table === 'studio_cotizaciones_cierre';
+      
+      if (isCierreEvent) {
+        // Si ignoreCierreEvents es true, ignorar estos eventos completamente
+        if (ignoreCierreEvents) {
+          return;
+        }
+        
         const record = p.record || p.new || p.payload?.new || p.payload?.record;
         if (record && record.cotizacion_id) {
           const cotizacionId = record.cotizacion_id as string;
           // Si se especifica promiseId, necesitamos obtener la cotización para verificar
           // Por ahora, siempre llamar onUpdated si hay cotizacion_id
           if (cotizacionId && onUpdatedRef.current) {
-            onUpdatedRef.current(cotizacionId);
+            onUpdatedRef.current(cotizacionId, payload);
           }
           return;
         }
@@ -159,10 +168,10 @@ export function useCotizacionesRealtime({
       }
 
       if (cotizacionId && onUpdatedRef.current) {
-        onUpdatedRef.current(cotizacionId);
+        onUpdatedRef.current(cotizacionId, payload);
       }
     },
-    [promiseId, extractCotizacion]
+    [promiseId, extractCotizacion, ignoreCierreEvents]
   );
 
   const handleDelete = useCallback(
