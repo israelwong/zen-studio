@@ -212,6 +212,7 @@ export const ContratoSection = memo(function ContratoSection({
             onSuccess={onContratoSuccess}
             showOptionsModal={showContratoOptionsModal}
             onCloseOptionsModal={onCloseContratoOptionsModal}
+            isContractSigned={contratoFirmado}
           />
         </div>
       )}

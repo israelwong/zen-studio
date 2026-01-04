@@ -26,6 +26,7 @@ interface ContractPreviewForPromiseModalProps {
     advance_type?: string | null;
     advance_amount?: number | null;
   };
+  isContractSigned?: boolean; // Indica si el contrato ya fue firmado
 }
 
 export function ContractPreviewForPromiseModal({
@@ -39,6 +40,7 @@ export function ContractPreviewForPromiseModal({
   template,
   customContent,
   condicionesComerciales,
+  isContractSigned = false,
 }: ContractPreviewForPromiseModalProps) {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -84,23 +86,25 @@ export function ContractPreviewForPromiseModal({
       isOpen={isOpen}
       onClose={onClose}
       title={`Vista Previa: ${template.name}`}
-      description="Revisa el contrato antes de confirmar"
+      description={isContractSigned ? "Contrato firmado por el cliente" : "Revisa el contrato antes de confirmar"}
       maxWidth="4xl"
-      onSave={onConfirm}
+      onSave={isContractSigned ? undefined : onConfirm}
       onCancel={onClose}
-      saveLabel="Confirmar plantilla"
-      cancelLabel="Cancelar"
+      saveLabel={isContractSigned ? undefined : "Confirmar plantilla"}
+      cancelLabel={isContractSigned ? "Cerrar" : "Cancelar"}
       closeOnClickOutside={false}
       zIndex={10080}
       footerLeftContent={
-        <ZenButton
-          variant="outline"
-          size="sm"
-          onClick={onEdit}
-        >
-          <Edit2 className="h-4 w-4 mr-2" />
-          Editar para este cliente
-        </ZenButton>
+        !isContractSigned ? (
+          <ZenButton
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+          >
+            <Edit2 className="h-4 w-4 mr-2" />
+            Editar para este cliente
+          </ZenButton>
+        ) : undefined
       }
     >
       {loading ? (

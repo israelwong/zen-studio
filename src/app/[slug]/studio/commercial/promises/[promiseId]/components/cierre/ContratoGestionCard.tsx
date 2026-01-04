@@ -43,11 +43,13 @@ interface ContratoGestionCardProps {
   onSuccess?: () => Promise<void> | void;
   showOptionsModal?: boolean;
   onCloseOptionsModal?: () => void;
+  isContractSigned?: boolean; // Indica si el contrato ya fue firmado
 }
 
 export const ContratoGestionCard = memo(function ContratoGestionCard({
   studioSlug,
   promiseId,
+  isContractSigned = false,
   cotizacionId,
   eventTypeId,
   selectedTemplateId,
@@ -295,6 +297,7 @@ export const ContratoGestionCard = memo(function ContratoGestionCard({
           template={selectedTemplate}
           customContent={contractContent || customizedContent}
           condicionesComerciales={condicionesComerciales}
+          isContractSigned={isContractSigned}
         />
       )}
 
