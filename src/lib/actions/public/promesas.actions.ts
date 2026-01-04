@@ -8,6 +8,7 @@ import { calcularPrecio } from "@/lib/actions/studio/catalogo/calcular-precio";
 import { DEFAULT_AVISO_PRIVACIDAD_TITLE, DEFAULT_AVISO_PRIVACIDAD_VERSION, DEFAULT_AVISO_PRIVACIDAD_CONTENT } from "@/lib/constants/aviso-privacidad-default";
 import type { PublicSeccionData, PublicCategoriaData, PublicServicioData } from "@/types/public-promise";
 import type { SeccionData } from "@/lib/actions/schemas/catalogo-schemas";
+import { construirEstructuraJerarquicaCotizacion } from "@/lib/actions/studio/commercial/promises/cotizacion-structure.utils";
 
 /**
  * Obtener condiciones comerciales disponibles para promesa pública
@@ -370,7 +371,15 @@ interface PublicPaquete {
 function filtrarCatalogoPorItems(
   catalogo: SeccionData[],
   itemIds: Set<string>,
-  itemsData: Map<string, { price?: number; quantity?: number; description?: string | null }>,
+  itemsData: Map<string, { 
+    price?: number; 
+    quantity?: number; 
+    description?: string | null;
+    name_snapshot?: string | null;
+    description_snapshot?: string | null;
+    category_name_snapshot?: string | null;
+    seccion_name_snapshot?: string | null;
+  }>,
   itemsMedia?: Map<string, Array<{ id: string; file_url: string; file_type: 'IMAGE' | 'VIDEO'; thumbnail_url?: string | null }>>
 ): PublicSeccionData[] {
   return catalogo
@@ -390,8 +399,11 @@ function filtrarCatalogoPorItems(
               const media = itemsMedia?.get(servicio.id);
               return {
                 id: servicio.id,
-                name: servicio.nombre,
-                description: itemData?.description ?? null,
+                // Usar snapshots si están disponibles, sino fallback al catálogo
+                name: itemData?.name_snapshot || servicio.nombre,
+                name_snapshot: itemData?.name_snapshot,
+                description: itemData?.description_snapshot || itemData?.description || null,
+                description_snapshot: itemData?.description_snapshot,
                 // Para cotizaciones: incluir price y quantity
                 // Para paquetes: incluir quantity si está disponible
                 ...(itemData?.price !== undefined && itemData?.quantity !== undefined
@@ -776,29 +788,73 @@ export async function getPublicPromiseData(
       });
     }
 
-    // 6. Mapear cotizaciones con estructura jerárquica (igual que ResumenCotizacionAutorizada)
+    // 6. Mapear cotizaciones con estructura jerárquica usando función centralizada
     const mappedCotizaciones: PublicCotizacion[] = promise.quotes.map((cot) => {
-      // Crear Set de item_ids incluidos en la cotización
-      const itemIds = new Set<string>();
-      const itemsData = new Map<string, { price: number; quantity: number; description: string | null }>();
       const cotizacionMedia: Array<{ id: string; file_url: string; file_type: 'IMAGE' | 'VIDEO'; thumbnail_url?: string | null }> = [];
 
+      // Agregar multimedia de todos los items
       cot.cotizacion_items.forEach((item) => {
-        // Solo incluir items con item_id válido (igual que paquetes)
         if (item.item_id) {
-          itemIds.add(item.item_id);
-          itemsData.set(item.item_id, {
-            price: item.unit_price,
-            quantity: item.quantity,
-            description: item.description,
-          });
-          // Agregar multimedia del item a la lista agregada
           const itemMedia = itemsMediaMap.get(item.item_id);
           if (itemMedia) {
             cotizacionMedia.push(...itemMedia);
           }
         }
       });
+
+      // Filtrar items con item_id válido
+      const itemsFiltrados = cot.cotizacion_items.filter(item => item.item_id !== null);
+
+      // Usar función centralizada para construir estructura jerárquica
+      const estructura = construirEstructuraJerarquicaCotizacion(
+        itemsFiltrados.map(item => ({
+          item_id: item.item_id!,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+          subtotal: item.subtotal,
+          order: item.order,
+          // Snapshots primero, luego campos operacionales
+          name_snapshot: item.name_snapshot,
+          description_snapshot: item.description_snapshot,
+          category_name_snapshot: item.category_name_snapshot,
+          seccion_name_snapshot: item.seccion_name_snapshot,
+          name: item.name,
+          description: item.description,
+          category_name: item.category_name,
+          seccion_name: item.seccion_name,
+          id: item.id,
+        })),
+        {
+          incluirPrecios: true,
+          incluirDescripciones: true,
+          ordenarPor: 'insercion',
+        }
+      );
+
+      // Convertir formato de EstructuraJerarquica a PublicSeccionData[]
+      const servicios: PublicSeccionData[] = estructura.secciones.map(seccion => ({
+        id: seccion.nombre,
+        nombre: seccion.nombre,
+        orden: seccion.orden,
+        categorias: seccion.categorias.map(categoria => ({
+          id: categoria.nombre,
+          nombre: categoria.nombre,
+          orden: categoria.orden,
+          servicios: categoria.items.map(item => {
+            const itemMedia = item.item_id ? itemsMediaMap.get(item.item_id) : undefined;
+            return {
+              id: item.item_id || item.id || '',
+              name: item.nombre,
+              name_snapshot: item.nombre, // Ya viene del snapshot
+              description: item.descripcion || null,
+              description_snapshot: item.descripcion || null, // Ya viene del snapshot
+              price: item.unit_price,
+              quantity: item.cantidad,
+              ...(itemMedia && itemMedia.length > 0 ? { media: itemMedia } : {}),
+            };
+          }),
+        })),
+      }));
 
       return {
         id: cot.id,
@@ -807,7 +863,7 @@ export async function getPublicPromiseData(
         price: cot.price,
         discount: cot.discount,
         status: cot.status,
-        servicios: filtrarCatalogoPorItems(catalogo, itemIds, itemsData, itemsMediaMap),
+        servicios: servicios,
         condiciones_comerciales: cot.condiciones_comerciales
           ? {
             metodo_pago: cot.condiciones_comerciales_metodo_pago?.[0]?.metodos_pago?.payment_method_name || null,

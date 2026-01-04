@@ -243,14 +243,14 @@ export function PublicServiciosTree({ servicios, showPrices = false, showSubtota
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="flex-1 min-w-0">
                                           <h6 className="text-sm text-zinc-300 leading-tight">
-                                            {servicio.name}
+                                            {servicio.name_snapshot || servicio.name}
                                             <span className="ml-2 text-xs text-zinc-500">
                                               x{cantidad}
                                             </span>
                                           </h6>
-                                          {servicio.description && (
+                                          {(servicio.description_snapshot || servicio.description) && (
                                             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                                              {servicio.description}
+                                              {servicio.description_snapshot || servicio.description}
                                             </p>
                                           )}
                                           {/* Botones de media condicionales */}

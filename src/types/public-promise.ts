@@ -18,7 +18,9 @@ export interface PublicCategoriaData {
 export interface PublicServicioData {
   id: string;
   name: string;
+  name_snapshot?: string | null;
   description: string | null;
+  description_snapshot?: string | null;
   // Para cotizaciones
   price?: number;
   quantity?: number;
