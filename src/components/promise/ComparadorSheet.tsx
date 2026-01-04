@@ -21,44 +21,78 @@ function isCotizacion(item: ComparableItem): item is PublicCotizacion & { type: 
 }
 
 // Obtener todas las secciones únicas de todos los items
+// Agrupa por NOMBRE (no por ID) porque los paquetes tienen IDs dinámicos y las cotizaciones guardan snapshots
 function getAllUniqueSecciones(items: ComparableItem[]): PublicSeccionData[] {
+  // Usar nombre como clave para agrupar secciones
   const seccionesMap = new Map<string, PublicSeccionData>();
 
   items.forEach((item) => {
-    item.servicios.forEach((seccion) => {
-      if (!seccionesMap.has(seccion.id)) {
-        seccionesMap.set(seccion.id, {
-          ...seccion,
+    item.servicios.forEach((seccionDelItem) => {
+      const seccionKey = seccionDelItem.nombre.toLowerCase().trim();
+      
+      // Si la sección no existe por nombre, crearla
+      if (!seccionesMap.has(seccionKey)) {
+        seccionesMap.set(seccionKey, {
+          id: seccionDelItem.id, // Usar el primer ID encontrado
+          nombre: seccionDelItem.nombre,
+          orden: seccionDelItem.orden,
           categorias: [],
         });
       }
 
-      const seccionMap = seccionesMap.get(seccion.id)!;
-      const categoriasMap = new Map(seccionMap.categorias.map(c => [c.id, c]));
+      const seccionMap = seccionesMap.get(seccionKey)!;
+      // Crear mapa de categorías existentes agrupadas por nombre
+      const categoriasMap = new Map<string, PublicCategoriaData>();
+      seccionMap.categorias.forEach(c => {
+        const categoriaKey = c.nombre.toLowerCase().trim();
+        categoriasMap.set(categoriaKey, {
+          ...c,
+          servicios: [...c.servicios],
+        });
+      });
 
-      seccion.categorias.forEach((categoria) => {
-        if (!categoriasMap.has(categoria.id)) {
-          categoriasMap.set(categoria.id, {
-            ...categoria,
+      // Procesar cada categoría de esta sección en este item específico
+      seccionDelItem.categorias.forEach((categoriaDelItem) => {
+        const categoriaKey = categoriaDelItem.nombre.toLowerCase().trim();
+        
+        // Si la categoría no existe por nombre, crearla
+        if (!categoriasMap.has(categoriaKey)) {
+          categoriasMap.set(categoriaKey, {
+            id: categoriaDelItem.id, // Usar el primer ID encontrado
+            nombre: categoriaDelItem.nombre,
+            orden: categoriaDelItem.orden,
             servicios: [],
           });
         }
 
-        const categoriaMap = categoriasMap.get(categoria.id)!;
-        const serviciosMap = new Map(categoriaMap.servicios.map(s => [s.id, s]));
-
-        categoria.servicios.forEach((servicio) => {
-          if (!serviciosMap.has(servicio.id)) {
-            serviciosMap.set(servicio.id, servicio);
+        const categoriaMap = categoriasMap.get(categoriaKey)!;
+        // Crear mapa de servicios existentes agrupados por nombre
+        const serviciosMap = new Map<string, PublicServicioData>();
+        categoriaMap.servicios.forEach(s => {
+          const servicioKey = (s.name || '').toLowerCase().trim();
+          if (servicioKey) {
+            serviciosMap.set(servicioKey, s);
           }
         });
 
-        categoriaMap.servicios = Array.from(serviciosMap.values());
-        categoriasMap.set(categoria.id, categoriaMap);
+        // Agregar servicios de esta categoría específica en esta sección específica de este item
+        categoriaDelItem.servicios.forEach((servicio) => {
+          const servicioKey = (servicio.name || '').toLowerCase().trim();
+          if (servicioKey && !serviciosMap.has(servicioKey)) {
+            serviciosMap.set(servicioKey, servicio);
+          }
+        });
+
+        // Actualizar servicios de la categoría
+        categoriaMap.servicios = Array.from(serviciosMap.values()).sort((a, b) => {
+          return (a.name || '').localeCompare(b.name || '');
+        });
+        categoriasMap.set(categoriaKey, categoriaMap);
       });
 
-      seccionMap.categorias = Array.from(categoriasMap.values());
-      seccionesMap.set(seccion.id, seccionMap);
+      // Actualizar categorías de la sección
+      seccionMap.categorias = Array.from(categoriasMap.values()).sort((a, b) => a.orden - b.orden);
+      seccionesMap.set(seccionKey, seccionMap);
     });
   });
 
@@ -217,7 +251,7 @@ export function ComparadorSheet({
 
               {/* Secciones con Cards */}
               {allSecciones.map((seccion) => (
-                <ZenCard key={seccion.id} className="overflow-visible">
+                <ZenCard key={`seccion-${seccion.nombre}`} className="overflow-visible">
                   {/* Sección Header */}
                   <div className="flex gap-2 bg-zinc-900/50 border-b border-zinc-800">
                     <div className="sticky left-0 z-20 bg-zinc-900/50 p-3 sm:p-4 w-[180px] sm:w-[220px] shrink-0 border-r border-zinc-800">
@@ -232,7 +266,7 @@ export function ComparadorSheet({
                     {seccion.categorias
                       .sort((a, b) => a.orden - b.orden)
                       .map((categoria) => (
-                        <div key={categoria.id} className="bg-zinc-950/30">
+                        <div key={`categoria-${categoria.nombre}`} className="bg-zinc-950/30">
                           {/* Categoría Header */}
                           <div className="flex gap-2 border-b border-zinc-800/30">
                             <div className="sticky left-0 z-10 bg-zinc-950/30 px-2 sm:px-3 py-2 sm:py-3 w-[180px] sm:w-[220px] shrink-0 border-r border-zinc-800/30">
@@ -246,33 +280,41 @@ export function ComparadorSheet({
                           {/* Items de la categoría */}
                           <div className="space-y-1">
                             {categoria.servicios.map((servicio) => (
-                              <div key={servicio.id} className="flex gap-2">
+                              <div key={`servicio-${servicio.name || servicio.id}`} className="flex gap-2">
                                 {/* Columna servicio - STICKY */}
                                 <div className="sticky left-0 z-10 bg-zinc-950 px-3 sm:px-4 py-2 w-[180px] sm:w-[220px] shrink-0 border-r border-zinc-800/30">
                                   <p className="text-xs sm:text-sm text-zinc-400 pl-2 sm:pl-4 border-l-2 border-zinc-800/50">
                                     {servicio.name}
-                                    {'quantity' in servicio && servicio.quantity && servicio.quantity > 1 && (
-                                      <span className="ml-2 text-xs text-zinc-500">
-                                        x{servicio.quantity}
-                                      </span>
-                                    )}
                                   </p>
                                 </div>
 
                                 {/* Columnas checks - SCROLLABLE */}
                                 <div className="flex gap-2">
                                   {visibleItems.map((item) => {
-                                    const seccionItem = item.servicios.find((s) => s.id === seccion.id);
+                                    // Buscar por nombre en lugar de por ID
+                                    const seccionItem = item.servicios.find(
+                                      (s) => s.nombre.toLowerCase().trim() === seccion.nombre.toLowerCase().trim()
+                                    );
                                     const categoriaItem = seccionItem?.categorias.find(
-                                      (c) => c.id === categoria.id
+                                      (c) => c.nombre.toLowerCase().trim() === categoria.nombre.toLowerCase().trim()
                                     );
-                                    const hasServicio = categoriaItem?.servicios.some(
-                                      (s) => s.id === servicio.id
+                                    const servicioEncontrado = categoriaItem?.servicios.find(
+                                      (s) => (s.name || '').toLowerCase().trim() === (servicio.name || '').toLowerCase().trim()
                                     );
+                                    const hasServicio = !!servicioEncontrado;
+                                    const cantidad = servicioEncontrado && 'quantity' in servicioEncontrado && servicioEncontrado.quantity
+                                      ? servicioEncontrado.quantity
+                                      : null;
+                                    
                                     return (
                                       <div key={item.id} className="px-3 py-2 w-[150px] sm:w-[180px] shrink-0 flex items-center justify-center">
                                         {hasServicio ? (
-                                          <Check className={`h-3.5 w-3.5 ${item.type === 'cotizacion' ? 'text-emerald-400' : 'text-blue-400'}`} />
+                                          <div className="flex items-center gap-1.5">
+                                            <Check className={`h-3.5 w-3.5 shrink-0 ${item.type === 'cotizacion' ? 'text-emerald-400' : 'text-blue-400'}`} />
+                                            {cantidad !== null && (
+                                              <span className="text-xs text-zinc-400">x{cantidad}</span>
+                                            )}
+                                          </div>
                                         ) : (
                                           <span className="text-zinc-700 text-sm">—</span>
                                         )}
