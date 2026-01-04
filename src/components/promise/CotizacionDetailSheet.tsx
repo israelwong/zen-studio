@@ -54,6 +54,7 @@ interface CotizacionDetailSheetProps {
   showOfferConditions?: boolean;
   showPackages?: boolean;
   paquetes?: Array<{ id: string; cover_url: string | null }>;
+  autoGenerateContract?: boolean;
 }
 
 export function CotizacionDetailSheet({
@@ -70,6 +71,7 @@ export function CotizacionDetailSheet({
   showOfferConditions = false,
   showPackages = false,
   paquetes = [],
+  autoGenerateContract = false,
 }: CotizacionDetailSheetProps) {
   const [showAutorizarModal, setShowAutorizarModal] = useState(false);
   const [condicionesComerciales, setCondicionesComerciales] = useState<CondicionComercial[]>([]);
@@ -463,8 +465,8 @@ export function CotizacionDetailSheet({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-4 sm:px-6 py-3">
-          <div className="flex gap-2">
+        <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-4 sm:px-6 pt-4 pb-6 mt-6">
+          <div className="flex gap-3">
             <ZenButton
               variant="outline"
               onClick={onClose}
@@ -499,7 +501,13 @@ export function CotizacionDetailSheet({
           condicionesComercialesMetodoPagoId={selectedMetodoPagoId}
           precioCalculado={precioCalculado}
           showPackages={showPackages}
-          onSuccess={onClose}
+          autoGenerateContract={autoGenerateContract}
+          onSuccess={() => {
+            // onSuccess oculta la UI de cotización/paquete en PromisePageClient
+            // Solo cerrar el modal interno
+            setShowAutorizarModal(false);
+          }}
+          onCloseDetailSheet={onClose}
         />
       )}
 

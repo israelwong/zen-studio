@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
 import { ZenButton } from '@/components/ui/zen';
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { solicitarPaquetePublico } from '@/lib/actions/public/paquetes.actions';
 import { updatePublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { getTotalServicios } from '@/lib/utils/public-promise';
+import { usePromisePageContext } from './PromisePageContext';
 
 interface PrecioCalculado {
   precioBase: number;
@@ -39,6 +40,8 @@ interface SolicitarPaqueteModalProps {
   precioCalculado?: PrecioCalculado | null;
   showPackages?: boolean;
   onSuccess?: () => void;
+  onPreparing?: () => void;
+  onCloseDetailSheet?: () => void;
 }
 
 export function SolicitarPaqueteModal({
@@ -52,9 +55,20 @@ export function SolicitarPaqueteModal({
   precioCalculado,
   showPackages = false,
   onSuccess,
+  onPreparing: onPreparingProp,
+  onCloseDetailSheet,
 }: SolicitarPaqueteModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const { 
+    onPreparing: onPreparingContext,
+    onSuccess: onSuccessContext,
+    setShowProgressOverlay, 
+    setProgressStep, 
+    setProgressError 
+  } = usePromisePageContext();
+
+  // Usar prop si está disponible, sino usar contexto
+  const onPreparing = onPreparingProp || onPreparingContext;
 
   const handleSubmitForm = async (data: {
     contact_name: string;
@@ -65,9 +79,17 @@ export function SolicitarPaqueteModal({
     event_location: string;
   }) => {
     setIsSubmitting(true);
+    setProgressError(null);
+    setProgressStep('validating');
+    // Ocultar el modal de formulario inmediatamente cuando iniciamos el proceso
+    setShowProgressOverlay(true);
 
     try {
-      // 1. Actualizar datos de la promesa
+      // Paso 1: Validando datos (~600ms)
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Paso 2: Enviando solicitud (updatePublicPromiseData)
+      setProgressStep('sending');
       const updateResult = await updatePublicPromiseData(studioSlug, promiseId, {
         contact_name: data.contact_name,
         contact_phone: data.contact_phone,
@@ -78,14 +100,14 @@ export function SolicitarPaqueteModal({
       });
 
       if (!updateResult.success) {
-        toast.error('Error al actualizar datos', {
-          description: updateResult.error || 'Por favor, intenta de nuevo.',
-        });
+        setProgressError(updateResult.error || 'Error al actualizar datos');
+        setProgressStep('error');
         setIsSubmitting(false);
         return;
       }
 
-      // 2. Solicitar paquete (crea cotización y pasa a en_cierre)
+      // Paso 3: Registrando solicitud (solicitarPaquetePublico)
+      setProgressStep('registering');
       const result = await solicitarPaquetePublico(
         promiseId,
         paquete.id,
@@ -95,20 +117,43 @@ export function SolicitarPaqueteModal({
       );
 
       if (!result.success) {
-        toast.error('Error al enviar solicitud', {
-          description: result.error || 'Por favor, intenta de nuevo o contacta al estudio.',
-        });
+        setProgressError(result.error || 'Error al enviar solicitud');
+        setProgressStep('error');
         setIsSubmitting(false);
         return;
       }
 
+      // CRÍTICO: Después de 'registering', ejecutar en paralelo:
+      // - Cerrar DetailSheet
+      // - Ocultar UI de cotización/paquete (usar contexto si está disponible)
+      // - Activar skeleton para proceso de contratación
+      onCloseDetailSheet?.(); // Cierra DetailSheet
+      (onSuccessContext || onSuccess)?.(); // Oculta UI de cotización/paquete
+      (onPreparingContext || onPreparing)?.(); // Activa skeleton
+
+      // Paso 4: Recopilando datos de cotización (~800ms)
+      setProgressStep('collecting');
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      // Paso 5: Preparando flujo de contratación (~1000ms)
+      setProgressStep('preparing');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Paso 6: Completado (~800ms)
+      setProgressStep('completed');
+      await new Promise(resolve => setTimeout(resolve, 800));
+
       setIsSubmitting(false);
-      setShowSuccessModal(true);
+      // Cerrar el overlay y el modal después de que termine el proceso completo
+      setShowProgressOverlay(false);
+      // Cerrar el modal después de un pequeño delay para asegurar que el overlay se haya cerrado completamente
+      setTimeout(() => {
+        onClose();
+      }, 300);
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al enviar solicitud', {
-        description: 'Por favor, intenta de nuevo o contacta al estudio.',
-      });
+      setProgressError('Error al enviar solicitud. Por favor, intenta de nuevo o contacta al estudio.');
+      setProgressStep('error');
       setIsSubmitting(false);
     }
   };
@@ -122,16 +167,14 @@ export function SolicitarPaqueteModal({
     }).format(price);
   };
 
-
-  const handleCloseSuccess = () => {
-    setShowSuccessModal(false);
-    onClose();
-    onSuccess?.();
-  };
-
   return (
     <>
-      <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && !showSuccessModal && onClose()}>
+      <Dialog open={isOpen} onOpenChange={(open) => {
+        // No permitir cerrar el modal si está procesando
+        if (!open && !isSubmitting) {
+          onClose();
+        }
+      }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Solicitar Paquete</DialogTitle>
@@ -258,30 +301,6 @@ export function SolicitarPaqueteModal({
                 </ZenButton>
               </div>
             )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal de confirmación */}
-      <Dialog open={showSuccessModal} onOpenChange={(open) => !open && handleCloseSuccess()}>
-        <DialogContent className="sm:max-w-md" overlayZIndex={10060}>
-          <DialogHeader>
-            <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20">
-              <CheckCircle2 className="w-8 h-8 text-emerald-400" />
-            </div>
-            <DialogTitle className="text-center">Solicitud Enviada</DialogTitle>
-          </DialogHeader>
-
-          <div className="py-4">
-            <p className="text-center text-zinc-300 leading-relaxed">
-              Tu solicitud ha sido enviada exitosamente. Se ha creado una cotización y el estudio la revisará y se pondrá en contacto contigo pronto.
-            </p>
-          </div>
-
-          <div className="flex justify-center">
-            <ZenButton onClick={handleCloseSuccess} className="min-w-[120px]">
-              Entendido
-            </ZenButton>
           </div>
         </DialogContent>
       </Dialog>

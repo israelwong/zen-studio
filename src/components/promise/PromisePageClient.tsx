@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Calendar, Building2 } from 'lucide-react';
 import { PromiseHeroSection } from './PromiseHeroSection';
 import { CotizacionesSectionRealtime } from './CotizacionesSectionRealtime';
@@ -15,6 +15,8 @@ import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { obtenerInfoBancariaStudio } from '@/lib/actions/cliente/pagos.actions';
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
+import { PromisePageProvider, usePromisePageContext } from './PromisePageContext';
+import { ProgressOverlay } from './ProgressOverlay';
 
 interface PromiseShareSettings {
   show_packages: boolean;
@@ -24,6 +26,7 @@ interface PromiseShareSettings {
   show_standard_conditions: boolean;
   show_offer_conditions: boolean;
   portafolios: boolean;
+  auto_generate_contract: boolean;
 }
 
 interface PromisePageClientProps {
@@ -95,7 +98,8 @@ interface PromisePageClientProps {
   promiseId: string;
 }
 
-export function PromisePageClient({
+// Componente interno que usa el contexto para renderizar el overlay
+function PromisePageContent({
   promise,
   studio,
   cotizaciones: initialCotizaciones,
@@ -106,12 +110,29 @@ export function PromisePageClient({
   portafolios,
   studioSlug,
   promiseId,
-}: PromisePageClientProps) {
+  handlePreparingRef,
+  handleSuccessRef,
+}: PromisePageClientProps & { 
+  handlePreparingRef: React.MutableRefObject<() => void>;
+  handleSuccessRef: React.MutableRefObject<() => void>;
+}) {
+  const { 
+    showProgressOverlay, 
+    progressStep, 
+    progressError, 
+    autoGenerateContract, 
+    setShowProgressOverlay,
+    setProgressStep,
+    setProgressError,
+    setOnPreparing
+  } = usePromisePageContext();
   const [shareSettings, setShareSettings] = useState<PromiseShareSettings>(initialShareSettings);
   const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
   const [showBankInfoModal, setShowBankInfoModal] = useState(false);
   const [bankInfo, setBankInfo] = useState<{ banco?: string | null; titular?: string | null; clabe?: string | null } | null>(null);
   const [loadingBankInfo, setLoadingBankInfo] = useState(false);
+  const [isLoadingContratacion, setIsLoadingContratacion] = useState(false);
+  const [hideCotizacionesPaquetes, setHideCotizacionesPaquetes] = useState(false);
 
   const handleSettingsUpdated = useCallback((settings: PromiseShareSettings) => {
     setShareSettings(settings);
@@ -195,6 +216,37 @@ export function PromisePageClient({
     );
   }, [cotizaciones]);
 
+  // Callback para activar skeleton desde modales
+  const handlePreparing = useCallback(() => {
+    setIsLoadingContratacion(true);
+  }, []);
+
+  // Callback para ocultar UI de cotización/paquete inmediatamente
+  const handleSuccess = useCallback(() => {
+    setHideCotizacionesPaquetes(true);
+    setIsLoadingContratacion(true);
+  }, []);
+
+  // Actualizar los refs que se pasan al Provider cuando cambian los callbacks
+  useEffect(() => {
+    handlePreparingRef.current = handlePreparing;
+  }, [handlePreparing, handlePreparingRef]);
+  
+  useEffect(() => {
+    handleSuccessRef.current = handleSuccess;
+  }, [handleSuccess, handleSuccessRef]);
+
+  // Ocultar skeleton después de un delay cuando el componente está listo
+  useEffect(() => {
+    if (cotizacionAutorizada && isLoadingContratacion) {
+      // Delay para asegurar que el componente se haya renderizado
+      const timer = setTimeout(() => {
+        setIsLoadingContratacion(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [cotizacionAutorizada, isLoadingContratacion]);
+
   // Filtrar condiciones comerciales según settings en tiempo real
   const condicionesFiltradas = useMemo(() => {
     if (!condiciones_comerciales || condiciones_comerciales.length === 0) {
@@ -256,33 +308,77 @@ export function PromisePageClient({
           studioLogoUrl={studio.logo_url}
         />
 
-        {/* Si hay cotización autorizada, mostrar vista de cotización autorizada */}
-        {cotizacionAutorizada ? (
-          <PublicQuoteAuthorizedView
-            cotizacion={cotizacionAutorizada}
-            promiseId={promiseId}
-            studioSlug={studioSlug}
-            promise={{
-              contact_name: promise.contact_name,
-              contact_phone: promise.contact_phone,
-              contact_email: promise.contact_email,
-              contact_address: promise.contact_address,
-              event_type_name: promise.event_type_name,
-              event_date: promise.event_date,
-              event_location: promise.event_location,
-              event_name: promise.event_name || null,
-            }}
-            studio={{
-              studio_name: studio.studio_name,
-              representative_name: studio.representative_name,
-              phone: studio.phone,
-              email: studio.email,
-              address: studio.address,
-              id: studio.id,
-            }}
-            cotizacionPrice={cotizacionAutorizada.price}
-            eventTypeId={promise.event_type_id}
-          />
+        {/* Si se ocultaron las secciones, mostrar skeleton inmediatamente mientras carga el proceso de contratación */}
+        {hideCotizacionesPaquetes && isLoadingContratacion && !cotizacionAutorizada ? (
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <div className="mb-8 text-center">
+              <div className="h-8 w-64 bg-zinc-800 rounded animate-pulse mx-auto mb-2" />
+              <div className="h-4 w-96 bg-zinc-800 rounded animate-pulse mx-auto" />
+            </div>
+            <div className="space-y-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="relative">
+                  <div className="flex items-start gap-4">
+                    <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 animate-pulse" />
+                    <div className="flex-1 space-y-3">
+                      <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-4 w-full bg-zinc-800 rounded animate-pulse" />
+                      <div className="h-32 w-full bg-zinc-800 rounded-lg animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : cotizacionAutorizada ? (
+          isLoadingContratacion ? (
+            <div className="max-w-4xl mx-auto px-4 py-8">
+              <div className="mb-8 text-center">
+                <div className="h-8 w-64 bg-zinc-800 rounded animate-pulse mx-auto mb-2" />
+                <div className="h-4 w-96 bg-zinc-800 rounded animate-pulse mx-auto" />
+              </div>
+              <div className="space-y-6">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="relative">
+                    <div className="flex items-start gap-4">
+                      <div className="shrink-0 w-10 h-10 rounded-full bg-zinc-800 animate-pulse" />
+                      <div className="flex-1 space-y-3">
+                        <div className="h-6 w-48 bg-zinc-800 rounded animate-pulse" />
+                        <div className="h-4 w-full bg-zinc-800 rounded animate-pulse" />
+                        <div className="h-32 w-full bg-zinc-800 rounded-lg animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <PublicQuoteAuthorizedView
+              cotizacion={cotizacionAutorizada}
+              promiseId={promiseId}
+              studioSlug={studioSlug}
+              promise={{
+                contact_name: promise.contact_name,
+                contact_phone: promise.contact_phone,
+                contact_email: promise.contact_email,
+                contact_address: promise.contact_address,
+                event_type_name: promise.event_type_name,
+                event_date: promise.event_date,
+                event_location: promise.event_location,
+                event_name: promise.event_name || null,
+              }}
+              studio={{
+                studio_name: studio.studio_name,
+                representative_name: studio.representative_name,
+                phone: studio.phone,
+                email: studio.email,
+                address: studio.address,
+                id: studio.id,
+              }}
+              cotizacionPrice={cotizacionAutorizada.price}
+              eventTypeId={promise.event_type_id}
+            />
+          )
         ) : (
           <>
             {/* Fecha sugerida de contratación */}
@@ -313,7 +409,7 @@ export function PromisePageClient({
             )}
 
             {/* Cotizaciones personalizadas */}
-            {cotizaciones.length > 0 && (
+            {!hideCotizacionesPaquetes && cotizaciones.length > 0 && (
               <CotizacionesSectionRealtime
                 initialCotizaciones={cotizaciones}
                 promiseId={promiseId}
@@ -326,11 +422,12 @@ export function PromisePageClient({
                 showOfferConditions={shareSettings.show_offer_conditions}
                 showPackages={shareSettings.show_packages}
                 paquetes={paquetes}
+                autoGenerateContract={shareSettings.auto_generate_contract}
               />
             )}
 
             {/* Paquetes disponibles */}
-            {shareSettings.show_packages && paquetes.length > 0 && (
+            {!hideCotizacionesPaquetes && shareSettings.show_packages && paquetes.length > 0 && (
               <PaquetesSection
                 paquetes={paquetes}
                 promiseId={promiseId}
@@ -382,6 +479,49 @@ export function PromisePageClient({
           studioName={studio.studio_name}
         />
       )}
+
+      {/* Overlay de progreso renderizado desde el nivel superior */}
+      <ProgressOverlay
+        show={showProgressOverlay}
+        currentStep={progressStep}
+        error={progressError}
+        autoGenerateContract={autoGenerateContract}
+        onClose={() => {
+          setShowProgressOverlay(false);
+          setProgressError(null);
+          setProgressStep('validating');
+        }}
+        onRetry={() => {
+          setProgressError(null);
+          setProgressStep('validating');
+          setShowProgressOverlay(false);
+        }}
+      />
     </div>
+  );
+}
+
+export function PromisePageClient(props: PromisePageClientProps) {
+  // Callback para activar skeleton - definido aquí para pasarlo al Provider
+  const handlePreparingRef = useRef<() => void>(() => {
+    // Esta función se actualizará desde PromisePageContent
+  });
+  
+  // Callback para ocultar UI - definido aquí para pasarlo al Provider
+  const handleSuccessRef = useRef<() => void>(() => {
+    // Esta función se actualizará desde PromisePageContent
+  });
+
+  return (
+    <PromisePageProvider 
+      onPreparing={() => handlePreparingRef.current()}
+      onSuccess={() => handleSuccessRef.current()}
+    >
+      <PromisePageContent 
+        {...props} 
+        handlePreparingRef={handlePreparingRef}
+        handleSuccessRef={handleSuccessRef}
+      />
+    </PromisePageProvider>
   );
 }
