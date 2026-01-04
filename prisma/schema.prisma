@@ -2104,7 +2104,9 @@ model studio_cotizaciones_cierre {
   condiciones_comerciales_definidas Boolean   @default(false)
   contract_template_id              String?
   contract_content                  String?
+  contract_version                  Int       @default(1)
   contrato_definido                 Boolean   @default(false)
+  contract_signed_at                DateTime?
   pago_registrado                   Boolean   @default(false)
   pago_concepto                     String?
   pago_monto                        Decimal?  @db.Decimal(10, 2)
@@ -2116,7 +2118,24 @@ model studio_cotizaciones_cierre {
   cotizacion              studio_cotizaciones             @relation(fields: [cotizacion_id], references: [id], onDelete: Cascade)
   condiciones_comerciales studio_condiciones_comerciales? @relation(fields: [condiciones_comerciales_id], references: [id], onDelete: SetNull)
   contract_template       studio_contract_templates?      @relation(fields: [contract_template_id], references: [id], onDelete: SetNull)
+  contract_versions       studio_cotizaciones_cierre_contract_versions[]
 
+  @@index([cotizacion_id])
+  @@index([created_at])
+}
+
+model studio_cotizaciones_cierre_contract_versions {
+  id            String    @id @default(cuid())
+  cotizacion_id String
+  version       Int
+  content       String
+  change_reason String?
+  change_type   String    @default("AUTO_REGENERATE")
+  created_at    DateTime  @default(now())
+
+  cotizacion_cierre studio_cotizaciones_cierre @relation(fields: [cotizacion_id], references: [cotizacion_id], onDelete: Cascade)
+
+  @@unique([cotizacion_id, version])
   @@index([cotizacion_id])
   @@index([created_at])
 }

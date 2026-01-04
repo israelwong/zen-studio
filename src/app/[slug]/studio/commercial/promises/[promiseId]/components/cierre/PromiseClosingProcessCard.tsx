@@ -18,7 +18,7 @@ import {
 import { ContactEventFormModal } from '@/components/shared/contact-info';
 import { cancelarCierre, autorizarCotizacion } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { autorizarCotizacionLegacy } from '@/lib/actions/studio/commercial/promises/authorize-legacy.actions';
-import { obtenerRegistroCierre, quitarCondicionesCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
+import { obtenerRegistroCierre, quitarCondicionesCierre, obtenerDatosContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import { CondicionesComercialeSelectorSimpleModal } from '../condiciones-comerciales/CondicionesComercialeSelectorSimpleModal';
 import { ContractTemplateSimpleSelectorModal } from '../contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from '../contratos/ContractPreviewForPromiseModal';
@@ -26,8 +26,7 @@ import { ContratoGestionCard } from './ContratoGestionCard';
 import { RegistroPagoModal } from './RegistroPagoModal';
 import { actualizarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import type { ContractTemplate } from '@/types/contracts';
-import { CondicionesFinancierasResumen } from './CondicionesFinancierasResumen';
-import { ResumenCotizacion } from '@/components/shared/cotizaciones';
+import { CondicionesFinancierasResumen, ResumenCotizacion } from '@/components/shared/cotizaciones';
 import { ZenDialog } from '@/components/ui/zen';
 import { getCotizacionById } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
@@ -88,12 +87,13 @@ export function PromiseClosingProcessCard({
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showShareOptionsModal, setShowShareOptionsModal] = useState(false);
   const [localPromiseData, setLocalPromiseData] = useState(promiseData);
-  
+
   // Estado del registro de cierre
   const [registroCierre, setRegistroCierre] = useState<{
     condiciones_comerciales_id?: string | null;
     condiciones_comerciales_definidas?: boolean;
     contract_template_id?: string | null;
+    contract_version?: number;
     contrato_definido?: boolean;
     pago_registrado?: boolean;
     pago_concepto?: string | null;
@@ -108,6 +108,12 @@ export function PromiseClosingProcessCard({
       advance_type?: string;
       advance_percentage?: number | null;
       advance_amount?: number | null;
+    } | null;
+    ultima_version_info?: {
+      version: number;
+      change_reason: string | null;
+      change_type: string;
+      created_at: Date;
     } | null;
   } | null>(null);
   const [loadingRegistro, setLoadingRegistro] = useState(true);
@@ -160,8 +166,28 @@ export function PromiseClosingProcessCard({
     loadRegistroCierre();
   };
 
+  // Actualizar solo los datos del contrato localmente (sin recargar todo el registro)
+  const updateContractLocally = async () => {
+    try {
+      const result = await obtenerDatosContratoCierre(studioSlug, cotizacion.id);
+      if (result.success && result.data) {
+        setRegistroCierre(prev => prev ? {
+          ...prev,
+          contract_version: result.data!.contract_version,
+          contract_template_id: result.data!.contract_template_id,
+          contract_content: result.data!.contract_content,
+          contrato_definido: result.data!.contrato_definido,
+          ultima_version_info: result.data!.ultima_version_info,
+        } : null);
+      }
+    } catch (error) {
+      console.error('[updateContractLocally] Error:', error);
+    }
+  };
+
   const handleContratoSuccess = () => {
-    loadRegistroCierre();
+    // Actualizar solo el contrato localmente en lugar de recargar todo
+    updateContractLocally();
   };
 
   const handleTemplateSelected = (template: ContractTemplate) => {
@@ -215,19 +241,14 @@ export function PromiseClosingProcessCard({
     }
   };
 
-  const handlePromiseDataUpdated = (updatedData: any) => {
-    // Actualizar datos locales inmediatamente
-    setLocalPromiseData({
-      name: updatedData.name || localPromiseData.name,
-      phone: updatedData.phone || localPromiseData.phone,
-      email: updatedData.email || localPromiseData.email,
-      address: updatedData.address || localPromiseData.address,
-      event_date: updatedData.event_date || localPromiseData.event_date,
-      event_name: updatedData.event_name || localPromiseData.event_name,
-      event_type_name: updatedData.event_type_name || localPromiseData.event_type_name,
-      event_location: updatedData.event_location || localPromiseData.event_location,
-    });
+  const handlePromiseDataUpdated = () => {
+    // Recargar datos de la promesa después de actualizar
+    // El modal ya actualiza los datos, solo necesitamos recargar
     toast.success('Datos actualizados correctamente');
+    // Recargar datos locales desde el servidor si es necesario
+    if (onAuthorizeClick) {
+      onAuthorizeClick();
+    }
   };
 
   // Cargar cotización completa cuando se abre el preview
@@ -263,7 +284,7 @@ export function PromiseClosingProcessCard({
   }
 
   function validateClientContractData(promiseData: typeof localPromiseData): ClientContractDataValidation {
-    const missingFields: Array<{field: string; label: string; section: 'contacto' | 'evento'}> = [];
+    const missingFields: Array<{ field: string; label: string; section: 'contacto' | 'evento' }> = [];
 
     // Validar datos del contacto
     if (!promiseData?.name?.trim()) {
@@ -306,7 +327,7 @@ export function PromiseClosingProcessCard({
   function validatePreAuthorization(): PreAuthorizationValidation {
     const errors: string[] = [];
     const warnings: string[] = [];
-    
+
     // Detectar caso de uso
     const isClienteNuevo = cotizacion.selected_by_prospect === true; // Caso 1 y 2
     const isClienteExistente = !cotizacion.selected_by_prospect; // Caso 3
@@ -434,7 +455,7 @@ export function PromiseClosingProcessCard({
   const handleAutorizar = () => {
     // Validar pre-autorización según caso de uso
     const validation = validatePreAuthorization();
-    
+
     if (!validation.isValid) {
       // Mostrar errores
       validation.errors.forEach(error => toast.error(error));
@@ -485,16 +506,16 @@ export function PromiseClosingProcessCard({
         // FLUJO LEGACY: Crea evento inmediatamente
         const generarContrato = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
         const condicionesComercialesId = registroCierre?.condiciones_comerciales_id || cotizacion.condiciones_comerciales_id;
-        
+
         // Validar que haya condiciones comerciales si se requiere generar contrato
         if (generarContrato && !condicionesComercialesId) {
           toast.error('Se requieren condiciones comerciales para generar el contrato');
           return;
         }
-        
+
         // Si no hay condiciones comerciales, usar cadena vacía (el schema lo requiere)
         const condicionesIdFinal = condicionesComercialesId || '';
-        
+
         const result = await autorizarCotizacionLegacy({
           studio_slug: studioSlug,
           cotizacion_id: cotizacion.id,
@@ -508,8 +529,8 @@ export function PromiseClosingProcessCard({
             fecha: new Date(registroCierre.pago_fecha),
             payment_method_id: registroCierre.pago_metodo_id,
           } : undefined,
-          generar_contrato: generarContrato || false,
-          contract_template_id: generarContrato ? registroCierre?.contract_template_id : undefined,
+          generar_contrato: !!generarContrato,
+          contract_template_id: generarContrato ? (registroCierre?.contract_template_id || undefined) : undefined,
         });
 
         if (result.success && result.data?.eventId) {
@@ -542,52 +563,55 @@ export function PromiseClosingProcessCard({
 
   // Verificar si tiene condiciones comerciales y formatear descripción
   const hasCondiciones = !!cotizacion.condiciones_comerciales_id;
-  
+
   const getCondicionTexto = () => {
     if (!registroCierre?.condiciones_comerciales) return 'No definidas';
-    
+
     const condicion = registroCierre.condiciones_comerciales;
     const partes: string[] = [];
-    
+
     // Nombre base
     let texto = condicion.name;
-    
+
     // Agregar descripción si existe
     if (condicion.description) {
       texto += ` (${condicion.description})`;
     }
-    
+
     // Agregar anticipo
     if (condicion.advance_type === 'percentage' && condicion.advance_percentage) {
       partes.push(`Anticipo ${condicion.advance_percentage}%`);
     } else if (condicion.advance_type === 'amount' && condicion.advance_amount) {
       partes.push(`Anticipo $${condicion.advance_amount.toLocaleString('es-MX')}`);
     }
-    
+
     // Agregar descuento
     if (condicion.discount_percentage) {
       partes.push(`Descuento ${condicion.discount_percentage}%`);
     }
-    
+
     // Si hay detalles adicionales, agregarlos
     if (partes.length > 0) {
       texto += ` • ${partes.join(' • ')}`;
     }
-    
+
     return texto;
   };
-  
+
   const condicionTexto = getCondicionTexto();
 
   // Determinar estado del contrato
   const isClienteNuevo = cotizacion.selected_by_prospect === true;
-  
+
   let contratoIcon: React.ReactNode;
   let contratoEstado: string;
   let contratoColor: string;
   let contratoBoton: string | null = null;
 
   if (isClienteNuevo) {
+    // Para cliente nuevo, verificar primero el registro de cierre para determinar el estado real
+    const tieneContratoGenerado = registroCierre?.contrato_definido && registroCierre?.contract_template_id;
+
     switch (cotizacion.status) {
       case 'contract_pending':
         contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
@@ -607,11 +631,36 @@ export function PromiseClosingProcessCard({
         contratoColor = 'text-emerald-400';
         contratoBoton = null; // No editable en flujo automático
         break;
+      case 'en_cierre':
+        // Cuando está en_cierre y no hay contrato generado, está pendiente de generación
+        // El estudio puede generar el contrato manualmente
+        if (tieneContratoGenerado) {
+          // Si hay contrato generado pero el status sigue en en_cierre, mostrar estado del contrato
+          contratoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
+          contratoEstado = 'Generado, esperando firma del cliente';
+          contratoColor = 'text-blue-400';
+          contratoBoton = 'Editar'; // Permitir editar si ya está generado
+        } else {
+          // No hay contrato generado aún, está pendiente de generación por el estudio
+          contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
+          contratoEstado = 'Pendiente de generación';
+          contratoColor = 'text-amber-400';
+          contratoBoton = 'Generar'; // Permitir generar manualmente
+        }
+        break;
       default:
-        contratoIcon = <AlertCircle className="h-4 w-4 text-zinc-500 shrink-0 mt-0.5" />;
-        contratoEstado = 'Estado desconocido';
-        contratoColor = 'text-zinc-400';
-        contratoBoton = null;
+        // Para otros estados, verificar si hay contrato generado
+        if (tieneContratoGenerado) {
+          contratoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
+          contratoEstado = 'Generado, esperando firma del cliente';
+          contratoColor = 'text-blue-400';
+          contratoBoton = 'Editar'; // Permitir editar si ya está generado
+        } else {
+          contratoIcon = <AlertCircle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />;
+          contratoEstado = 'Pendiente de generación';
+          contratoColor = 'text-amber-400';
+          contratoBoton = 'Generar'; // Permitir generar manualmente
+        }
     }
   } else {
     // Cliente Legacy - Manual
@@ -671,11 +720,10 @@ export function PromiseClosingProcessCard({
       <ZenCardHeader className="border-b border-zinc-800 py-3 px-4 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full shrink-0 ${
-              cotizacion.status === 'en_cierre' 
-                ? 'bg-emerald-500 animate-pulse' 
-                : 'bg-emerald-500'
-            }`} />
+            <div className={`h-2 w-2 rounded-full shrink-0 ${cotizacion.status === 'en_cierre'
+              ? 'bg-emerald-500 animate-pulse'
+              : 'bg-emerald-500'
+              }`} />
             <ZenCardTitle className="text-sm">En Proceso de Cierre</ZenCardTitle>
           </div>
           <ZenButton
@@ -798,63 +846,63 @@ export function PromiseClosingProcessCard({
             </div>
             <div className="border-t border-zinc-700/50 pt-2">
               <div className="grid grid-cols-3 gap-x-2 gap-y-1 text-xs">
-              <div className="flex items-center gap-1">
-                {clientCompletion.name ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.name ? 'text-zinc-400' : 'text-zinc-500'}>Nombre</span>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.name ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.name ? 'text-zinc-400' : 'text-zinc-500'}>Nombre</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.phone ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.phone ? 'text-zinc-400' : 'text-zinc-500'}>Teléfono</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.email ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.email ? 'text-zinc-400' : 'text-zinc-500'}>Correo</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.address ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.address ? 'text-zinc-400' : 'text-zinc-500'}>Dirección</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.event_name ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.event_name ? 'text-zinc-400' : 'text-zinc-500'}>Evento</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.event_location ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.event_location ? 'text-zinc-400' : 'text-zinc-500'}>Locación</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {clientCompletion.event_date ? (
+                    <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
+                  )}
+                  <span className={clientCompletion.event_date ? 'text-zinc-400' : 'text-zinc-500'}>Fecha</span>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.phone ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.phone ? 'text-zinc-400' : 'text-zinc-500'}>Teléfono</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.email ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.email ? 'text-zinc-400' : 'text-zinc-500'}>Correo</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.address ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.address ? 'text-zinc-400' : 'text-zinc-500'}>Dirección</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.event_name ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.event_name ? 'text-zinc-400' : 'text-zinc-500'}>Evento</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.event_location ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.event_location ? 'text-zinc-400' : 'text-zinc-500'}>Locación</span>
-              </div>
-              <div className="flex items-center gap-1">
-                {clientCompletion.event_date ? (
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                ) : (
-                  <XCircle className="h-3 w-3 text-zinc-600 shrink-0" />
-                )}
-                <span className={clientCompletion.event_date ? 'text-zinc-400' : 'text-zinc-500'}>Fecha</span>
-              </div>
-            </div>
             </div>
           </div>
 
@@ -871,7 +919,7 @@ export function PromiseClosingProcessCard({
                   <span className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">
                     Contrato Digital
                   </span>
-                  {!isClienteNuevo && contratoBoton && (
+                  {contratoBoton && (
                     <button
                       onClick={() => {
                         if (registroCierre?.contract_template_id) {
@@ -882,7 +930,7 @@ export function PromiseClosingProcessCard({
                       }}
                       className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"
                     >
-                      {registroCierre?.contract_template_id ? 'Editar' : 'Generar'}
+                      {contratoBoton}
                     </button>
                   )}
                 </div>
@@ -892,19 +940,37 @@ export function PromiseClosingProcessCard({
                   </span>
                 )}
                 {contratoEstado && (
-                  <p className={`text-xs ${!registroCierre?.contrato_definido ? 'mt-1' : ''} ${contratoColor}`}>{contratoEstado}</p>
+                  <div className={`text-xs ${!registroCierre?.contrato_definido ? 'mt-1' : ''} ${contratoColor}`}>
+                    <p>{contratoEstado}</p>
+                    {registroCierre?.contract_version && (
+                      <p className="text-zinc-500 mt-0.5">
+                        Versión {registroCierre.contract_version}
+                        {registroCierre.contract_version > 1 && registroCierre.ultima_version_info && (
+                          <>
+                            {registroCierre.ultima_version_info.change_type === 'AUTO_REGENERATE' &&
+                              registroCierre.ultima_version_info.change_reason?.includes('actualización de datos') && (
+                                <span className="ml-1">• Regenerado por actualización de datos del cliente</span>
+                              )}
+                            {registroCierre.ultima_version_info.change_type === 'MANUAL_EDIT' && (
+                              <span className="ml-1">• Editado manualmente por el estudio</span>
+                            )}
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-            
+
             {/* Card de gestión de contrato */}
-            {!isClienteNuevo && contratoBoton && registroCierre?.contract_template_id && (
+            {contratoBoton && registroCierre?.contract_template_id && (
               <div className="mt-2 pt-2 border-t border-zinc-700/50">
                 <ContratoGestionCard
                   studioSlug={studioSlug}
                   promiseId={promiseId}
                   cotizacionId={cotizacion.id}
-                  eventTypeId={cotizacion.event_type_id}
+                  eventTypeId={eventTypeId || null}
                   selectedTemplateId={registroCierre?.contract_template_id}
                   condicionesComerciales={registroCierre?.condiciones_comerciales as any}
                   promiseData={promiseData}
@@ -949,9 +1015,9 @@ export function PromiseClosingProcessCard({
 
         {/* CTAs */}
         <div className="space-y-2">
-          <ZenButton 
-            variant="primary" 
-            className="w-full" 
+          <ZenButton
+            variant="primary"
+            className="w-full"
             onClick={handleAutorizar}
             disabled={isAuthorizing || loadingRegistro}
             loading={isAuthorizing}
@@ -1003,7 +1069,7 @@ export function PromiseClosingProcessCard({
         description={getConfirmMessage().description}
         confirmText={isAuthorizing ? 'Autorizando...' : 'Sí, autorizar y crear evento'}
         cancelText="Cancelar"
-        variant="primary"
+        variant="default"
         loading={isAuthorizing}
       />
 
@@ -1023,7 +1089,7 @@ export function PromiseClosingProcessCard({
         onClose={() => setShowContratoModal(false)}
         onSelect={handleTemplateSelected}
         studioSlug={studioSlug}
-        eventTypeId={cotizacion.event_type_id}
+        eventTypeId={eventTypeId || undefined}
       />
 
       {/* Modal Pago */}
@@ -1033,10 +1099,10 @@ export function PromiseClosingProcessCard({
         studioSlug={studioSlug}
         cotizacionId={cotizacion.id}
         pagoData={(registroCierre?.pago_concepto || registroCierre?.pago_monto) ? {
-          concepto: registroCierre.pago_concepto,
-          monto: registroCierre.pago_monto,
-          fecha: registroCierre.pago_fecha,
-          metodo_id: registroCierre.pago_metodo_id,
+          concepto: registroCierre.pago_concepto || null,
+          monto: registroCierre.pago_monto || null,
+          fecha: registroCierre.pago_fecha || null,
+          metodo_id: registroCierre.pago_metodo_id || null,
         } : null}
         paymentMethods={[]}
         onSuccess={handlePagoSuccess}
@@ -1113,7 +1179,7 @@ export function PromiseClosingProcessCard({
             setSelectedTemplate(null);
           }}
           onConfirm={handlePreviewConfirm}
-          onEdit={() => {}}
+          onEdit={() => { }}
           studioSlug={studioSlug}
           promiseId={promiseId}
           cotizacionId={cotizacion.id}
@@ -1141,7 +1207,6 @@ export function PromiseClosingProcessCard({
             event_location: localPromiseData.event_location || undefined,
             event_date: localPromiseData.event_date || undefined,
             acquisition_channel_id: acquisitionChannelId || undefined,
-            promiseId: promiseId,
           }}
           onSuccess={handlePromiseDataUpdated}
         />

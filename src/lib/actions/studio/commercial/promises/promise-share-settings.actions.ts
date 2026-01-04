@@ -11,6 +11,7 @@ export interface PromiseShareSettings {
   show_standard_conditions: boolean;
   show_offer_conditions: boolean;
   portafolios: boolean;
+  auto_generate_contract: boolean;
 }
 
 /**
@@ -40,6 +41,7 @@ export async function getPromiseShareSettings(
         promise_share_default_show_standard_conditions: true,
         promise_share_default_show_offer_conditions: true,
         promise_share_default_portafolios: true,
+        promise_share_default_auto_generate_contract: true,
       },
     });
 
@@ -60,6 +62,7 @@ export async function getPromiseShareSettings(
         share_show_standard_conditions: true,
         share_show_offer_conditions: true,
         share_portafolios: true,
+        share_auto_generate_contract: true,
         quotes: {
           where: {
             archived: false,
@@ -84,7 +87,8 @@ export async function getPromiseShareSettings(
       promise.share_min_days_to_hire === null &&
       promise.share_show_standard_conditions === null &&
       promise.share_show_offer_conditions === null &&
-      promise.share_portafolios === null;
+      promise.share_portafolios === null &&
+      promise.share_auto_generate_contract === null;
 
     // Usar overrides si existen, sino usar defaults del studio
     const settings: PromiseShareSettings = {
@@ -95,6 +99,7 @@ export async function getPromiseShareSettings(
       show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
       show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
       portafolios: promise.share_portafolios ?? studio.promise_share_default_portafolios,
+      auto_generate_contract: promise.share_auto_generate_contract ?? studio.promise_share_default_auto_generate_contract,
     };
 
     return {
@@ -128,6 +133,7 @@ export async function updatePromiseShareSettings(
     show_standard_conditions: boolean;
     show_offer_conditions: boolean;
     portafolios: boolean;
+    auto_generate_contract: boolean;
     remember_preferences: boolean;
   }
 ): Promise<{
@@ -168,6 +174,7 @@ export async function updatePromiseShareSettings(
           promise_share_default_show_standard_conditions: settings.show_standard_conditions,
           promise_share_default_show_offer_conditions: settings.show_offer_conditions,
           promise_share_default_portafolios: settings.portafolios,
+          promise_share_default_auto_generate_contract: settings.auto_generate_contract,
         },
       });
 
@@ -181,6 +188,7 @@ export async function updatePromiseShareSettings(
           share_show_standard_conditions: null,
           share_show_offer_conditions: null,
           share_portafolios: null,
+          share_auto_generate_contract: null,
         },
       });
     } else {
@@ -195,6 +203,7 @@ export async function updatePromiseShareSettings(
           share_show_standard_conditions: settings.show_standard_conditions,
           share_show_offer_conditions: settings.show_offer_conditions,
           share_portafolios: settings.portafolios,
+          share_auto_generate_contract: settings.auto_generate_contract,
         },
       });
     }

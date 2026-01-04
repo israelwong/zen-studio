@@ -170,6 +170,11 @@ export async function getPromiseContractData(
             order: "asc",
           },
         },
+        cotizacion_cierre: {
+          select: {
+            contract_signed_at: true,
+          },
+        },
       },
     });
 
@@ -277,16 +282,39 @@ export async function getPromiseContractData(
     });
 
     // Formatear fecha de firma
-    // Si selected_by_prospect es true: undefined (aún no se ha firmado)
+    // Si selected_by_prospect es true:
+    //   - Si ya está firmado (contract_signed_at existe), usar esa fecha
+    //   - Si no está firmado, mostrar fecha de hoy (para el preview)
     // Si selected_by_prospect es false: usar fecha de hoy (generación manual del estudio)
-    const fechaFirmaCliente = cotizacion.selected_by_prospect
-      ? undefined // Prospecto seleccionó: no hay fecha de firma aún (se establecerá cuando firme)
-      : new Date().toLocaleDateString("es-ES", {
+    let fechaFirmaCliente: string | undefined;
+    
+    if (cotizacion.selected_by_prospect) {
+      if (cotizacion.cotizacion_cierre?.contract_signed_at) {
+        // Ya está firmado: usar la fecha guardada
+        fechaFirmaCliente = new Date(cotizacion.cotizacion_cierre.contract_signed_at).toLocaleDateString("es-ES", {
           weekday: "long",
           year: "numeric",
           month: "long",
           day: "numeric",
         });
+      } else {
+        // No está firmado: mostrar fecha de hoy para el preview
+        fechaFirmaCliente = new Date().toLocaleDateString("es-ES", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+      }
+    } else {
+      // Estudio genera manualmente: usar fecha de hoy
+      fechaFirmaCliente = new Date().toLocaleDateString("es-ES", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    }
 
     const eventData: EventContractDataWithConditions = {
       nombre_studio: studio.studio_name,

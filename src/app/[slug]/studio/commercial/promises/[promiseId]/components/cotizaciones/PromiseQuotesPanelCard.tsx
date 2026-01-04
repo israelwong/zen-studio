@@ -142,10 +142,6 @@ export function PromiseQuotesPanelCard({
     if (status === 'rechazada' || status === 'rejected' || status === 'cancelada') {
       return 'destructive';
     }
-    // Si está pre-autorizada y es pendiente, usar info (azul)
-    if (selectedByProspect && (status === 'pendiente' || status === 'pending')) {
-      return 'info';
-    }
     // Pendiente y otros estados: zinc
     return 'secondary';
   };
@@ -181,10 +177,6 @@ export function PromiseQuotesPanelCard({
     }
     if (status === 'cancelada') {
       return 'Cancelada';
-    }
-    // Si está pre-autorizada y es pendiente, mostrar "Pre autorizada"
-    if (selectedByProspect && (status === 'pendiente' || status === 'pending')) {
-      return 'Pre autorizada';
     }
     if (status === 'pendiente' || status === 'pending') {
       return 'Pendiente';
@@ -515,10 +507,7 @@ export function PromiseQuotesPanelCard({
                 ) : (
                   <ZenBadge
                     variant={getStatusVariant(cotizacion.status, cotizacion.revision_status, cotizacion.selected_by_prospect)}
-                    className={`text-[10px] px-1.5 py-0.5 rounded-full ${cotizacion.selected_by_prospect && (cotizacion.status === 'pendiente' || cotizacion.status === 'pending')
-                      ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                      : ''
-                      }`}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full"
                   >
                     {getStatusLabel(cotizacion.status, cotizacion.revision_status, cotizacion.selected_by_prospect)}
                     {cotizacion.revision_number && cotizacion.revision_status === 'pending_revision' && (

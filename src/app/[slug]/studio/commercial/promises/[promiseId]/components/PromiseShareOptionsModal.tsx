@@ -31,6 +31,7 @@ export function PromiseShareOptionsModal({
   const [showStandardConditions, setShowStandardConditions] = useState(true); // Siempre true, no modificable
   const [showOfferConditions, setShowOfferConditions] = useState(false);
   const [showPortafolios, setShowPortafolios] = useState(true);
+  const [autoGenerateContract, setAutoGenerateContract] = useState(false);
 
   useEffect(() => {
     if (isOpen && promiseId) {
@@ -56,6 +57,7 @@ export function PromiseShareOptionsModal({
         setShowStandardConditions(result.data.show_standard_conditions ?? true);
         setShowOfferConditions(result.data.show_offer_conditions ?? false);
         setShowPortafolios(result.data.portafolios ?? true);
+        setAutoGenerateContract(result.data.auto_generate_contract ?? false);
       } else {
         toast.error(result.error || 'Error al cargar preferencias');
       }
@@ -84,6 +86,7 @@ export function PromiseShareOptionsModal({
         show_standard_conditions: showStandardConditions,
         show_offer_conditions: showOfferConditions,
         portafolios: showPortafolios,
+        auto_generate_contract: autoGenerateContract,
         remember_preferences: rememberPreferences,
       });
 
@@ -255,6 +258,22 @@ export function PromiseShareOptionsModal({
               />
             </div>
 
+            {/* Switch para generar contrato automáticamente */}
+            <div className="flex items-center justify-between py-2">
+              <div className="flex-1">
+                <label className="text-sm font-medium text-zinc-200">
+                  Generar contrato automáticamente al autorizar
+                </label>
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Si está activado, el contrato se generará automáticamente usando la plantilla por defecto cuando el prospecto autorice la cotización
+                </p>
+              </div>
+              <ZenSwitch
+                checked={autoGenerateContract}
+                onCheckedChange={setAutoGenerateContract}
+              />
+            </div>
+
             {/* Input para límite de días */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-200">
@@ -283,8 +302,8 @@ export function PromiseShareOptionsModal({
                 <div className="flex items-center justify-center gap-2 py-2 flex-1">
                   <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-500 border-t-transparent" />
                   <span className="text-sm text-zinc-400">
-                    {savingScope === 'all' 
-                      ? 'Guardando para todas las promesas...' 
+                    {savingScope === 'all'
+                      ? 'Guardando para todas las promesas...'
                       : 'Guardando para esta promesa...'}
                   </span>
                 </div>

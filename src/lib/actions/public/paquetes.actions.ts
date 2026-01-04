@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { createStudioNotification } from "@/lib/notifications/studio/studio-notification.service";
 import { StudioNotificationScope, StudioNotificationType, NotificationPriority } from "@/lib/notifications/studio/types";
-import { calcularYGuardarPreciosCotizacion } from "@/lib/actions/studio/commercial/promises/cotizacion-pricing";
+import { getPromiseShareSettings } from "@/lib/actions/studio/commercial/promises/promise-share-settings.actions";
+import { getDefaultContractTemplate, createDefaultTemplateForStudio } from "@/lib/actions/studio/business/contracts/templates.actions";
+import { getPromiseContractData } from "@/lib/actions/studio/business/contracts/renderer.actions";
+import { renderContractContent } from "@/lib/actions/studio/business/contracts/renderer.actions";
 
 /**
  * Pre-autorizar paquete desde página pública
@@ -185,48 +188,167 @@ export async function solicitarPaquetePublico(
 
     const newOrder = (maxOrder?.order ?? -1) + 1;
 
-    // 6. Crear cotización desde el paquete
-    const cotizacion = await prisma.studio_cotizaciones.create({
-      data: {
-        studio_id: promise.studio.id,
-        evento_id: evento.id,
-        event_type_id: eventTypeId,
-        promise_id: promiseId,
-        contact_id: promise.contact.id,
-        name: paquete.name,
-        description: paquete.description,
-        price: paquete.precio || 0,
-        status: 'pendiente',
-        visible_to_client: true,
-        paquete_id: paqueteId,
-        condiciones_comerciales_id: condicionesComercialesId || null,
-        condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
-        selected_by_prospect: true,
-        selected_at: new Date(),
-        order: newOrder,
-      },
-    });
-
-    // 7. Crear items de cotización desde items del paquete
-    const cotizacionItems = paquete.paquete_items
-      .filter((item) => item.item_id) // Solo items con item_id válido
-      .map((item, index) => ({
-        cotizacion_id: cotizacion.id,
-        item_id: item.item_id!,
-        service_category_id: item.service_category_id,
-        quantity: item.quantity,
-        order: index,
-      }));
-
-    if (cotizacionItems.length > 0) {
-      await prisma.studio_cotizacion_items.createMany({
-        data: cotizacionItems,
+    // 6. Crear cotización desde el paquete y pasar a en_cierre
+    // También archivar otras cotizaciones pendientes y crear registro de cierre
+    const cotizacion = await prisma.$transaction(async (tx) => {
+      // 6.1. Crear cotización
+      const nuevaCotizacion = await tx.studio_cotizaciones.create({
+        data: {
+          studio_id: promise.studio.id,
+          evento_id: evento.id,
+          event_type_id: eventTypeId,
+          promise_id: promiseId,
+          contact_id: promise.contact.id,
+          name: paquete.name,
+          description: paquete.description,
+          price: paquete.precio || 0,
+          status: 'en_cierre',
+          visible_to_client: true,
+          paquete_id: paqueteId,
+          condiciones_comerciales_id: condicionesComercialesId || null,
+          condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
+          selected_by_prospect: true,
+          selected_at: new Date(),
+          order: newOrder,
+        },
       });
 
-      // Calcular y guardar precios de los items
+      // 6.2. Crear items de cotización desde items del paquete
+      const cotizacionItems = paquete.paquete_items
+        .filter((item) => item.item_id) // Solo items con item_id válido
+        .map((item, index) => ({
+          cotizacion_id: nuevaCotizacion.id,
+          item_id: item.item_id!,
+          service_category_id: item.service_category_id,
+          quantity: item.quantity,
+          order: index,
+        }));
+
+      if (cotizacionItems.length > 0) {
+        await tx.studio_cotizacion_items.createMany({
+          data: cotizacionItems,
+        });
+      }
+
+      // 6.3. Crear registro de cierre con condición comercial seleccionada por el prospecto
+      await tx.studio_cotizaciones_cierre.create({
+        data: {
+          cotizacion_id: nuevaCotizacion.id,
+          condiciones_comerciales_id: condicionesComercialesId || null,
+          condiciones_comerciales_definidas: !!condicionesComercialesId,
+          // Limpiar otros campos para empezar limpio
+          contract_template_id: null,
+          contract_content: null,
+          contrato_definido: false,
+          pago_registrado: false,
+          pago_concepto: null,
+          pago_monto: null,
+          pago_fecha: null,
+          pago_metodo_id: null,
+        },
+      });
+
+      // 6.4. Archivar todas las demás cotizaciones pendientes de la misma promesa
+      await tx.studio_cotizaciones.updateMany({
+        where: {
+          promise_id: promiseId,
+          id: { not: nuevaCotizacion.id },
+          status: 'pendiente',
+          archived: false,
+        },
+        data: {
+          archived: true,
+          updated_at: new Date(),
+        },
+      });
+
+      return nuevaCotizacion;
+    });
+
+    // Calcular y guardar precios de los items (fuera de la transacción para no bloquear)
+    // Import dinámico para evitar problemas de HMR
+    try {
+      const { calcularYGuardarPreciosCotizacion } = await import("@/lib/actions/studio/commercial/promises/cotizacion-pricing");
       await calcularYGuardarPreciosCotizacion(cotizacion.id, studioSlug).catch(() => {
         // No fallar la creación si el cálculo de precios falla
       });
+    } catch (error) {
+      // No fallar la creación si el import o cálculo de precios falla
+      console.warn("[solicitarPaquetePublico] Error al calcular precios:", error);
+    }
+
+    // 7. Verificar si se debe generar contrato automáticamente
+    const shareSettings = await getPromiseShareSettings(studioSlug, promiseId);
+    const autoGenerateContract = shareSettings.success && shareSettings.data?.auto_generate_contract;
+
+    if (autoGenerateContract) {
+      try {
+        // Obtener plantilla por defecto
+        const eventTypeId = promise.event_type_id || (paquete.event_types?.id || null);
+        let templateResult = await getDefaultContractTemplate(studioSlug, eventTypeId || undefined);
+        
+        // Si no existe, intentar crear una
+        if (!templateResult.success) {
+          const createResult = await createDefaultTemplateForStudio(studioSlug);
+          if (createResult.success && createResult.data) {
+            templateResult = { success: true, data: createResult.data };
+          }
+        }
+
+        if (templateResult.success && templateResult.data) {
+          const template = templateResult.data;
+
+          // Obtener datos de la promesa para renderizar el contrato
+          const contractDataResult = await getPromiseContractData(
+            studioSlug,
+            promiseId,
+            cotizacion.id,
+            condicionComercialInfo ? {
+              id: condicionComercialInfo.id,
+              name: condicionComercialInfo.name,
+              description: condicionComercialInfo.description || null,
+              discount_percentage: condicionComercialInfo.discount_percentage || null,
+              advance_percentage: condicionComercialInfo.advance_percentage || null,
+              advance_type: condicionComercialInfo.advance_type || null,
+              advance_amount: condicionComercialInfo.advance_amount || null,
+            } : undefined
+          );
+
+          if (contractDataResult.success && contractDataResult.data) {
+            // Renderizar contenido del contrato
+            const renderResult = await renderContractContent(
+              template.content,
+              contractDataResult.data,
+              contractDataResult.data.condicionesData
+            );
+
+            if (renderResult.success && renderResult.data) {
+              // Guardar en studio_cotizaciones_cierre con template_id y contenido renderizado
+              // NO crear evento ni contrato en studio_event_contracts todavía
+              await prisma.studio_cotizaciones_cierre.update({
+                where: { cotizacion_id: cotizacion.id },
+                data: {
+                  contract_template_id: template.id,
+                  contract_content: renderResult.data,
+                  contrato_definido: true,
+                },
+              });
+
+              // Actualizar estado de cotización a contract_generated
+              await prisma.studio_cotizaciones.update({
+                where: { id: cotizacion.id },
+                data: {
+                  status: 'contract_generated',
+                },
+              });
+            }
+          }
+        }
+      } catch (error) {
+        // Si falla la generación automática, no fallar toda la operación
+        // Solo loguear el error y continuar
+        console.error('[solicitarPaquetePublico] Error al generar contrato automáticamente:', error);
+      }
     }
 
     // Revalidar paths para refrescar datos en el panel
@@ -265,8 +387,8 @@ export async function solicitarPaquetePublico(
     const diferido = precioConDescuento - anticipo;
 
     // 9. Construir mensaje con información completa de precio y condición comercial
-    let mensajeNotificacion = `${promise.contact.name} pre-autorizó el paquete "${paquete.name}" (cotización creada)`;
-    let contenidoLog = `Cliente pre-autorizó el paquete: "${paquete.name}" - Cotización creada automáticamente`;
+    let mensajeNotificacion = `${promise.contact.name} autorizó el paquete "${paquete.name}" (cotización creada) - En proceso de cierre`;
+    let contenidoLog = `Cliente autorizó el paquete: "${paquete.name}" - Cotización creada automáticamente y pasó a proceso de cierre`;
 
     // Agregar información de precio
     mensajeNotificacion += ` - Total: ${formatPrice(precioConDescuento)}`;
@@ -304,7 +426,7 @@ export async function solicitarPaquetePublico(
       scope: StudioNotificationScope.STUDIO,
       studio_id: promise.studio.id,
       type: StudioNotificationType.QUOTE_APPROVED,
-      title: "Paquete pre-autorizado por prospecto (cotización creada)",
+      title: "Paquete autorizado - Cotización en proceso de cierre",
       message: mensajeNotificacion,
       priority: NotificationPriority.HIGH,
       contact_id: promise.contact.id,

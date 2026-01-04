@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { createStudioNotification } from "@/lib/notifications/studio/studio-notification.service";
 import { StudioNotificationScope, StudioNotificationType, NotificationPriority } from "@/lib/notifications/studio/types";
+import { getPromiseShareSettings } from "@/lib/actions/studio/commercial/promises/promise-share-settings.actions";
+import { getDefaultContractTemplate, createDefaultTemplateForStudio } from "@/lib/actions/studio/business/contracts/templates.actions";
+import { getPromiseContractData } from "@/lib/actions/studio/business/contracts/renderer.actions";
+import { renderContractContent } from "@/lib/actions/studio/business/contracts/renderer.actions";
 
 /**
  * Pre-autorizar cotización desde página pública
@@ -111,16 +115,143 @@ export async function autorizarCotizacionPublica(
       }
     }
 
-    // 3. Actualizar cotización: asociar condición comercial y marcar como pre-autorizada
-    const updatedCotizacion = await prisma.studio_cotizaciones.update({
-      where: { id: cotizacionId },
-      data: {
-        condiciones_comerciales_id: condicionesComercialesId || null,
-        condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
-        selected_by_prospect: true,
-        selected_at: new Date(),
-      },
+    // 3. Actualizar cotización: asociar condición comercial y pasar a en_cierre
+    // También archivar otras cotizaciones pendientes y crear registro de cierre
+    await prisma.$transaction(async (tx) => {
+      // 3.1. Actualizar cotización a en_cierre
+      await tx.studio_cotizaciones.update({
+        where: { id: cotizacionId },
+        data: {
+          condiciones_comerciales_id: condicionesComercialesId || null,
+          condiciones_comerciales_metodo_pago_id: condicionesComercialesMetodoPagoId || null,
+          selected_by_prospect: true,
+          selected_at: new Date(),
+          status: 'en_cierre',
+          updated_at: new Date(),
+        },
+      });
+
+      // 3.2. Crear registro de cierre con condición comercial seleccionada por el prospecto
+      await tx.studio_cotizaciones_cierre.upsert({
+        where: { cotizacion_id: cotizacionId },
+        create: {
+          cotizacion_id: cotizacionId,
+          condiciones_comerciales_id: condicionesComercialesId || null,
+          condiciones_comerciales_definidas: !!condicionesComercialesId,
+          // Limpiar otros campos para empezar limpio
+          contract_template_id: null,
+          contract_content: null,
+          contrato_definido: false,
+          pago_registrado: false,
+          pago_concepto: null,
+          pago_monto: null,
+          pago_fecha: null,
+          pago_metodo_id: null,
+        },
+        update: {
+          // Actualizar condición comercial seleccionada por el prospecto
+          condiciones_comerciales_id: condicionesComercialesId || null,
+          condiciones_comerciales_definidas: !!condicionesComercialesId,
+          // Limpiar solo campos de contrato y pago si ya existía (mantener condición comercial)
+          contract_template_id: null,
+          contract_content: null,
+          contrato_definido: false,
+          pago_registrado: false,
+          pago_concepto: null,
+          pago_monto: null,
+          pago_fecha: null,
+          pago_metodo_id: null,
+          updated_at: new Date(),
+        },
+      });
+
+      // 3.3. Archivar todas las demás cotizaciones pendientes de la misma promesa
+      await tx.studio_cotizaciones.updateMany({
+        where: {
+          promise_id: promiseId,
+          id: { not: cotizacionId },
+          status: 'pendiente',
+          archived: false,
+        },
+        data: {
+          archived: true,
+          updated_at: new Date(),
+        },
+      });
     });
+
+    // 3.4. Verificar si se debe generar contrato automáticamente
+    const shareSettings = await getPromiseShareSettings(studioSlug, promiseId);
+    const autoGenerateContract = shareSettings.success && shareSettings.data?.auto_generate_contract;
+
+    if (autoGenerateContract) {
+      try {
+        // Obtener plantilla por defecto
+        let templateResult = await getDefaultContractTemplate(studioSlug, promise.event_type_id || undefined);
+        
+        // Si no existe, intentar crear una
+        if (!templateResult.success) {
+          const createResult = await createDefaultTemplateForStudio(studioSlug);
+          if (createResult.success && createResult.data) {
+            templateResult = { success: true, data: createResult.data };
+          }
+        }
+
+        if (templateResult.success && templateResult.data) {
+          const template = templateResult.data;
+
+          // Obtener datos de la promesa para renderizar el contrato
+          const contractDataResult = await getPromiseContractData(
+            studioSlug,
+            promiseId,
+            cotizacionId,
+            condicionComercialInfo ? {
+              id: condicionComercialInfo.id,
+              name: condicionComercialInfo.name,
+              description: condicionComercialInfo.description || null,
+              discount_percentage: condicionComercialInfo.discount_percentage || null,
+              advance_percentage: condicionComercialInfo.advance_percentage || null,
+              advance_type: condicionComercialInfo.advance_type || null,
+              advance_amount: condicionComercialInfo.advance_amount || null,
+            } : undefined
+          );
+
+          if (contractDataResult.success && contractDataResult.data) {
+            // Renderizar contenido del contrato
+            const renderResult = await renderContractContent(
+              template.content,
+              contractDataResult.data,
+              contractDataResult.data.condicionesData
+            );
+
+            if (renderResult.success && renderResult.data) {
+              // Guardar en studio_cotizaciones_cierre con template_id y contenido renderizado
+              // NO crear evento ni contrato en studio_event_contracts todavía
+              await prisma.studio_cotizaciones_cierre.update({
+                where: { cotizacion_id: cotizacionId },
+                data: {
+                  contract_template_id: template.id,
+                  contract_content: renderResult.data,
+                  contrato_definido: true,
+                },
+              });
+
+              // Actualizar estado de cotización a contract_generated
+              await prisma.studio_cotizaciones.update({
+                where: { id: cotizacionId },
+                data: {
+                  status: 'contract_generated',
+                },
+              });
+            }
+          }
+        }
+      } catch (error) {
+        // Si falla la generación automática, no fallar toda la operación
+        // Solo loguear el error y continuar
+        console.error('[autorizarCotizacionPublica] Error al generar contrato automáticamente:', error);
+      }
+    }
 
     // Revalidar paths para refrescar datos en el panel
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
@@ -159,8 +290,8 @@ export async function autorizarCotizacionPublica(
     const diferido = precioConDescuento - anticipo;
 
     // 5. Construir mensaje con información completa de precio y condición comercial
-    let mensajeNotificacion = `${promise.contact.name} pre-autorizó la cotización "${cotizacion.name}"`;
-    let contenidoLog = `Cliente pre-autorizó la cotización: "${cotizacion.name}"`;
+    let mensajeNotificacion = `${promise.contact.name} autorizó la cotización "${cotizacion.name}" - En proceso de cierre`;
+    let contenidoLog = `Cliente autorizó la cotización: "${cotizacion.name}" - Pasó a proceso de cierre`;
 
     // Agregar información de precio
     mensajeNotificacion += ` - Total: ${formatPrice(precioConDescuento)}`;
@@ -261,6 +392,198 @@ export async function autorizarCotizacionPublica(
     return {
       success: false,
       error: "Error al enviar la solicitud",
+    };
+  }
+}
+
+/**
+ * Regenerar contrato cuando el cliente actualiza sus datos
+ * Solo funciona si el contrato ya está generado y no está firmado
+ */
+export async function regeneratePublicContract(
+  studioSlug: string,
+  promiseId: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: "Studio no encontrado",
+      };
+    }
+
+    // Verificar que la cotización existe y tiene contrato generado
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+        promise_id: promiseId,
+      },
+      include: {
+        cotizacion_cierre: {
+          include: {
+            condiciones_comerciales: true,
+          },
+        },
+      },
+    });
+
+    if (!cotizacion) {
+      return {
+        success: false,
+        error: "Cotización no encontrada",
+      };
+    }
+
+    // Verificar que el contrato está generado pero no firmado
+    if (cotizacion.status !== 'contract_generated' && cotizacion.status !== 'en_cierre') {
+      return {
+        success: false,
+        error: "El contrato no está disponible para regeneración",
+      };
+    }
+
+    if (cotizacion.status === 'contract_signed') {
+      return {
+        success: false,
+        error: "No se puede regenerar un contrato firmado",
+      };
+    }
+
+    // Verificar que hay contrato definido
+    if (!cotizacion.cotizacion_cierre?.contrato_definido || !cotizacion.cotizacion_cierre?.contract_template_id) {
+      return {
+        success: false,
+        error: "No hay contrato generado para regenerar",
+      };
+    }
+
+    // Obtener la plantilla del contrato
+    const templateResult = await getDefaultContractTemplate(studio.id);
+    if (!templateResult.success || !templateResult.data) {
+      return {
+        success: false,
+        error: "No se encontró la plantilla del contrato",
+      };
+    }
+
+    const template = templateResult.data;
+
+    // Obtener condiciones comerciales si existen
+    const condicionComercial = cotizacion.cotizacion_cierre?.condiciones_comerciales;
+    const condicionComercialInfo = condicionComercial ? {
+      id: condicionComercial.id,
+      name: condicionComercial.name,
+      description: condicionComercial.description || null,
+      discount_percentage: condicionComercial.discount_percentage || null,
+      advance_percentage: condicionComercial.advance_percentage || null,
+      advance_type: condicionComercial.advance_type || null,
+      advance_amount: condicionComercial.advance_amount || null,
+    } : undefined;
+
+    // Obtener datos actualizados de la promesa para renderizar el contrato
+    const contractDataResult = await getPromiseContractData(
+      studioSlug,
+      promiseId,
+      cotizacionId,
+      condicionComercialInfo
+    );
+
+    if (!contractDataResult.success || !contractDataResult.data) {
+      return {
+        success: false,
+        error: contractDataResult.error || "Error al obtener datos del contrato",
+      };
+    }
+
+    // Renderizar contenido del contrato con datos actualizados
+    const renderResult = await renderContractContent(
+      template.content,
+      contractDataResult.data,
+      contractDataResult.data.condicionesData
+    );
+
+    if (!renderResult.success || !renderResult.data) {
+      return {
+        success: false,
+        error: renderResult.error || "Error al renderizar contrato",
+      };
+    }
+
+    const renderedContent = renderResult.data;
+    const currentVersion = cotizacion.cotizacion_cierre?.contract_version || 1;
+    const newVersion = currentVersion + 1;
+
+    // Guardar versión anterior antes de actualizar (solo si no existe ya)
+    const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: {
+        cotizacion_id: cotizacionId,
+        version: currentVersion,
+      },
+    });
+
+    if (!existingPreviousVersion && cotizacion.cotizacion_cierre?.contract_content) {
+      await prisma.studio_cotizaciones_cierre_contract_versions.create({
+        data: {
+          cotizacion_id: cotizacionId,
+          version: currentVersion,
+          content: cotizacion.cotizacion_cierre.contract_content,
+          change_type: "AUTO_REGENERATE",
+          change_reason: "Regeneración automática por actualización de datos del cliente",
+        },
+      });
+    }
+
+    // Actualizar el contenido del contrato y la versión en studio_cotizaciones_cierre
+    await prisma.studio_cotizaciones_cierre.update({
+      where: { cotizacion_id: cotizacionId },
+      data: {
+        contract_content: renderedContent,
+        contract_version: newVersion,
+      },
+    });
+
+    // Crear nueva versión (solo si no existe ya)
+    const existingNewVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: {
+        cotizacion_id: cotizacionId,
+        version: newVersion,
+      },
+    });
+
+    if (!existingNewVersion) {
+      await prisma.studio_cotizaciones_cierre_contract_versions.create({
+        data: {
+          cotizacion_id: cotizacionId,
+          version: newVersion,
+          content: renderedContent,
+          change_type: "AUTO_REGENERATE",
+          change_reason: "Regeneración automática por actualización de datos del cliente",
+        },
+      });
+    }
+
+    // Revalidar paths
+    revalidatePath(`/${studioSlug}/promise/${promiseId}`);
+    revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("[regeneratePublicContract] Error:", error);
+    return {
+      success: false,
+      error: "Error al regenerar contrato",
     };
   }
 }

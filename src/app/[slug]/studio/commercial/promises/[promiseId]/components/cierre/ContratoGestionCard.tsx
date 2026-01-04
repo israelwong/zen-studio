@@ -2,13 +2,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ZenButton, ZenDialog } from '@/components/ui/zen';
-import { FileText, Eye, Edit2, Trash2, Loader2, Settings } from 'lucide-react';
+import { FileText, Eye, Edit2, Trash2, Loader2, Settings, GitBranch } from 'lucide-react';
 import { ContractTemplateSimpleSelectorModal } from '../contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from '../contratos/ContractPreviewForPromiseModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { ContractTemplateManagerModal } from '@/components/shared/contracts/ContractTemplateManagerModal';
 import { updateContractTemplate, getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
 import { actualizarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
+import { ContractCierreVersionsModal } from './ContractCierreVersionsModal';
 import type { ContractTemplate } from '@/types/contracts';
 import { toast } from 'sonner';
 
@@ -28,6 +29,7 @@ interface ContratoGestionCardProps {
   cotizacionId: string;
   eventTypeId: string | null;
   selectedTemplateId?: string | null;
+  contractContent?: string | null; // Contenido del contrato desde el padre
   condicionesComerciales?: CondicionComercial | null;
   promiseData: {
     name: string;
@@ -38,7 +40,7 @@ interface ContratoGestionCardProps {
     event_name: string | null;
     event_type_name: string | null;
   };
-  onSuccess?: () => void;
+  onSuccess?: () => Promise<void> | void;
   showOptionsModal?: boolean;
   onCloseOptionsModal?: () => void;
 }
@@ -49,6 +51,7 @@ export function ContratoGestionCard({
   cotizacionId,
   eventTypeId,
   selectedTemplateId,
+  contractContent,
   condicionesComerciales,
   promiseData,
   onSuccess,
@@ -63,14 +66,37 @@ export function ContratoGestionCard({
   const [isContractCustomized, setIsContractCustomized] = useState(false);
   const [customizedContent, setCustomizedContent] = useState<string | null>(null);
   const [showManagerModal, setShowManagerModal] = useState(false);
+  const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
   // Cargar plantilla si ya está seleccionada
   useEffect(() => {
-    if (selectedTemplateId && !selectedTemplate) {
-      loadTemplate(selectedTemplateId);
+    if (selectedTemplateId) {
+      // Si no hay plantilla cargada o la plantilla cargada es diferente, cargar
+      if (!selectedTemplate || selectedTemplate.id !== selectedTemplateId) {
+        loadTemplate(selectedTemplateId);
+      }
+    } else if (!selectedTemplateId && selectedTemplate) {
+      // Si se perdió el selectedTemplateId pero hay plantilla cargada, mantenerla
+      // No limpiar la plantilla para evitar pérdida de estado durante actualizaciones
     }
   }, [selectedTemplateId]);
+
+  // Sincronizar customizedContent con contractContent del padre
+  useEffect(() => {
+    if (contractContent !== undefined) {
+      // Si hay contenido desde el padre y es diferente al local, actualizar
+      if (contractContent !== null && contractContent !== customizedContent) {
+        setCustomizedContent(contractContent);
+        setIsContractCustomized(true);
+      } else if (contractContent === null && customizedContent !== null && !selectedTemplateId) {
+        // Solo limpiar si realmente no hay template seleccionado
+        // Si hay template pero no contenido, mantener el estado local
+        setCustomizedContent(null);
+        setIsContractCustomized(false);
+      }
+    }
+  }, [contractContent]);
 
 
   const loadTemplate = async (templateId: string) => {
@@ -139,9 +165,8 @@ export function ContratoGestionCard({
     }, 150);
   };
 
-  const handleSaveCustomContract = async (content: string) => {
-    setCustomizedContent(content);
-    setIsContractCustomized(true);
+  const handleSaveCustomContract = async (data: { content: string }) => {
+    const content = typeof data === 'string' ? data : data.content;
     setShowContractEditor(false);
     
     // Guardar contenido personalizado en studio_cotizaciones_cierre
@@ -153,13 +178,27 @@ export function ContratoGestionCard({
     );
 
     if (result.success) {
-      toast.success('Contrato personalizado guardado');
-      onSuccess?.();
+      // Actualizar estado local después de guardar exitosamente
+      setCustomizedContent(content);
+      setIsContractCustomized(true);
       
-      // Volver a abrir preview con contenido actualizado
+      toast.success('Contrato personalizado guardado');
+      
+      // Notificar al padre para que actualice su estado local y esperar a que termine
+      // El padre actualizará contractContent y luego se sincronizará aquí
+      if (onSuccess) {
+        const successResult = onSuccess();
+        // Si onSuccess retorna una promesa, esperar a que termine
+        if (successResult instanceof Promise) {
+          await successResult;
+        }
+      }
+      
+      // Esperar un momento adicional para asegurar que el estado del padre se haya actualizado
+      // Esto asegura que el preview use el contenido actualizado desde el padre
       setTimeout(() => {
         setShowContractPreview(true);
-      }, 100);
+      }, 200);
     } else {
       toast.error(result.error || 'Error al guardar contrato personalizado');
     }
@@ -254,7 +293,7 @@ export function ContratoGestionCard({
           promiseId={promiseId}
           cotizacionId={cotizacionId}
           template={selectedTemplate}
-          customContent={customizedContent}
+          customContent={contractContent || customizedContent}
           condicionesComerciales={condicionesComerciales}
         />
       )}
@@ -264,7 +303,7 @@ export function ContratoGestionCard({
         <ContractEditorModal
           isOpen={showContractEditor}
           onClose={() => setShowContractEditor(false)}
-          initialContent={customizedContent || selectedTemplate.content}
+          initialContent={contractContent || customizedContent || selectedTemplate.content}
           onSave={handleSaveCustomContract}
           title="Personalizar Contrato"
           description="Personaliza el contrato para este cliente. Los cambios solo aplicarán a esta promesa."
@@ -325,6 +364,20 @@ export function ContratoGestionCard({
 
             <button
               onClick={() => {
+                setShowVersionsModal(true);
+                onCloseOptionsModal?.();
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800 transition-colors text-left"
+            >
+              <GitBranch className="w-4 h-4 text-emerald-500 shrink-0" />
+              <div>
+                <div className="text-sm font-medium text-white">Ver historial de versiones</div>
+                <div className="text-xs text-zinc-400">Revisa todas las versiones del contrato</div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
                 handleRemoveTemplate();
                 onCloseOptionsModal?.();
               }}
@@ -346,6 +399,16 @@ export function ContratoGestionCard({
         onClose={handleManagerModalClose}
         studioSlug={studioSlug}
         eventTypeId={eventTypeId}
+      />
+
+      {/* Modal de Historial de Versiones */}
+      <ContractCierreVersionsModal
+        isOpen={showVersionsModal}
+        onClose={() => setShowVersionsModal(false)}
+        studioSlug={studioSlug}
+        cotizacionId={cotizacionId}
+        promiseId={promiseId}
+        promiseData={promiseData}
       />
 
     </>

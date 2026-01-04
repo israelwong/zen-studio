@@ -129,6 +129,24 @@ export function useCotizacionesRealtime({
     (payload: unknown) => {
       if (!isMountedRef.current) return;
 
+      const p = payload as any;
+      
+      // Detectar si es un cambio en studio_cotizaciones_cierre
+      // El trigger emite eventos con table: 'studio_cotizaciones_cierre'
+      if (p.table === 'studio_cotizaciones_cierre' || p.payload?.table === 'studio_cotizaciones_cierre') {
+        const record = p.record || p.new || p.payload?.new || p.payload?.record;
+        if (record && record.cotizacion_id) {
+          const cotizacionId = record.cotizacion_id as string;
+          // Si se especifica promiseId, necesitamos obtener la cotización para verificar
+          // Por ahora, siempre llamar onUpdated si hay cotizacion_id
+          if (cotizacionId && onUpdatedRef.current) {
+            onUpdatedRef.current(cotizacionId);
+          }
+          return;
+        }
+      }
+
+      // Manejo normal de cambios en studio_cotizaciones
       const cotizacion = extractCotizacion(payload, 'UPDATE');
       if (!cotizacion) return;
 

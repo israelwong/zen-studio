@@ -8,6 +8,7 @@ import { PaquetesSection } from './PaquetesSection';
 import { ComparadorButton } from './ComparadorButton';
 import { PortafoliosCard } from './PortafoliosCard';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
+import { PublicQuoteAuthorizedView } from './PublicQuoteAuthorizedView';
 import { usePromiseSettingsRealtime } from '@/hooks/usePromiseSettingsRealtime';
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 
@@ -27,16 +28,22 @@ interface PromisePageClientProps {
     contact_name: string;
     contact_phone: string;
     contact_email: string | null;
+    contact_address: string | null;
     event_type_id: string | null;
     event_type_name: string | null;
     event_date: Date | null;
     event_location: string | null;
+    event_name: string | null;
   };
   studio: {
     studio_name: string;
     slogan: string | null;
     logo_url: string | null;
     id: string;
+    representative_name: string | null;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
     promise_share_default_show_packages: boolean;
     promise_share_default_show_categories_subtotals: boolean;
     promise_share_default_show_items_prices: boolean;
@@ -117,6 +124,17 @@ export function PromisePageClient({
     onSettingsUpdated: handleSettingsUpdated,
   });
 
+  // Detectar si hay cotización autorizada (en_cierre, contract_generated, contract_signed)
+  const cotizacionAutorizada = useMemo(() => {
+    return initialCotizaciones.find(
+      (cot) =>
+        cot.selected_by_prospect &&
+        (cot.status === 'en_cierre' ||
+          cot.status === 'contract_generated' ||
+          cot.status === 'contract_signed')
+    );
+  }, [initialCotizaciones]);
+
   // Filtrar condiciones comerciales según settings en tiempo real
   const condicionesFiltradas = useMemo(() => {
     if (!condiciones_comerciales || condiciones_comerciales.length === 0) {
@@ -178,86 +196,116 @@ export function PromisePageClient({
           studioLogoUrl={studio.logo_url}
         />
 
-        {/* Fecha sugerida de contratación */}
-        {shareSettings.min_days_to_hire && shareSettings.min_days_to_hire > 0 && promise.event_date && (
-          <section className="py-4 px-4">
-            <div className="max-w-4xl mx-auto">
-              <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                <p className="text-sm text-zinc-300">
-                  Sugerimos contratar antes del {' '}
-                  <span className="font-medium text-emerald-400">
-                    {(() => {
-                      const eventDate = new Date(promise.event_date);
-                      const fechaSugerida = new Date(eventDate);
-                      fechaSugerida.setDate(fechaSugerida.getDate() - shareSettings.min_days_to_hire);
-                      return fechaSugerida.toLocaleDateString('es-MX', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      });
-                    })()}
-                  </span>
-                </p>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Cotizaciones personalizadas */}
-        {initialCotizaciones.length > 0 && (
-          <CotizacionesSectionRealtime
-            initialCotizaciones={initialCotizaciones}
+        {/* Si hay cotización autorizada, mostrar vista de cotización autorizada */}
+        {cotizacionAutorizada ? (
+          <PublicQuoteAuthorizedView
+            cotizacion={cotizacionAutorizada}
             promiseId={promiseId}
             studioSlug={studioSlug}
-            condicionesComerciales={condicionesFiltradas}
-            terminosCondiciones={terminos_condiciones}
-            showCategoriesSubtotals={shareSettings.show_categories_subtotals}
-            showItemsPrices={shareSettings.show_items_prices}
-            showStandardConditions={shareSettings.show_standard_conditions}
-            showOfferConditions={shareSettings.show_offer_conditions}
-            showPackages={shareSettings.show_packages}
-            paquetes={paquetes}
+            promise={{
+              contact_name: promise.contact_name,
+              contact_phone: promise.contact_phone,
+              contact_email: promise.contact_email,
+              contact_address: promise.contact_address,
+              event_type_name: promise.event_type_name,
+              event_date: promise.event_date,
+              event_location: promise.event_location,
+              event_name: promise.event_name || null,
+            }}
+            studio={{
+              studio_name: studio.studio_name,
+              representative_name: studio.representative_name,
+              phone: studio.phone,
+              email: studio.email,
+              address: studio.address,
+            }}
+            cotizacionPrice={cotizacionAutorizada.price}
+            eventTypeId={promise.event_type_id}
           />
-        )}
+        ) : (
+          <>
+            {/* Fecha sugerida de contratación */}
+            {shareSettings.min_days_to_hire && shareSettings.min_days_to_hire > 0 && promise.event_date && (
+              <section className="py-4 px-4">
+                <div className="max-w-4xl mx-auto">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
+                    <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <p className="text-sm text-zinc-300">
+                      Sugerimos contratar antes del {' '}
+                      <span className="font-medium text-emerald-400">
+                        {(() => {
+                          const eventDate = new Date(promise.event_date);
+                          const fechaSugerida = new Date(eventDate);
+                          fechaSugerida.setDate(fechaSugerida.getDate() - shareSettings.min_days_to_hire);
+                          return fechaSugerida.toLocaleDateString('es-MX', {
+                            weekday: 'long',
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                          });
+                        })()}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </section>
+            )}
 
-        {/* Paquetes disponibles */}
-        {shareSettings.show_packages && paquetes.length > 0 && (
-          <PaquetesSection
-            paquetes={paquetes}
-            promiseId={promiseId}
-            studioSlug={studioSlug}
-            showAsAlternative={initialCotizaciones.length > 0}
-            condicionesComerciales={condicionesFiltradas}
-            terminosCondiciones={terminos_condiciones}
-            minDaysToHire={shareSettings.min_days_to_hire}
-            showCategoriesSubtotals={shareSettings.show_categories_subtotals}
-            showItemsPrices={shareSettings.show_items_prices}
-            showStandardConditions={shareSettings.show_standard_conditions}
-            showOfferConditions={shareSettings.show_offer_conditions}
-            showPackages={shareSettings.show_packages}
-            cotizaciones={initialCotizaciones}
-          />
-        )}
+            {/* Cotizaciones personalizadas */}
+            {initialCotizaciones.length > 0 && (
+              <CotizacionesSectionRealtime
+                initialCotizaciones={initialCotizaciones}
+                promiseId={promiseId}
+                studioSlug={studioSlug}
+                condicionesComerciales={condicionesFiltradas}
+                terminosCondiciones={terminos_condiciones}
+                showCategoriesSubtotals={shareSettings.show_categories_subtotals}
+                showItemsPrices={shareSettings.show_items_prices}
+                showStandardConditions={shareSettings.show_standard_conditions}
+                showOfferConditions={shareSettings.show_offer_conditions}
+                showPackages={shareSettings.show_packages}
+                paquetes={paquetes}
+              />
+            )}
 
-        {/* Portafolios disponibles */}
-        {shareSettings.portafolios && portafolios && portafolios.length > 0 && (
-          <PortafoliosCard
-            portafolios={portafolios}
-            studioSlug={studioSlug}
-            studioId={studio.id}
-          />
-        )}
+            {/* Paquetes disponibles */}
+            {shareSettings.show_packages && paquetes.length > 0 && (
+              <PaquetesSection
+                paquetes={paquetes}
+                promiseId={promiseId}
+                studioSlug={studioSlug}
+                showAsAlternative={initialCotizaciones.length > 0}
+                condicionesComerciales={condicionesFiltradas}
+                terminosCondiciones={terminos_condiciones}
+                minDaysToHire={shareSettings.min_days_to_hire}
+                showCategoriesSubtotals={shareSettings.show_categories_subtotals}
+                showItemsPrices={shareSettings.show_items_prices}
+                showStandardConditions={shareSettings.show_standard_conditions}
+                showOfferConditions={shareSettings.show_offer_conditions}
+                showPackages={shareSettings.show_packages}
+                cotizaciones={initialCotizaciones}
+              />
+            )}
 
-        {/* Comparador */}
-        {(initialCotizaciones.length + (shareSettings.show_packages ? paquetes.length : 0) >= 2) && (
-          <ComparadorButton
-            cotizaciones={initialCotizaciones}
-            paquetes={shareSettings.show_packages ? paquetes : []}
-            promiseId={promiseId}
-            studioSlug={studioSlug}
-          />
+            {/* Portafolios disponibles */}
+            {shareSettings.portafolios && portafolios && portafolios.length > 0 && (
+              <PortafoliosCard
+                portafolios={portafolios}
+                studioSlug={studioSlug}
+                studioId={studio.id}
+              />
+            )}
+
+            {/* Comparador */}
+            {(initialCotizaciones.length + (shareSettings.show_packages ? paquetes.length : 0) >= 2) && (
+              <ComparadorButton
+                cotizaciones={initialCotizaciones}
+                paquetes={shareSettings.show_packages ? paquetes : []}
+                promiseId={promiseId}
+                studioSlug={studioSlug}
+              />
+            )}
+          </>
         )}
 
         {/* Footer by Zen */}

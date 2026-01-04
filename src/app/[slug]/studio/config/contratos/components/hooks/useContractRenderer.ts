@@ -24,6 +24,10 @@ export function useContractRenderer({
   showVariables = false,
 }: UseContractRendererProps) {
   const renderedContent = useMemo(() => {
+    if (!content) {
+      return '';
+    }
+
     if (showVariables) {
       // Convertir saltos de línea a <br> incluso cuando showVariables es true
       return content.replace(/\n/g, '<br>');
@@ -35,7 +39,7 @@ export function useContractRenderer({
     // Si es HTML, NO convertir saltos de línea entre tags en <br>
     // El HTML ya tiene su estructura y los saltos de línea entre tags no deben convertirse
     // Solo convertir saltos de línea dentro de elementos de texto
-    if (!/<[^>]+>/.test(rendered)) {
+    if (rendered && !/<[^>]+>/.test(rendered)) {
       // Si es texto plano, convertir saltos de línea a <br>
       rendered = rendered.replace(/\n/g, '<br>');
     }

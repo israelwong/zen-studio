@@ -1703,11 +1703,13 @@ export async function cancelarCierre(
     }
 
     await prisma.$transaction(async (tx) => {
-      // 1. Regresar cotización a pendiente
+      // 1. Regresar cotización a pendiente y limpiar selected_by_prospect
       await tx.studio_cotizaciones.update({
         where: { id: cotizacionId },
         data: {
           status: 'pendiente',
+          selected_by_prospect: false,
+          selected_at: null,
           updated_at: new Date(),
         },
       });

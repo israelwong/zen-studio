@@ -53,7 +53,11 @@ export function ContractPreview({
         {eventData && !showVariables && (
           <div className="mt-8 pt-6 border-t border-zinc-800">
             <p className="text-xs text-zinc-600 text-center">
-              Documento generado para {eventData.nombre_cliente} • {eventData.fecha_evento}
+              {eventData.fecha_evento && eventData.fecha_evento !== 'Fecha por definir' ? (
+                <>Documento generado para {eventData.nombre_cliente} para su evento del {eventData.fecha_evento}</>
+              ) : (
+                <>Documento generado para {eventData.nombre_cliente}</>
+              )}
             </p>
           </div>
         )}

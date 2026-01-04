@@ -66,6 +66,18 @@ export async function obtenerRegistroCierre(
       return { success: false, error: 'Registro de cierre no encontrado' };
     }
 
+    // Obtener información de la última versión del contrato
+    const ultimaVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: { cotizacion_id: cotizacionId },
+      orderBy: { version: 'desc' },
+      select: {
+        version: true,
+        change_reason: true,
+        change_type: true,
+        created_at: true,
+      },
+    });
+
     // Convertir Decimal a number para serialización
     return {
       success: true,
@@ -76,6 +88,7 @@ export async function obtenerRegistroCierre(
         condiciones_comerciales_definidas: registro.condiciones_comerciales_definidas,
         contract_template_id: registro.contract_template_id,
         contract_content: registro.contract_content,
+        contract_version: registro.contract_version,
         contrato_definido: registro.contrato_definido,
         pago_registrado: registro.pago_registrado,
         pago_concepto: registro.pago_concepto,
@@ -92,6 +105,12 @@ export async function obtenerRegistroCierre(
           advance_amount: registro.condiciones_comerciales.advance_amount ? Number(registro.condiciones_comerciales.advance_amount) : null,
         } : null,
         contract_template: registro.contract_template,
+        ultima_version_info: ultimaVersion ? {
+          version: ultimaVersion.version,
+          change_reason: ultimaVersion.change_reason,
+          change_type: ultimaVersion.change_type,
+          created_at: ultimaVersion.created_at,
+        } : null,
       } as any,
     };
   } catch (error) {
@@ -242,6 +261,98 @@ export async function actualizarCondicionesCierre(
 }
 
 /**
+ * Obtiene solo los datos del contrato para actualización local (sin recargar todo el registro)
+ */
+export async function obtenerDatosContratoCierre(
+  studioSlug: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    contract_version?: number;
+    contract_template_id?: string | null;
+    contract_content?: string | null;
+    contrato_definido?: boolean;
+    ultima_version_info?: {
+      version: number;
+      change_reason: string | null;
+      change_type: string;
+      created_at: Date;
+    } | null;
+  };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotización no encontrada' };
+    }
+
+    const registro = await prisma.studio_cotizaciones_cierre.findUnique({
+      where: { cotizacion_id: cotizacionId },
+      select: {
+        contract_version: true,
+        contract_template_id: true,
+        contract_content: true,
+        contrato_definido: true,
+      },
+    });
+
+    if (!registro) {
+      return { success: false, error: 'Registro de cierre no encontrado' };
+    }
+
+    // Obtener información de la última versión del contrato
+    const ultimaVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: { cotizacion_id: cotizacionId },
+      orderBy: { version: 'desc' },
+      select: {
+        version: true,
+        change_reason: true,
+        change_type: true,
+        created_at: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: {
+        contract_version: registro.contract_version,
+        contract_template_id: registro.contract_template_id,
+        contract_content: registro.contract_content,
+        contrato_definido: registro.contrato_definido,
+        ultima_version_info: ultimaVersion ? {
+          version: ultimaVersion.version,
+          change_reason: ultimaVersion.change_reason,
+          change_type: ultimaVersion.change_type,
+          created_at: ultimaVersion.created_at,
+        } : null,
+      },
+    };
+  } catch (error) {
+    console.error('[obtenerDatosContratoCierre] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener datos del contrato',
+    };
+  }
+}
+/**
  * Quitar condiciones comerciales del proceso de cierre
  */
 export async function quitarCondicionesCierre(
@@ -333,35 +444,194 @@ export async function actualizarContratoCierre(
 
     // Si templateId está vacío, limpiar el contrato
     const isClearing = !templateId || templateId.trim() === '';
-    
-    // Actualizar o crear registro de cierre
-    const registro = await prisma.studio_cotizaciones_cierre.upsert({
+
+    // Normalizar customContent: si es un objeto, extraer el string
+    let contentToSave: string | null = null;
+    if (customContent) {
+      if (typeof customContent === 'string') {
+        contentToSave = customContent;
+      } else if (typeof customContent === 'object' && customContent !== null && 'content' in customContent) {
+        // Si viene como objeto { content: "..." }, extraer el string
+        contentToSave = String((customContent as any).content);
+      } else {
+        contentToSave = String(customContent);
+      }
+    }
+
+    // Obtener registro actual para versionado
+    const registroActual = await prisma.studio_cotizaciones_cierre.findUnique({
       where: { cotizacion_id: cotizacionId },
-      create: {
-        cotizacion_id: cotizacionId,
-        contract_template_id: isClearing ? null : templateId,
-        contract_content: isClearing ? null : customContent,
-        contrato_definido: !isClearing,
-      },
-      update: {
-        contract_template_id: isClearing ? null : templateId,
-        contract_content: isClearing ? null : customContent,
-        contrato_definido: !isClearing,
+      select: {
+        contract_content: true,
+        contract_version: true,
+        contract_template_id: true,
       },
     });
 
-    revalidatePath(`/${studioSlug}/studio/commercial/promises`);
-    if (cotizacion.promise_id) {
-      revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
-    }
+    // Determinar si es una edición manual del estudio (customContent presente)
+    const isManualEdit = customContent !== null && customContent !== undefined;
 
-    return {
-      success: true,
-      data: {
-        id: registro.id,
-        cotizacion_id: registro.cotizacion_id,
-      },
-    };
+    // Detectar si se está volviendo a agregar una plantilla después de haberla desasociado
+    const isReAddingTemplate = !isClearing &&
+      registroActual &&
+      !registroActual.contract_template_id &&
+      templateId &&
+      templateId.trim() !== '';
+
+    // Detectar si se está cambiando de una plantilla a otra
+    const isChangingTemplate = !isClearing &&
+      registroActual &&
+      registroActual.contract_template_id &&
+      templateId &&
+      templateId.trim() !== '' &&
+      registroActual.contract_template_id !== templateId;
+
+    // Si es edición manual y existe un registro, siempre versionar
+    if (isManualEdit && registroActual && !isClearing) {
+      const currentVersion = registroActual.contract_version || 1;
+      const newVersion = currentVersion + 1;
+
+      // Guardar versión anterior antes de actualizar (solo si existe contenido previo y no existe ya la versión)
+      if (registroActual.contract_content) {
+        const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+          where: {
+            cotizacion_id: cotizacionId,
+            version: currentVersion,
+          },
+        });
+
+        if (!existingPreviousVersion) {
+          await prisma.studio_cotizaciones_cierre_contract_versions.create({
+            data: {
+              cotizacion_id: cotizacionId,
+              version: currentVersion,
+              content: registroActual.contract_content,
+              change_type: 'MANUAL_EDIT',
+              change_reason: 'Edición manual del contrato por el estudio',
+            },
+          });
+        }
+      }
+
+      // Actualizar registro con nuevo contenido y versión incrementada
+      const registro = await prisma.studio_cotizaciones_cierre.update({
+        where: { cotizacion_id: cotizacionId },
+        data: {
+          contract_template_id: templateId,
+          contract_content: contentToSave,
+          contract_version: newVersion,
+          contrato_definido: true,
+        },
+      });
+
+      revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+      if (cotizacion.promise_id) {
+        revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
+        revalidatePath(`/${studioSlug}/promise/${cotizacion.promise_id}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          id: registro.id,
+          cotizacion_id: registro.cotizacion_id,
+        },
+      };
+    } else if (isReAddingTemplate || isChangingTemplate) {
+      // Volver a agregar plantilla después de desasociar o cambiar de plantilla: versionar el cambio
+      const currentVersion = registroActual.contract_version || 1;
+      const newVersion = currentVersion + 1;
+
+      // Guardar versión anterior antes de actualizar (solo si existe contenido previo y no existe ya la versión)
+      if (registroActual.contract_content) {
+        const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+          where: {
+            cotizacion_id: cotizacionId,
+            version: currentVersion,
+          },
+        });
+
+        if (!existingPreviousVersion) {
+          await prisma.studio_cotizaciones_cierre_contract_versions.create({
+            data: {
+              cotizacion_id: cotizacionId,
+              version: currentVersion,
+              content: registroActual.contract_content,
+              change_type: isReAddingTemplate ? 'TEMPLATE_REASSIGNED' : 'TEMPLATE_CHANGED',
+              change_reason: isReAddingTemplate
+                ? 'Plantilla de contrato reasignada después de desasociación'
+                : 'Plantilla de contrato cambiada',
+            },
+          });
+        }
+      }
+
+      // Actualizar registro con nueva plantilla y versión incrementada
+      const registro = await prisma.studio_cotizaciones_cierre.update({
+        where: { cotizacion_id: cotizacionId },
+        data: {
+          contract_template_id: templateId,
+          contract_content: contentToSave, // Puede ser null si solo se asigna la plantilla
+          contract_version: newVersion,
+          contrato_definido: true,
+        },
+      });
+
+      revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+      if (cotizacion.promise_id) {
+        revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
+        revalidatePath(`/${studioSlug}/promise/${cotizacion.promise_id}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          id: registro.id,
+          cotizacion_id: registro.cotizacion_id,
+        },
+      };
+    } else {
+      // Primera vez o limpiar contrato: crear/actualizar sin versionado
+      // Si se está limpiando (desasociando plantilla), eliminar el historial de versiones
+      if (isClearing && registroActual) {
+        // Eliminar todas las versiones del historial cuando se desasocia la plantilla
+        await prisma.studio_cotizaciones_cierre_contract_versions.deleteMany({
+          where: { cotizacion_id: cotizacionId },
+        });
+      }
+
+      const registro = await prisma.studio_cotizaciones_cierre.upsert({
+        where: { cotizacion_id: cotizacionId },
+        create: {
+          cotizacion_id: cotizacionId,
+          contract_template_id: isClearing ? null : templateId,
+          contract_content: isClearing ? null : contentToSave,
+          contract_version: 1, // Primera versión
+          contrato_definido: !isClearing,
+        },
+        update: {
+          contract_template_id: isClearing ? null : templateId,
+          contract_content: isClearing ? null : contentToSave,
+          // Si se está limpiando, resetear a versión 1 ya que eliminamos el historial
+          contract_version: isClearing ? 1 : (registroActual?.contract_version || 1),
+          contrato_definido: !isClearing,
+        },
+      });
+
+      revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+      if (cotizacion.promise_id) {
+        revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
+        revalidatePath(`/${studioSlug}/promise/${cotizacion.promise_id}`);
+      }
+
+      return {
+        success: true,
+        data: {
+          id: registro.id,
+          cotizacion_id: registro.cotizacion_id,
+        },
+      };
+    }
   } catch (error) {
     console.error('[actualizarContratoCierre] Error:', error);
     return {
@@ -504,6 +774,73 @@ export async function eliminarRegistroCierre(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al eliminar registro de cierre',
+    };
+  }
+}
+
+/**
+ * Obtiene el historial de versiones del contrato de cierre
+ */
+export async function obtenerVersionesContratoCierre(
+  studioSlug: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  data?: Array<{
+    id: string;
+    version: number;
+    content: string;
+    change_reason: string | null;
+    change_type: string;
+    created_at: Date;
+  }>;
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que la cotización pertenece al studio
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotización no encontrada' };
+    }
+
+    // Obtener todas las versiones del contrato
+    const versiones = await prisma.studio_cotizaciones_cierre_contract_versions.findMany({
+      where: { cotizacion_id: cotizacionId },
+      orderBy: { version: 'desc' },
+      select: {
+        id: true,
+        version: true,
+        content: true,
+        change_reason: true,
+        change_type: true,
+        created_at: true,
+      },
+    });
+
+    return {
+      success: true,
+      data: versiones,
+    };
+  } catch (error) {
+    console.error('[obtenerVersionesContratoCierre] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener versiones del contrato',
     };
   }
 }

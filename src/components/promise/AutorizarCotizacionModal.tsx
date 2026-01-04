@@ -10,9 +10,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/shadcn/dialog';
+import { PublicPromiseDataForm } from '@/components/shared/promise/PublicPromiseDataForm';
 import type { PublicCotizacion } from '@/types/public-promise';
 import { toast } from 'sonner';
 import { autorizarCotizacionPublica } from '@/lib/actions/public/cotizaciones.actions';
+import { updatePublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { getTotalServicios } from '@/lib/utils/public-promise';
 
 interface PrecioCalculado {
@@ -54,10 +56,36 @@ export function AutorizarCotizacionModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const handleAutorizar = async () => {
+  const handleSubmitForm = async (data: {
+    contact_name: string;
+    contact_phone: string;
+    contact_email: string;
+    contact_address: string;
+    event_name: string;
+    event_location: string;
+  }) => {
     setIsSubmitting(true);
 
     try {
+      // 1. Actualizar datos de la promesa
+      const updateResult = await updatePublicPromiseData(studioSlug, promiseId, {
+        contact_name: data.contact_name,
+        contact_phone: data.contact_phone,
+        contact_email: data.contact_email,
+        contact_address: data.contact_address,
+        event_name: data.event_name,
+        event_location: data.event_location,
+      });
+
+      if (!updateResult.success) {
+        toast.error('Error al actualizar datos', {
+          description: updateResult.error || 'Por favor, intenta de nuevo.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Autorizar cotización (pasa a en_cierre)
       const result = await autorizarCotizacionPublica(
         promiseId,
         cotizacion.id,
@@ -81,7 +109,6 @@ export function AutorizarCotizacionModal({
       toast.error('Error al enviar solicitud', {
         description: 'Por favor, intenta de nuevo o contacta al estudio.',
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -95,7 +122,8 @@ export function AutorizarCotizacionModal({
     }).format(price);
   };
 
-  // Usar precio calculado si est? disponible, sino calcular b?sico
+
+  // Usar precio calculado si está disponible, sino calcular básico
   const precioFinal = precioCalculado
     ? precioCalculado.precioConDescuento
     : (cotizacion.discount
@@ -105,28 +133,26 @@ export function AutorizarCotizacionModal({
   const handleCloseSuccess = () => {
     setShowSuccessModal(false);
     onClose();
-    // Cerrar tambi?n el sheet si se proporciona el callback
     onSuccess?.();
   };
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={(open) => !open && !isSubmitting && !showSuccessModal && onClose()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Solicitar Contrataci?n</DialogTitle>
+            <DialogTitle>Solicitar Contratación</DialogTitle>
             <DialogDescription>
-              Confirma que deseas solicitar la contrataci?n de esta cotizaci?n
+              Confirma que deseas solicitar la contratación de esta cotización. Completa tus datos para continuar.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 py-4">
-            {/* Resumen de cotizaci?n */}
+            {/* Resumen de cotización */}
             <div className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800">
               <h4 className="font-semibold text-white mb-3">{cotizacion.name}</h4>
 
               {precioCalculado ? (
-                // Mostrar resumen completo con condiciones comerciales
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-zinc-400">Precio base</span>
@@ -174,7 +200,6 @@ export function AutorizarCotizacionModal({
                   </p>
                 </div>
               ) : (
-                // Fallback: mostrar precio b?sico
                 <>
                   <p className="text-2xl font-bold text-emerald-400">
                     {formatPrice(precioFinal)}
@@ -187,11 +212,20 @@ export function AutorizarCotizacionModal({
               )}
             </div>
 
-            {/* Informaci?n importante */}
+            {/* Formulario de datos usando componente compartido */}
+            <PublicPromiseDataForm
+              promiseId={promiseId}
+              studioSlug={studioSlug}
+              onSubmit={handleSubmitForm}
+              isSubmitting={isSubmitting}
+              showEventTypeAndDate={true}
+            />
+
+            {/* Información importante */}
             <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
               <p className="text-sm text-zinc-300 leading-relaxed">
-                Al solicitar la contrataci?n, el estudio recibir? una notificaci?n y se
-                pondr? en contacto contigo para confirmar los detalles finales y coordinar
+                Al solicitar la contratación, el estudio recibirá una notificación y se
+                pondrá en contacto contigo para confirmar los detalles finales y coordinar
                 el pago.
               </p>
             </div>
@@ -209,9 +243,15 @@ export function AutorizarCotizacionModal({
                   </ZenButton>
                 )}
                 <ZenButton
-                  onClick={handleAutorizar}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const form = document.querySelector('form');
+                    if (form) {
+                      form.requestSubmit();
+                    }
+                  }}
                   disabled={isSubmitting}
-                  className={isSubmitting ? "flex-1" : "flex-1"}
+                  className="flex-1"
                 >
                   {isSubmitting ? (
                     <>
@@ -231,19 +271,19 @@ export function AutorizarCotizacionModal({
         </DialogContent>
       </Dialog>
 
-      {/* Modal de confirmaci?n */}
+      {/* Modal de confirmación */}
       <Dialog open={showSuccessModal} onOpenChange={(open) => !open && handleCloseSuccess()}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md" overlayZIndex={10060}>
           <DialogHeader>
             <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-500/20">
               <CheckCircle2 className="w-8 h-8 text-emerald-400" />
             </div>
-            <DialogTitle className="text-center">Mensaje Enviado</DialogTitle>
+            <DialogTitle className="text-center">Solicitud Enviada</DialogTitle>
           </DialogHeader>
 
           <div className="py-4">
             <p className="text-center text-zinc-300 leading-relaxed">
-              Lo revisaremos lo antes posible para dar seguimiento a tu solicitud.
+              Tu solicitud ha sido enviada exitosamente. El estudio la revisará y se pondrá en contacto contigo pronto.
             </p>
           </div>
 
@@ -257,4 +297,3 @@ export function AutorizarCotizacionModal({
     </>
   );
 }
-

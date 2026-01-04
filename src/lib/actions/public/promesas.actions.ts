@@ -1,6 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { revalidatePath } from "next/cache";
 import { obtenerCatalogo } from "@/lib/actions/studio/config/catalogo.actions";
 import { obtenerConfiguracionPrecios } from "@/lib/actions/studio/config/configuracion-precios.actions";
 import { calcularPrecio } from "@/lib/actions/studio/catalogo/calcular-precio";
@@ -428,8 +429,10 @@ export async function getPublicPromiseData(
       contact_name: string;
       contact_phone: string;
       contact_email: string | null;
+      contact_address: string | null;
       event_type_id: string | null;
       event_type_name: string | null;
+      event_name: string | null;
       event_date: Date | null;
       event_location: string | null;
     };
@@ -438,6 +441,10 @@ export async function getPublicPromiseData(
       slogan: string | null;
       logo_url: string | null;
       id: string;
+      representative_name: string | null;
+      phone: string | null;
+      email: string | null;
+      address: string | null;
       promise_share_default_show_packages: boolean;
       promise_share_default_show_categories_subtotals: boolean;
       promise_share_default_show_items_prices: boolean;
@@ -501,6 +508,10 @@ export async function getPublicPromiseData(
         studio_name: true,
         slogan: true,
         logo_url: true,
+        representative_name: true,
+        phone: true,
+        email: true,
+        address: true,
         promise_share_default_show_packages: true,
         promise_share_default_show_categories_subtotals: true,
         promise_share_default_show_items_prices: true,
@@ -526,6 +537,7 @@ export async function getPublicPromiseData(
       },
       select: {
         id: true,
+        name: true,
         event_type_id: true,
         event_date: true,
         event_location: true,
@@ -540,6 +552,7 @@ export async function getPublicPromiseData(
             name: true,
             phone: true,
             email: true,
+            address: true,
           },
         },
         event_type: {
@@ -553,7 +566,14 @@ export async function getPublicPromiseData(
             visible_to_client: true,
             archived: false,
           },
-          include: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            discount: true,
+            status: true,
+            selected_by_prospect: true,
             cotizacion_items: {
               select: {
                 id: true,
@@ -571,9 +591,12 @@ export async function getPublicPromiseData(
             },
             condiciones_comerciales: {
               select: {
+                id: true,
                 name: true,
                 description: true,
                 advance_percentage: true,
+                advance_type: true,
+                advance_amount: true,
                 discount_percentage: true,
               },
             },
@@ -590,6 +613,27 @@ export async function getPublicPromiseData(
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            cotizacion_cierre: {
+              select: {
+                contract_template_id: true,
+                contract_content: true,
+                contract_version: true,
+                contrato_definido: true,
+                condiciones_comerciales_id: true,
+                condiciones_comerciales_definidas: true,
+                condiciones_comerciales: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    advance_percentage: true,
+                    advance_type: true,
+                    advance_amount: true,
+                    discount_percentage: true,
+                  },
+                },
               },
             },
           },
@@ -618,7 +662,7 @@ export async function getPublicPromiseData(
       min_days_to_hire: promise.share_min_days_to_hire ?? studio.promise_share_default_min_days_to_hire,
       show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
       show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
-      portafolios: promise.share_portafolios ?? studio.promise_share_default_portafolios,
+      portafolios: studio.promise_share_default_portafolios,
     };
 
     // 3. Obtener catálogo completo (incluir items inactivos para que coincidan con paquetes)
@@ -700,7 +744,7 @@ export async function getPublicPromiseData(
 
     // Obtener multimedia de items (solo si hay item_ids)
     const itemsMediaMap = new Map<string, Array<{ id: string; file_url: string; file_type: 'IMAGE' | 'VIDEO'; thumbnail_url?: string | null }>>();
-    
+
     if (allItemIds.size > 0) {
       const itemsMediaData = await prisma.studio_item_media.findMany({
         where: {
@@ -763,6 +807,7 @@ export async function getPublicPromiseData(
         description: cot.description,
         price: cot.price,
         discount: cot.discount,
+        status: cot.status,
         servicios: filtrarCatalogoPorItems(catalogo, itemIds, itemsData, itemsMediaMap),
         condiciones_comerciales: cot.condiciones_comerciales
           ? {
@@ -778,6 +823,43 @@ export async function getPublicPromiseData(
           : null,
         selected_by_prospect: cot.selected_by_prospect || false,
         items_media: cotizacionMedia.length > 0 ? cotizacionMedia : undefined,
+        // Información del contrato si está disponible
+        // El contrato se almacena en studio_cotizaciones_cierre (tabla temporal)
+        // Se muestra si hay contrato_definido y contract_template_id (igual que en el estudio)
+        // O si hay condiciones comerciales definidas (para mostrar el desglose financiero)
+        // También incluir condiciones comerciales de la cotización directamente si el contrato fue generado manualmente
+        contract: (() => {
+          const cierre = cot.cotizacion_cierre as any;
+          const hasContract = (cierre?.contrato_definido && cierre?.contract_template_id) ||
+            (cierre?.condiciones_comerciales && cierre?.condiciones_comerciales_definidas) ||
+            (cierre?.contract_template_id || cierre?.contract_content);
+
+          if (!hasContract) return undefined;
+
+          return {
+            template_id: cierre?.contract_template_id || null,
+            content: cierre?.contract_content || null,
+            version: cierre?.contract_version ?? 1,
+            // Priorizar condiciones comerciales de cotizacion_cierre, sino usar las de la cotización directamente
+            condiciones_comerciales: (cierre?.condiciones_comerciales ? {
+              id: cierre.condiciones_comerciales.id,
+              name: cierre.condiciones_comerciales.name,
+              description: cierre.condiciones_comerciales.description,
+              advance_percentage: cierre.condiciones_comerciales.advance_percentage,
+              advance_type: cierre.condiciones_comerciales.advance_type,
+              advance_amount: cierre.condiciones_comerciales.advance_amount,
+              discount_percentage: cierre.condiciones_comerciales.discount_percentage,
+            } : cot.condiciones_comerciales ? {
+              id: cot.condiciones_comerciales.id,
+              name: cot.condiciones_comerciales.name,
+              description: cot.condiciones_comerciales.description,
+              advance_percentage: cot.condiciones_comerciales.advance_percentage,
+              advance_type: cot.condiciones_comerciales.advance_type,
+              advance_amount: cot.condiciones_comerciales.advance_amount,
+              discount_percentage: cot.condiciones_comerciales.discount_percentage,
+            } : null),
+          };
+        })(),
       };
     });
 
@@ -947,8 +1029,10 @@ export async function getPublicPromiseData(
           contact_name: promise.contact.name,
           contact_phone: promise.contact.phone,
           contact_email: promise.contact.email,
+          contact_address: promise.contact.address,
           event_type_id: promise.event_type?.id || null,
           event_type_name: promise.event_type?.name || null,
+          event_name: promise.name,
           event_date: promise.event_date,
           event_location: promise.event_location,
         },
@@ -957,6 +1041,10 @@ export async function getPublicPromiseData(
           slogan: studio.slogan,
           logo_url: studio.logo_url,
           id: studio.id,
+          representative_name: studio.representative_name,
+          phone: studio.phone,
+          email: studio.email,
+          address: studio.address,
           promise_share_default_show_packages: studio.promise_share_default_show_packages,
           promise_share_default_show_categories_subtotals: studio.promise_share_default_show_categories_subtotals,
           promise_share_default_show_items_prices: studio.promise_share_default_show_items_prices,
@@ -1089,6 +1177,294 @@ export async function getPublicPromesaPreview(
     return {
       success: false,
       error: "Error al obtener promesa",
+    };
+  }
+}
+
+/**
+ * Actualizar datos de promesa desde página pública
+ * Actualiza contacto y datos del evento
+ */
+export async function updatePublicPromiseData(
+  studioSlug: string,
+  promiseId: string,
+  data: {
+    contact_name: string;
+    contact_phone: string;
+    contact_email: string | null;
+    contact_address: string | null;
+    event_name: string | null;
+    event_location: string | null;
+    // event_date es read-only, no se actualiza
+  }
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  try {
+    // 1. Validar que el studio existe
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return {
+        success: false,
+        error: "Studio no encontrado",
+      };
+    }
+
+    // 2. Obtener la promesa y validar que pertenece al studio
+    const promise = await prisma.studio_promises.findFirst({
+      where: {
+        id: promiseId,
+        studio_id: studio.id,
+      },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            phone: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!promise) {
+      return {
+        success: false,
+        error: "Promesa no encontrada",
+      };
+    }
+
+    if (!promise.contact?.id) {
+      return {
+        success: false,
+        error: "La promesa no tiene contacto asociado",
+      };
+    }
+
+    // 2.5. Validar duplicados de teléfono y correo
+    const newPhone = data.contact_phone.trim();
+    const newEmail = data.contact_email?.trim() || null;
+
+    // Validar teléfono duplicado (si está cambiando)
+    if (newPhone !== promise.contact.phone) {
+      const existingContactByPhone = await prisma.studio_contacts.findFirst({
+        where: {
+          studio_id: studio.id,
+          phone: newPhone,
+          id: { not: promise.contact.id }, // Excluir el contacto actual
+        },
+        select: { id: true },
+      });
+
+      if (existingContactByPhone) {
+        return {
+          success: false,
+          error: "Este teléfono ya está registrado para otro contacto en este estudio",
+        };
+      }
+    }
+
+    // Validar email duplicado (si está cambiando y se proporciona)
+    if (newEmail && newEmail !== promise.contact.email) {
+      const existingContactByEmail = await prisma.studio_contacts.findFirst({
+        where: {
+          studio_id: studio.id,
+          email: newEmail,
+          id: { not: promise.contact.id }, // Excluir el contacto actual
+        },
+        select: { id: true },
+      });
+
+      if (existingContactByEmail) {
+        return {
+          success: false,
+          error: "Este correo electrónico ya está registrado para otro contacto en este estudio",
+        };
+      }
+    }
+
+    // 3. Validar datos requeridos
+    if (!data.contact_name?.trim()) {
+      return {
+        success: false,
+        error: "El nombre del contacto es requerido",
+      };
+    }
+
+    if (!data.contact_phone?.trim()) {
+      return {
+        success: false,
+        error: "El teléfono del contacto es requerido",
+      };
+    }
+
+    if (!data.contact_email?.trim()) {
+      return {
+        success: false,
+        error: "El correo del contacto es requerido",
+      };
+    }
+
+    if (!data.contact_address?.trim()) {
+      return {
+        success: false,
+        error: "La dirección del contacto es requerida",
+      };
+    }
+
+    if (!data.event_name?.trim()) {
+      return {
+        success: false,
+        error: "El nombre del evento es requerido",
+      };
+    }
+
+    if (!data.event_location?.trim()) {
+      return {
+        success: false,
+        error: "La locación del evento es requerida",
+      };
+    }
+
+    // 4. Actualizar contacto y promesa en una transacción
+    // En este punto, todos los campos están validados y no son null
+    const contactEmail = data.contact_email?.trim() || '';
+    const contactAddress = data.contact_address?.trim() || '';
+    const eventName = data.event_name?.trim() || '';
+    const eventLocation = data.event_location?.trim() || '';
+
+    await prisma.$transaction(async (tx) => {
+      // Actualizar contacto
+      await tx.studio_contacts.update({
+        where: { id: promise.contact.id },
+        data: {
+          name: data.contact_name.trim(),
+          phone: data.contact_phone.trim(),
+          email: contactEmail || null,
+          address: contactAddress || null,
+        },
+      });
+
+      // Actualizar promesa
+      await tx.studio_promises.update({
+        where: { id: promiseId },
+        data: {
+          name: eventName || null,
+          event_location: eventLocation || null,
+        },
+      });
+    });
+
+    // 5. Revalidar paths
+    revalidatePath(`/${studioSlug}/promise/${promiseId}`);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("[updatePublicPromiseData] Error:", error);
+    return {
+      success: false,
+      error: "Error al actualizar datos",
+    };
+  }
+}
+
+/**
+ * Obtener solo los datos del contrato de una cotización específica (para actualización local)
+ */
+export async function getPublicCotizacionContract(
+  studioSlug: string,
+  cotizacionId: string
+): Promise<{
+  success: boolean;
+  data?: {
+    template_id: string | null;
+    content: string | null;
+    version: number;
+    condiciones_comerciales: {
+      id: string;
+      name: string;
+      description: string | null;
+      advance_percentage: number | null;
+      advance_type: string | null;
+      advance_amount: number | null;
+      discount_percentage: number | null;
+    } | null;
+  };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: "Studio no encontrado" };
+    }
+
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+      select: {
+        id: true,
+        cotizacion_cierre: {
+          select: {
+            contract_template_id: true,
+            contract_content: true,
+            contract_version: true,
+            condiciones_comerciales: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                advance_percentage: true,
+                advance_type: true,
+                advance_amount: true,
+                discount_percentage: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cotizacion || !cotizacion.cotizacion_cierre) {
+      return { success: false, error: "Cotización o contrato no encontrado" };
+    }
+
+    const cierre = cotizacion.cotizacion_cierre;
+
+    return {
+      success: true,
+      data: {
+        template_id: cierre.contract_template_id,
+        content: cierre.contract_content,
+        version: cierre.contract_version || 1,
+        condiciones_comerciales: cierre.condiciones_comerciales ? {
+          id: cierre.condiciones_comerciales.id,
+          name: cierre.condiciones_comerciales.name,
+          description: cierre.condiciones_comerciales.description,
+          advance_percentage: cierre.condiciones_comerciales.advance_percentage ? Number(cierre.condiciones_comerciales.advance_percentage) : null,
+          advance_type: cierre.condiciones_comerciales.advance_type,
+          advance_amount: cierre.condiciones_comerciales.advance_amount ? Number(cierre.condiciones_comerciales.advance_amount) : null,
+          discount_percentage: cierre.condiciones_comerciales.discount_percentage ? Number(cierre.condiciones_comerciales.discount_percentage) : null,
+        } : null,
+      },
+    };
+  } catch (error) {
+    console.error("[getPublicCotizacionContract] Error:", error);
+    return {
+      success: false,
+      error: "Error al obtener datos del contrato",
     };
   }
 }

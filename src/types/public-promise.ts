@@ -56,6 +56,7 @@ export interface PublicCotizacion {
   description: string | null;
   price: number;
   discount: number | null;
+  status?: string;
   servicios: PublicSeccionData[];
   condiciones_comerciales: {
     metodo_pago: string | null;
@@ -73,6 +74,21 @@ export interface PublicCotizacion {
     file_type: 'IMAGE' | 'VIDEO';
     thumbnail_url?: string | null;
   }>;
+  // Información del contrato si está disponible
+  contract?: {
+    template_id: string | null;
+    content: string;
+    version?: number;
+    condiciones_comerciales: {
+      id: string;
+      name: string;
+      description: string | null;
+      advance_percentage: number | null;
+      advance_type: string | null;
+      advance_amount: number | null;
+      discount_percentage: number | null;
+    } | null;
+  };
 }
 
 export interface PublicPaquete {
