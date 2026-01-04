@@ -270,19 +270,12 @@ export function PublicContractView({
         // Continuar con IP por defecto
       }
 
-      console.log('[handleConfirmSign] Firmando contrato:', { studioSlug, promiseId, cotizacionId, clientIp });
-
       const result = await signPublicContract(studioSlug, promiseId, cotizacionId, {
         ip_address: clientIp,
       });
 
-      console.log('[handleConfirmSign] Resultado completo:', JSON.stringify(result, null, 2));
-      console.log('[handleConfirmSign] result.success:', result.success);
-      console.log('[handleConfirmSign] result.error:', result.error);
-
       if (result.success) {
         toast.success('Contrato firmado exitosamente');
-        console.log('[handleConfirmSign] Cerrando modal y recargando página...');
         // Cerrar modal y recargar para actualizar estado
         // La firma se guardó en studio_cotizaciones_cierre.contract_signed_at (tabla temporal)
         onClose();
