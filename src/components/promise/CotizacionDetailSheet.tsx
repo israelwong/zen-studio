@@ -1,19 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, CheckCircle2, AlertCircle, Tag as TagIcon, Edit, Image as ImageIcon, Video, Images } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, Tag as TagIcon, Image as ImageIcon, Video, Images } from 'lucide-react';
 import { ZenButton, ZenBadge, SeparadorZen } from '@/components/ui/zen';
 import type { PublicCotizacion } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { AutorizarCotizacionModal } from './AutorizarCotizacionModal';
-import { SolicitarPersonalizacionModal } from './SolicitarPersonalizacionModal';
 import { CondicionesComercialesSelector } from './shared/CondicionesComercialesSelector';
 import { PrecioDesglose } from './shared/PrecioDesglose';
 import { TerminosCondiciones } from './shared/TerminosCondiciones';
 import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos, filtrarCondicionesPorPreferencias } from '@/lib/actions/public/promesas.actions';
 import { formatCurrency } from '@/lib/actions/utils/formatting';
 import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
-import Lightbox from 'yet-another-react-lightbox';
+import Lightbox, { type Slide } from 'yet-another-react-lightbox';
 import VideoPlugin from 'yet-another-react-lightbox/plugins/video';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
 import 'yet-another-react-lightbox/styles.css';
@@ -73,7 +72,6 @@ export function CotizacionDetailSheet({
   paquetes = [],
 }: CotizacionDetailSheetProps) {
   const [showAutorizarModal, setShowAutorizarModal] = useState(false);
-  const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
   const [condicionesComerciales, setCondicionesComerciales] = useState<CondicionComercial[]>([]);
   const [terminosCondiciones, setTerminosCondiciones] = useState<TerminoCondicion[]>([]);
   const [selectedCondicionId, setSelectedCondicionId] = useState<string | null>(null);
@@ -281,10 +279,10 @@ export function CotizacionDetailSheet({
   }, [currentCotizacion.items_media]);
 
   // Preparar slides para Lightbox
-  const lightboxSlides = useMemo(() => {
+  const lightboxSlides = useMemo((): Slide[] => {
     if (!mediaInfo) return [];
 
-    const slides: Array<{ src?: string; alt?: string; type?: 'video'; sources?: Array<{ src: string; type: string }>; poster?: string; autoPlay?: boolean; muted?: boolean; controls?: boolean; playsInline?: boolean }> = [];
+    const slides: Slide[] = [];
 
     // Agregar fotos primero
     if (mediaInfo.fotos) {
@@ -467,17 +465,15 @@ export function CotizacionDetailSheet({
         {/* Footer */}
         <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-4 sm:px-6 py-3">
           <div className="flex gap-2">
-            {!currentCotizacion.selected_by_prospect && (
-              <ZenButton
-                variant="ghost"
-                onClick={() => setShowPersonalizacionModal(true)}
-                className="shrink-0"
-                size="sm"
-              >
-                <Edit className="h-4 w-4 mr-1.5" />
-                Personalizar
-              </ZenButton>
-            )}
+            <ZenButton
+              variant="outline"
+              onClick={onClose}
+              className="shrink-0"
+              size="sm"
+            >
+              <X className="h-4 w-4 mr-1.5" />
+              Cerrar
+            </ZenButton>
             <ZenButton
               onClick={() => setShowAutorizarModal(true)}
               className="flex-1"
@@ -504,20 +500,6 @@ export function CotizacionDetailSheet({
           precioCalculado={precioCalculado}
           showPackages={showPackages}
           onSuccess={onClose}
-        />
-      )}
-
-      {/* Modal de personalización */}
-      {showPersonalizacionModal && (
-        <SolicitarPersonalizacionModal
-          itemName={currentCotizacion.name}
-          itemType="cotizacion"
-          itemId={currentCotizacion.id}
-          isOpen={showPersonalizacionModal}
-          onClose={() => setShowPersonalizacionModal(false)}
-          promiseId={promiseId}
-          studioSlug={studioSlug}
-          showPackages={showPackages}
         />
       )}
 

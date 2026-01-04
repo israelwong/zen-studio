@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { X, Clock, Send, Edit, Image as ImageIcon, Video, Images } from 'lucide-react';
+import { X, Send, Image as ImageIcon, Video, Images } from 'lucide-react';
 import { ZenButton, SeparadorZen } from '@/components/ui/zen';
 import type { PublicPaquete } from '@/types/public-promise';
 import { PublicServiciosTree } from './PublicServiciosTree';
 import { SolicitarPaqueteModal } from './SolicitarPaqueteModal';
-import { SolicitarPersonalizacionModal } from './SolicitarPersonalizacionModal';
 import { CondicionesComercialesSelector } from './shared/CondicionesComercialesSelector';
 import { PrecioDesglose } from './shared/PrecioDesglose';
 import { TerminosCondiciones } from './shared/TerminosCondiciones';
@@ -74,7 +73,6 @@ export function PaqueteDetailSheet({
   cotizaciones = [],
 }: PaqueteDetailSheetProps) {
   const [showSolicitarModal, setShowSolicitarModal] = useState(false);
-  const [showPersonalizacionModal, setShowPersonalizacionModal] = useState(false);
   const [condicionesComerciales, setCondicionesComerciales] = useState<CondicionComercial[]>([]);
   const [terminosCondiciones, setTerminosCondiciones] = useState<TerminoCondicion[]>([]);
   const [selectedCondicionId, setSelectedCondicionId] = useState<string | null>(null);
@@ -191,14 +189,6 @@ export function PaqueteDetailSheet({
   };
 
   const precioCalculado = calculatePriceWithCondition();
-
-  // Verificar si el paquete ya fue solicitado (existe cotización pre-autorizada creada desde este paquete)
-  const isPaqueteSolicitado = useMemo(() => {
-    return cotizaciones.some(
-      (cot) =>
-        cot.paquete_origen?.id === paquete.id && cot.selected_by_prospect === true
-    );
-  }, [cotizaciones, paquete.id]);
 
   // Scroll automático al desglose cuando se selecciona una condición comercial
   useEffect(() => {
@@ -397,17 +387,15 @@ export function PaqueteDetailSheet({
         {/* Footer */}
         <div className="sticky bottom-0 bg-zinc-900/95 backdrop-blur-sm border-t border-zinc-800 px-4 sm:px-6 py-3">
           <div className="flex gap-2">
-            {!isPaqueteSolicitado && (
-              <ZenButton
-                variant="ghost"
-                onClick={() => setShowPersonalizacionModal(true)}
-                className="shrink-0"
-                size="sm"
-              >
-                <Edit className="h-4 w-4 mr-1.5" />
-                Personalizar
-              </ZenButton>
-            )}
+            <ZenButton
+              variant="outline"
+              onClick={onClose}
+              className="shrink-0"
+              size="sm"
+            >
+              <X className="h-4 w-4 mr-1.5" />
+              Cerrar
+            </ZenButton>
             <ZenButton
               onClick={() => setShowSolicitarModal(true)}
               className="flex-1"
@@ -434,20 +422,6 @@ export function PaqueteDetailSheet({
           precioCalculado={precioCalculado}
           showPackages={showPackages}
           onSuccess={onClose}
-        />
-      )}
-
-      {/* Modal de personalización */}
-      {showPersonalizacionModal && (
-        <SolicitarPersonalizacionModal
-          itemName={paquete.name}
-          itemType="paquete"
-          itemId={paquete.id}
-          isOpen={showPersonalizacionModal}
-          onClose={() => setShowPersonalizacionModal(false)}
-          promiseId={promiseId}
-          studioSlug={studioSlug}
-          showPackages={showPackages}
         />
       )}
 

@@ -224,9 +224,7 @@ export function AutorizarCotizacionModal({
             {/* Información importante */}
             <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
               <p className="text-sm text-zinc-300 leading-relaxed">
-                Al solicitar la contratación, el estudio recibirá una notificación y se
-                pondrá en contacto contigo para confirmar los detalles finales y coordinar
-                el pago.
+                Al confirmar la solicitud de la cotización iniciarás el proceso de contratación.
               </p>
             </div>
 

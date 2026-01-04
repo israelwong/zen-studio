@@ -39,7 +39,8 @@ export function PublicPromiseDataForm({
   isSubmitting = false,
   showEventTypeAndDate = true,
 }: PublicPromiseDataFormProps) {
-  const [loadingPromiseData, setLoadingPromiseData] = useState(false);
+  // Inicializar loading en true si no hay initialData y hay promiseId
+  const [loadingPromiseData, setLoadingPromiseData] = useState(!initialData && !!promiseId);
   const [formData, setFormData] = useState({
     contact_name: '',
     contact_phone: '',
@@ -65,6 +66,7 @@ export function PublicPromiseDataForm({
         event_date: initialData.event_date ? new Date(initialData.event_date) : null,
         event_type_name: initialData.event_type_name || null,
       });
+      setLoadingPromiseData(false);
     } else if (promiseId) {
       loadPromiseData();
     }
@@ -156,24 +158,77 @@ export function PublicPromiseDataForm({
 
   const getEventNameLabel = (eventTypeName: string | null): string => {
     if (!eventTypeName) return 'Nombre del evento';
-    
+
     const eventTypeLower = eventTypeName.toLowerCase();
-    
+
     if (eventTypeLower.includes('xv años') || eventTypeLower.includes('quinceañera') || eventTypeLower.includes('15 años')) {
       return 'Nombre de la quinceañera';
     }
-    
+
     if (eventTypeLower.includes('boda') || eventTypeLower.includes('matrimonio')) {
       return 'Nombre de los novios';
     }
-    
+
     return 'Nombre del/de los festejado/s';
   };
 
   if (loadingPromiseData && !initialData) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+      <div className="space-y-4">
+        {/* Skeleton: Datos de contacto */}
+        <div className="border-t border-zinc-800 pt-4">
+          <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse mb-2" />
+          <div className="h-3 w-full bg-zinc-800 rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+            </div>
+            <div>
+              <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="h-3 w-32 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="h-3 w-20 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-20 bg-zinc-800 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
+
+        {/* Skeleton: Datos del evento */}
+        {showEventTypeAndDate && (
+          <div className="border-t border-zinc-800 pt-4">
+            <div className="h-4 w-32 bg-zinc-800 rounded animate-pulse mb-4" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <div className="h-3 w-24 bg-zinc-800 rounded animate-pulse mb-2" />
+                <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+              </div>
+              <div>
+                <div className="h-3 w-28 bg-zinc-800 rounded animate-pulse mb-2" />
+                <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Skeleton: Nombre y locación */}
+        <div className={showEventTypeAndDate ? 'border-t border-zinc-800 pt-4' : ''}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2">
+              <div className="h-3 w-36 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+            </div>
+            <div className="sm:col-span-2">
+              <div className="h-3 w-32 bg-zinc-800 rounded animate-pulse mb-2" />
+              <div className="h-10 bg-zinc-800 rounded animate-pulse" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
