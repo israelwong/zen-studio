@@ -454,6 +454,7 @@ export async function obtenerDatosPagoCierre(
     pago_monto?: number | null;
     pago_fecha?: Date | null;
     pago_metodo_id?: string | null;
+    pago_metodo_nombre?: string | null;
   };
   error?: string;
 }> {
@@ -493,6 +494,18 @@ export async function obtenerDatosPagoCierre(
       return { success: false, error: 'Registro de cierre no encontrado' };
     }
 
+    // Obtener nombre del método de pago si existe
+    let pago_metodo_nombre: string | null = null;
+    if (registro.pago_metodo_id) {
+      const metodoPago = await prisma.studio_metodos_pago.findUnique({
+        where: { id: registro.pago_metodo_id },
+        select: { payment_method_name: true },
+      });
+      if (metodoPago) {
+        pago_metodo_nombre = metodoPago.payment_method_name;
+      }
+    }
+
     return {
       success: true,
       data: {
@@ -501,6 +514,7 @@ export async function obtenerDatosPagoCierre(
         pago_monto: registro.pago_monto ? Number(registro.pago_monto) : null,
         pago_fecha: registro.pago_fecha,
         pago_metodo_id: registro.pago_metodo_id,
+        pago_metodo_nombre,
       },
     };
   } catch (error) {
@@ -1048,11 +1062,12 @@ export async function obtenerVersionesContratoCierre(
  * 6. Actualizar cotización con snapshots y status 'autorizada'
  *    (La relación evento_autorizado se establece automáticamente cuando evento tiene cotizacion_id)
  * 7. Registrar pago inicial (si aplica)
- * 8. Cambiar etapa de promesa a 'aprobado'
- * 9. Archivar otras cotizaciones de la promesa
- * 10. Crear agenda en calendario (si hay fecha de evento)
- * 11. Eliminar registro temporal de cierre
- * 12. Crear log de autorización
+ * 8. Eliminar todas las etiquetas asociadas a la promesa
+ * 9. Cambiar etapa de promesa a 'aprobado'
+ * 10. Archivar otras cotizaciones de la promesa
+ * 11. Eliminar citas comerciales y crear agenda del evento (si hay fecha)
+ * 12. Eliminar registro temporal de cierre
+ * 13. Crear log de autorización
  *
  * @returns Evento creado y cotización autorizada
  */
@@ -1240,8 +1255,9 @@ export async function autorizarYCrearEvento(
           }
         : null;
 
-      // 7.3. Crear snapshots de contrato (solo si existe)
-      const contratoSnapshot = registroCierre.contract_template_id
+      // 7.3. Crear snapshots de contrato (si existe, incluso para clientes manuales)
+      // Para clientes manuales no se requiere contrato, pero si existe debe guardarse
+      const contratoSnapshot = registroCierre.contract_template_id && registroCierre.contract_content
         ? {
             template_id: registroCierre.contract_template_id,
             template_name: registroCierre.contract_template?.name || null,
@@ -1327,20 +1343,49 @@ export async function autorizarYCrearEvento(
         options?.montoInicial &&
         options.montoInicial > 0
       ) {
+        // Obtener nombre del método de pago dentro de la transacción
+        let metodoPagoNombre = 'Manual'; // Valor por defecto
+        if (registroCierre.pago_metodo_id) {
+          const metodoPago = await tx.studio_metodos_pago.findUnique({
+            where: { id: registroCierre.pago_metodo_id },
+            select: { payment_method_name: true },
+          });
+          if (metodoPago) {
+            metodoPagoNombre = metodoPago.payment_method_name;
+          }
+        }
+        
+        // Usar la fecha del registro de cierre si está disponible, sino usar fecha actual
+        const fechaPago = registroCierre.pago_fecha ? new Date(registroCierre.pago_fecha) : new Date();
+        const conceptoPago = registroCierre.pago_concepto || 'Pago inicial / Anticipo';
+        const contactId = cotizacion.contact_id || cotizacion.promise?.contact_id;
+        
         await tx.studio_pagos.create({
           data: {
-            evento_id: evento.id,
-            monto: options.montoInicial,
-            concepto: 'Pago inicial / Anticipo',
-            fecha: new Date(),
+            cotizacion_id: cotizacionId,
+            promise_id: promiseId,
+            contact_id: contactId || null,
+            amount: options.montoInicial,
+            concept: conceptoPago,
+            payment_date: fechaPago,
             metodo_pago_id: registroCierre.pago_metodo_id,
-            status: 'COMPLETED',
+            metodo_pago: metodoPagoNombre,
+            status: 'completed',
+            transaction_type: 'ingreso',
+            transaction_category: 'abono',
           },
         });
         pagoRegistrado = true;
       }
 
-      // 8.6. Cambiar etapa de promesa a "aprobado"
+      // 8.6. Eliminar todas las etiquetas asociadas a la promesa
+      await tx.studio_promises_tags.deleteMany({
+        where: {
+          promise_id: promiseId,
+        },
+      });
+
+      // 8.7. Cambiar etapa de promesa a "aprobado"
       await tx.studio_promises.update({
         where: { id: promiseId },
         data: {
@@ -1349,7 +1394,7 @@ export async function autorizarYCrearEvento(
         },
       });
 
-      // 8.7. Archivar otras cotizaciones de la promesa
+      // 8.8. Archivar otras cotizaciones de la promesa
       await tx.studio_cotizaciones.updateMany({
         where: {
           promise_id: promiseId,
@@ -1362,8 +1407,18 @@ export async function autorizarYCrearEvento(
         },
       });
 
-      // 8.8. Crear agenda en calendario si hay fecha de evento
+      // 8.9. Eliminar citas comerciales asociadas a la promesa y crear agenda del evento
       if (cotizacion.promise.event_date) {
+        // Eliminar todas las citas comerciales (contexto: 'promise') asociadas a esta promesa
+        await tx.studio_agenda.deleteMany({
+          where: {
+            promise_id: promiseId,
+            contexto: 'promise',
+            studio_id: studio.id,
+          },
+        });
+
+        // Crear entrada en agenda para el evento
         const agendaExistente = await tx.studio_agenda.findFirst({
           where: {
             evento_id: evento.id,
@@ -1385,26 +1440,59 @@ export async function autorizarYCrearEvento(
             },
           });
         }
+      } else {
+        // Si no hay fecha de evento, igual eliminar las citas comerciales
+        await tx.studio_agenda.deleteMany({
+          where: {
+            promise_id: promiseId,
+            contexto: 'promise',
+            studio_id: studio.id,
+          },
+        });
       }
 
-      // 8.9. Eliminar registro temporal de cierre
+      // 8.10. Eliminar registro temporal de cierre
       await tx.studio_cotizaciones_cierre.delete({
         where: { cotizacion_id: cotizacionId },
       });
 
-      // 8.10. Crear log de autorización
+      // 8.11. Crear log de autorización y creación de evento
+      const eventoNombre = cotizacion.promise.event_name || cotizacion.promise.name || 'Evento';
+      const eventoFecha = cotizacion.promise.event_date 
+        ? new Date(cotizacion.promise.event_date).toLocaleDateString('es-MX', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })
+        : null;
+      
+      let logContent = `Evento creado: ${eventoNombre}`;
+      if (eventoFecha) {
+        logContent += ` - ${eventoFecha}`;
+      }
+      if (pagoRegistrado) {
+        logContent += ' (con pago inicial registrado)';
+      }
+      if (registroCierre.contract_signed_at) {
+        logContent += ' (contrato firmado)';
+      }
+
       await tx.studio_promise_logs.create({
         data: {
           promise_id: promiseId,
           user_id: null,
-          content: 'Cotización autorizada y evento creado exitosamente',
-          log_type: 'system',
+          content: logContent,
+          log_type: 'quotation_authorized',
           metadata: {
-            action: 'cotizacion_autorizada_evento_creado',
+            action: 'evento_creado',
             cotizacion_id: cotizacionId,
+            cotizacion_nombre: cotizacion.name,
             evento_id: evento.id,
+            evento_nombre: eventoNombre,
+            evento_fecha: cotizacion.promise.event_date?.toISOString() || null,
             contract_signed: !!registroCierre.contract_signed_at,
             pago_registrado: pagoRegistrado,
+            pago_monto: pagoRegistrado && options?.montoInicial ? options.montoInicial : null,
           },
         },
       });

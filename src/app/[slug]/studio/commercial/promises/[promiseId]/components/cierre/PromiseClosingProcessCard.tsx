@@ -129,6 +129,7 @@ export function PromiseClosingProcessCard({
     pago_monto?: number | null;
     pago_fecha?: Date | null;
     pago_metodo_id?: string | null;
+    pago_metodo_nombre?: string | null;
   } | null>(null);
 
   const [loadingRegistro, setLoadingRegistro] = useState(true);
@@ -370,7 +371,8 @@ export function PromiseClosingProcessCard({
         const hasChanges =
           prev?.pago_registrado !== result.data!.pago_registrado ||
           prev?.pago_concepto !== result.data!.pago_concepto ||
-          prev?.pago_monto !== result.data!.pago_monto;
+          prev?.pago_monto !== result.data!.pago_monto ||
+          prev?.pago_metodo_nombre !== result.data!.pago_metodo_nombre;
 
         if (!hasChanges) return prev;
         return result.data!;
@@ -1118,7 +1120,6 @@ export function PromiseClosingProcessCard({
           fecha: pagoData.pago_fecha || null,
           metodo_id: pagoData.pago_metodo_id || null,
         } : null}
-        paymentMethods={[]}
         onSuccess={handlePagoSuccess}
       />
 

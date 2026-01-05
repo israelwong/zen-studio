@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ZenDialog, ZenInput, ZenButton, ZenSwitch } from '@/components/ui/zen';
 import { DollarSign, Loader2, Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { actualizarPagoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
+import { obtenerMetodosPagoManuales } from '@/lib/actions/studio/config/metodos-pago.actions';
 import { toast } from 'sonner';
 
 interface RegistroPagoModalProps {
@@ -21,7 +22,6 @@ interface RegistroPagoModalProps {
     fecha: Date | null;
     metodo_id: string | null;
   } | null;
-  paymentMethods?: Array<{ id: string; name: string; }>;
   onSuccess?: () => void;
 }
 
@@ -31,7 +31,6 @@ export function RegistroPagoModal({
   studioSlug,
   cotizacionId,
   pagoData,
-  paymentMethods = [],
   onSuccess,
 }: RegistroPagoModalProps) {
   const [registrarPago, setRegistrarPago] = useState(false);
@@ -41,18 +40,55 @@ export function RegistroPagoModal({
   const [metodoId, setMetodoId] = useState('');
   const [saving, setSaving] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [metodosPago, setMetodosPago] = useState<Array<{ id: string; payment_method_name: string }>>([]);
+  const [loadingMetodos, setLoadingMetodos] = useState(false);
+
+  // Cargar métodos de pago
+  const loadMetodos = useCallback(async (currentMetodoId?: string) => {
+    setLoadingMetodos(true);
+    try {
+      const result = await obtenerMetodosPagoManuales(studioSlug);
+      if (result.success && result.data) {
+        const metodos = result.data.map(m => ({
+          id: m.id,
+          payment_method_name: m.payment_method_name,
+        }));
+        setMetodosPago(metodos);
+        // Si no hay método seleccionado y hay métodos disponibles, seleccionar el primero
+        if (!currentMetodoId && metodos.length > 0) {
+          setMetodoId(metodos[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading payment methods:', error);
+    } finally {
+      setLoadingMetodos(false);
+    }
+  }, [studioSlug]);
 
   useEffect(() => {
     if (isOpen) {
       // Si hay datos previos, activar el switch y cargar datos
       const hayDatosPrevios = pagoData?.concepto || pagoData?.monto;
+      const metodoIdInicial = pagoData?.metodo_id || '';
+      
       setRegistrarPago(!!hayDatosPrevios);
       setConcepto(pagoData?.concepto || 'Anticipo');
       setMonto(pagoData?.monto?.toString() || '');
       setFecha(pagoData?.fecha ? new Date(pagoData.fecha) : new Date());
-      setMetodoId(pagoData?.metodo_id || '');
+      setMetodoId(metodoIdInicial);
+      
+      // Cargar métodos de pago (pasar el método inicial para evitar selección automática si ya hay uno)
+      loadMetodos(metodoIdInicial);
+    } else {
+      // Resetear estado cuando se cierra el modal
+      setRegistrarPago(false);
+      setConcepto('');
+      setMonto('');
+      setFecha(undefined);
+      setMetodoId('');
     }
-  }, [isOpen, pagoData]);
+  }, [isOpen, pagoData, loadMetodos]);
 
   const handleConfirm = async () => {
     // Si no se va a registrar pago, guardar como promesa de pago
@@ -231,11 +267,16 @@ export function RegistroPagoModal({
             </div>
 
             {/* Método de pago */}
-            {paymentMethods.length > 0 && (
-              <div>
-                <label className="text-sm font-medium text-zinc-300 block mb-1.5">
-                  Método de pago
-                </label>
+            <div>
+              <label className="text-sm font-medium text-zinc-300 block mb-1.5">
+                Método de pago
+              </label>
+              {loadingMetodos ? (
+                <div className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-zinc-400" />
+                  <span className="text-sm text-zinc-400">Cargando métodos...</span>
+                </div>
+              ) : metodosPago.length > 0 ? (
                 <select
                   value={metodoId}
                   onChange={(e) => setMetodoId(e.target.value)}
@@ -243,14 +284,18 @@ export function RegistroPagoModal({
                   className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 >
                   <option value="">Seleccionar método de pago</option>
-                  {paymentMethods.map((pm) => (
+                  {metodosPago.map((pm) => (
                     <option key={pm.id} value={pm.id}>
-                      {pm.name}
+                      {pm.payment_method_name}
                     </option>
                   ))}
                 </select>
-              </div>
-            )}
+              ) : (
+                <div className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-sm text-zinc-500">
+                  No hay métodos de pago configurados
+                </div>
+              )}
+            </div>
           </div>
         )}
 

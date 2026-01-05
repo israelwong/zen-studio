@@ -10,6 +10,7 @@ interface PagoSectionProps {
     pago_monto?: number | null;
     pago_fecha?: Date | null;
     pago_metodo_id?: string | null;
+    pago_metodo_nombre?: string | null;
   } | null;
   loadingRegistro: boolean;
   onRegistrarPagoClick: () => void;
@@ -25,10 +26,13 @@ export const PagoSection = memo(function PagoSection({
   let pagoEstado: string;
   let pagoColor: string;
 
+  let metodoPagoNombre: string | null = null;
+  
   if (pagoData?.pago_concepto && pagoData?.pago_monto) {
     pagoIcon = <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />;
     pagoEstado = `${pagoData.pago_concepto}: $${pagoData.pago_monto.toLocaleString('es-MX')}`;
     pagoColor = 'text-emerald-400';
+    metodoPagoNombre = pagoData.pago_metodo_nombre || null;
   } else if (pagoData?.pago_registrado === false) {
     pagoIcon = <AlertCircle className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />;
     pagoEstado = 'Promesa de pago';
@@ -63,7 +67,12 @@ export const PagoSection = memo(function PagoSection({
               No registrado
             </span>
           )}
-          <p className={`text-xs ${!pagoData?.pago_registrado ? 'mt-1' : ''} ${pagoColor}`}>{pagoEstado}</p>
+          <div className={`text-xs ${!pagoData?.pago_registrado ? 'mt-1' : ''}`}>
+            <span className={pagoColor}>{pagoEstado}</span>
+            {metodoPagoNombre && (
+              <span className="text-zinc-500"> • {metodoPagoNombre}</span>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -74,6 +83,7 @@ export const PagoSection = memo(function PagoSection({
     prevProps.pagoData?.pago_registrado === nextProps.pagoData?.pago_registrado &&
     prevProps.pagoData?.pago_concepto === nextProps.pagoData?.pago_concepto &&
     prevProps.pagoData?.pago_monto === nextProps.pagoData?.pago_monto &&
+    prevProps.pagoData?.pago_metodo_nombre === nextProps.pagoData?.pago_metodo_nombre &&
     prevProps.loadingRegistro === nextProps.loadingRegistro
   );
 });
