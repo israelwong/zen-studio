@@ -565,7 +565,11 @@ export default function EditarPromesaPage() {
         <PromiseToolbar
           studioSlug={studioSlug}
           promiseId={promiseId}
-          contactData={contactData}
+          contactData={contactData ? {
+            contactId: contactData.contactId,
+            contactName: promiseData.name,
+            phone: promiseData.phone,
+          } : null}
           onCopyLink={async () => {
             const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
             try {
