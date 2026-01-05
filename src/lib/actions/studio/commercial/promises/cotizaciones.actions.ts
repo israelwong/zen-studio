@@ -543,13 +543,16 @@ export async function archiveCotizacion(
       return { success: false, error: 'Cotización no encontrada' };
     }
 
-    if (cotizacion.archived) {
+    if (cotizacion.status === 'archivada') {
       return { success: false, error: 'La cotización ya está archivada' };
     }
 
     await prisma.studio_cotizaciones.update({
       where: { id: cotizacionId },
-      data: { archived: true },
+      data: { 
+        status: 'archivada',
+        archived: true, // Mantener compatibilidad con campo legacy
+      },
     });
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
@@ -598,13 +601,16 @@ export async function unarchiveCotizacion(
       return { success: false, error: 'Cotización no encontrada' };
     }
 
-    if (!cotizacion.archived) {
+    if (cotizacion.status !== 'archivada') {
       return { success: false, error: 'La cotización no está archivada' };
     }
 
     await prisma.studio_cotizaciones.update({
       where: { id: cotizacionId },
-      data: { archived: false },
+      data: { 
+        status: 'pendiente',
+        archived: false, // Mantener compatibilidad con campo legacy
+      },
     });
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);

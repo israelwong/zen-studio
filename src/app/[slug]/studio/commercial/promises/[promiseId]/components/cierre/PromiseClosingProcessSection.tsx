@@ -79,6 +79,7 @@ export function PromiseClosingProcessSection({
       
       // Verificar si cambió el estado (importante para mostrar/ocultar el card de cierre)
       const changeInfo = p?.changeInfo;
+      const newRecord = p?.newRecord || p?.new;
       
       // Estados de cierre y relacionados
       const estadosCierre = ['en_cierre', 'contract_pending', 'contract_generated', 'contract_signed', 'aprobada', 'approved', 'autorizada'];
@@ -94,6 +95,15 @@ export function PromiseClosingProcessSection({
         
         // Recargar siempre que cambie el estado (para asegurar que se muestre/oculte el card correcto)
         if (pasoACierre || salioDeCierre || oldStatus !== newStatus) {
+          loadCotizaciones();
+          return;
+        }
+      }
+      
+      // CRÍTICO: Si cambió evento_id y el nuevo status es 'autorizada', recargar inmediatamente
+      // Esto asegura que se muestre CotizacionAutorizadaCard cuando se crea el evento
+      if (changeInfo?.camposCambiados?.includes('evento_id')) {
+        if (newRecord?.status === 'autorizada' && newRecord?.evento_id) {
           loadCotizaciones();
           return;
         }
@@ -115,9 +125,14 @@ export function PromiseClosingProcessSection({
     },
   });
 
-  // Buscar cotización autorizada con evento
+  // Buscar cotización autorizada con evento (excluir archivadas y canceladas)
+  // Prioridad: mostrar la cotización autorizada con evento_id cuando existe
   const cotizacionAutorizada = cotizaciones.find(
-    (c) => c.status === 'autorizada' && c.evento_id && !c.archived
+    (c) => 
+      c.status === 'autorizada' && 
+      !!c.evento_id && // Debe tener evento_id asignado
+      c.status !== 'archivada' &&
+      c.status !== 'cancelada'
   );
 
   // Buscar cotización en cierre o aprobada (sin autorizar aún)
@@ -127,7 +142,7 @@ export function PromiseClosingProcessSection({
         c.status === 'aprobada' ||
         c.status === 'approved') &&
       c.status !== 'autorizada' &&
-      !c.archived
+      c.status !== 'archivada'
   );
 
   if (loading) {

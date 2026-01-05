@@ -138,6 +138,10 @@ export function PromiseQuotesPanelCard({
     if (status === 'aprobada' || status === 'approved' || status === 'autorizada') {
       return 'success';
     }
+    // Archivada
+    if (status === 'archivada') {
+      return 'secondary';
+    }
     // Rechazada/Cancelada
     if (status === 'rechazada' || status === 'rejected' || status === 'cancelada') {
       return 'destructive';
@@ -177,6 +181,9 @@ export function PromiseQuotesPanelCard({
     }
     if (status === 'cancelada') {
       return 'Cancelada';
+    }
+    if (status === 'archivada') {
+      return 'Archivada';
     }
     if (status === 'pendiente' || status === 'pending') {
       return 'Pendiente';
@@ -448,7 +455,10 @@ export function PromiseQuotesPanelCard({
     }
   };
 
-  const isAuthorized = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada';
+  // Estados simplificados usando solo status
+  const isPendiente = cotizacion.status === 'pendiente';
+  const isArchivada = cotizacion.status === 'archivada';
+  const isCancelada = cotizacion.status === 'cancelada';
   const isRevision = cotizacion.revision_status === 'pending_revision' || cotizacion.revision_status === 'active';
 
   return (
@@ -456,10 +466,10 @@ export function PromiseQuotesPanelCard({
       <div
         ref={setNodeRef}
         style={style}
-        className={`p-3 border rounded-lg transition-colors relative ${cotizacion.archived
+        className={`p-3 border rounded-lg transition-colors relative ${isArchivada
           ? 'bg-zinc-900/30 border-zinc-800/50 opacity-50 grayscale'
           : 'bg-zinc-800/50 border-zinc-700'
-          } ${cotizacion.archived ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-800'
+          } ${isArchivada ? 'cursor-default' : 'cursor-pointer hover:bg-zinc-800'
           }`}
         onClick={handleClick}
       >
@@ -481,23 +491,23 @@ export function PromiseQuotesPanelCard({
             <GripVertical className="h-4 w-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <h4 className={`text-sm font-medium truncate mb-1 ${cotizacion.archived ? 'text-zinc-500' : 'text-zinc-200'
+            <h4 className={`text-sm font-medium truncate mb-1 ${isArchivada ? 'text-zinc-500' : 'text-zinc-200'
               }`}>
               {cotizacion.name}
             </h4>
             {cotizacion.description && (
-              <p className={`text-xs line-clamp-1 mb-2 ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-400'
+              <p className={`text-xs line-clamp-1 mb-2 ${isArchivada ? 'text-zinc-600' : 'text-zinc-400'
                 }`}>
                 {cotizacion.description}
               </p>
             )}
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className={`text-sm font-semibold ${cotizacion.archived ? 'text-zinc-500' : 'text-emerald-400'
+                <span className={`text-sm font-semibold ${isArchivada ? 'text-zinc-500' : 'text-emerald-400'
                   }`}>
                   ${(cotizacion.price - (cotizacion.discount || 0)).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                 </span>
-                {cotizacion.archived ? (
+                {isArchivada ? (
                   <ZenBadge
                     variant="secondary"
                     className="text-[10px] px-1.5 py-0.5 rounded-full"
@@ -523,7 +533,7 @@ export function PromiseQuotesPanelCard({
                 if (tieneDescuento) {
                   return (
                     <div className="mt-0.5">
-                      <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                      <p className={`text-[10px] ${isArchivada ? 'text-zinc-600' : 'text-zinc-500'}`}>
                         Precio original: <span className="font-semibold">
                           ${cotizacion.price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}
                         </span>
@@ -533,7 +543,7 @@ export function PromiseQuotesPanelCard({
                 }
                 return null;
               })()}
-              <p className={`text-[10px] ${cotizacion.archived ? 'text-zinc-600' : 'text-zinc-500'}`}>
+              <p className={`text-[10px] ${isArchivada ? 'text-zinc-600' : 'text-zinc-500'}`}>
                 Actualizado: {new Date(cotizacion.updated_at).toLocaleDateString('es-MX', {
                   year: 'numeric',
                   month: 'short',
@@ -546,7 +556,7 @@ export function PromiseQuotesPanelCard({
           </div>
           <div onClick={(e) => e.stopPropagation()}>
             {/* Ocultar menú si es archivada Y hay cotización en cierre */}
-            {!(cotizacion.archived && hasApprovedQuote) && (
+            {!(isArchivada && hasApprovedQuote) && (
               <ZenDropdownMenu>
                 <ZenDropdownMenuTrigger asChild>
                   <ZenButton
@@ -559,69 +569,43 @@ export function PromiseQuotesPanelCard({
                   </ZenButton>
                 </ZenDropdownMenuTrigger>
                 <ZenDropdownMenuContent align="end">
-                  {cotizacion.archived ? (
-                  <>
-                    <ZenDropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowUnarchiveModal(true);
-                      }}
-                      disabled={loading || isDuplicating}
-                    >
-                      <ArchiveRestore className="h-4 w-4 mr-2" />
-                      Desarchivar
-                    </ZenDropdownMenuItem>
-                    <ZenDropdownMenuSeparator />
-                    <ZenDropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeleteModal(true);
-                      }}
-                      disabled={loading || isDuplicating}
-                      className="text-red-400 focus:text-red-300"
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Eliminar
-                    </ZenDropdownMenuItem>
-                  </>
-                ) : (
-                  <>
-                    <ZenDropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartEditName(e);
-                      }}
-                      disabled={loading || isDuplicating}
-                    >
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      Editar nombre
-                    </ZenDropdownMenuItem>
-                    {!isAuthorized && promiseId && (
+                  {/* Menú según estado: pendiente, archivada, cancelada */}
+                  {isPendiente ? (
+                    <>
+                      {/* Pendiente: editar nombre, editar cotización, duplicar, archivar, pasar a cierre, eliminar */}
                       <ZenDropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
-                          const params = new URLSearchParams();
-                          if (contactId) {
-                            params.set('contactId', contactId);
-                          }
-                          const queryString = params.toString();
-                          router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}${queryString ? `?${queryString}` : ''}`);
+                          handleStartEditName(e);
                         }}
                         disabled={loading || isDuplicating}
                       >
                         <Edit2 className="h-4 w-4 mr-2" />
-                        Editar
+                        Editar nombre
                       </ZenDropdownMenuItem>
-                    )}
-                    {/* Duplicar: NO mostrar si es aprobada o revisión */}
-                    {!isAuthorized && !isRevision && (
-                      <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Duplicar
-                      </ZenDropdownMenuItem>
-                    )}
-                    {/* Archivar: NO mostrar si es aprobada */}
-                    {!isAuthorized && (
+                      {promiseId && (
+                        <ZenDropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const params = new URLSearchParams();
+                            if (contactId) {
+                              params.set('contactId', contactId);
+                            }
+                            const queryString = params.toString();
+                            router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}${queryString ? `?${queryString}` : ''}`);
+                          }}
+                          disabled={loading || isDuplicating}
+                        >
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Editar cotización
+                        </ZenDropdownMenuItem>
+                      )}
+                      {!isRevision && (
+                        <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicar
+                        </ZenDropdownMenuItem>
+                      )}
                       <ZenDropdownMenuItem
                         onClick={(e) => {
                           e.stopPropagation();
@@ -632,23 +616,8 @@ export function PromiseQuotesPanelCard({
                         <Archive className="h-4 w-4 mr-2" />
                         Archivar
                       </ZenDropdownMenuItem>
-                    )}
-                    <ZenDropdownMenuSeparator />
-                    {isAuthorized ? (
-                      <ZenDropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowCancelModal(true);
-                        }}
-                        disabled={loading || isDuplicating}
-                        className="text-red-400 focus:text-red-300"
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Cancelar
-                      </ZenDropdownMenuItem>
-                    ) : (
-                      // Solo mostrar botón Pasar a Cierre si no hay otra cotización aprobada o en cierre Y no está archivada
-                      !hasApprovedQuote && !cotizacion.archived && (
+                      <ZenDropdownMenuSeparator />
+                      {!hasApprovedQuote && (
                         <ZenDropdownMenuItem
                           onClick={handlePasarACierreClick}
                           disabled={loading || isDuplicating || !promiseId}
@@ -657,28 +626,75 @@ export function PromiseQuotesPanelCard({
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Pasar a Cierre
                         </ZenDropdownMenuItem>
-                      )
-                    )}
-
-                    {/* Eliminar: NO mostrar si es aprobada */}
-                    {!isAuthorized && (
-                      <>
-                        <ZenDropdownMenuSeparator />
-                        <ZenDropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowDeleteModal(true);
-                          }}
-                          disabled={loading || isDuplicating}
-                          className="text-red-400 focus:text-red-300"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar
+                      )}
+                      <ZenDropdownMenuSeparator />
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteModal(true);
+                        }}
+                        disabled={loading || isDuplicating}
+                        className="text-red-400 focus:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar
+                      </ZenDropdownMenuItem>
+                    </>
+                  ) : isArchivada ? (
+                    <>
+                      {/* Archivada: duplicar, desarchivar, eliminar */}
+                      {!isRevision && (
+                        <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicar
                         </ZenDropdownMenuItem>
-                      </>
-                    )}
-                  </>
-                )}
+                      )}
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowUnarchiveModal(true);
+                        }}
+                        disabled={loading || isDuplicating}
+                      >
+                        <ArchiveRestore className="h-4 w-4 mr-2" />
+                        Desarchivar
+                      </ZenDropdownMenuItem>
+                      <ZenDropdownMenuSeparator />
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteModal(true);
+                        }}
+                        disabled={loading || isDuplicating}
+                        className="text-red-400 focus:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar
+                      </ZenDropdownMenuItem>
+                    </>
+                  ) : isCancelada ? (
+                    <>
+                      {/* Cancelada: duplicar, eliminar */}
+                      {!isRevision && (
+                        <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicar
+                        </ZenDropdownMenuItem>
+                      )}
+                      <ZenDropdownMenuSeparator />
+                      <ZenDropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteModal(true);
+                        }}
+                        disabled={loading || isDuplicating}
+                        className="text-red-400 focus:text-red-300"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar
+                      </ZenDropdownMenuItem>
+                    </>
+                  ) : null}
                 </ZenDropdownMenuContent>
               </ZenDropdownMenu>
             )}

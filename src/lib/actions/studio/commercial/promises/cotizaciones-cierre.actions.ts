@@ -1309,13 +1309,15 @@ export async function autorizarYCrearEvento(
         });
       }
 
-      // 7.5. Actualizar cotización con snapshots (inmutables)
-      // NOTA: La relación evento_autorizado se establece automáticamente cuando el evento tiene cotizacion_id
-      // No necesitamos actualizar evento_id en la cotización, solo los snapshots
+      // 7.5. Actualizar cotización con snapshots (inmutables) y establecer relación con evento
+      // IMPORTANTE: Usar la relación 'eventos' con connect para establecer evento_id
       await tx.studio_cotizaciones.update({
         where: { id: cotizacionId },
         data: {
           status: 'autorizada',
+          eventos: {
+            connect: { id: evento.id }, // Establecer relación bidireccional con el evento creado
+          },
           // Desconectar relación de condiciones comerciales (usar snapshots en su lugar)
           condiciones_comerciales: {
             disconnect: true,

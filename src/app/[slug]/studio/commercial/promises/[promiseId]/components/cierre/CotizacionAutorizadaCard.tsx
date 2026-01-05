@@ -354,6 +354,7 @@ export function CotizacionAutorizadaCard({
           studioSlug={studioSlug}
           promiseId={cotizacion.promise_id || ''}
           cotizacionId={cotizacion.id}
+          eventId={eventoId} // Pasar eventId para usar getEventContractData con snapshots inmutables
           template={{
             id: contrato?.template_id || resumen?.cotizacion?.contract_template_id_snapshot || '',
             name: contrato?.template_name || resumen?.cotizacion?.contract_template_name_snapshot || 'Contrato',

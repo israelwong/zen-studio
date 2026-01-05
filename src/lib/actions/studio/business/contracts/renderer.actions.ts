@@ -434,6 +434,14 @@ export async function getEventContractData(
             selected_by_prospect: true,
             tyc_accepted: true,
             condiciones_comerciales_id: true,
+            // Snapshots inmutables (prioridad cuando existen)
+            condiciones_comerciales_name_snapshot: true,
+            condiciones_comerciales_description_snapshot: true,
+            condiciones_comerciales_advance_percentage_snapshot: true,
+            condiciones_comerciales_advance_type_snapshot: true,
+            condiciones_comerciales_advance_amount_snapshot: true,
+            condiciones_comerciales_discount_percentage_snapshot: true,
+            // Relación legacy (fallback si no hay snapshots)
             condiciones_comerciales: {
               select: {
                 id: true,
@@ -482,40 +490,48 @@ export async function getEventContractData(
           status: { in: ['aprobada', 'autorizada', 'approved'] },
           archived: false,
         },
-        select: {
-          id: true,
-          name: true,
-          price: true,
-          discount: true,
-          status: true,
-          selected_by_prospect: true,
-          tyc_accepted: true,
-          condiciones_comerciales_id: true,
-          condiciones_comerciales: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-              discount_percentage: true,
-              advance_percentage: true,
-              advance_type: true,
-              advance_amount: true,
-            },
-          },
-          cotizacion_items: {
-            include: {
-              items: {
-                include: {
-                  service_categories: true,
-                },
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            discount: true,
+            status: true,
+            selected_by_prospect: true,
+            tyc_accepted: true,
+            condiciones_comerciales_id: true,
+            // Snapshots inmutables (prioridad cuando existen)
+            condiciones_comerciales_name_snapshot: true,
+            condiciones_comerciales_description_snapshot: true,
+            condiciones_comerciales_advance_percentage_snapshot: true,
+            condiciones_comerciales_advance_type_snapshot: true,
+            condiciones_comerciales_advance_amount_snapshot: true,
+            condiciones_comerciales_discount_percentage_snapshot: true,
+            // Relación legacy (fallback si no hay snapshots)
+            condiciones_comerciales: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                discount_percentage: true,
+                advance_percentage: true,
+                advance_type: true,
+                advance_amount: true,
               },
-              service_categories: true,
             },
-            orderBy: {
-              order: "asc",
+            cotizacion_items: {
+              include: {
+                items: {
+                  include: {
+                    service_categories: true,
+                  },
+                },
+                service_categories: true,
+              },
+              orderBy: {
+                order: "asc",
+              },
             },
           },
-        },
         orderBy: {
           created_at: 'desc', // Tomar la más reciente si hay múltiples
         },
@@ -600,10 +616,21 @@ export async function getEventContractData(
 
     // Calcular total
     const totalContrato = Number(cotizacionAprobada.price);
+    
+    // Priorizar snapshots inmutables de condiciones comerciales sobre la relación
+    const tieneSnapshots = !!cotizacionAprobada.condiciones_comerciales_name_snapshot;
+    const condiciones = tieneSnapshots ? {
+      name: cotizacionAprobada.condiciones_comerciales_name_snapshot || '',
+      description: cotizacionAprobada.condiciones_comerciales_description_snapshot,
+      discount_percentage: cotizacionAprobada.condiciones_comerciales_discount_percentage_snapshot,
+      advance_percentage: cotizacionAprobada.condiciones_comerciales_advance_percentage_snapshot,
+      advance_type: cotizacionAprobada.condiciones_comerciales_advance_type_snapshot,
+      advance_amount: cotizacionAprobada.condiciones_comerciales_advance_amount_snapshot,
+    } : cotizacionAprobada.condiciones_comerciales;
+    
     // Calcular descuento: puede ser porcentaje o monto fijo
     let descuento = 0;
-    if (cotizacionAprobada.condiciones_comerciales) {
-      const condiciones = cotizacionAprobada.condiciones_comerciales;
+    if (condiciones) {
       if (condiciones.discount_percentage) {
         // Descuento porcentual
         descuento = totalContrato * (Number(condiciones.discount_percentage) / 100);
@@ -619,24 +646,22 @@ export async function getEventContractData(
 
     // Preparar datos de condiciones comerciales si existen
     let condicionesData: CondicionesComercialesData | undefined;
-    if (cotizacionAprobada.condiciones_comerciales) {
-      const cc = cotizacionAprobada.condiciones_comerciales;
-
+    if (condiciones) {
       // Calcular monto de anticipo
       let montoAnticipoCalculado: number | undefined;
-      if (cc.advance_percentage && cc.advance_type === "percentage") {
-        montoAnticipoCalculado = totalFinal * (Number(cc.advance_percentage) / 100);
-      } else if (cc.advance_amount) {
-        montoAnticipoCalculado = Number(cc.advance_amount);
+      if (condiciones.advance_percentage && condiciones.advance_type === "percentage") {
+        montoAnticipoCalculado = totalFinal * (Number(condiciones.advance_percentage) / 100);
+      } else if (condiciones.advance_amount) {
+        montoAnticipoCalculado = Number(condiciones.advance_amount);
       }
 
       condicionesData = {
-        nombre: cc.name,
-        descripcion: cc.description || undefined,
-        porcentaje_anticipo: cc.advance_percentage || undefined,
-        tipo_anticipo: (cc.advance_type as "percentage" | "fixed_amount") || undefined,
+        nombre: condiciones.name,
+        descripcion: condiciones.description || undefined,
+        porcentaje_anticipo: condiciones.advance_percentage || undefined,
+        tipo_anticipo: (condiciones.advance_type as "percentage" | "fixed_amount") || undefined,
         monto_anticipo: montoAnticipoCalculado,
-        porcentaje_descuento: cc.discount_percentage || undefined,
+        porcentaje_descuento: condiciones.discount_percentage || undefined,
         total_contrato: totalContrato,
         total_final: totalFinal,
         descuento_aplicado: descuento,
@@ -682,7 +707,7 @@ export async function getEventContractData(
         currency: "MXN",
       }).format(totalFinal),
       condiciones_pago:
-        cotizacionAprobada.condiciones_comerciales?.description || "No especificadas",
+        condiciones?.description || "No especificadas",
       nombre_studio: studio.studio_name,
       nombre_representante: studio.representative_name || undefined,
       telefono_studio: studio.phone || undefined,

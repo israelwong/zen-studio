@@ -10,6 +10,7 @@ import { BitacoraSheet } from '@/components/shared/bitacora';
 import { EventDetailSkeleton } from './components/EventDetailSkeleton';
 import { EventDetailHeader } from './components/EventDetailHeader';
 import { ContractTemplateManagerModal } from '@/components/shared/contracts/ContractTemplateManagerModal';
+import { getAllEventContracts } from '@/lib/actions/studio/business/contracts/contracts.actions';
 import { toast } from 'sonner';
 
 export default function EventDetailPage() {
@@ -25,6 +26,7 @@ export default function EventDetailPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [cotizacionesCount, setCotizacionesCount] = useState(0);
+  const [contratosCount, setContratosCount] = useState(0);
   const [logsSheetOpen, setLogsSheetOpen] = useState(false);
   const [templatesModalOpen, setTemplatesModalOpen] = useState(false);
 
@@ -46,6 +48,17 @@ export default function EventDetailPage() {
           const countResult = await obtenerCotizacionesAutorizadasCount(studioSlug, eventId);
           if (countResult.success && countResult.count !== undefined) {
             setCotizacionesCount(countResult.count);
+          }
+
+          // Verificar si existe un contrato activo (solo debe haber 1)
+          const contractsResult = await getAllEventContracts(studioSlug, eventId);
+          if (contractsResult.success && contractsResult.data) {
+            // Contar solo contratos activos (no cancelados)
+            // Un evento solo debe tener 1 contrato activo a la vez
+            const activeContracts = contractsResult.data.filter(
+              (c) => c.status !== 'CANCELLED'
+            );
+            setContratosCount(activeContracts.length > 0 ? 1 : 0);
           }
         } else {
           toast.error(result.error || 'Evento no encontrado');
@@ -120,7 +133,13 @@ export default function EventDetailPage() {
       if (result.success) {
         toast.success('Evento cancelado correctamente');
         setShowCancelModal(false);
-        router.push(`/${studioSlug}/studio/business/events`);
+        
+        // Redirigir a la promesa asociada si existe, sino a la lista de eventos
+        if (eventData?.promise_id) {
+          router.push(`/${studioSlug}/studio/commercial/promises/${eventData.promise_id}`);
+        } else {
+          router.push(`/${studioSlug}/studio/business/events`);
+        }
       } else {
         toast.error(result.error || 'Error al cancelar evento');
         setShowCancelModal(false);
@@ -226,6 +245,12 @@ export default function EventDetailPage() {
                   <li>La promesa regresará a la etapa <strong className="text-zinc-300">Pendiente</strong></li>
                   <li>Se agregará la etiqueta <strong className="text-zinc-300">Cancelada</strong> a la promesa</li>
                 </>
+              )}
+              {contratosCount > 0 && (
+                <li>
+                  Se cancelará el contrato asociado. 
+                  El contrato no se eliminará, solo cambiará su estado a <strong className="text-zinc-300">cancelado</strong> (se mantendrá para estadísticas)
+                </li>
               )}
               <li>Se eliminará el agendamiento asociado al evento</li>
             </ul>

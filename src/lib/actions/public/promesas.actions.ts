@@ -577,7 +577,7 @@ export async function getPublicPromiseData(
         quotes: {
           where: {
             visible_to_client: true,
-            archived: false,
+            status: 'pendiente', // Solo mostrar cotizaciones pendientes al cliente
           },
           select: {
             id: true,

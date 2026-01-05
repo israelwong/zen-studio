@@ -104,7 +104,7 @@ export function PromiseCardView({
       // Encontrar la cotización aprobada
       if (cotizacionesResult.success && cotizacionesResult.data) {
         const approvedQuote = cotizacionesResult.data.find(
-          (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && !c.archived
+          (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && c.status !== 'archivada'
         );
         if (approvedQuote) {
           setSelectedCotizacion({

@@ -144,12 +144,18 @@ export function PromiseQuotesPanel({
       // Si success es true, usar el array (vacío o con datos)
       if (result.success) {
         const cotizacionesData = result.data || [];
-        // Ordenar: primero las no archivadas (por order), luego las archivadas (por order)
-        const sortedCotizaciones = [...cotizacionesData].sort((a, b) => {
+        // Filtrar solo: pendiente, archivada, cancelada
+        const estadosPermitidos = ['pendiente', 'archivada', 'cancelada'];
+        const cotizacionesFiltradas = cotizacionesData.filter(c => 
+          estadosPermitidos.includes(c.status)
+        );
+        
+        // Ordenar: primero pendiente/cancelada (por order), luego archivadas (por order)
+        const sortedCotizaciones = [...cotizacionesFiltradas].sort((a, b) => {
           // Si una está archivada y la otra no, la archivada va al final
-          if (a.archived && !b.archived) return 1;
-          if (!a.archived && b.archived) return -1;
-          // Si ambas tienen el mismo estado de archivado, ordenar por order
+          if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+          if (a.status !== 'archivada' && b.status === 'archivada') return -1;
+          // Si ambas tienen el mismo estado, ordenar por order
           const orderA = a.order ?? 0;
           const orderB = b.order ?? 0;
           return orderA - orderB;
@@ -260,8 +266,8 @@ export function PromiseQuotesPanel({
 
     // Reordenar para mantener archivadas al final después del drag
     const reorderedCotizaciones = [...newCotizaciones].sort((a, b) => {
-      if (a.archived && !b.archived) return 1;
-      if (!a.archived && b.archived) return -1;
+      if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+      if (a.status !== 'archivada' && b.status === 'archivada') return -1;
       const orderA = a.order ?? 0;
       const orderB = b.order ?? 0;
       return orderA - orderB;
@@ -299,7 +305,7 @@ export function PromiseQuotesPanel({
     const result = cotizaciones.some(
       (c) => {
         // Excluir cotizaciones canceladas o archivadas
-        if (c.status === 'cancelada' || c.archived) {
+        if (c.status === 'cancelada' || c.status === 'archivada') {
           return false;
         }
         // Verificar si tiene un status que requiere ocultar el botón: en_cierre o autorizada/aprobada
@@ -327,7 +333,7 @@ export function PromiseQuotesPanel({
   const approvedQuote = cotizaciones.find(
     (c) => {
       // Excluir cotizaciones canceladas o archivadas
-      if (c.status === 'cancelada' || c.archived) {
+      if (c.status === 'cancelada' || c.status === 'archivada') {
         return false;
       }
       // Buscar cotización en cierre o autorizada/aprobada CON evento activo
@@ -341,9 +347,9 @@ export function PromiseQuotesPanel({
     }
   );
 
-  // Filtrar cotizaciones para el listado (excluir la aprobada o en cierre)
+  // Filtrar cotizaciones para el listado (solo pendiente, archivada, cancelada)
   const cotizacionesParaListado = cotizaciones.filter(
-    (c) => !(c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved' || c.status === 'en_cierre') || c.archived || c.status === 'cancelada'
+    (c) => ['pendiente', 'archivada', 'cancelada'].includes(c.status)
   );
 
   return (
@@ -478,8 +484,8 @@ export function PromiseQuotesPanel({
                           setCotizaciones((prev) => {
                             const updated = [...prev, newCotizacion];
                             return updated.sort((a, b) => {
-                              if (a.archived && !b.archived) return 1;
-                              if (!a.archived && b.archived) return -1;
+                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
                               const orderA = a.order ?? 0;
                               const orderB = b.order ?? 0;
                               return orderA - orderB;
@@ -493,12 +499,12 @@ export function PromiseQuotesPanel({
                           setCotizaciones((prev) => prev.filter((c) => c.id !== id));
                         }}
                         onArchive={(id) => {
-                          // Actualización local: marcar como archivada y reordenar
+                          // Actualización local: cambiar status a archivada y reordenar
                           setCotizaciones((prev) => {
-                            const updated = prev.map((c) => (c.id === id ? { ...c, archived: true } : c));
+                            const updated = prev.map((c) => (c.id === id ? { ...c, status: 'archivada' as const, archived: true } : c));
                             return updated.sort((a, b) => {
-                              if (a.archived && !b.archived) return 1;
-                              if (!a.archived && b.archived) return -1;
+                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
                               const orderA = a.order ?? 0;
                               const orderB = b.order ?? 0;
                               return orderA - orderB;
@@ -514,12 +520,12 @@ export function PromiseQuotesPanel({
                           router.refresh();
                         }}
                         onUnarchive={(id) => {
-                          // Actualización local: marcar como desarchivada y reordenar
+                          // Actualización local: cambiar status a pendiente y reordenar
                           setCotizaciones((prev) => {
-                            const updated = prev.map((c) => (c.id === id ? { ...c, archived: false } : c));
+                            const updated = prev.map((c) => (c.id === id ? { ...c, status: 'pendiente' as const, archived: false } : c));
                             return updated.sort((a, b) => {
-                              if (a.archived && !b.archived) return 1;
-                              if (!a.archived && b.archived) return -1;
+                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
                               const orderA = a.order ?? 0;
                               const orderB = b.order ?? 0;
                               return orderA - orderB;
@@ -575,12 +581,12 @@ export function PromiseQuotesPanel({
                             setCotizaciones((prev) => prev.filter((c) => c.id !== id));
                           }}
                           onArchive={(id) => {
-                            // Actualización local: marcar como archivada y reordenar
+                            // Actualización local: cambiar status a archivada y reordenar
                             setCotizaciones((prev) => {
-                              const updated = prev.map((c) => (c.id === id ? { ...c, archived: true } : c));
+                              const updated = prev.map((c) => (c.id === id ? { ...c, status: 'archivada' as const, archived: true } : c));
                               return updated.sort((a, b) => {
-                                if (a.archived && !b.archived) return 1;
-                                if (!a.archived && b.archived) return -1;
+                                if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+                                if (a.status !== 'archivada' && b.status === 'archivada') return -1;
                                 const orderA = a.order ?? 0;
                                 const orderB = b.order ?? 0;
                                 return orderA - orderB;
@@ -596,12 +602,12 @@ export function PromiseQuotesPanel({
                             router.refresh();
                           }}
                           onUnarchive={(id) => {
-                            // Actualización local: marcar como desarchivada y reordenar
+                            // Actualización local: cambiar status a pendiente y reordenar
                             setCotizaciones((prev) => {
-                              const updated = prev.map((c) => (c.id === id ? { ...c, archived: false } : c));
+                              const updated = prev.map((c) => (c.id === id ? { ...c, status: 'pendiente' as const, archived: false } : c));
                               return updated.sort((a, b) => {
-                                if (a.archived && !b.archived) return 1;
-                                if (!a.archived && b.archived) return -1;
+                                if (a.status === 'archivada' && b.status !== 'archivada') return 1;
+                                if (a.status !== 'archivada' && b.status === 'archivada') return -1;
                                 const orderA = a.order ?? 0;
                                 const orderB = b.order ?? 0;
                                 return orderA - orderB;

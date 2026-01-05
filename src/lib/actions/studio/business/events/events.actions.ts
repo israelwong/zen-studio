@@ -1419,13 +1419,15 @@ export async function cancelarEvento(
       },
     });
 
-    // Obtener TODAS las cotizaciones asociadas al evento (incluyendo estados legacy)
-    const todasLasCotizaciones = await prisma.studio_cotizaciones.findMany({
+    if (!evento) {
+      return { success: false, error: 'Evento no encontrado' };
+    }
+
+    // Obtener TODAS las cotizaciones asociadas al evento
+    // Buscar por evento_id Y también por cotizacion_id del evento (por si hay inconsistencias)
+    const cotizacionesPorEventoId = await prisma.studio_cotizaciones.findMany({
       where: {
         evento_id: eventoId,
-        status: {
-          in: ['aprobada', 'autorizada', 'approved', 'en_cierre'], // Incluir estados legacy
-        },
       },
       select: {
         id: true,
@@ -1434,9 +1436,28 @@ export async function cancelarEvento(
       },
     });
 
-    if (!evento) {
-      return { success: false, error: 'Evento no encontrado' };
-    }
+    // También buscar la cotización específica que tiene el evento en cotizacion_id
+    const cotizacionesPorCotizacionId = evento.cotizacion_id
+      ? await prisma.studio_cotizaciones.findMany({
+          where: {
+            id: evento.cotizacion_id,
+            // Incluir aunque no tenga evento_id (por si hay inconsistencia)
+          },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+          },
+        })
+      : [];
+
+    // Combinar ambas listas y eliminar duplicados
+    const todasLasCotizaciones = [
+      ...cotizacionesPorEventoId,
+      ...cotizacionesPorCotizacionId,
+    ].filter((cot, index, self) => 
+      index === self.findIndex((c) => c.id === cot.id)
+    );
 
     if (evento.status === 'CANCELLED') {
       return { success: false, error: 'El evento ya está cancelado' };
@@ -1512,13 +1533,19 @@ export async function cancelarEvento(
         },
       });
 
-      // 2. Cancelar TODAS las cotizaciones asociadas al evento (incluyendo estados legacy)
+      // 2. Cancelar TODAS las cotizaciones asociadas al evento
+      // Actualizar todas las cotizaciones encontradas (por evento_id o cotizacion_id)
       if (todasLasCotizaciones.length > 0) {
+        const cotizacionIds = todasLasCotizaciones.map(c => c.id);
+        
         await tx.studio_cotizaciones.updateMany({
           where: {
-            evento_id: eventoId,
+            id: {
+              in: cotizacionIds,
+            },
+            // Solo actualizar si el status es autorizada/aprobada/en_cierre (no cancelar si ya está cancelada)
             status: {
-              in: ['aprobada', 'autorizada', 'approved', 'en_cierre'], // Incluir estados legacy
+              in: ['aprobada', 'autorizada', 'approved', 'en_cierre'],
             },
           },
           data: {
@@ -1609,7 +1636,42 @@ export async function cancelarEvento(
         }
       }
 
-      // 4. Eliminar agendamiento asociado al evento
+      // 4. Cancelar contrato activo asociado al evento (si existe)
+      // NOTA: Un evento solo debe tener 1 contrato activo a la vez
+      // Los contratos cancelados se mantienen para estadísticas
+      const contratos = await tx.studio_event_contracts.findMany({
+        where: {
+          event_id: eventoId,
+          status: {
+            notIn: ['CANCELLED'], // Solo cancelar contratos activos (no cancelados)
+          },
+        },
+        select: {
+          id: true,
+          status: true,
+        },
+      });
+
+      if (contratos.length > 0) {
+        // Cancelar todos los contratos activos (normalmente solo debería haber 1)
+        await tx.studio_event_contracts.updateMany({
+          where: {
+            event_id: eventoId,
+            status: {
+              notIn: ['CANCELLED'],
+            },
+          },
+          data: {
+            status: 'CANCELLED',
+            cancelled_at: new Date(),
+            cancellation_reason: 'Evento cancelado',
+            cancellation_initiated_by: 'studio',
+            updated_at: new Date(),
+          },
+        });
+      }
+
+      // 5. Eliminar agendamiento asociado al evento
       if (agendamiento) {
         await tx.studio_agenda.delete({
           where: { id: agendamiento.id },

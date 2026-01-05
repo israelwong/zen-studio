@@ -676,7 +676,8 @@ export function PromiseClosingProcessCard({
             toast.success('¡Cotización autorizada y evento creado!');
             toastShownRef.current = true;
           }
-          router.push(`/${studioSlug}/studio/business/events/${result.data.evento_id}`);
+          // Mantener en la página de promesa - el componente PromiseClosingProcessSection mostrará CotizacionAutorizadaCard
+          router.refresh();
         } else {
           toast.error(result.error || 'Error al autorizar cotización');
         }
@@ -741,7 +742,8 @@ export function PromiseClosingProcessCard({
 
         if (result.success && result.data?.eventId) {
           toast.success('Evento creado exitosamente');
-          router.push(`/${studioSlug}/studio/business/events/${result.data.eventId}`);
+          // Mantener en la página de promesa - el componente PromiseClosingProcessSection mostrará CotizacionAutorizadaCard
+          router.refresh();
         } else {
           toast.error(result.error || 'Error al autorizar cotización');
         }
