@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenSwitch, ZenButton } from "@/components/ui/zen";
-import { BasicInfoEditor } from "../editors/BasicInfoEditor";
+import { InfoEditor } from "../editors/InfoEditor";
 import { OfferCardPreview } from "@/components/previews";
 import { useOfferEditor } from "../OfferEditorContext";
 import { checkOfferSlugExists } from "@/lib/actions/studio/offers/offers.actions";
@@ -139,7 +139,7 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
             </ZenCardTitle>
           </ZenCardHeader>
           <ZenCardContent>
-            <BasicInfoEditor
+            <InfoEditor
               studioSlug={studioSlug}
               nameError={nameError}
               isValidatingSlug={isValidatingSlug}

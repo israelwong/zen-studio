@@ -19,7 +19,7 @@ import { CrearCondicionComercialModal } from "@/components/shared/condiciones-co
 import { Settings } from "lucide-react";
 import { TipoEventoSelector } from "@/components/shared/tipos-evento";
 
-interface BasicInfoEditorProps {
+interface InfoEditorProps {
   studioSlug: string;
   nameError: string | null;
   isValidatingSlug: boolean;
@@ -38,14 +38,14 @@ function generateSlug(name: string): string {
     .replace(/(^-|-$)/g, "");
 }
 
-export function BasicInfoEditor({
+export function InfoEditor({
   studioSlug,
   nameError,
   isValidatingSlug,
   slugHint,
   mode = "create",
   onEventTypeChange,
-}: BasicInfoEditorProps) {
+}: InfoEditorProps) {
   const { formData, updateFormData, savedOfferId, offerId } = useOfferEditor();
   const { uploadFiles } = useMediaUpload();
   const { triggerRefresh } = useStorageRefresh(studioSlug);
