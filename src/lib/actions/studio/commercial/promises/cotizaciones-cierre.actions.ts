@@ -1151,8 +1151,9 @@ export async function autorizarYCrearEvento(
                             cotizacion.selected_by_prospect === undefined;
 
     if (isClienteManual) {
-      // Cliente creado manualmente: solo requiere datos del cliente completos
-      // No requiere condiciones comerciales ni contrato
+      // Cliente creado manualmente: condiciones comerciales y contrato son opcionales
+      // Si están definidas, se guardarán en snapshots (sin requerir firma)
+      // No requiere validaciones adicionales
     } else {
       // Cliente nuevo (selected_by_prospect === true): requiere condiciones comerciales y contrato
       if (
@@ -1238,8 +1239,9 @@ export async function autorizarYCrearEvento(
         // Si existe evento para esta misma cotización y está activo, actualizar
       }
 
-      // 7.2. Crear snapshots de condiciones comerciales (solo si existen)
-      const condicionSnapshot = registroCierre.condiciones_comerciales
+      // 7.2. Crear snapshots de condiciones comerciales (si están definidas)
+      // Para clientes manuales son opcionales, pero si están definidas deben guardarse
+      const condicionSnapshot = registroCierre.condiciones_comerciales_definidas && registroCierre.condiciones_comerciales
         ? {
             name: registroCierre.condiciones_comerciales.name,
             description: registroCierre.condiciones_comerciales.description,
@@ -1261,17 +1263,17 @@ export async function autorizarYCrearEvento(
           }
         : null;
 
-      // 7.3. Crear snapshots de contrato (si existe, incluso para clientes manuales)
-      // Para clientes manuales no se requiere contrato, pero si existe debe guardarse
+      // 7.3. Crear snapshots de contrato (si está definido)
+      // Para clientes manuales es opcional, pero si está definido debe guardarse
       // Si hay template_id pero no content personalizado, usar el contenido de la plantilla
-      const contratoSnapshot = registroCierre.contract_template_id
+      const contratoSnapshot = registroCierre.contrato_definido && registroCierre.contract_template_id
         ? {
             template_id: registroCierre.contract_template_id,
             template_name: registroCierre.contract_template?.name || null,
             // Priorizar contenido personalizado, si no existe usar el de la plantilla
             content: registroCierre.contract_content || registroCierre.contract_template?.content || null,
             version: registroCierre.contract_version || 1,
-            signed_at: registroCierre.contract_signed_at,
+            signed_at: registroCierre.contract_signed_at, // Puede ser null para clientes manuales
             signed_ip: null, // TODO: Obtener IP de firma desde tabla de versiones si existe
           }
         : null;
@@ -1344,13 +1346,16 @@ export async function autorizarYCrearEvento(
         },
       });
 
-      // 8.5. Registrar pago inicial (si aplica)
+      // 8.5. Registrar pago inicial (si está definido en el registro de cierre)
+      // Para clientes manuales es opcional, pero si está definido debe registrarse
       let pagoRegistrado = false;
       if (
-        options?.registrarPago &&
-        options?.montoInicial &&
-        options.montoInicial > 0
+        registroCierre.pago_registrado &&
+        registroCierre.pago_monto &&
+        registroCierre.pago_monto > 0
       ) {
+        // Usar el monto del registro de cierre si no se proporciona en options
+        const montoInicial = options?.montoInicial || Number(registroCierre.pago_monto);
         // Obtener nombre del método de pago dentro de la transacción
         let metodoPagoNombre = 'Manual'; // Valor por defecto
         if (registroCierre.pago_metodo_id) {
@@ -1373,7 +1378,7 @@ export async function autorizarYCrearEvento(
             cotizacion_id: cotizacionId,
             promise_id: promiseId,
             contact_id: contactId || null,
-            amount: options.montoInicial,
+            amount: montoInicial,
             concept: conceptoPago,
             payment_date: fechaPago,
             metodo_pago_id: registroCierre.pago_metodo_id,
