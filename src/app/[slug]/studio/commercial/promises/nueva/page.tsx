@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { PromiseFormModal, type PromiseFormRef } from '../components/PromiseFormModal';
-import { PromiseToolbar } from '../[promiseId]/components/PromiseToolbar';
+import { PromiseDetailToolbar } from '../[promiseId]/components/PromiseDetailToolbar';
 import { useRouter } from 'next/navigation';
 
 export default function NuevaPromesaPage() {
@@ -66,7 +66,7 @@ export default function NuevaPromesaPage() {
           </div>
         </ZenCardHeader>
         {contactData && (
-          <PromiseToolbar
+          <PromiseDetailToolbar
             studioSlug={studioSlug}
             promiseId={contactData.promiseId}
             contactData={{
@@ -78,7 +78,7 @@ export default function NuevaPromesaPage() {
               const previewUrl = `${window.location.origin}/${studioSlug}/promise/${contactData.promiseId}`;
               try {
                 await navigator.clipboard.writeText(previewUrl);
-                // toast se maneja internamente en PromiseToolbar
+                // toast se maneja internamente en PromiseDetailToolbar
               } catch (error) {
                 console.error('Error al copiar link:', error);
               }

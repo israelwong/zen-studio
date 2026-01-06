@@ -7,7 +7,7 @@ import { PromiseNotesButton } from './PromiseNotesButton';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { logWhatsAppSent, logCallMade } from '@/lib/actions/studio/commercial/promises';
 
-interface PromiseToolbarProps {
+interface PromiseDetailToolbarProps {
   studioSlug: string;
   promiseId: string | null;
   contactData: {
@@ -19,13 +19,13 @@ interface PromiseToolbarProps {
   onPreview: () => void;
 }
 
-export function PromiseToolbar({
+export function PromiseDetailToolbar({
   studioSlug,
   promiseId,
   contactData,
   onCopyLink,
   onPreview,
-}: PromiseToolbarProps) {
+}: PromiseDetailToolbarProps) {
   const [linkCopied, setLinkCopied] = useState(false);
 
   if (!promiseId || !contactData) {

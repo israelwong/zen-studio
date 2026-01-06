@@ -6,7 +6,7 @@ import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2, Loader2, File
 import { PromiseNotesButton } from './components/PromiseNotesButton';
 import { PromiseShareOptionsModal } from './components/PromiseShareOptionsModal';
 import { PromiseDetailHeader } from './components/PromiseDetailHeader';
-import { PromiseToolbar } from './components/PromiseToolbar';
+import { PromiseDetailToolbar } from './components/PromiseDetailToolbar';
 import { BitacoraSheet } from '@/components/shared/bitacora';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenConfirmModal, ZenBadge } from '@/components/ui/zen';
 import { PromiseCardView } from './components/PromiseCardView';
@@ -575,7 +575,7 @@ export default function EditarPromesaPage() {
           isUnarchiving={isUnarchiving}
           isDeleting={isDeleting}
         />
-        <PromiseToolbar
+        <PromiseDetailToolbar
           studioSlug={studioSlug}
           promiseId={promiseId}
           contactData={contactData ? {
