@@ -1,2 +1,2 @@
-export { TerminosCondicionesManager } from './TerminosCondicionesManager';
+export { TerminosCondicionesEditor } from './TerminosCondicionesEditor';
 

@@ -5,6 +5,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { obtenerInfoBancariaTransferencia } from '@/lib/actions/shared/metodos-pago.actions';
 import type { ClientPago, StudioBankInfo, ApiResponse } from '@/types/client';
 
 /**
@@ -97,41 +98,9 @@ export async function obtenerPagosEvento(eventIdOrPromiseId: string, contactId: 
 
 /**
  * Obtiene información bancaria del estudio para pagos SPEI
+ * Usa la función compartida que obtiene la cuenta configurada en métodos de pago
  */
 export async function obtenerInfoBancariaStudio(studioId: string): Promise<ApiResponse<StudioBankInfo>> {
-  try {
-    const studio = await prisma.studios.findUnique({
-      where: { id: studioId },
-      select: {
-        id: true,
-        clabe_number: true,
-        bank_name: true,
-        account_holder: true,
-      },
-    });
-
-    if (!studio) {
-      return {
-        success: false,
-        message: 'Estudio no encontrado',
-      };
-    }
-
-    return {
-      success: true,
-      data: {
-        studio_id: studio.id,
-        clabe: studio.clabe_number,
-        banco: studio.bank_name,
-        titular: studio.account_holder,
-      },
-    };
-  } catch (error) {
-    console.error('[obtenerInfoBancariaStudio] Error:', error);
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : 'Error al obtener información bancaria',
-    };
-  }
+  return obtenerInfoBancariaTransferencia(studioId);
 }
 

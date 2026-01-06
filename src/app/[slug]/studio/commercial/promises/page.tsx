@@ -7,7 +7,7 @@ import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescriptio
 import { PromisesWrapper } from './components';
 import { PromiseMainToolbar } from './components/PromiseMainToolbar';
 import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
-import { TerminosCondicionesManager } from '@/components/shared/terminos-condiciones';
+import { TerminosCondicionesEditor } from '@/components/shared/terminos-condiciones';
 import { PipelineConfigModal } from './components/PipelineConfigModal';
 import { PromiseTagsManageModal } from './components/PromiseTagsManageModal';
 import { PaymentMethodsModal } from '@/components/shared/payments/PaymentMethodsModal';
@@ -118,7 +118,7 @@ export default function PromisesPage() {
               <div>
                 <ZenCardTitle>Promesas</ZenCardTitle>
                 <ZenCardDescription>
-                  Gestiona tus promesas de eventos
+                  Gestiona tus promesas de contratación
                 </ZenCardDescription>
               </div>
             </div>
@@ -136,7 +136,6 @@ export default function PromisesPage() {
           studioSlug={studioSlug}
           onCondicionesComercialesClick={() => setShowCondicionesManager(true)}
           onTerminosCondicionesClick={() => setShowTerminosManager(true)}
-          onPipelineConfigClick={() => setShowPipelineConfig(true)}
           onTagsClick={() => setShowTagsModal(true)}
           onPaymentMethodsClick={() => setShowPaymentMethods(true)}
         />
@@ -189,7 +188,7 @@ export default function PromisesPage() {
         onClose={() => setShowCondicionesManager(false)}
       />
 
-      <TerminosCondicionesManager
+      <TerminosCondicionesEditor
         studioSlug={studioSlug}
         isOpen={showTerminosManager}
         onClose={() => setShowTerminosManager(false)}

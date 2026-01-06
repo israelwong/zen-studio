@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { obtenerAvisoPrivacidadPublico } from '@/lib/actions/public/promesas.actions';
-import { MarkdownPreview } from '@/components/shared/terminos-condiciones/MarkdownPreview';
+import { MarkdownPreview } from '@/components/shared/avisos-privacidad/MarkdownPreview';
 import { ZenCard, ZenCardContent, ZenCardHeader } from '@/components/ui/zen';
 import { Shield } from 'lucide-react';
 import { AvisoPrivacidadFooter } from './components/AvisoPrivacidadFooter';

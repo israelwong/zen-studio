@@ -249,7 +249,7 @@ export function PaymentMethodsModal({
         onClose={onClose}
         title="Métodos de pago"
         description="Gestiona los métodos de pago disponibles para tu estudio"
-        maxWidth="2xl"
+        maxWidth="lg"
       >
         {loading ? (
           <div className="space-y-3">
@@ -277,74 +277,35 @@ export function PaymentMethodsModal({
               return (
                 <div
                   key={metodo.id}
-                  className={`p-5 rounded-xl border transition-all ${necesitaConfig
+                  className={`rounded-lg border transition-all ${necesitaConfig
                     ? 'bg-yellow-900/10 border-yellow-500/30'
                     : estaActivo
-                      ? 'bg-zinc-800/60 border-zinc-700 hover:border-zinc-600'
-                      : 'bg-zinc-800/40 border-zinc-700/50 hover:border-zinc-700'
+                      ? 'bg-zinc-800/50 border-zinc-700 hover:border-zinc-600'
+                      : 'bg-zinc-800/30 border-zinc-700/50 hover:border-zinc-700'
                     }`}
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="p-2 bg-zinc-700/50 rounded-lg">
-                          <CreditCard className="h-4 w-4 text-zinc-300" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-zinc-100">
-                            {metodo.payment_method_name}
-                          </h3>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <ZenBadge
-                              variant={estaActivo ? 'success' : 'secondary'}
-                              size="sm"
-                            >
-                              {estaActivo ? 'Activo' : 'Inactivo'}
-                            </ZenBadge>
-                            {metodo.is_manual && (
-                              <ZenBadge variant="outline" size="sm" className="text-xs flex items-center gap-1">
-                                <Lock className="h-3 w-3" />
-                                Uso interno
-                              </ZenBadge>
-                            )}
-                            {metodo.available_for_quotes && (
-                              <ZenBadge variant="outline" size="sm" className="text-xs flex items-center gap-1">
-                                <Globe className="h-3 w-3" />
-                                Público (cotizaciones)
-                              </ZenBadge>
-                            )}
-                          </div>
-                        </div>
+                  {/* Header con nombre y controles */}
+                  <div className="p-4 flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div className="p-2.5 bg-zinc-700/40 rounded-lg shrink-0 mt-0.5">
+                        <CreditCard className="h-4 w-4 text-zinc-300" />
                       </div>
-
-                      {isTransferencia && (
-                        <div className="mt-3 pt-3 border-t border-zinc-700/50">
-                          {necesitaConfig ? (
-                            <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-900/20 px-3 py-2 rounded-md">
-                              <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                              <span>Requiere configuración de datos bancarios</span>
-                            </div>
-                          ) : (
-                            <div className="space-y-2 text-xs">
-                              <div className="flex items-center gap-2 text-zinc-300">
-                                <Building2 className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                                <span className="font-medium">{metodo.banco}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-zinc-300">
-                                <User className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0" />
-                                <span>{metodo.beneficiario}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-zinc-400">
-                                <CreditCard className="h-3.5 w-3.5 flex-shrink-0" />
-                                <span className="font-mono">CLABE: ****{metodo.cuenta_clabe?.slice(-4)}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-semibold text-zinc-100 mb-2">
+                          {metodo.payment_method_name}
+                        </h3>
+                        {metodo.is_manual && (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <ZenBadge variant="outline" size="sm" className="text-xs flex items-center gap-1">
+                              <Lock className="h-3 w-3" />
+                              Uso interno
+                            </ZenBadge>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       {isTransferencia && (
                         <ZenButton
                           variant="outline"
@@ -382,6 +343,56 @@ export function PaymentMethodsModal({
                         )}
                     </div>
                   </div>
+
+                  {/* Sección de datos bancarios para transferencia */}
+                  {isTransferencia && (
+                    <div className={`px-4 pb-4 ${necesitaConfig ? '' : 'pt-0'}`}>
+                      {necesitaConfig ? (
+                        <div className="flex items-center gap-2 text-xs text-yellow-400 bg-yellow-900/20 px-3 py-2 rounded-md">
+                          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                          <span>Requiere configuración de datos bancarios</span>
+                        </div>
+                      ) : (
+                        <div className="bg-zinc-900/50 rounded-lg p-3 space-y-2.5 border border-zinc-700/50">
+                          <div className="flex items-center gap-2.5 text-sm">
+                            <div className="p-1.5 bg-zinc-700/50 rounded shrink-0">
+                              <Building2 className="h-3.5 w-3.5 text-zinc-400" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-zinc-500 mb-0.5">Banco</div>
+                              <div className="text-zinc-200 font-medium">{metodo.banco}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-sm">
+                            <div className="p-1.5 bg-zinc-700/50 rounded shrink-0">
+                              <User className="h-3.5 w-3.5 text-zinc-400" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-zinc-500 mb-0.5">Beneficiario</div>
+                              <div className="text-zinc-200 font-medium">{metodo.beneficiario}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-sm">
+                            <div className="p-1.5 bg-zinc-700/50 rounded shrink-0">
+                              <CreditCard className="h-3.5 w-3.5 text-zinc-400" />
+                            </div>
+                            <div>
+                              <div className="text-xs text-zinc-500 mb-0.5">CLABE</div>
+                              <div className="text-zinc-300 font-mono text-xs">****{metodo.cuenta_clabe?.slice(-4)}</div>
+                            </div>
+                          </div>
+                          {metodo.available_for_quotes && (
+                            <div className="pt-2 mt-2 border-t border-zinc-700/50">
+                              <ZenBadge variant="outline" size="sm" className="text-xs flex items-center gap-1 border-amber-500/50 text-amber-400 bg-amber-500/10">
+                                <Globe className="h-3 w-3" />
+                                Visible en procesos de cierre y portal del cliente
+                              </ZenBadge>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}

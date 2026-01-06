@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export const TerminosCondicionesSchema = z.object({
     id: z.string().optional(),
-    title: z.string().min(3, { message: 'El título debe tener al menos 3 caracteres.' }),
+    title: z.string().optional().default('Términos y Condiciones Generales'),
     content: z.string().min(1, { message: 'El contenido es obligatorio.' }).min(10, { message: 'El contenido debe tener al menos 10 caracteres.' }),
     order: z.number().int().min(0).optional(),
     is_active: z.boolean().optional(),

@@ -458,10 +458,12 @@ export function CotizacionDetailSheet({
                 diferido={precioCalculado.diferido}
               />
             )}
-
-            {/* Términos y condiciones */}
-            <TerminosCondiciones terminos={terminosCondiciones} />
           </div>
+
+          {/* Términos y condiciones - Solo mostrar si hay condiciones comerciales activas */}
+          {condicionesComerciales.length > 0 && terminosCondiciones.length > 0 && (
+            <TerminosCondiciones terminos={terminosCondiciones} />
+          )}
         </div>
 
         {/* Footer */}

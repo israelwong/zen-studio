@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Settings, Archive, X, Tag } from 'lucide-react';
+import { Search, Settings, Archive, X } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -20,7 +20,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { ZenInput } from '@/components/ui/zen';
+import { ZenInput, ZenButton } from '@/components/ui/zen';
 import { PromiseKanbanCard } from './PromiseKanbanCard';
 import { PipelineConfigModal } from './PipelineConfigModal';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
@@ -560,30 +560,24 @@ export function PromisesKanban({
         </div>
 
         <div className="flex gap-2 w-full sm:w-auto">
-          <button
+          <ZenButton
+            variant={showArchived ? "secondary" : "outline"}
+            size="md"
             onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${showArchived
-              ? 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
-              : 'text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50'
-              }`}
+            className="gap-1.5"
           >
-            <Archive className="h-3.5 w-3.5" />
+            <Archive className="h-4 w-4" />
             {showArchived ? 'Ocultar' : 'Mostrar'} Archivados
-          </button>
-          <button
+          </ZenButton>
+          <ZenButton
+            variant="outline"
+            size="md"
             onClick={() => setIsConfigModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
+            className="gap-1.5"
           >
-            <Settings className="h-3.5 w-3.5" />
+            <Settings className="h-4 w-4" />
             Pipeline
-          </button>
-          <button
-            onClick={() => setIsTagsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 transition-colors"
-          >
-            <Tag className="h-3.5 w-3.5" />
-            Etiquetas
-          </button>
+          </ZenButton>
         </div>
       </div>
 
@@ -746,15 +740,6 @@ function KanbanColumn({
 
         {promises.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-            <div 
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-4 opacity-20"
-              style={{ backgroundColor: stage.color }}
-            >
-              <div 
-                className="w-10 h-10 rounded-full border-2 border-dashed"
-                style={{ borderColor: stage.color }}
-              />
-            </div>
             <p className="text-sm text-zinc-500 font-medium mb-1">
               Sin promesas
             </p>

@@ -19,13 +19,13 @@ export function TerminosCondiciones({ terminos }: TerminosCondicionesProps) {
   }
 
   return (
-    <div className="mt-4 space-y-2">
+    <div className="pt-4 mt-4 border-t border-zinc-800/50 space-y-2">
       {terminos.map((termino) => (
-        <div key={termino.id} className="text-xs text-zinc-500">
-          <p className="font-medium mb-1">{termino.title}</p>
+        <div key={termino.id} className="text-[10px] text-zinc-500 leading-relaxed">
+          <p className="font-medium mb-0.5 text-zinc-400">{termino.title}</p>
           <div
             dangerouslySetInnerHTML={{ __html: termino.content }}
-            className="prose prose-xs prose-invert max-w-none"
+            className="prose prose-[10px] prose-invert max-w-none [&_h2]:text-[10px] [&_h2]:font-medium [&_h2]:mb-0.5 [&_h2]:mt-1 [&_ul]:text-[10px] [&_ul]:pl-3 [&_ul]:space-y-0.5 [&_li]:leading-relaxed [&_p]:text-[10px] [&_p]:leading-relaxed [&_p]:mb-0.5"
           />
         </div>
       ))}

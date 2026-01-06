@@ -9,7 +9,7 @@ import {
   crearAvisoPrivacidad,
   actualizarAvisoPrivacidad,
 } from '@/lib/actions/studio/config/avisos-privacidad.actions';
-import { RichTextEditor } from '../terminos-condiciones/RichTextEditor';
+import { RichTextEditor } from './RichTextEditor';
 import type { AvisoPrivacidadForm } from '@/lib/actions/schemas/avisos-privacidad-schemas';
 import { toast } from 'sonner';
 

@@ -227,18 +227,20 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived }: 
                 <div className="space-y-2.5 relative z-10">
                     {/* Header: Avatar, Nombre y Tipo de evento */}
                     <div className="flex items-center gap-2.5">
-                        {/* Avatar */}
-                        <ZenAvatar className="h-12 w-12 flex-shrink-0">
-                            {promise.avatar_url ? (
-                                <ZenAvatarImage
-                                    src={promise.avatar_url}
-                                    alt={promise.name}
-                                />
-                            ) : null}
-                            <ZenAvatarFallback>
-                                {formatInitials(promise.name)}
-                            </ZenAvatarFallback>
-                        </ZenAvatar>
+                        {/* Avatar - solo mostrar si hay imagen o nombre válido */}
+                        {(promise.avatar_url || (promise.name && formatInitials(promise.name))) && (
+                            <ZenAvatar className="h-12 w-12 flex-shrink-0">
+                                {promise.avatar_url ? (
+                                    <ZenAvatarImage
+                                        src={promise.avatar_url}
+                                        alt={promise.name}
+                                    />
+                                ) : null}
+                                <ZenAvatarFallback>
+                                    {formatInitials(promise.name)}
+                                </ZenAvatarFallback>
+                            </ZenAvatar>
+                        )}
 
                         {/* Nombre, Teléfono y Tipo de evento */}
                         <div className="flex-1 min-w-0">
