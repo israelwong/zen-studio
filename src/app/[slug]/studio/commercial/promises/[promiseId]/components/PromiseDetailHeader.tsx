@@ -158,68 +158,102 @@ export function PromiseDetailHeader({
 
                         return null;
                     })()}
-                    {/* Botón de plantillas de contrato */}
-                    <ZenButton
-                        variant="outline"
-                        size="sm"
-                        onClick={onTemplatesClick}
-                        className="gap-1.5 px-2.5 py-1.5 h-7 text-xs"
-                    >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>Plantillas de contrato</span>
-                    </ZenButton>
-                    {/* Botón Automatizar */}
-                    {promiseId && contactData && (
-                        <ZenButton
-                            variant="outline"
-                            size="sm"
-                            onClick={onAutomateClick}
-                            className="gap-1.5 px-2.5 py-1.5 h-7 text-xs"
-                        >
-                            <Zap className="h-3.5 w-3.5" />
-                            <span>Automatizar</span>
-                        </ZenButton>
-                    )}
-                    <ZenDropdownMenu>
-                        <ZenDropdownMenuTrigger asChild>
-                            <ZenButton
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                disabled={isArchiving || isUnarchiving || isDeleting}
-                            >
-                                <MoreVertical className="h-4 w-4" />
-                            </ZenButton>
-                        </ZenDropdownMenuTrigger>
-                        <ZenDropdownMenuContent align="end">
-                            {isArchived ? (
-                                <ZenDropdownMenuItem
-                                    onClick={onUnarchive}
-                                    disabled={isUnarchiving}
+                    {/* Botones de plantillas y automatizar: solo mostrar si NO hay evento creado */}
+                    {(() => {
+                        // Validar primero: si hay evento creado, no mostrar botones
+                        if (loading || !promiseData) {
+                            return null;
+                        }
+
+                        const eventoId = promiseData.evento_id;
+                        if (eventoId) {
+                            return null; // Evento creado: ocultar botones
+                        }
+
+                        // No hay evento: mostrar botones
+                        return (
+                            <>
+                                {/* Botón de plantillas de contrato */}
+                                <ZenButton
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={onTemplatesClick}
+                                    className="gap-1.5 px-2.5 py-1.5 h-7 text-xs"
                                 >
-                                    <ArchiveRestore className="h-4 w-4 mr-2" />
-                                    {isUnarchiving ? 'Desarchivando...' : 'Desarchivar'}
-                                </ZenDropdownMenuItem>
-                            ) : (
-                                <ZenDropdownMenuItem
-                                    onClick={onArchive}
-                                    disabled={isArchiving}
-                                >
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    {isArchiving ? 'Archivando...' : 'Archivar'}
-                                </ZenDropdownMenuItem>
-                            )}
-                            <ZenDropdownMenuSeparator />
-                            <ZenDropdownMenuItem
-                                onClick={onDelete}
-                                disabled={isDeleting}
-                                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
-                            >
-                                <Trash2 className="h-4 w-4 mr-2" />
-                                {isDeleting ? 'Eliminando...' : 'Eliminar'}
-                            </ZenDropdownMenuItem>
-                        </ZenDropdownMenuContent>
-                    </ZenDropdownMenu>
+                                    <FileText className="h-3.5 w-3.5" />
+                                    <span>Plantillas de contrato</span>
+                                </ZenButton>
+                                {/* Botón Automatizar */}
+                                {promiseId && contactData && (
+                                    <ZenButton
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={onAutomateClick}
+                                        className="gap-1.5 px-2.5 py-1.5 h-7 text-xs"
+                                    >
+                                        <Zap className="h-3.5 w-3.5" />
+                                        <span>Automatizar</span>
+                                    </ZenButton>
+                                )}
+                            </>
+                        );
+                    })()}
+                    {/* Dropdown menu: solo mostrar si NO hay evento creado */}
+                    {(() => {
+                        // Validar primero: si hay evento creado, no mostrar dropdown
+                        if (loading || !promiseData) {
+                            return null;
+                        }
+
+                        const eventoId = promiseData.evento_id;
+                        if (eventoId) {
+                            return null; // Evento creado: ocultar dropdown
+                        }
+
+                        // No hay evento: mostrar dropdown
+                        return (
+                            <ZenDropdownMenu>
+                                <ZenDropdownMenuTrigger asChild>
+                                    <ZenButton
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0"
+                                        disabled={isArchiving || isUnarchiving || isDeleting}
+                                    >
+                                        <MoreVertical className="h-4 w-4" />
+                                    </ZenButton>
+                                </ZenDropdownMenuTrigger>
+                                <ZenDropdownMenuContent align="end">
+                                    {isArchived ? (
+                                        <ZenDropdownMenuItem
+                                            onClick={onUnarchive}
+                                            disabled={isUnarchiving}
+                                        >
+                                            <ArchiveRestore className="h-4 w-4 mr-2" />
+                                            {isUnarchiving ? 'Desarchivando...' : 'Desarchivar'}
+                                        </ZenDropdownMenuItem>
+                                    ) : (
+                                        <ZenDropdownMenuItem
+                                            onClick={onArchive}
+                                            disabled={isArchiving}
+                                        >
+                                            <Archive className="h-4 w-4 mr-2" />
+                                            {isArchiving ? 'Archivando...' : 'Archivar'}
+                                        </ZenDropdownMenuItem>
+                                    )}
+                                    <ZenDropdownMenuSeparator />
+                                    <ZenDropdownMenuItem
+                                        onClick={onDelete}
+                                        disabled={isDeleting}
+                                        className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        {isDeleting ? 'Eliminando...' : 'Eliminar'}
+                                    </ZenDropdownMenuItem>
+                                </ZenDropdownMenuContent>
+                            </ZenDropdownMenu>
+                        );
+                    })()}
                 </div>
             </div>
         </ZenCardHeader>

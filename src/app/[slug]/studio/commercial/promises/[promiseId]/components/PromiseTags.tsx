@@ -18,6 +18,7 @@ interface PromiseTagsProps {
   studioSlug: string;
   promiseId: string | null;
   isSaved: boolean;
+  eventoId?: string | null; // Si existe, deshabilitar creación de etiquetas
 }
 
 interface TagWithPending extends PromiseTag {
@@ -29,6 +30,7 @@ export function PromiseTags({
   studioSlug,
   promiseId,
   isSaved,
+  eventoId,
 }: PromiseTagsProps) {
   const [tags, setTags] = useState<TagWithPending[]>([]);
   const [globalTags, setGlobalTags] = useState<PromiseTag[]>([]);
@@ -177,7 +179,7 @@ export function PromiseTags({
 
   // Agregar tags
   const handleAddTags = useCallback(async () => {
-    if (!promiseId || !inputValue.trim() || isAddingTags) return;
+    if (!promiseId || !inputValue.trim() || isAddingTags || eventoId) return;
 
     const tagNames = processInput(inputValue);
     if (tagNames.length === 0) return;
@@ -260,7 +262,7 @@ export function PromiseTags({
     } finally {
       setIsAddingTags(false);
     }
-  }, [promiseId, inputValue, studioSlug, processInput, tags, isAddingTags]);
+  }, [promiseId, inputValue, studioSlug, processInput, tags, isAddingTags, eventoId]);
 
   // Eliminar tag
   const handleRemoveTag = useCallback(
@@ -309,7 +311,7 @@ export function PromiseTags({
   // Seleccionar sugerencia
   const handleSelectSuggestion = useCallback(
     (tag: PromiseTag) => {
-      if (!promiseId || isAddingTags) return;
+      if (!promiseId || isAddingTags || eventoId) return;
 
       const alreadyAssigned = tags.some((t) => t.id === tag.id && !t.isPending);
       if (alreadyAssigned) {
@@ -361,7 +363,7 @@ export function PromiseTags({
           setIsAddingTags(false);
         });
     },
-    [promiseId, tags, isAddingTags]
+    [promiseId, tags, isAddingTags, eventoId]
   );
 
   // Manejar navegación con teclado
@@ -452,7 +454,7 @@ export function PromiseTags({
             <div className="relative">
               <ZenInput
                 ref={inputRef}
-                placeholder="Ingresa etiquetas separadas por coma"
+                placeholder={eventoId ? "No se pueden agregar etiquetas cuando el evento ya está creado" : "Ingresa etiquetas separadas por coma"}
                 value={inputValue}
                 onChange={(e) => {
                   setInputValue(e.target.value);
@@ -462,7 +464,7 @@ export function PromiseTags({
                 onFocus={() => {
                   if (suggestions.length > 0) setShowSuggestions(true);
                 }}
-                disabled={isLoadingTags || isAddingTags}
+                disabled={isLoadingTags || isAddingTags || !!eventoId}
                 className="text-sm"
               />
               {/* Sugerencias de autocompletado */}
@@ -479,10 +481,11 @@ export function PromiseTags({
                       }}
                       type="button"
                       onClick={() => handleSelectSuggestion(tag)}
+                      disabled={!!eventoId}
                       className={`w-full px-3 py-2 text-left transition-colors flex items-center gap-2 ${selectedIndex === index
                         ? 'bg-emerald-500/20 border-l-2 border-emerald-500'
                         : 'hover:bg-zinc-700'
-                        }`}
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       <div
                         className="w-3 h-3 rounded-full"

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Info, Archive } from 'lucide-react';
+import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 import { ZenDialog, ZenButton, ZenCheckbox } from '@/components/ui/zen';
 
 interface ClosingProcessInfoModalProps {

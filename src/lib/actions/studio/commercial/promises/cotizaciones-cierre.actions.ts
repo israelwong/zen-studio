@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { notifyEventCreated } from '@/lib/notifications/studio/helpers/event-notifications';
 
 interface CierreResponse {
   success: boolean;
@@ -1518,6 +1519,15 @@ export async function autorizarYCrearEvento(
         pago_registrado: pagoRegistrado,
       };
     });
+
+    // 9. Crear notificación de evento creado (fuera de la transacción para no bloquear)
+    try {
+      const eventoNombre = cotizacion.promise.event_name || cotizacion.promise.name || 'Evento';
+      await notifyEventCreated(studio.id, result.evento_id, eventoNombre);
+    } catch (notificationError) {
+      // No fallar la operación principal si falla la notificación
+      console.error('[autorizarYCrearEvento] Error al crear notificación:', notificationError);
+    }
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
     revalidatePath(`/${studioSlug}/studio/business/events/${result.evento_id}`);

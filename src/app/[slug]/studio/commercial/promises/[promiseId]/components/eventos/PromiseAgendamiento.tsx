@@ -13,12 +13,14 @@ interface PromiseAgendamientoProps {
   studioSlug: string;
   promiseId: string | null;
   isSaved: boolean;
+  eventoId?: string | null; // Si existe, deshabilitar creación de citas
 }
 
 export function PromiseAgendamiento({
   studioSlug,
   promiseId,
   isSaved,
+  eventoId,
 }: PromiseAgendamientoProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -114,8 +116,9 @@ export function PromiseAgendamiento({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsModalOpen(true)}
-                className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400"
-                title="Agendar"
+                disabled={!!eventoId}
+                className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={eventoId ? "No se pueden crear citas cuando el evento ya está creado" : "Agendar"}
                 aria-label="Agendar"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -125,8 +128,9 @@ export function PromiseAgendamiento({
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsModalOpen(true)}
-                className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400"
-                title="Editar agendamiento"
+                disabled={!!eventoId}
+                className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={eventoId ? "No se pueden editar citas cuando el evento ya está creado" : "Editar agendamiento"}
                 aria-label="Editar agendamiento"
               >
                 <Edit className="h-3.5 w-3.5" />

@@ -12,6 +12,7 @@ export interface EventoResumenData {
   cotizacion: {
     id: string;
     name: string;
+    description: string | null;
     price: number;
     discount: number | null;
     condiciones_comerciales_name_snapshot: string | null;
@@ -77,6 +78,7 @@ export async function obtenerResumenEventoCreado(
           select: {
             id: true,
             name: true,
+            description: true,
             price: true,
             discount: true,
             condiciones_comerciales_name_snapshot: true,

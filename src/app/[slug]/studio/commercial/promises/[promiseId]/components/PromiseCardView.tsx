@@ -13,6 +13,7 @@ interface PromiseCardViewProps {
   studioSlug: string;
   promiseId: string | null;
   contactId: string | null;
+  eventoId?: string | null; // Si existe, deshabilitar creación de citas y etiquetas
   data: {
     name: string;
     phone: string;
@@ -41,6 +42,7 @@ export function PromiseCardView({
   studioSlug,
   promiseId,
   contactId,
+  eventoId,
   data,
   onEdit,
   isSaved,
@@ -225,6 +227,7 @@ export function PromiseCardView({
                   studioSlug={studioSlug}
                   promiseId={promiseId}
                   isSaved={isSaved}
+                  eventoId={eventoId}
                 />
               </div>
             )}
@@ -236,6 +239,7 @@ export function PromiseCardView({
                   studioSlug={studioSlug}
                   promiseId={promiseId}
                   isSaved={isSaved}
+                  eventoId={eventoId}
                 />
               </div>
             )}

@@ -144,24 +144,9 @@ export function PromiseQuotesPanel({
       // Si success es true, usar el array (vacío o con datos)
       if (result.success) {
         const cotizacionesData = result.data || [];
-        // Filtrar solo: pendiente, archivada, cancelada
-        const estadosPermitidos = ['pendiente', 'archivada', 'cancelada'];
-        const cotizacionesFiltradas = cotizacionesData.filter(c => 
-          estadosPermitidos.includes(c.status)
-        );
-        
-        // Ordenar: primero pendiente/cancelada (por order), luego archivadas (por order)
-        const sortedCotizaciones = [...cotizacionesFiltradas].sort((a, b) => {
-          // Si una está archivada y la otra no, la archivada va al final
-          if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-          if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-          // Si ambas tienen el mismo estado, ordenar por order
-          const orderA = a.order ?? 0;
-          const orderB = b.order ?? 0;
-          return orderA - orderB;
-        });
-        
-        setCotizaciones(sortedCotizaciones);
+        // Guardar TODAS las cotizaciones (incluyendo en_cierre) para validaciones
+        // El filtrado para display se hace en cotizacionesParaListado
+        setCotizaciones(cotizacionesData);
       } else {
         setCotizaciones([]);
       }
@@ -192,13 +177,13 @@ export function PromiseQuotesPanel({
       // Verificar si hay cambios importantes (estado, nombre, etc.)
       const p = payload as any;
       const changeInfo = p?.changeInfo;
-      
+
       // Recargar SIEMPRE que cambie el estado (importante para detectar cuando prospecto autoriza)
       if (changeInfo?.statusChanged) {
         loadCotizaciones();
         return;
       }
-      
+
       // También recargar si hay otros campos importantes cambiados
       if (changeInfo?.camposCambiados?.length) {
         // Verificar que NO sea solo updated_at
@@ -298,9 +283,10 @@ export function PromiseQuotesPanel({
     }
   };
 
-  // Calcular si hay una cotización en cierre o autorizada activa (no archivada, no cancelada, con evento activo)
-  // El botón se OCULTA si hay una cotización en cierre o autorizada activa CON evento asociado
-  // El botón se MUESTRA si todas están pendientes, archivadas, canceladas o autorizadas SIN evento (legacy)
+  // Calcular si hay una cotización en cierre o autorizada activa
+  // El botón se OCULTA si:
+  // 1. Hay al menos una cotización en estado 'en_cierre' (sin importar si tiene evento_id)
+  // 2. Hay una cotización autorizada/aprobada CON evento_id asociado
   const hasApprovedQuote = React.useMemo(() => {
     const result = cotizaciones.some(
       (c) => {
@@ -308,22 +294,27 @@ export function PromiseQuotesPanel({
         if (c.status === 'cancelada' || c.status === 'archivada') {
           return false;
         }
-        // Verificar si tiene un status que requiere ocultar el botón: en_cierre o autorizada/aprobada
-        const isAuthorizedStatus = c.status === 'en_cierre' ||
-                                   c.status === 'aprobada' || 
-                                   c.status === 'autorizada' || 
-                                   c.status === 'approved';
-        
+
+        // Si está en 'en_cierre', ocultar botón SIEMPRE (sin importar evento_id)
+        if (c.status === 'en_cierre') {
+          return true;
+        }
+
+        // Si está autorizada/aprobada, solo ocultar si tiene evento_id
+        const isAuthorizedStatus = c.status === 'aprobada' ||
+          c.status === 'autorizada' ||
+          c.status === 'approved';
+
         // Si tiene status autorizado pero NO tiene evento_id, es una cotización legacy/inactiva
         // No debe ocultar el botón porque el evento fue cancelado
         if (isAuthorizedStatus && !c.evento_id) {
           return false;
         }
-        
+
         return isAuthorizedStatus;
       }
     );
-    
+
     return result;
   }, [cotizaciones]);
 
@@ -338,10 +329,10 @@ export function PromiseQuotesPanel({
       }
       // Buscar cotización en cierre o autorizada/aprobada CON evento activo
       const isAuthorizedStatus = c.status === 'en_cierre' ||
-                                 c.status === 'aprobada' || 
-                                 c.status === 'autorizada' || 
-                                 c.status === 'approved';
-      
+        c.status === 'aprobada' ||
+        c.status === 'autorizada' ||
+        c.status === 'approved';
+
       // Debe tener evento_id para ser considerada activa
       return isAuthorizedStatus && !!c.evento_id;
     }

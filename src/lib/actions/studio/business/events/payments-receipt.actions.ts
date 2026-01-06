@@ -99,6 +99,13 @@ export async function obtenerDatosComprobante(
             price: true,
             discount: true,
             status: true,
+            // Snapshots de condiciones comerciales (inmutables)
+            condiciones_comerciales_name_snapshot: true,
+            condiciones_comerciales_description_snapshot: true,
+            condiciones_comerciales_advance_percentage_snapshot: true,
+            condiciones_comerciales_advance_type_snapshot: true,
+            condiciones_comerciales_advance_amount_snapshot: true,
+            condiciones_comerciales_discount_percentage_snapshot: true,
             contact: {
               select: {
                 id: true,
@@ -153,9 +160,19 @@ export async function obtenerDatosComprobante(
       return { success: false, error: 'Cotización no encontrada' };
     }
 
-    // Calcular balance considerando descuentos
+    // Calcular balance considerando condiciones comerciales (snapshots inmutables)
     const precioBase = Number(cotizacion.price);
-    const descuento = cotizacion.discount ? Number(cotizacion.discount) : 0;
+    
+    // Calcular descuento: priorizar porcentaje de condiciones comerciales, luego descuento directo
+    let descuento = 0;
+    if (cotizacion.condiciones_comerciales_discount_percentage_snapshot) {
+      // Descuento porcentual desde condiciones comerciales
+      descuento = precioBase * (Number(cotizacion.condiciones_comerciales_discount_percentage_snapshot) / 100);
+    } else if (cotizacion.discount) {
+      // Descuento directo de la cotización
+      descuento = Number(cotizacion.discount);
+    }
+    
     const total = precioBase - descuento; // Precio final a pagar
     const pagos = cotizacion.pagos.map(p => Number(p.amount));
     const paid = pagos.reduce((sum, amount) => sum + amount, 0);
@@ -216,7 +233,7 @@ export async function obtenerDatosComprobante(
           paid,
           pending,
           price: precioBase,
-          discount: cotizacion.discount ? Number(cotizacion.discount) : null,
+          discount: descuento > 0 ? descuento : null, // Usar el descuento calculado (puede venir de condiciones comerciales o directo)
         },
         paymentHistory,
         event: eventData,

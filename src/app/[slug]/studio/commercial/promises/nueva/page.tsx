@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton } from '@/components/ui/zen';
 import { PromiseFormModal, type PromiseFormRef } from '../components/PromiseFormModal';
-import { PromiseQuickActions } from '../[promiseId]/components/PromiseQuickActions';
+import { PromiseToolbar } from '../[promiseId]/components/PromiseToolbar';
 import { useRouter } from 'next/navigation';
 
 export default function NuevaPromesaPage() {
@@ -63,18 +63,32 @@ export default function NuevaPromesaPage() {
                 </ZenCardDescription>
               </div>
             </div>
-            {contactData && (
-              <PromiseQuickActions
-                studioSlug={studioSlug}
-                contactId={contactData.contactId || ''}
-                contactName={contactData.contactName}
-                phone={contactData.phone}
-                email={contactData.email}
-                promiseId={contactData.promiseId}
-              />
-            )}
           </div>
         </ZenCardHeader>
+        {contactData && (
+          <PromiseToolbar
+            studioSlug={studioSlug}
+            promiseId={contactData.promiseId}
+            contactData={{
+              contactId: contactData.contactId,
+              contactName: contactData.contactName,
+              phone: contactData.phone,
+            }}
+            onCopyLink={async () => {
+              const previewUrl = `${window.location.origin}/${studioSlug}/promise/${contactData.promiseId}`;
+              try {
+                await navigator.clipboard.writeText(previewUrl);
+                // toast se maneja internamente en PromiseToolbar
+              } catch (error) {
+                console.error('Error al copiar link:', error);
+              }
+            }}
+            onPreview={() => {
+              const previewUrl = `${window.location.origin}/${studioSlug}/promise/${contactData.promiseId}`;
+              window.open(previewUrl, '_blank');
+            }}
+          />
+        )}
         <ZenCardContent className="p-6">
           <PromiseFormModal
             ref={formRef}

@@ -365,11 +365,24 @@ export default function EditarPromesaPage() {
           </ZenCardHeader>
           {/* Skeleton de toolbar */}
           <div className="flex items-center justify-between gap-1.5 px-6 py-2.5 border-b border-zinc-800 bg-zinc-900/50">
-            <div className="flex items-center gap-1.5">
-              <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse" />
-              <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse" />
+            <div className="flex items-center gap-3">
+              {/* Grupo: Compartir */}
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-12 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-7 w-28 bg-zinc-800 rounded animate-pulse" />
+              </div>
+              {/* Divisor */}
+              <div className="h-4 w-px bg-zinc-700" />
+              {/* Grupo: Contactar */}
+              <div className="flex items-center gap-1.5">
+                <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-7 w-24 bg-zinc-800 rounded animate-pulse" />
+                <div className="h-7 w-20 bg-zinc-800 rounded animate-pulse" />
+              </div>
             </div>
-            <div className="h-7 w-20 bg-zinc-800 rounded animate-pulse" />
+            {/* Botón de bitácora */}
+            <div className="h-7 w-7 bg-zinc-800 rounded animate-pulse" />
           </div>
           <ZenCardContent className="p-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
@@ -589,6 +602,7 @@ export default function EditarPromesaPage() {
             studioSlug={studioSlug}
             promiseId={promiseId}
             contactId={promiseData.id}
+            eventoId={promiseData.evento_id || undefined}
             data={{
               name: promiseData.name,
               phone: promiseData.phone,
