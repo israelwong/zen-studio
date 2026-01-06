@@ -189,9 +189,9 @@ export function PromiseDetailHeader({
                                         variant="outline"
                                         size="sm"
                                         onClick={onAutomateClick}
-                                        className="gap-1.5 px-2.5 py-1.5 h-7 text-xs"
+                                        className="gap-1.5 px-2.5 py-1.5 h-7 text-xs border-l-2 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-300"
                                     >
-                                        <Zap className="h-3.5 w-3.5" />
+                                        <Zap className="h-3.5 w-3.5 text-emerald-400/90" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
                                         <span>Automatizar</span>
                                     </ZenButton>
                                 )}

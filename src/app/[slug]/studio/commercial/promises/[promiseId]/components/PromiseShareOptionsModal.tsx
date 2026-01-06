@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Share2 } from 'lucide-react';
-import { ZenDialog, ZenButton, ZenSwitch, ZenInput } from '@/components/ui/zen';
+import { Share2, AlertTriangle } from 'lucide-react';
+import { ZenDialog, ZenButton, ZenSwitch, ZenInput, ZenConfirmModal } from '@/components/ui/zen';
 import { getPromiseShareSettings, updatePromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
 import { toast } from 'sonner';
 
@@ -35,6 +35,10 @@ export function PromiseShareOptionsModal({
   const [weContactYou, setWeContactYou] = useState(false);
   const [sendToContractProcess, setSendToContractProcess] = useState(false);
   const [showMinDaysToHire, setShowMinDaysToHire] = useState(true); // Activo por defecto
+  const [showConfirmSensitiveModal, setShowConfirmSensitiveModal] = useState(false);
+  const [pendingSensitiveOption, setPendingSensitiveOption] = useState<'subtotals' | 'prices' | null>(null);
+  const [showSaveConfirmModal, setShowSaveConfirmModal] = useState(false);
+  const [pendingSaveScope, setPendingSaveScope] = useState<'all' | 'single' | null>(null);
 
   useEffect(() => {
     if (isOpen && promiseId) {
@@ -72,12 +76,49 @@ export function PromiseShareOptionsModal({
     }
   };
 
+  const handleSensitiveOptionChange = (option: 'subtotals' | 'prices', checked: boolean) => {
+    if (checked) {
+      // Si se está activando, mostrar modal de confirmación
+      setPendingSensitiveOption(option);
+      setShowConfirmSensitiveModal(true);
+    } else {
+      // Si se está desactivando, permitir directamente
+      if (option === 'subtotals') {
+        setShowCategoriesSubtotals(false);
+      } else {
+        setShowItemsPrices(false);
+      }
+    }
+  };
+
+  const handleConfirmSensitiveOption = () => {
+    if (pendingSensitiveOption === 'subtotals') {
+      setShowCategoriesSubtotals(true);
+    } else if (pendingSensitiveOption === 'prices') {
+      setShowItemsPrices(true);
+    }
+    setShowConfirmSensitiveModal(false);
+    setPendingSensitiveOption(null);
+  };
+
   const handleSave = async (rememberPreferences: boolean) => {
     if (minDaysToHire < 1) {
       toast.error('El mínimo de días debe ser mayor a 0');
       return;
     }
 
+    // Si hay opciones sensibles activadas, mostrar confirmación adicional
+    if (showCategoriesSubtotals || showItemsPrices) {
+      setPendingSaveScope(rememberPreferences ? 'all' : 'single');
+      setShowSaveConfirmModal(true);
+      return;
+    }
+
+    // Si no hay opciones sensibles, guardar directamente
+    await performSave(rememberPreferences);
+  };
+
+  const performSave = async (rememberPreferences: boolean) => {
     setSaving(true);
     setSavingScope(rememberPreferences ? 'all' : 'single');
     try {
@@ -112,6 +153,14 @@ export function PromiseShareOptionsModal({
     } finally {
       setSaving(false);
       setSavingScope(null);
+      setShowSaveConfirmModal(false);
+      setPendingSaveScope(null);
+    }
+  };
+
+  const handleConfirmSave = () => {
+    if (pendingSaveScope !== null) {
+      performSave(pendingSaveScope === 'all');
     }
   };
 
@@ -383,32 +432,56 @@ export function PromiseShareOptionsModal({
 
                 {/* Segunda fila: Subtotales y precios */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3 p-3 border border-zinc-800 rounded-lg bg-zinc-900/50">
+                  <div className={`flex items-start gap-3 p-3 border rounded-lg bg-zinc-900/50 ${
+                    showCategoriesSubtotals 
+                      ? 'border-amber-500/50 bg-amber-500/5' 
+                      : 'border-zinc-800'
+                  }`}>
                     <ZenSwitch
                       checked={showCategoriesSubtotals}
-                      onCheckedChange={setShowCategoriesSubtotals}
+                      onCheckedChange={(checked) => handleSensitiveOptionChange('subtotals', checked)}
                       className="mt-0.5"
                     />
                     <div className="flex-1">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Subtotal por categoría
-                      </label>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <label className="text-sm font-medium text-zinc-200">
+                          Subtotal por categoría
+                        </label>
+                        {showCategoriesSubtotals && (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[10px] font-medium text-amber-400">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            <span>Información sensible</span>
+                          </div>
+                        )}
+                      </div>
                       <p className="text-xs text-zinc-400 mt-0.5">
-                        El prospecto verá el subtotal por categoría
+                        El prospecto verá el monto del subtotal por categoría
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 border border-zinc-800 rounded-lg bg-zinc-900/50">
+                  <div className={`flex items-start gap-3 p-3 border rounded-lg bg-zinc-900/50 ${
+                    showItemsPrices 
+                      ? 'border-amber-500/50 bg-amber-500/5' 
+                      : 'border-zinc-800'
+                  }`}>
                     <ZenSwitch
                       checked={showItemsPrices}
-                      onCheckedChange={setShowItemsPrices}
+                      onCheckedChange={(checked) => handleSensitiveOptionChange('prices', checked)}
                       className="mt-0.5"
                     />
                     <div className="flex-1">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Precio por item
-                      </label>
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <label className="text-sm font-medium text-zinc-200">
+                          Precio por item
+                        </label>
+                        {showItemsPrices && (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-[10px] font-medium text-amber-400">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            <span>Información sensible</span>
+                          </div>
+                        )}
+                      </div>
                       <p className="text-xs text-zinc-400 mt-0.5">
                         El prospecto verá el precio individual de cada item
                       </p>
@@ -485,6 +558,96 @@ export function PromiseShareOptionsModal({
           </>
         )}
       </div>
+
+      {/* Modal de confirmación al activar opción sensible */}
+      <ZenConfirmModal
+        isOpen={showConfirmSensitiveModal}
+        onClose={() => {
+          setShowConfirmSensitiveModal(false);
+          setPendingSensitiveOption(null);
+        }}
+        onConfirm={handleConfirmSensitiveOption}
+        title="Mostrar información sensible"
+        description={
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-300">
+              {pendingSensitiveOption === 'subtotals' 
+                ? 'Al activar "Subtotal por categoría", el prospecto podrá ver los montos de cada categoría en la cotización.'
+                : 'Al activar "Precio por item", el prospecto podrá ver el precio individual de cada servicio o producto.'}
+            </p>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-400 mb-1">
+                    Información sensible
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Esta información puede ser utilizada por el prospecto para negociar o comparar con otros proveedores. Asegúrate de que esta es la estrategia comercial que deseas seguir.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-zinc-300">
+              ¿Deseas continuar?
+            </p>
+          </div>
+        }
+        confirmText="Sí, activar"
+        cancelText="Cancelar"
+        variant="default"
+        zIndex={10090}
+      />
+
+      {/* Modal de confirmación al guardar con opciones sensibles */}
+      <ZenConfirmModal
+        isOpen={showSaveConfirmModal}
+        onClose={() => {
+          setShowSaveConfirmModal(false);
+          setPendingSaveScope(null);
+        }}
+        onConfirm={handleConfirmSave}
+        title={`Confirmar guardado ${pendingSaveScope === 'all' ? 'para todas las promesas' : 'para esta promesa'}`}
+        description={
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-300">
+              Estás a punto de guardar la configuración con las siguientes opciones sensibles activadas:
+            </p>
+            <ul className="list-disc list-inside space-y-1 text-sm text-zinc-400 ml-2">
+              {showCategoriesSubtotals && (
+                <li>Subtotal por categoría</li>
+              )}
+              {showItemsPrices && (
+                <li>Precio por item</li>
+              )}
+            </ul>
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-400 mb-1">
+                    {pendingSaveScope === 'all' ? 'Aplicará a todas las promesas' : 'Solo aplicará a esta promesa'}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    {pendingSaveScope === 'all' 
+                      ? 'Esta configuración se aplicará a todas las promesas futuras y existentes que no tengan una configuración personalizada.'
+                      : 'Esta configuración solo se aplicará a esta promesa específica.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm text-zinc-300">
+              ¿Deseas continuar con el guardado?
+            </p>
+          </div>
+        }
+        confirmText={pendingSaveScope === 'all' ? 'Sí, guardar para todas' : 'Sí, guardar para esta promesa'}
+        cancelText="Cancelar"
+        variant="default"
+        loading={saving}
+        loadingText={pendingSaveScope === 'all' ? 'Guardando para todas las promesas...' : 'Guardando para esta promesa...'}
+        zIndex={10090}
+      />
     </ZenDialog>
   );
 }
