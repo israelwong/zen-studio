@@ -3,11 +3,11 @@ import { useState, useEffect } from 'react';
 interface PlatformConfig {
     id: string;
     // Branding
-    company_name: string; // Nombre legal: "Zen México"
-    company_name_long: string | null; // Nombre largo: "ZEN México"
-    commercial_name: string | null; // Nombre comercial: "Zen Studio"
-    commercial_name_short: string | null; // Nombre corto: "ZEN"
-    domain: string | null; // Dominio: "www.zenn.mx"
+    company_name: string; // Nombre legal: "Zenly México"
+    company_name_long: string | null; // Nombre largo: "Zenly México"
+    commercial_name: string | null; // Nombre comercial: "Zenly Studio"
+    commercial_name_short: string | null; // Nombre corto: "ZENLY"
+    domain: string | null; // Dominio: "zenly.mx"
     // Assets
     logo_url: string | null;
     favicon_url: string | null;
@@ -203,7 +203,7 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
 // Hook para obtener solo el nombre de la empresa (más ligero)
 export function usePlatformName(): string {
     const { config } = usePlatformConfig();
-    return config?.company_name || 'Zen México';
+    return config?.company_name || 'Zenly México';
 }
 
 // Hook para obtener el nombre comercial
@@ -215,13 +215,13 @@ export function useCommercialName(): string {
 // Hook para obtener el nombre corto (para UI)
 export function useCommercialNameShort(): string {
     const { config } = usePlatformConfig();
-    return config?.commercial_name_short || 'ZEN';
+    return config?.commercial_name_short || 'ZENLY';
 }
 
 // Hook para obtener el dominio
 export function usePlatformDomain(): string {
     const { config } = usePlatformConfig();
-    return config?.domain || 'www.zenn.mx';
+    return config?.domain || 'zenly.mx';
 }
 
 // Hook para obtener solo el logo (más ligero)
