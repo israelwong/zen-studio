@@ -357,7 +357,7 @@ export async function getStudioProfileBySlug(
                 // Mapear content_blocks
                 const contentBlocks = portfolio.content_blocks.map(block => ({
                     id: block.id,
-                    type: block.type as 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'hero' | 'separator' | 'media-gallery',
+                    type: block.type as 'image' | 'gallery' | 'video' | 'text' | 'grid' | 'slider' | 'hero-contact' | 'hero-image' | 'hero-video' | 'hero-text' | 'hero' | 'separator' | 'media-gallery' | 'hero-portfolio' | 'hero-offer',
                     title: block.title || undefined,
                     description: block.description || undefined,
                     presentation: block.presentation as 'block' | 'fullwidth',

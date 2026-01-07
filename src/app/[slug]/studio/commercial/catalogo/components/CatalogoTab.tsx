@@ -29,7 +29,7 @@ import {
 } from '@/lib/actions/studio/catalogo';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 import { useConfiguracionPreciosUpdateListener } from '@/hooks/useConfiguracionPreciosRefresh';
-import { reordenarItems, moverItemACategoria, toggleItemPublish, reordenarCategorias } from '@/lib/actions/studio/catalogo';
+import { reordenarItems, moverItemACategoria, toggleItemPublish, reordenarCategorias, reordenarSecciones } from '@/lib/actions/studio/catalogo';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerMediaItemsMap, obtenerMediaItem } from '@/lib/actions/studio/catalogo/media-items.actions';
 import { obtenerSeccionesConStats } from '@/lib/actions/studio/catalogo';
@@ -422,6 +422,53 @@ export default function CatalogoTab() {
 
             if (activeId === overId) return;
 
+            // Verificar si se está arrastrando una sección sobre otra sección
+            const activeSeccion = secciones.find(sec => sec.id === activeId);
+            const overSeccion = secciones.find(sec => sec.id === overId);
+
+            if (activeSeccion && overSeccion) {
+                // Reordenamiento de secciones
+                const activeIndex = secciones.findIndex(sec => sec.id === activeId);
+                const overIndex = secciones.findIndex(sec => sec.id === overId);
+
+                if (activeIndex === -1 || overIndex === -1) {
+                    setActiveId(null);
+                    return;
+                }
+
+                // Guardar estado original para revertir en caso de error
+                const originalSecciones = [...secciones];
+
+                try {
+                    // Reordenar localmente
+                    const newSecciones = arrayMove(secciones, activeIndex, overIndex);
+                    const seccionesConOrder = newSecciones.map((sec, index) => ({
+                        ...sec,
+                        order: index
+                    }));
+
+                    setSecciones(seccionesConOrder);
+
+                    // Actualizar en el backend
+                    const seccionIds = newSecciones.map(sec => sec.id);
+                    const response = await reordenarSecciones(studioSlug, seccionIds);
+
+                    if (!response.success) {
+                        throw new Error(response.error);
+                    }
+
+                    toast.success("Orden de secciones actualizado");
+                } catch (error) {
+                    console.error("Error reordenando secciones:", error);
+                    toast.error("Error al actualizar el orden de secciones");
+                    // Revertir cambios
+                    setSecciones(originalSecciones);
+                } finally {
+                    setActiveId(null);
+                }
+                return;
+            }
+
             // Verificar qué tipo de elemento se está arrastrando
             let activeCategoria = null;
             let activeSeccionId = null;
@@ -650,7 +697,7 @@ export default function CatalogoTab() {
                 setActiveId(null);
             }
         },
-        [itemsData, categoriasData]
+        [secciones, itemsData, categoriasData, studioSlug]
     );
 
     // Componente para zonas de drop vacías

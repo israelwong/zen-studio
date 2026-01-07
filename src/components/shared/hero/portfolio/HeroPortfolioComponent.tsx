@@ -11,6 +11,7 @@ interface HeroPortfolioComponentProps {
     className?: string;
     isEditable?: boolean;
     eventTypeName?: string; // Nombre del tipo de evento
+    useNaturalSize?: boolean; // Usar tamaño natural del multimedia sin aspect ratio
 }
 
 export default function HeroPortfolioComponent({
@@ -18,11 +19,11 @@ export default function HeroPortfolioComponent({
     media,
     className = '',
     isEditable = false,
-    eventTypeName
+    eventTypeName,
+    useNaturalSize = false
 }: HeroPortfolioComponentProps) {
     const [isVideoLoaded, setIsVideoLoaded] = useState(false);
     const [videoError, setVideoError] = useState(false);
-    const [showPlayButton, setShowPlayButton] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const heroRef = useRef<HTMLDivElement>(null);
     const [parallaxOffset, setParallaxOffset] = useState(0);
@@ -60,21 +61,36 @@ export default function HeroPortfolioComponent({
         const video = videoRef.current;
         if (!video) return;
 
+        // Asegurar que el video siempre esté en loop
+        video.loop = true;
+
         const playVideo = async () => {
             try {
                 await video.play();
-                setShowPlayButton(false);
             } catch (error) {
-                console.log('Autoplay failed, user interaction required:', error);
-                setShowPlayButton(true);
+                console.log('Autoplay failed, attempting to play:', error);
+                // Intentar reproducir automáticamente sin mostrar botón
+                video.play().catch(() => {
+                    // Silenciar errores de autoplay
+                });
             }
         };
 
-        const handlePlay = () => setShowPlayButton(false);
-        const handlePause = () => setShowPlayButton(true);
-        const handleEnded = () => setShowPlayButton(true);
+        // Con loop activado, el video siempre debería estar reproduciéndose
+        const handlePause = () => {
+            // Intentar reproducir automáticamente si se pausa
+            video.play().catch(() => {
+                // Silenciar errores
+            });
+        };
+        // Con loop activado, esto no debería ocurrir, pero por si acaso
+        const handleEnded = () => {
+            // Reiniciar reproducción automáticamente
+            video.play().catch(() => {
+                // Silenciar errores
+            });
+        };
 
-        video.addEventListener('play', handlePlay);
         video.addEventListener('pause', handlePause);
         video.addEventListener('ended', handleEnded);
 
@@ -86,22 +102,11 @@ export default function HeroPortfolioComponent({
 
         return () => {
             video.removeEventListener('canplay', playVideo);
-            video.removeEventListener('play', handlePlay);
             video.removeEventListener('pause', handlePause);
             video.removeEventListener('ended', handleEnded);
         };
     }, [videoSrc, isVideo, isEditable]);
 
-    const handlePlayClick = async () => {
-        if (videoRef.current) {
-            try {
-                await videoRef.current.play();
-                setShowPlayButton(false);
-            } catch (error) {
-                console.error('Error playing video:', error);
-            }
-        }
-    };
 
     const textAlignmentClasses = {
         left: 'text-left',
@@ -207,14 +212,20 @@ export default function HeroPortfolioComponent({
         };
     }, [parallax, isEditable]);
 
+    // Si useNaturalSize es true, no aplicar aspect ratio ni altura mínima
+    const containerHeightClass = useNaturalSize 
+        ? '' 
+        : (aspectRatio ? aspectRatioClass : "min-h-[50vh] sm:min-h-[60vh]");
+
     return (
         <div
             ref={heroRef}
             className={cn(
-                "relative flex",
-                verticalAlignmentClasses[verticalAlignment],
+                "relative",
+                useNaturalSize ? "w-full" : "flex",
+                !useNaturalSize && verticalAlignmentClasses[verticalAlignment],
                 "justify-center overflow-hidden bg-zinc-900",
-                aspectRatio ? aspectRatioClass : "min-h-[50vh] sm:min-h-[60vh]",
+                containerHeightClass,
                 containerClassName,
                 className
             )}
@@ -227,29 +238,44 @@ export default function HeroPortfolioComponent({
 
             {/* Background: Image */}
             {imageSrc && !isVideo && (
-                <div className="absolute inset-0 overflow-hidden" style={{ zIndex: 1 }}>
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: parallax ? '-7.5%' : 0,
-                            left: parallax ? '-7.5%' : 0,
-                            width: parallax ? '115%' : '100%',
-                            height: parallax ? '115%' : '100%',
-                            transform: parallax ? `translate3d(0, ${parallaxOffset}px, 0)` : undefined,
-                            willChange: parallax ? 'transform' : undefined,
-                            transition: 'none'
-                        }}
-                    >
-                        <Image
-                            src={imageSrc}
-                            alt={backgroundMedia?.filename || 'Hero image'}
-                            fill
-                            priority
-                            className="object-cover"
-                            sizes="100vw"
-                            style={{ transition: 'none' }}
-                        />
-                    </div>
+                <div className={useNaturalSize ? "relative w-full" : "absolute inset-0 overflow-hidden"} style={{ zIndex: 1 }}>
+                    {useNaturalSize ? (
+                        <div className="relative w-full">
+                            <Image
+                                src={imageSrc}
+                                alt={backgroundMedia?.filename || 'Hero image'}
+                                width={1920}
+                                height={1080}
+                                priority
+                                className="w-full h-auto object-contain"
+                                sizes="100vw"
+                                style={{ transition: 'none' }}
+                            />
+                        </div>
+                    ) : (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: parallax ? '-7.5%' : 0,
+                                left: parallax ? '-7.5%' : 0,
+                                width: parallax ? '115%' : '100%',
+                                height: parallax ? '115%' : '100%',
+                                transform: parallax ? `translate3d(0, ${parallaxOffset}px, 0)` : undefined,
+                                willChange: parallax ? 'transform' : undefined,
+                                transition: 'none'
+                            }}
+                        >
+                            <Image
+                                src={imageSrc}
+                                alt={backgroundMedia?.filename || 'Hero image'}
+                                fill
+                                priority
+                                className="object-cover"
+                                sizes="100vw"
+                                style={{ transition: 'none' }}
+                            />
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -258,10 +284,14 @@ export default function HeroPortfolioComponent({
                 <>
                     <video
                         ref={videoRef}
-                        className={`absolute inset-0 w-full h-full object-cover -z-10 transition-opacity duration-500 ${isVideoLoaded ? 'opacity-100' : 'opacity-0'}`}
+                        className={cn(
+                            useNaturalSize ? "relative w-full h-auto" : "absolute inset-0 w-full h-full object-cover",
+                            "-z-10 transition-opacity duration-500",
+                            isVideoLoaded ? 'opacity-100' : 'opacity-0'
+                        )}
                         autoPlay={config.autoPlay !== false}
                         muted={config.muted !== false}
-                        loop={config.loop !== false}
+                        loop={true}
                         controls={false}
                         poster={videoPoster}
                         playsInline
@@ -279,7 +309,9 @@ export default function HeroPortfolioComponent({
                             setVideoError(true);
                             setIsVideoLoaded(false);
                         }}
-                        style={{
+                        style={useNaturalSize ? {
+                            zIndex: 1,
+                        } : {
                             position: 'absolute',
                             top: parallax ? '-7.5%' : 0,
                             left: parallax ? '-7.5%' : 0,
@@ -305,18 +337,7 @@ export default function HeroPortfolioComponent({
                         </div>
                     )}
 
-                    {showPlayButton && !videoError && (
-                        <div className="absolute inset-0 bg-black/30 flex items-center justify-center" style={{ zIndex: 3 }}>
-                            <button
-                                onClick={handlePlayClick}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full p-4 transition-all duration-200 transform hover:scale-110"
-                            >
-                                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M8 5v14l11-7z" />
-                                </svg>
-                            </button>
-                        </div>
-                    )}
+                    {/* Botón de play oculto - el video siempre debe estar en reproducción con loop */}
 
                     {videoError && (
                         <div className="absolute inset-0 bg-linear-to-br from-emerald-900/20 to-blue-900/20 flex items-center justify-center" style={{ zIndex: 3 }}>
@@ -366,39 +387,37 @@ export default function HeroPortfolioComponent({
                 />
             )}
 
-            {/* Content */}
-            <div className={cn(
-                "relative z-10 w-full flex",
-                verticalAlignmentClasses[verticalAlignment],
-                horizontalJustifyClasses[textAlignment]
-            )}>
-                <div className={cn(
-                    "max-w-3xl w-full",
-                    contentPaddingClass,
-                    textAlignmentClasses[textAlignment]
-                )}>
-                    {/* Event Type Name (Categoría) */}
-                    {displayEventTypeName && (
-                        <p className="text-xs sm:text-sm text-zinc-400 font-medium mb-2 sm:mb-3 uppercase tracking-wide">
-                            {displayEventTypeName}
-                        </p>
+            {/* Content - Solo mostrar si hay título o descripción */}
+            {(title || description) && (
+                <div 
+                    className={cn(
+                        useNaturalSize ? "absolute inset-0" : "relative",
+                        "z-10 w-full flex",
+                        verticalAlignmentClasses[verticalAlignment],
+                        horizontalJustifyClasses[textAlignment]
                     )}
+                >
+                    <div className={cn(
+                        "max-w-3xl w-full",
+                        contentPaddingClass,
+                        textAlignmentClasses[textAlignment]
+                    )}>
+                        {/* Title */}
+                        {title && (
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
+                                {title}
+                            </h1>
+                        )}
 
-                    {/* Title */}
-                    {title && (
-                        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
-                            {title}
-                        </h1>
-                    )}
-
-                    {/* Description */}
-                    {description && (
-                        <p className="text-sm sm:text-lg text-zinc-300 mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
-                            {description}
-                        </p>
-                    )}
+                        {/* Description */}
+                        {description && (
+                            <p className="text-sm sm:text-lg text-zinc-300 mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
+                                {description}
+                            </p>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

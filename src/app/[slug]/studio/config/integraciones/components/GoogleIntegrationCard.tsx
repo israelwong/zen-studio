@@ -202,7 +202,7 @@ export function GoogleIntegrationCard({
   // Construir descripción dinámica basada en servicios conectados
   const getDescription = () => {
     if (!anyConnected) {
-      return 'Eleva la productividad de tu estudio con la Suite de Google integrada en Zen';
+      return 'Eleva la productividad de tu estudio con la Suite de Google integrada en Zenly';
     }
 
     const connectedServices = services.filter(s => s.connected);

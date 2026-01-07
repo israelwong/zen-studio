@@ -1457,6 +1457,7 @@ export async function getPublicActiveOffers(studioSlug: string) {
           business_term: {
             select: {
               discount_percentage: true,
+              description: true,
             },
           },
           leadform: {
@@ -1490,7 +1491,7 @@ export async function getPublicActiveOffers(studioSlug: string) {
         data: offers.map(offer => ({
           id: offer.id,
           name: offer.name,
-          description: offer.description,
+          description: offer.business_term?.description ?? offer.description,
           slug: offer.slug,
           cover_media_url: offer.cover_media_url,
           cover_media_type: offer.cover_media_type as "image" | "video" | null,

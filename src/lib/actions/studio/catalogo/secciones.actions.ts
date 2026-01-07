@@ -23,7 +23,7 @@ const UpdateSeccionSchema = z.object({
     id: z.string().cuid(),
     name: z.string().min(1, "El nombre es requerido").max(100, "Máximo 100 caracteres"),
     description: z.string().optional(),
-    order: z.number().int().min(0),
+    order: z.number().int().min(0).optional(),
 });
 
 type CreateSeccionInput = z.infer<typeof CreateSeccionSchema>;
@@ -306,7 +306,7 @@ export async function actualizarSeccion(
             data: {
                 name: validated.name,
                 description: validated.description,
-                order: validated.order,
+                order: validated.order ?? existente.order, // Usar valor existente si no se proporciona
             },
             include: {
                 section_categories: {

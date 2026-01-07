@@ -16,6 +16,12 @@ export const PublicFAQSchema = z.object({
     is_active: z.boolean(),
 });
 
+export const PublicZonaTrabajoSchema = z.object({
+    id: z.string(),
+    nombre: z.string(),
+    orden: z.number(),
+});
+
 export const PublicStudioProfileSchema = z.object({
     id: z.string(),
     owner_id: z.string().nullable().optional(),
@@ -31,6 +37,7 @@ export const PublicStudioProfileSchema = z.object({
         name: z.string(),
         slug: z.string(),
     }).nullable().optional(),
+    zonas_trabajo: z.array(PublicZonaTrabajoSchema).optional(),
     faq: z.array(PublicFAQSchema).optional(),
 });
 
@@ -91,7 +98,7 @@ export const PublicPortfolioSchema = z.object({
     })),
     content_blocks: z.array(z.object({
         id: z.string(),
-        type: z.enum(['image', 'gallery', 'video', 'text', 'grid', 'slider', 'hero-contact', 'hero-image', 'hero-video', 'hero-text', 'hero', 'separator', 'media-gallery'] as const),
+        type: z.enum(['image', 'gallery', 'video', 'text', 'grid', 'slider', 'hero-contact', 'hero-image', 'hero-video', 'hero-text', 'hero', 'separator', 'media-gallery', 'hero-portfolio', 'hero-offer'] as const),
         title: z.string().nullable().optional(),
         description: z.string().nullable().optional(),
         presentation: z.enum(['block', 'fullwidth'] as const),
@@ -122,6 +129,8 @@ export const PublicPaqueteSchema = z.object({
     tipo_evento: z.string().nullable().optional(),
     tipo_evento_order: z.number().nullable().optional(),
     cover_url: z.string().nullable().optional(),
+    is_featured: z.boolean().optional(),
+    status: z.string().optional(),
     duracion_horas: z.number().nullable().optional(),
     incluye: z.array(z.string()).nullable().optional(),
     no_incluye: z.array(z.string()).nullable().optional(),

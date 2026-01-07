@@ -1400,6 +1400,20 @@ export function PortfolioEditor({ studioSlug, mode, portfolio }: PortfolioEditor
                                 </p>
                             </div>
 
+                            {/* Botón Actualizar Portfolio - Solo en modo edit, debajo de Palabras Clave */}
+                            {mode === "edit" && (
+                                <div className="pt-4">
+                                    <ZenButton
+                                        onClick={() => handleSave(formData.is_published)}
+                                        loading={isSaving}
+                                        disabled={isSaving || isValidatingSlug || !!titleError}
+                                        className="w-full"
+                                    >
+                                        Actualizar Portfolio
+                                    </ZenButton>
+                                </div>
+                            )}
+
                             {/* Botón Guardar como borrador - Solo en modo create */}
                             {mode === "create" && (
                                 <div className="pt-4">

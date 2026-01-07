@@ -15,7 +15,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { obtenerTodasCondicionesComerciales } from "@/lib/actions/studio/config/condiciones-comerciales.actions";
 import { CondicionesComercialesManager } from "@/components/shared/condiciones-comerciales/CondicionesComercialesManager";
-import { CrearCondicionComercialModal } from "@/components/shared/condiciones-comerciales/CrearCondicionComercialModal";
+import { CondicionComercialFormModal } from "@/components/shared/condiciones-comerciales/CondicionComercialFormModal";
 import { Settings } from "lucide-react";
 import { TipoEventoSelector } from "@/components/shared/tipos-evento";
 
@@ -26,6 +26,7 @@ interface InfoEditorProps {
   slugHint: string | null;
   mode?: "create" | "edit";
   onEventTypeChange?: (eventTypeId: string | null, eventTypeName?: string | null) => void;
+  onConditionUpdated?: () => void; // Callback para refrescar el preview cuando se actualiza una condición
 }
 
 // Helper para generar slug desde nombre
@@ -45,6 +46,7 @@ export function InfoEditor({
   slugHint,
   mode = "create",
   onEventTypeChange,
+  onConditionUpdated,
 }: InfoEditorProps) {
   const { formData, updateFormData, savedOfferId, offerId } = useOfferEditor();
   const { uploadFiles } = useMediaUpload();
@@ -65,7 +67,8 @@ export function InfoEditor({
   const [loadingTerms, setLoadingTerms] = useState(false);
   const [showBusinessTerms, setShowBusinessTerms] = useState(!!formData.business_term_id);
   const [showCondicionesModal, setShowCondicionesModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showConditionFormModal, setShowConditionFormModal] = useState(false);
+  const [editingConditionId, setEditingConditionId] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
     if (formData.start_date && formData.end_date) {
       return {
@@ -191,24 +194,6 @@ export function InfoEditor({
             {slugHint}
           </p>
         )}
-      </div>
-
-      {/* Descripción */}
-      <div className="relative">
-        <ZenTextarea
-          id="offer-description-textarea"
-          label="Descripción"
-          value={formData.description}
-          onChange={(e) => {
-            const text = e.target.value.slice(0, 100);
-            updateFormData({ description: text });
-          }}
-          placeholder="Notas internas sobre la oferta. Esta descripción no aparecerá en la publicación pública."
-          rows={3}
-        />
-        <p className="absolute bottom-0 right-1 text-xs font-medium text-zinc-500">
-          {formData.description.length}/100
-        </p>
       </div>
 
       {/* Divisor */}
@@ -458,9 +443,59 @@ export function InfoEditor({
         {showBusinessTerms && (
           <div className="space-y-5 pl-4 border-l-2 border-emerald-500/30">
             {loadingTerms ? (
-              <div className="flex items-center gap-2 text-sm text-zinc-500">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Cargando condiciones...
+              <div className="space-y-3 animate-pulse">
+                {/* Skeleton para Condiciones Estándar */}
+                <div className="space-y-2">
+                  <div className="h-3 w-32 bg-zinc-800 rounded" />
+                  {[1, 2].map((i) => (
+                    <div
+                      key={`standard-${i}`}
+                      className="border rounded-lg p-3 border-zinc-700 bg-zinc-800/50"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 shrink-0">
+                          <div className="w-4 h-4 rounded-full border-2 border-zinc-600 bg-zinc-700" />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-3/4 bg-zinc-700 rounded" />
+                          <div className="h-3 w-full bg-zinc-700/50 rounded" />
+                          <div className="flex items-center gap-4 mt-1.5">
+                            <div className="h-3 w-20 bg-zinc-700/50 rounded" />
+                            <div className="h-3 w-24 bg-zinc-700/50 rounded" />
+                          </div>
+                        </div>
+                        <div className="shrink-0">
+                          <div className="h-7 w-7 bg-zinc-700 rounded" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Skeleton para Condiciones Especiales */}
+                <div className="space-y-2">
+                  <div className="h-3 w-40 bg-zinc-800 rounded" />
+                  <div className="border rounded-lg p-3 border-zinc-700 bg-zinc-800/50">
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 shrink-0">
+                        <div className="w-4 h-4 rounded-full border-2 border-zinc-600 bg-zinc-700" />
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="h-4 w-2/3 bg-zinc-700 rounded" />
+                          <div className="h-4 w-16 bg-purple-500/20 rounded" />
+                        </div>
+                        <div className="h-3 w-full bg-zinc-700/50 rounded" />
+                        <div className="flex items-center gap-4 mt-1.5">
+                          <div className="h-3 w-20 bg-zinc-700/50 rounded" />
+                          <div className="h-3 w-24 bg-zinc-700/50 rounded" />
+                        </div>
+                      </div>
+                      <div className="shrink-0">
+                        <div className="h-7 w-7 bg-zinc-700 rounded" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : businessTerms.length === 0 ? (
               <div className="space-y-3">
@@ -468,15 +503,18 @@ export function InfoEditor({
                   No hay condiciones comerciales disponibles.
                 </p>
                 <ZenButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateModal(true)}
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear primera condición
-                </ZenButton>
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setEditingConditionId(null);
+                      setShowConditionFormModal(true);
+                    }}
+                    className="w-full"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Crear primera condición
+                  </ZenButton>
               </div>
             ) : (
               <>
@@ -514,6 +552,10 @@ export function InfoEditor({
                             type={term.type}
                             selected={formData.business_term_id === term.id}
                             onChange={(id) => updateFormData({ business_term_id: id })}
+                            onEdit={(id) => {
+                              setEditingConditionId(id);
+                              setShowConditionFormModal(true);
+                            }}
                           />
                         ))}
                     </div>
@@ -546,6 +588,10 @@ export function InfoEditor({
                             type={term.type}
                             selected={formData.business_term_id === term.id}
                             onChange={(id) => updateFormData({ business_term_id: id })}
+                            onEdit={(id) => {
+                              setEditingConditionId(id);
+                              setShowConditionFormModal(true);
+                            }}
                           />
                         ))}
                     </div>
@@ -558,13 +604,16 @@ export function InfoEditor({
                   {/* Botón Crear Condición Especial */}
                   <ZenButton
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    onClick={() => setShowCreateModal(true)}
-                    className="w-full"
+                    onClick={() => {
+                      setEditingConditionId(null);
+                      setShowConditionFormModal(true);
+                    }}
+                    className="w-full text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-zinc-600 hover:border-emerald-500/30"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Crear condición especial
+                    Crear condición especial para esta oferta
                   </ZenButton>
                 </div>
 
@@ -580,14 +629,25 @@ export function InfoEditor({
         )}
       </div>
 
-      {/* Modal de Gestión Completa (Manager) */}
-      {showCondicionesModal && (
-        <CondicionesComercialesManager
+      {/* Modal Unificado de Crear/Editar */}
+      {showConditionFormModal && (
+        <CondicionComercialFormModal
           studioSlug={studioSlug}
-          isOpen={showCondicionesModal}
-          onClose={() => setShowCondicionesModal(false)}
-          onRefresh={() => {
+          isOpen={showConditionFormModal}
+          onClose={() => {
+            setShowConditionFormModal(false);
+            setEditingConditionId(null);
+          }}
+          condicionId={editingConditionId}
+          onSuccess={(updatedCondition) => {
+            // Recargar condiciones comerciales
             loadBusinessTerms();
+            
+            // Si la condición editada es la seleccionada, forzar actualización del preview
+            if (editingConditionId && formData.business_term_id === editingConditionId && updatedCondition) {
+              // Notificar al componente padre para refrescar el preview
+              onConditionUpdated?.();
+            }
           }}
           context={
             (savedOfferId || offerId)
@@ -601,13 +661,13 @@ export function InfoEditor({
         />
       )}
 
-      {/* Modal de Creación Simple */}
-      {showCreateModal && (
-        <CrearCondicionComercialModal
+      {/* Modal de Gestión Completa (Manager) */}
+      {showCondicionesModal && (
+        <CondicionesComercialesManager
           studioSlug={studioSlug}
-          isOpen={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
+          isOpen={showCondicionesModal}
+          onClose={() => setShowCondicionesModal(false)}
+          onRefresh={() => {
             loadBusinessTerms();
           }}
           context={

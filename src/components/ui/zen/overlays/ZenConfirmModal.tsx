@@ -42,7 +42,7 @@ export function ZenConfirmModal({
     loadingText = 'Procesando...',
     disabled = false,
     hideConfirmButton = false,
-    zIndex = 10080
+    zIndex = 10300
 }: ZenConfirmModalProps) {
     const handleConfirm = () => {
         onConfirm();

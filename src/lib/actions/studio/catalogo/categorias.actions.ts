@@ -315,11 +315,23 @@ export async function eliminarCategoria(
             };
         }
 
-        // Validar que no tiene items
+        // Verificar items directos
         if (categoria.items.length > 0) {
             return {
                 success: false,
                 error: `No puedes eliminar esta categoría. Contiene ${categoria.items.length} item${categoria.items.length !== 1 ? "s" : ""}. Primero debes eliminar todo el contenido.`,
+            };
+        }
+
+        // Verificar items en paquetes
+        const packageItemsCount = await prisma.studio_paquete_items.count({
+            where: { service_category_id: categoriaId },
+        });
+
+        if (packageItemsCount > 0) {
+            return {
+                success: false,
+                error: `No puedes eliminar esta categoría. Está siendo utilizada en ${packageItemsCount} item${packageItemsCount !== 1 ? "s" : ""} de paquetes. Primero debes eliminar o mover esos items.`,
             };
         }
 

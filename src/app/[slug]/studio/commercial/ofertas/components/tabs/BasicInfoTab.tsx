@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenSwitch, ZenButton } from "@/components/ui/zen";
 import { InfoEditor } from "../editors/InfoEditor";
 import { OfferCardPreview } from "@/components/previews";
@@ -28,7 +28,10 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
   const [isValidatingSlug, setIsValidatingSlug] = useState(false);
   const [slugHint, setSlugHint] = useState<string | null>(null);
   const [discountPercentage, setDiscountPercentage] = useState<number | null>(null);
+  const [conditionDescription, setConditionDescription] = useState<string | null>(null);
   const [eventTypeName, setEventTypeName] = useState<string | null>(null);
+  const [isLoadingDiscount, setIsLoadingDiscount] = useState(false);
+  const [conditionRefreshKey, setConditionRefreshKey] = useState(0);
 
   // Callback mejorado para recibir tanto ID como nombre del tipo de evento
   const handleEventTypeChange = (eventTypeId: string | null, eventTypeName?: string | null) => {
@@ -36,29 +39,42 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
     setEventTypeName(eventTypeName || null);
   };
 
-  // Cargar discount_percentage cuando cambia business_term_id
+  // Cargar discount_percentage y description cuando cambia business_term_id o conditionRefreshKey
   useEffect(() => {
-    const loadDiscountPercentage = async () => {
+    const loadConditionData = async () => {
       if (!formData.business_term_id) {
         setDiscountPercentage(null);
+        setConditionDescription(null);
+        setIsLoadingDiscount(false);
         return;
       }
 
+      setIsLoadingDiscount(true);
       try {
         const result = await obtenerCondicionComercial(studioSlug, formData.business_term_id);
         if (result.success && result.data) {
-          setDiscountPercentage(result.data.discount_percentage);
+          // Actualizar descuento
+          const newDiscount = result.data.discount_percentage;
+          setDiscountPercentage(newDiscount);
+          
+          // Actualizar descripción de la condición comercial
+          const newDescription = result.data.description;
+          setConditionDescription(newDescription);
         } else {
           setDiscountPercentage(null);
+          setConditionDescription(null);
         }
       } catch (error) {
-        console.error("Error loading discount:", error);
+        console.error("Error loading condition data:", error);
         setDiscountPercentage(null);
+        setConditionDescription(null);
+      } finally {
+        setIsLoadingDiscount(false);
       }
     };
 
-    loadDiscountPercentage();
-  }, [formData.business_term_id, studioSlug]);
+    loadConditionData();
+  }, [formData.business_term_id, studioSlug, conditionRefreshKey]);
 
   // Cargar nombre del tipo de evento al inicializar (solo en modo edición)
   useEffect(() => {
@@ -146,6 +162,10 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
               slugHint={slugHint}
               mode={mode}
               onEventTypeChange={handleEventTypeChange}
+              onConditionUpdated={() => {
+                // Forzar recarga de los datos de la condición comercial
+                setConditionRefreshKey(prev => prev + 1);
+              }}
             />
 
             {/* Botones de acción */}
@@ -201,8 +221,9 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
               Vista Desktop (Sidebar)
             </p>
             <OfferCardPreview
+              key={`desktop-${formData.business_term_id || 'none'}-${discountPercentage || 'null'}-${conditionDescription || 'null'}`}
               name={formData.name}
-              description={formData.description}
+              description={conditionDescription || formData.description}
               coverMediaUrl={formData.cover_media_url}
               coverMediaType={formData.cover_media_type}
               discountPercentage={discountPercentage}
@@ -221,8 +242,9 @@ export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSa
               Vista Mobile (Carousel)
             </p>
             <OfferCardPreview
+              key={`mobile-${formData.business_term_id || 'none'}-${discountPercentage || 'null'}-${conditionDescription || 'null'}`}
               name={formData.name}
-              description={formData.description}
+              description={conditionDescription || formData.description}
               coverMediaUrl={formData.cover_media_url}
               coverMediaType={formData.cover_media_type}
               discountPercentage={discountPercentage}

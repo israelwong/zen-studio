@@ -56,7 +56,7 @@ export function GoogleStatusPopover({
     setLoading(true);
     try {
       const status = await obtenerEstadoConexion(studioSlug);
-      
+
       const hasDriveScope = status.scopes?.some((scope) =>
         scope.includes('drive')
       ) || false;
@@ -190,7 +190,7 @@ export function GoogleStatusPopover({
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 mt-1">
-                Eleva la productividad de tu estudio con la Suite de Google integrada en Zen
+                Eleva la productividad de tu estudio con la Suite de Google integrada en Zenly
               </p>
             </div>
 
@@ -208,13 +208,12 @@ export function GoogleStatusPopover({
               <div className="space-y-2">
                 {services.map((service) => {
                   const serviceKey = service.name.toLowerCase().includes('drive') ? 'drive' :
-                                   service.name.toLowerCase().includes('calendar') ? 'calendar' : 'contacts';
+                    service.name.toLowerCase().includes('calendar') ? 'calendar' : 'contacts';
                   return (
                     <div
                       key={service.name}
-                      className={`flex items-center justify-between p-2 rounded-lg ${
-                        service.connected ? 'bg-zinc-800/50 border border-zinc-700' : 'bg-zinc-800/30'
-                      }`}
+                      className={`flex items-center justify-between p-2 rounded-lg ${service.connected ? 'bg-zinc-800/50 border border-zinc-700' : 'bg-zinc-800/30'
+                        }`}
                     >
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         {service.connected ? (

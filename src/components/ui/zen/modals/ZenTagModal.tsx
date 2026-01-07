@@ -68,7 +68,7 @@ export function ZenTagModal({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center">
             {/* Backdrop */}
             <div 
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -76,7 +76,28 @@ export function ZenTagModal({
             />
             
             {/* Modal */}
-            <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl w-full max-w-md mx-4">
+            <div 
+                className="relative bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl w-full max-w-md mx-4 z-[10051]"
+                onClick={(e) => {
+                    // No bloquear eventos de dropdowns dentro del modal
+                    const target = e.target as HTMLElement;
+                    if (!target.closest('[role="menu"]') && !target.closest('[data-radix-dropdown-menu-trigger]')) {
+                        e.stopPropagation();
+                    }
+                }}
+                onMouseDown={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (!target.closest('[role="menu"]') && !target.closest('[data-radix-dropdown-menu-trigger]')) {
+                        e.stopPropagation();
+                    }
+                }}
+                onPointerDown={(e) => {
+                    const target = e.target as HTMLElement;
+                    if (!target.closest('[role="menu"]') && !target.closest('[data-radix-dropdown-menu-trigger]')) {
+                        e.stopPropagation();
+                    }
+                }}
+            >
                 <ZenCard className="border-0 shadow-none">
                     <ZenCardHeader>
                         <div className="flex items-center justify-between">

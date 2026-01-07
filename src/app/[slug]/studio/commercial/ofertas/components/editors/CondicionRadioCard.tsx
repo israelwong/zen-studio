@@ -1,6 +1,8 @@
 "use client";
 
 import { formatCurrency } from '@/lib/actions/utils/formatting';
+import { Edit2 } from 'lucide-react';
+import { ZenButton } from '@/components/ui/zen';
 
 interface CondicionRadioCardProps {
   id: string;
@@ -13,6 +15,7 @@ interface CondicionRadioCardProps {
   type: 'standard' | 'offer';
   selected: boolean;
   onChange: (id: string) => void;
+  onEdit?: (id: string) => void;
 }
 
 export function CondicionRadioCard({
@@ -26,10 +29,22 @@ export function CondicionRadioCard({
   type,
   selected,
   onChange,
+  onEdit,
 }: CondicionRadioCardProps) {
+  const handleCardClick = () => {
+    onChange(id);
+  };
+
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevenir que se active el onChange
+    if (onEdit) {
+      onEdit(id);
+    }
+  };
+
   return (
     <div
-      onClick={() => onChange(id)}
+      onClick={handleCardClick}
       className={`
         border rounded-lg p-3 cursor-pointer transition-all
         ${selected
@@ -88,6 +103,21 @@ export function CondicionRadioCard({
             <span>Descuento: {discount_percentage ?? 0}%</span>
           </div>
         </div>
+
+        {/* Botón Editar */}
+        {onEdit && (
+          <div className="shrink-0">
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              onClick={handleEditClick}
+              className="h-7 w-7 p-0 text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/30"
+              title={type === 'offer' ? 'Editar condición especial para esta oferta' : 'Editar condición comercial'}
+            >
+              <Edit2 className="h-3.5 w-3.5" />
+            </ZenButton>
+          </div>
+        )}
       </div>
     </div>
   );

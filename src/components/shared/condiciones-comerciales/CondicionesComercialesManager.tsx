@@ -69,6 +69,7 @@ interface CondicionesComercialesManagerProps {
     offerName: string;
   };
   onSelect?: (condicionId: string) => void; // Callback opcional para modo selección
+  initialEditingId?: string | null; // ID de condición para abrir directamente en modo edición
 }
 
 interface SortableCondicionItemProps {
@@ -210,6 +211,7 @@ export function CondicionesComercialesManager({
   onRefresh,
   context,
   onSelect,
+  initialEditingId,
 }: CondicionesComercialesManagerProps) {
   const [condiciones, setCondiciones] = useState<CondicionComercial[]>([]);
   const [loading, setLoading] = useState(true);
@@ -347,6 +349,20 @@ export function CondicionesComercialesManager({
       setPendingDeleteId(null);
     }
   }, [isOpen]);
+
+  // Abrir formulario de edición cuando se pasa initialEditingId
+  useEffect(() => {
+    if (isOpen && initialEditingId && condiciones.length > 0 && !loading) {
+      const condicionToEdit = condiciones.find(c => c.id === initialEditingId);
+      if (condicionToEdit && !showForm) {
+        // Pequeño delay para asegurar que el modal esté completamente renderizado
+        setTimeout(() => {
+          handleEdit(condicionToEdit);
+        }, 100);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialEditingId, condiciones.length, loading]);
 
   // Escuchar actualizaciones de configuración de precios
   useConfiguracionPreciosUpdateListener(studioSlug, (config?: ConfiguracionPreciosUpdateEventDetail) => {
@@ -1254,7 +1270,7 @@ export function CondicionesComercialesManager({
         confirmText="Descartar cambios"
         cancelText="Cancelar"
         variant="destructive"
-        zIndex={10090}
+        zIndex={10300}
       />
 
       <ZenConfirmModal
@@ -1266,7 +1282,7 @@ export function CondicionesComercialesManager({
         confirmText="Eliminar"
         cancelText="Cancelar"
         variant="destructive"
-        zIndex={10090}
+        zIndex={10300}
       />
 
       {/* Modal de Configuración de Utilidad */}

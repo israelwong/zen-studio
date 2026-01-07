@@ -167,20 +167,6 @@ export default function HeroPortfolioEditor({
                                 placeholder="Título de tu portafolio"
                             />
 
-                            {/* Mostrar tipo de evento (NO editable) */}
-                            {eventTypeName && (
-                                <div>
-                                    <label className="block text-sm font-medium text-zinc-200 mb-2">
-                                        Categoría
-                                    </label>
-                                    <div className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-zinc-300">
-                                        {eventTypeName}
-                                    </div>
-                                    <p className="text-xs text-zinc-500 mt-1">
-                                        La categoría se define en la configuración del portafolio
-                                    </p>
-                                </div>
-                            )}
 
                             <ZenTextarea
                                 label="Descripción"

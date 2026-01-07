@@ -268,12 +268,15 @@ export function BlockRenderer({ block, className = '', context, onOpenLeadForm, 
                 const configWithMeta = block.config as HeroPortfolioConfig & {
                     eventTypeName?: string;
                 };
+                // En el contexto de portfolio (vista de detalles), usar tamaño natural del multimedia
+                const useNaturalSize = context === 'portfolio';
                 return (
                     <HeroPortfolioComponent
                         config={portfolioConfig}
                         media={block.media || []}
                         className={className}
                         eventTypeName={configWithMeta.eventTypeName || portfolioConfig.eventTypeName}
+                        useNaturalSize={useNaturalSize}
                     />
                 );
             }

@@ -461,8 +461,8 @@ export function ContentBlocksEditor({
             };
         } else if (component.type === 'separator') {
             config = {
-                style: 'solid',
-                height: 0.5
+                style: 'space',
+                height: 24
             };
         }
 
@@ -1296,7 +1296,7 @@ function SortableBlock({
 
     const renderSeparatorContent = () => {
         const separatorConfig = block.config as { style?: 'space' | 'solid' | 'dotted'; height?: number; color?: string };
-        const style = separatorConfig?.style || 'solid';
+        const style = separatorConfig?.style || 'space';
         const height = separatorConfig?.height ?? (style === 'space' ? 24 : 0.5);
 
         const getSliderMin = () => style === 'space' ? 8 : 0.5;
