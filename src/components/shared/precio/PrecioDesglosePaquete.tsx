@@ -46,6 +46,10 @@ export function PrecioDesglosePaquete({
             totalCosto: item.costo * item.cantidad,
             totalGasto: item.gasto * item.cantidad,
             totalPrecioFinal: resultado.precio_final * item.cantidad,
+            totalPrecioBase: resultado.precio_base * item.cantidad,
+            totalComision: resultado.monto_comision * item.cantidad,
+            totalSobreprecio: resultado.monto_sobreprecio * item.cantidad,
+            totalSubtotal: resultado.subtotal * item.cantidad,
         };
     });
 
@@ -59,14 +63,22 @@ export function PrecioDesglosePaquete({
         gasto: acc.gasto + item.totalGasto,
         utilidad: acc.utilidad + (item.resultado.utilidad_base * item.cantidad),
         precioFinal: acc.precioFinal + item.totalPrecioFinal,
-    }), { costo: 0, gasto: 0, utilidad: 0, precioFinal: 0 });
+        precioBase: acc.precioBase + item.totalPrecioBase,
+        comision: acc.comision + item.totalComision,
+        sobreprecio: acc.sobreprecio + item.totalSobreprecio,
+        subtotal: acc.subtotal + item.totalSubtotal,
+    }), { costo: 0, gasto: 0, utilidad: 0, precioFinal: 0, precioBase: 0, comision: 0, sobreprecio: 0, subtotal: 0 });
 
     const totalProductos = productos.reduce((acc, item) => ({
         costo: acc.costo + item.totalCosto,
         gasto: acc.gasto + item.totalGasto,
         utilidad: acc.utilidad + (item.resultado.utilidad_base * item.cantidad),
         precioFinal: acc.precioFinal + item.totalPrecioFinal,
-    }), { costo: 0, gasto: 0, utilidad: 0, precioFinal: 0 });
+        precioBase: acc.precioBase + item.totalPrecioBase,
+        comision: acc.comision + item.totalComision,
+        sobreprecio: acc.sobreprecio + item.totalSobreprecio,
+        subtotal: acc.subtotal + item.totalSubtotal,
+    }), { costo: 0, gasto: 0, utilidad: 0, precioFinal: 0, precioBase: 0, comision: 0, sobreprecio: 0, subtotal: 0 });
 
     // Totales generales
     const totalCosto = totalServicios.costo + totalProductos.costo;
@@ -74,6 +86,14 @@ export function PrecioDesglosePaquete({
     const totalUtilidad = totalServicios.utilidad + totalProductos.utilidad;
     const precioCalculado = totalServicios.precioFinal + totalProductos.precioFinal;
     const subtotalCostos = totalCosto + totalGasto;
+    const subtotal = totalServicios.subtotal + totalProductos.subtotal;
+    const precioBaseTotal = totalServicios.precioBase + totalProductos.precioBase;
+    const totalComision = totalServicios.comision + totalProductos.comision;
+    const totalSobreprecio = totalServicios.sobreprecio + totalProductos.sobreprecio;
+    
+    // Porcentajes de comisión y sobreprecio (usar el primero como referencia, todos deberían ser iguales)
+    const porcentajeComision = itemsCalculados.length > 0 ? itemsCalculados[0].resultado.porcentaje_comision : 0;
+    const porcentajeSobreprecio = itemsCalculados.length > 0 ? itemsCalculados[0].resultado.porcentaje_sobreprecio : 0;
     
     // Usar precio personalizado si existe, sino usar el calculado
     const precioFinal = precioPersonalizado && precioPersonalizado > 0 ? precioPersonalizado : precioCalculado;
@@ -160,9 +180,44 @@ export function PrecioDesglosePaquete({
                 </div>
             </div>
 
-            {/* Precio Final */}
-            <div className="border-t border-zinc-600 pt-3">
+            {/* Subtotal (Costos + Utilidad) */}
+            <div className="space-y-2 py-3 border-t border-zinc-700">
+                <div className="text-xs text-zinc-500 mb-2 font-medium">Subtotal (Costos + Utilidad)</div>
                 <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-zinc-300">Subtotal</span>
+                    <span className="text-sm font-semibold text-zinc-200">{formatearMoneda(subtotal)}</span>
+                </div>
+            </div>
+
+            {/* Precio Base y Comisión */}
+            <div className="space-y-2 py-3 border-t border-zinc-700">
+                <div className="text-xs text-zinc-500 mb-2 font-medium">Precio Base (absorbe comisión)</div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Precio Base</span>
+                    <span className="text-sm font-medium text-zinc-200">{formatearMoneda(precioBaseTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">- Comisión ({porcentajeComision.toFixed(1)}%)</span>
+                    <span className="text-sm font-medium text-blue-400">-{formatearMoneda(totalComision)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-zinc-600">
+                    <span className="text-xs text-zinc-500 italic">= Subtotal (verificación)</span>
+                    <span className="text-xs text-zinc-500 italic">{formatearMoneda(subtotal)}</span>
+                </div>
+            </div>
+
+            {/* Precio Final y Sobreprecio */}
+            <div className="border-t border-zinc-600 pt-3">
+                <div className="text-xs text-zinc-500 mb-2 font-medium">Precio Final (con sobreprecio)</div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">Precio Base</span>
+                    <span className="text-sm font-medium text-zinc-200">{formatearMoneda(precioBaseTotal)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-zinc-400">+ Sobreprecio ({porcentajeSobreprecio.toFixed(1)}%)</span>
+                    <span className="text-sm font-medium text-purple-400">+{formatearMoneda(totalSobreprecio)}</span>
+                </div>
+                <div className="flex justify-between items-center pt-3 border-t border-zinc-600">
                     <span className="text-base font-semibold text-zinc-200">Precio Final del Paquete</span>
                     <span className="text-xl font-bold text-emerald-400">
                         {formatearMoneda(precioFinal)}
@@ -171,7 +226,9 @@ export function PrecioDesglosePaquete({
                 {precioPersonalizado && precioPersonalizado > 0 && precioPersonalizado !== precioCalculado && (
                     <div className="text-xs text-zinc-500 mt-1">
                         Precio calculado: {formatearMoneda(precioCalculado)} 
-                        {' '}({precioPersonalizado > precioCalculado ? '+' : ''}{formatearMoneda(precioPersonalizado - precioCalculado)})
+                        {' '}(<span className={precioPersonalizado > precioCalculado ? 'text-emerald-400' : 'text-red-400'}>
+                            {precioPersonalizado > precioCalculado ? '+' : ''}{formatearMoneda(precioPersonalizado - precioCalculado)}
+                        </span>)
                     </div>
                 )}
             </div>

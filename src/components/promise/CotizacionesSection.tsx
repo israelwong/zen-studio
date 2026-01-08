@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, Tag as TagIcon, Sparkles } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenBadge } from '@/components/ui/zen';
 import type { PublicCotizacion } from '@/types/public-promise';
@@ -68,6 +68,12 @@ export function CotizacionesSection({
     }
   }, [cotizaciones, selectedCotizacion]);
 
+  // Ordenar cotizaciones por order antes de renderizar
+  const cotizacionesOrdenadas = React.useMemo(
+    () => [...cotizaciones].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [cotizaciones]
+  );
+
   if (cotizaciones.length === 0) {
     return null;
   }
@@ -98,17 +104,17 @@ export function CotizacionesSection({
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-4 w-4 text-zinc-400" />
               <h2 className="text-xl md:text-3xl font-bold text-white">
-                {cotizaciones.length === 1 ? 'Cotización Personalizada' : 'Cotizaciones Personalizadas'}
+                {cotizacionesOrdenadas.length === 1 ? 'Cotización Personalizada' : 'Cotizaciones Personalizadas'}
               </h2>
             </div>
             <p className="text-sm text-zinc-400">
-              Revisa {cotizaciones.length === 1 ? 'la propuesta' : 'las propuestas'} que hemos preparado especialmente para ti
+              Revisa {cotizacionesOrdenadas.length === 1 ? 'la propuesta' : 'las propuestas'} que hemos preparado especialmente para ti
             </p>
           </div>
 
           {/* Lista de cotizaciones */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {cotizaciones.map((cotizacion) => {
+            {cotizacionesOrdenadas.map((cotizacion) => {
               const finalPrice = calculateFinalPrice(cotizacion);
 
               // El descuento viene como monto absoluto en $

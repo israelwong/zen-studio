@@ -240,23 +240,48 @@ export function PromiseQuotesPanel({
       return;
     }
 
-    const oldIndex = cotizaciones.findIndex((c) => c.id === active.id);
-    const newIndex = cotizaciones.findIndex((c) => c.id === over.id);
+    // Solo permitir reordenar pendientes
+    const activeCotizacion = cotizaciones.find((c) => c.id === active.id);
+    const overCotizacion = cotizaciones.find((c) => c.id === over.id);
+
+    if (!activeCotizacion || !overCotizacion || activeCotizacion.status !== 'pendiente' || overCotizacion.status !== 'pendiente') {
+      return;
+    }
+
+    const oldIndex = cotizacionesPendientes.findIndex((c) => c.id === active.id);
+    const newIndex = cotizacionesPendientes.findIndex((c) => c.id === over.id);
 
     if (oldIndex === -1 || newIndex === -1) {
       return;
     }
 
-    const newCotizaciones = arrayMove(cotizaciones, oldIndex, newIndex);
+    // Mover solo las pendientes
+    const newPendientes = arrayMove(cotizacionesPendientes, oldIndex, newIndex);
 
-    // Reordenar para mantener archivadas al final después del drag
-    const reorderedCotizaciones = [...newCotizaciones].sort((a, b) => {
-      if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-      if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-      const orderA = a.order ?? 0;
-      const orderB = b.order ?? 0;
-      return orderA - orderB;
-    });
+    // Actualizar el order de todas las cotizaciones según la nueva posición
+    // Pendientes primero (con order actualizado)
+    const reorderedPendientes = newPendientes.map((c, index) => ({
+      ...c,
+      order: index,
+    }));
+
+    // Luego archivadas y canceladas (con order continuando desde las pendientes)
+    const reorderedArchivadas = cotizacionesArchivadas.map((c, index) => ({
+      ...c,
+      order: reorderedPendientes.length + index,
+    }));
+
+    const reorderedCanceladas = cotizacionesCanceladas.map((c, index) => ({
+      ...c,
+      order: reorderedPendientes.length + reorderedArchivadas.length + index,
+    }));
+
+    // Combinar todas las cotizaciones
+    const reorderedCotizaciones = [
+      ...reorderedPendientes,
+      ...reorderedArchivadas,
+      ...reorderedCanceladas,
+    ];
 
     try {
       setIsReordering(true);
@@ -341,6 +366,76 @@ export function PromiseQuotesPanel({
   // Filtrar cotizaciones para el listado (solo pendiente, archivada, cancelada)
   const cotizacionesParaListado = cotizaciones.filter(
     (c) => ['pendiente', 'archivada', 'cancelada'].includes(c.status)
+  );
+
+  // Separar en grupos: pendientes (ordenables) y archivadas/canceladas (no ordenables)
+  const cotizacionesPendientes = cotizacionesParaListado
+    .filter((c) => c.status === 'pendiente')
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const cotizacionesArchivadas = cotizacionesParaListado
+    .filter((c) => c.status === 'archivada')
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const cotizacionesCanceladas = cotizacionesParaListado
+    .filter((c) => c.status === 'cancelada')
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+  const cotizacionesNoOrdenables = [...cotizacionesArchivadas, ...cotizacionesCanceladas];
+
+  // Función helper para renderizar una tarjeta de cotización
+  const renderCotizacionCard = (cotizacion: CotizacionListItem) => (
+    <PromiseQuotesPanelCard
+      key={cotizacion.id}
+      cotizacion={cotizacion}
+      studioSlug={studioSlug}
+      promiseId={promiseId}
+      contactId={contactId}
+      isDuplicating={duplicatingId === cotizacion.id}
+      hasApprovedQuote={hasApprovedQuote}
+      onDuplicateStart={(id) => setDuplicatingId(id)}
+      onDuplicateComplete={(newCotizacion) => {
+        setDuplicatingId(null);
+        setCotizaciones((prev) => [...prev, newCotizacion]);
+      }}
+      onDuplicateError={() => {
+        setDuplicatingId(null);
+      }}
+      onDelete={(id) => {
+        setCotizaciones((prev) => prev.filter((c) => c.id !== id));
+      }}
+      onArchive={(id) => {
+        // Actualización local: cambiar status a archivada
+        setCotizaciones((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, status: 'archivada' as const, archived: true } : c))
+        );
+      }}
+      onUpdate={(cotizacionId) => {
+        // Actualización optimista: marcar como cancelada
+        setCotizaciones((prev) =>
+          prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
+        );
+        // Refrescar desde servidor para sincronizar
+        router.refresh();
+      }}
+      onUnarchive={(id) => {
+        // Actualización local: cambiar status a pendiente
+        setCotizaciones((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, status: 'pendiente' as const, archived: false } : c))
+        );
+      }}
+      onNameUpdate={(id, newName) => {
+        setCotizaciones((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
+        );
+      }}
+      onPasarACierre={async (cotizacionId) => {
+        // Realtime sincronizará automáticamente ambos componentes
+      }}
+      onCierreCancelado={(cotizacionId) => {
+        // Realtime sincronizará automáticamente ambos componentes
+      }}
+    />
   );
 
   return (
@@ -458,170 +553,49 @@ export function PromiseQuotesPanel({
               </div>
             ) : !isHydrated ? (
               <div className="space-y-2">
-                {(() => {
-                  return cotizacionesParaListado.map((cotizacion) => {
-                    return (
-                      <PromiseQuotesPanelCard
-                        key={cotizacion.id}
-                        cotizacion={cotizacion}
-                        studioSlug={studioSlug}
-                        promiseId={promiseId}
-                        contactId={contactId}
-                        isDuplicating={duplicatingId === cotizacion.id}
-                        hasApprovedQuote={hasApprovedQuote}
-                        onDuplicateStart={(id) => setDuplicatingId(id)}
-                        onDuplicateComplete={(newCotizacion) => {
-                          setDuplicatingId(null);
-                          setCotizaciones((prev) => {
-                            const updated = [...prev, newCotizacion];
-                            return updated.sort((a, b) => {
-                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-                              const orderA = a.order ?? 0;
-                              const orderB = b.order ?? 0;
-                              return orderA - orderB;
-                            });
-                          });
-                        }}
-                        onDuplicateError={() => {
-                          setDuplicatingId(null);
-                        }}
-                        onDelete={(id) => {
-                          setCotizaciones((prev) => prev.filter((c) => c.id !== id));
-                        }}
-                        onArchive={(id) => {
-                          // Actualización local: cambiar status a archivada y reordenar
-                          setCotizaciones((prev) => {
-                            const updated = prev.map((c) => (c.id === id ? { ...c, status: 'archivada' as const, archived: true } : c));
-                            return updated.sort((a, b) => {
-                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-                              const orderA = a.order ?? 0;
-                              const orderB = b.order ?? 0;
-                              return orderA - orderB;
-                            });
-                          });
-                        }}
-                        onUpdate={(cotizacionId) => {
-                          // Actualización optimista: marcar como cancelada
-                          setCotizaciones((prev) =>
-                            prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
-                          );
-                          // Refrescar desde servidor para sincronizar
-                          router.refresh();
-                        }}
-                        onUnarchive={(id) => {
-                          // Actualización local: cambiar status a pendiente y reordenar
-                          setCotizaciones((prev) => {
-                            const updated = prev.map((c) => (c.id === id ? { ...c, status: 'pendiente' as const, archived: false } : c));
-                            return updated.sort((a, b) => {
-                              if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-                              if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-                              const orderA = a.order ?? 0;
-                              const orderB = b.order ?? 0;
-                              return orderA - orderB;
-                            });
-                          });
-                        }}
-                        onNameUpdate={(id, newName) => {
-                          setCotizaciones((prev) =>
-                            prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
-                          );
-                        }}
-                        onPasarACierre={async (cotizacionId) => {
-                          // Realtime sincronizará automáticamente ambos componentes
-                        }}
-                        onCierreCancelado={(cotizacionId) => {
-                          // Realtime sincronizará automáticamente ambos componentes
-                        }}
-                      />
-                    );
-                  });
-                })()}
+                {/* Pendientes */}
+                {cotizacionesPendientes.map((cotizacion) => renderCotizacionCard(cotizacion))}
+
+                {/* Divisor sutil */}
+                {cotizacionesPendientes.length > 0 && cotizacionesNoOrdenables.length > 0 && (
+                  <div className="h-px bg-zinc-800 my-3" />
+                )}
+
+                {/* Archivadas y canceladas (no ordenables) */}
+                {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
               </div>
             ) : (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={cotizacionesParaListado.map((c) => c.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className={`space-y-2 ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
-                    {cotizacionesParaListado.map((cotizacion) => {
-                      return (
-                        <PromiseQuotesPanelCard
-                          key={cotizacion.id}
-                          cotizacion={cotizacion}
-                          studioSlug={studioSlug}
-                          promiseId={promiseId}
-                          contactId={contactId}
-                          isDuplicating={duplicatingId === cotizacion.id}
-                          hasApprovedQuote={hasApprovedQuote}
-                          onDuplicateStart={(id) => setDuplicatingId(id)}
-                          onDuplicateComplete={(newCotizacion) => {
-                            setDuplicatingId(null);
-                            setCotizaciones((prev) => [...prev, newCotizacion]);
-                          }}
-                          onDuplicateError={() => {
-                            setDuplicatingId(null);
-                          }}
-                          onDelete={(id) => {
-                            setCotizaciones((prev) => prev.filter((c) => c.id !== id));
-                          }}
-                          onArchive={(id) => {
-                            // Actualización local: cambiar status a archivada y reordenar
-                            setCotizaciones((prev) => {
-                              const updated = prev.map((c) => (c.id === id ? { ...c, status: 'archivada' as const, archived: true } : c));
-                              return updated.sort((a, b) => {
-                                if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-                                if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-                                const orderA = a.order ?? 0;
-                                const orderB = b.order ?? 0;
-                                return orderA - orderB;
-                              });
-                            });
-                          }}
-                          onUpdate={(cotizacionId) => {
-                            // Actualización optimista: marcar como cancelada
-                            setCotizaciones((prev) =>
-                              prev.map((c) => (c.id === cotizacionId ? { ...c, status: 'cancelada' as const } : c))
-                            );
-                            // Refrescar desde servidor para sincronizar
-                            router.refresh();
-                          }}
-                          onUnarchive={(id) => {
-                            // Actualización local: cambiar status a pendiente y reordenar
-                            setCotizaciones((prev) => {
-                              const updated = prev.map((c) => (c.id === id ? { ...c, status: 'pendiente' as const, archived: false } : c));
-                              return updated.sort((a, b) => {
-                                if (a.status === 'archivada' && b.status !== 'archivada') return 1;
-                                if (a.status !== 'archivada' && b.status === 'archivada') return -1;
-                                const orderA = a.order ?? 0;
-                                const orderB = b.order ?? 0;
-                                return orderA - orderB;
-                              });
-                            });
-                          }}
-                          onNameUpdate={(id, newName) => {
-                            setCotizaciones((prev) =>
-                              prev.map((c) => (c.id === id ? { ...c, name: newName } : c))
-                            );
-                          }}
-                          onPasarACierre={async (cotizacionId) => {
-                            // Realtime sincronizará automáticamente ambos componentes
-                          }}
-                          onCierreCancelado={(cotizacionId) => {
-                            // Realtime sincronizará automáticamente ambos componentes
-                          }}
-                        />
-                      );
-                    })}
+              <>
+                {/* Pendientes (ordenables) */}
+                {cotizacionesPendientes.length > 0 && (
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={cotizacionesPendientes.map((c) => c.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className={`space-y-2 ${isReordering ? 'pointer-events-none opacity-50' : ''}`}>
+                        {cotizacionesPendientes.map((cotizacion) => renderCotizacionCard(cotizacion))}
+                      </div>
+                    </SortableContext>
+                  </DndContext>
+                )}
+
+                {/* Divisor sutil */}
+                {cotizacionesPendientes.length > 0 && cotizacionesNoOrdenables.length > 0 && (
+                  <div className="h-px bg-zinc-800 my-3" />
+                )}
+
+                {/* Archivadas y canceladas (no ordenables) */}
+                {cotizacionesNoOrdenables.length > 0 && (
+                  <div className="space-y-2">
+                    {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
                   </div>
-                </SortableContext>
-              </DndContext>
+                )}
+              </>
             )}
             {/* Gradiente inferior - proporcional a la altura del área scrollable */}
             {cotizacionesParaListado.length > 2 && (

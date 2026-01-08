@@ -10,14 +10,23 @@ export default function NuevaCotizacionPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const studioSlug = params.slug as string;
-  const promiseId = params.promiseId as string;
-  const packageId = searchParams.get('paqueteId') || null;
-  const contactId = searchParams.get('contactId') || null;
+  
+  const studioSlug = params?.slug as string;
+  const promiseId = params?.promiseId as string;
+  const packageId = searchParams?.get('paqueteId') || null;
+  const contactId = searchParams?.get('contactId') || null;
 
   useEffect(() => {
     document.title = 'Zenly Studio - Nueva Cotización';
   }, []);
+
+  if (!studioSlug || !promiseId) {
+    return (
+      <div className="w-full max-w-7xl mx-auto p-6">
+        <p className="text-zinc-400">Cargando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-7xl mx-auto">

@@ -982,11 +982,11 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                                     {formatearMoneda(calculoPrecio.utilidadNeta)}
                                 </div>
                                 {calculoPrecio.diferenciaPrecio !== 0 && (
-                                    <div className="text-xs mt-2 text-zinc-400">
+                                    <div className="text-xs mt-2">
                                         <span className={calculoPrecio.diferenciaPrecio > 0 ? 'text-emerald-400' : 'text-red-400'}>
                                             {calculoPrecio.diferenciaPrecio > 0 ? '+' : ''}{formatearMoneda(calculoPrecio.diferenciaPrecio)}
                                         </span>
-                                        {' '}sobre la ganancia calculada
+                                        <span className="text-zinc-400">{' '}sobre la ganancia calculada</span>
                                     </div>
                                 )}
                             </div>

@@ -213,8 +213,8 @@ export default function HeroPortfolioComponent({
     }, [parallax, isEditable]);
 
     // Si useNaturalSize es true, no aplicar aspect ratio ni altura mínima
-    const containerHeightClass = useNaturalSize 
-        ? '' 
+    const containerHeightClass = useNaturalSize
+        ? ''
         : (aspectRatio ? aspectRatioClass : "min-h-[50vh] sm:min-h-[60vh]");
 
     return (
@@ -389,7 +389,7 @@ export default function HeroPortfolioComponent({
 
             {/* Content - Solo mostrar si hay título o descripción */}
             {(title || description) && (
-                <div 
+                <div
                     className={cn(
                         useNaturalSize ? "absolute inset-0" : "relative",
                         "z-10 w-full flex",
@@ -404,14 +404,14 @@ export default function HeroPortfolioComponent({
                     )}>
                         {/* Title */}
                         {title && (
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-3 sm:mb-4 leading-tight">
+                            <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2 leading-tight">
                                 {title}
                             </h1>
                         )}
 
                         {/* Description */}
                         {description && (
-                            <p className="text-sm sm:text-lg text-zinc-300 mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
+                            <p className="text-xs sm:text-sm md:text-base text-zinc-300 mb-4 sm:mb-6 leading-relaxed max-w-2xl mx-auto">
                                 {description}
                             </p>
                         )}

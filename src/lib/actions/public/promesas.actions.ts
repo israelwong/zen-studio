@@ -532,6 +532,7 @@ export async function getPublicPromiseData(
         promise_share_default_show_standard_conditions: true,
         promise_share_default_show_offer_conditions: true,
         promise_share_default_portafolios: true,
+        promise_share_default_auto_generate_contract: true,
       },
     });
 
@@ -560,6 +561,7 @@ export async function getPublicPromiseData(
         share_min_days_to_hire: true,
         share_show_standard_conditions: true,
         share_show_offer_conditions: true,
+        share_auto_generate_contract: true,
         contact: {
           select: {
             name: true,
@@ -587,6 +589,7 @@ export async function getPublicPromiseData(
             discount: true,
             status: true,
             selected_by_prospect: true,
+            order: true,
             cotizacion_items: {
               select: {
                 id: true,
@@ -618,6 +621,13 @@ export async function getPublicPromiseData(
                     payment_method_name: true,
                   },
                 },
+              },
+            },
+            condiciones_comerciales: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
               },
             },
             paquete: {
@@ -667,7 +677,16 @@ export async function getPublicPromiseData(
     // Esto se verifica después de obtener las cotizaciones y paquetes
 
     // Obtener preferencias de compartir (combinar defaults del studio con overrides de la promesa)
-    const shareSettings = {
+    const shareSettings: {
+      show_packages: boolean;
+      show_categories_subtotals: boolean;
+      show_items_prices: boolean;
+      min_days_to_hire: number;
+      show_standard_conditions: boolean;
+      show_offer_conditions: boolean;
+      portafolios: boolean;
+      auto_generate_contract: boolean;
+    } = {
       show_packages: promise.share_show_packages ?? studio.promise_share_default_show_packages,
       show_categories_subtotals: promise.share_show_categories_subtotals ?? studio.promise_share_default_show_categories_subtotals,
       show_items_prices: promise.share_show_items_prices ?? studio.promise_share_default_show_items_prices,
@@ -675,6 +694,7 @@ export async function getPublicPromiseData(
       show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
       show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
       portafolios: studio.promise_share_default_portafolios,
+      auto_generate_contract: promise.share_auto_generate_contract ?? studio.promise_share_default_auto_generate_contract,
     };
 
     // 3. Obtener catálogo completo (incluir items inactivos para que coincidan con paquetes)
@@ -790,11 +810,33 @@ export async function getPublicPromiseData(
     }
 
     // 6. Mapear cotizaciones con estructura jerárquica usando función centralizada
-    const mappedCotizaciones: PublicCotizacion[] = promise.quotes.map((cot) => {
+    // Ordenar explícitamente por order antes de mapear
+    const quotesOrdenadas = promise.quotes.slice().sort((a: any, b: any) => (a.order ?? 0) - (b.order ?? 0));
+
+    // Tipo para cotizacion_item basado en la query
+    type CotizacionItem = {
+      id: string;
+      item_id: string | null;
+      name_snapshot: string | null;
+      description_snapshot: string | null;
+      category_name_snapshot: string | null;
+      seccion_name_snapshot: string | null;
+      name: string | null;
+      description: string | null;
+      category_name: string | null;
+      seccion_name: string | null;
+      unit_price: number;
+      quantity: number;
+      subtotal: number;
+      status: string;
+      order: number;
+    };
+
+    const mappedCotizaciones: PublicCotizacion[] = (quotesOrdenadas as any[]).map((cot: any) => {
       const cotizacionMedia: Array<{ id: string; file_url: string; file_type: 'IMAGE' | 'VIDEO'; thumbnail_url?: string | null }> = [];
 
       // Agregar multimedia de todos los items
-      cot.cotizacion_items.forEach((item) => {
+      (cot.cotizacion_items as CotizacionItem[]).forEach((item: CotizacionItem) => {
         if (item.item_id) {
           const itemMedia = itemsMediaMap.get(item.item_id);
           if (itemMedia) {
@@ -804,11 +846,11 @@ export async function getPublicPromiseData(
       });
 
       // Filtrar items con item_id válido
-      const itemsFiltrados = cot.cotizacion_items.filter(item => item.item_id !== null);
+      const itemsFiltrados = (cot.cotizacion_items as CotizacionItem[]).filter((item: CotizacionItem) => item.item_id !== null);
 
       // Usar función centralizada para construir estructura jerárquica
       const estructura = construirEstructuraJerarquicaCotizacion(
-        itemsFiltrados.map(item => ({
+        itemsFiltrados.map((item: CotizacionItem) => ({
           item_id: item.item_id!,
           quantity: item.quantity,
           unit_price: item.unit_price,
@@ -857,6 +899,8 @@ export async function getPublicPromiseData(
         })),
       }));
 
+      const condicionesComerciales = (cot as any)['condiciones_comerciales'];
+
       return {
         id: cot.id,
         name: cot.name,
@@ -864,11 +908,12 @@ export async function getPublicPromiseData(
         price: cot.price,
         discount: cot.discount,
         status: cot.status,
+        order: cot.order ?? 0,
         servicios: servicios,
-        condiciones_comerciales: cot.condiciones_comerciales
+        condiciones_comerciales: condicionesComerciales
           ? {
             metodo_pago: cot.condiciones_comerciales_metodo_pago?.[0]?.metodos_pago?.payment_method_name || null,
-            condiciones: cot.condiciones_comerciales.description || null,
+            condiciones: condicionesComerciales.description || null,
           }
           : null,
         paquete_origen: cot.paquete
@@ -1070,6 +1115,27 @@ export async function getPublicPromiseData(
       });
     }
 
+    // Crear objeto share_settings con tipo explícito usando valores directamente
+    const shareSettingsObj: {
+      show_packages: boolean;
+      show_categories_subtotals: boolean;
+      show_items_prices: boolean;
+      min_days_to_hire: number;
+      show_standard_conditions: boolean;
+      show_offer_conditions: boolean;
+      portafolios: boolean;
+      auto_generate_contract: boolean;
+    } = {
+      show_packages: promise.share_show_packages ?? studio.promise_share_default_show_packages,
+      show_categories_subtotals: promise.share_show_categories_subtotals ?? studio.promise_share_default_show_categories_subtotals,
+      show_items_prices: promise.share_show_items_prices ?? studio.promise_share_default_show_items_prices,
+      min_days_to_hire: promise.share_min_days_to_hire ?? studio.promise_share_default_min_days_to_hire,
+      show_standard_conditions: promise.share_show_standard_conditions ?? studio.promise_share_default_show_standard_conditions,
+      show_offer_conditions: promise.share_show_offer_conditions ?? studio.promise_share_default_show_offer_conditions,
+      portafolios: studio.promise_share_default_portafolios,
+      auto_generate_contract: promise.share_auto_generate_contract ?? studio.promise_share_default_auto_generate_contract,
+    };
+
     return {
       success: true,
       data: {
@@ -1106,16 +1172,7 @@ export async function getPublicPromiseData(
         paquetes: mappedPaquetes,
         condiciones_comerciales: condicionesFiltradas.length > 0 ? condicionesFiltradas : undefined,
         terminos_condiciones: terminosResult.success && terminosResult.data ? terminosResult.data : undefined,
-        share_settings: {
-          show_packages: shareSettings.show_packages,
-          show_categories_subtotals: shareSettings.show_categories_subtotals,
-          show_items_prices: shareSettings.show_items_prices,
-          min_days_to_hire: shareSettings.min_days_to_hire,
-          show_standard_conditions: shareSettings.show_standard_conditions,
-          show_offer_conditions: shareSettings.show_offer_conditions,
-          portafolios: shareSettings.portafolios,
-          auto_generate_contract: shareSettings.auto_generate_contract,
-        },
+        share_settings: shareSettingsObj,
         portafolios: portafolios.length > 0 ? portafolios : undefined,
       },
     };

@@ -71,11 +71,12 @@ export default function CatalogoPage() {
                         <div className="flex items-center gap-3">
                             <ZenButton
                                 variant="outline"
+                                size="sm"
                                 onClick={() => setIsUtilidadModalOpen(true)}
-                                className="flex items-center gap-2"
+                                className="gap-1.5 px-2.5 py-1.5 h-7 text-xs border-l-2 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-300"
                             >
-                                <Percent className="h-4 w-4" />
-                                Margen de utilidad
+                                <Percent className="h-3.5 w-3.5 text-emerald-400/90" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
+                                <span>Margen de utilidad</span>
                             </ZenButton>
                         </div>
                     </div>

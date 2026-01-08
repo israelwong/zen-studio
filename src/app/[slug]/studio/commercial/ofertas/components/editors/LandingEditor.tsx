@@ -159,7 +159,7 @@ export function LandingEditor({ studioSlug, offerSlug, offerId, onSave, onCancel
         };
         break;
       case "separator":
-        config = { style: "space", height: 24 };
+        config = { style: "space", height: 8 };
         break;
       case "media-gallery":
         config = {

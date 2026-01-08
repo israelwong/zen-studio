@@ -462,7 +462,7 @@ export function ContentBlocksEditor({
         } else if (component.type === 'separator') {
             config = {
                 style: 'space',
-                height: 24
+                height: 8
             };
         }
 
@@ -947,9 +947,7 @@ export function ContentBlocksEditor({
                         {activeBlock ? (
                             <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 opacity-90">
                                 <div className="text-sm text-zinc-300">
-                                    {activeBlock.type === 'image' ? 'Imagen' :
-                                        activeBlock.type === 'gallery' ? 'Galería' :
-                                            activeBlock.type === 'video' ? 'Video' : 'Texto'}
+                                    {getComponentDisplayName(activeBlock)}
                                 </div>
                             </div>
                         ) : null}
@@ -1315,7 +1313,7 @@ function SortableBlock({
                                     config: {
                                         ...block.config,
                                         style: sepStyle,
-                                        height: sepStyle === 'space' ? 24 : 0.5
+                                        height: sepStyle === 'space' ? 8 : 0.5
                                     }
                                 })}
                                 className={`px-2 py-1 text-xs rounded transition-colors ${style === sepStyle

@@ -243,12 +243,19 @@ export function PromisesKanban({
     }
   };
 
-  // Ordenar promesas: por fecha de evento (defined_date) o fecha de actualización
+  // Ordenar promesas: por fecha de interés (interested_dates) de la más próxima a la más lejana
   const sortedPromises = useMemo(() => {
     return [...filteredPromises].sort((a, b) => {
-      // Prioridad 1: Fecha definida del evento
-      const dateA = a.defined_date ? new Date(a.defined_date).getTime() : 0;
-      const dateB = b.defined_date ? new Date(b.defined_date).getTime() : 0;
+      // Prioridad 1: Fecha de interés (interested_dates)
+      const getInterestDate = (promise: PromiseWithContact): number => {
+        if (promise.interested_dates && promise.interested_dates.length > 0) {
+          return new Date(promise.interested_dates[0]).getTime();
+        }
+        return 0;
+      };
+
+      const dateA = getInterestDate(a);
+      const dateB = getInterestDate(b);
 
       if (dateA !== 0 && dateB !== 0) {
         return dateA - dateB; // Más cercana primero
@@ -256,7 +263,17 @@ export function PromisesKanban({
       if (dateA !== 0) return -1; // A tiene fecha, B no
       if (dateB !== 0) return 1; // B tiene fecha, A no
 
-      // Prioridad 2: Fecha de actualización (más reciente primero)
+      // Prioridad 2: Fecha definida del evento (defined_date)
+      const definedDateA = a.defined_date ? new Date(a.defined_date).getTime() : 0;
+      const definedDateB = b.defined_date ? new Date(b.defined_date).getTime() : 0;
+
+      if (definedDateA !== 0 && definedDateB !== 0) {
+        return definedDateA - definedDateB; // Más cercana primero
+      }
+      if (definedDateA !== 0) return -1;
+      if (definedDateB !== 0) return 1;
+
+      // Prioridad 3: Fecha de actualización (más reciente primero)
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
   }, [filteredPromises]);

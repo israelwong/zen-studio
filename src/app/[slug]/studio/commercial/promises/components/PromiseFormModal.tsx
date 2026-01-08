@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ZenInput, ZenButton, ZenCard, ZenCardContent, ZenConfirmModal } from '@/components/ui/zen';
-import { Calendar } from '@/components/ui/calendar';
+import { ZenInput, ZenButton, ZenCard, ZenCardContent, ZenConfirmModal, ZenCalendar } from '@/components/ui/zen';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { toast } from 'sonner';
 import { formatDate } from '@/lib/actions/utils/formatting';
@@ -75,11 +74,20 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
   const [showContactSuggestions, setShowContactSuggestions] = useState(false);
   const [filteredContactSuggestions, setFilteredContactSuggestions] = useState<Array<{ id: string; name: string; phone: string; email: string | null }>>([]);
   const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; email: string | null }>>([]);
-  const [selectedDates, setSelectedDates] = useState<Date[]>(
-    initialData?.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
+  // Estado para fecha única (modo actual)
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    initialData?.interested_dates && initialData.interested_dates.length > 0
+      ? new Date(initialData.interested_dates[0])
+      : undefined
   );
+  
+  // Lógica de rango comentada por si se necesita en el futuro
+  // const [selectedDates, setSelectedDates] = useState<Date[]>(
+  //   initialData?.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
+  // );
+  
   const [month, setMonth] = useState<Date | undefined>(
-    selectedDates.length > 0 ? selectedDates[0] : undefined
+    selectedDate || undefined
   );
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [referrerInputValue, setReferrerInputValue] = useState(
@@ -189,14 +197,21 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
         referrer_name: initialData.referrer_name,
       });
       setNameInput(initialData.name || '');
-      setSelectedDates(
-        initialData.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
+      // Actualizar fecha única
+      setSelectedDate(
+        initialData.interested_dates && initialData.interested_dates.length > 0
+          ? new Date(initialData.interested_dates[0])
+          : undefined
       );
       setMonth(
         initialData.interested_dates && initialData.interested_dates.length > 0
           ? new Date(initialData.interested_dates[0])
           : undefined
       );
+      // Lógica de rango comentada por si se necesita en el futuro
+      // setSelectedDates(
+      //   initialData.interested_dates ? initialData.interested_dates.map(d => new Date(d)) : []
+      // );
       // Si hay referrer_name, inicializar el input
       if (initialData.referrer_name) {
         setReferrerInputValue(initialData.referrer_name);
@@ -459,34 +474,49 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
       hasChanges = true;
     }
 
-    // Comparar fechas de interés
+    // Comparar fecha de interés (modo fecha única)
     if (!hasChanges) {
-      const currentDates = selectedDates.map(d => {
-        const date = new Date(d);
-        date.setHours(0, 0, 0, 0);
-        return date.toISOString().split('T')[0];
-      }).sort();
+      const currentDateStr = selectedDate
+        ? new Date(selectedDate).toISOString().split('T')[0]
+        : null;
+      const initialDateStr =
+        initialData?.interested_dates && initialData.interested_dates.length > 0
+          ? new Date(initialData.interested_dates[0]).toISOString().split('T')[0]
+          : null;
 
-      const initialDates = (initialData?.interested_dates || []).map(d => {
-        const date = new Date(d);
-        date.setHours(0, 0, 0, 0);
-        return date.toISOString().split('T')[0];
-      }).sort();
-
-      if (currentDates.length !== initialDates.length) {
+      if (currentDateStr !== initialDateStr) {
         hasChanges = true;
-      } else {
-        for (let i = 0; i < currentDates.length; i++) {
-          if (currentDates[i] !== initialDates[i]) {
-            hasChanges = true;
-            break;
-          }
-        }
       }
     }
+    
+    // Lógica de rango comentada por si se necesita en el futuro
+    // if (!hasChanges) {
+    //   const currentDates = selectedDates.map(d => {
+    //     const date = new Date(d);
+    //     date.setHours(0, 0, 0, 0);
+    //     return date.toISOString().split('T')[0];
+    //   }).sort();
+    //
+    //   const initialDates = (initialData?.interested_dates || []).map(d => {
+    //     const date = new Date(d);
+    //     date.setHours(0, 0, 0, 0);
+    //     return date.toISOString().split('T')[0];
+    //   }).sort();
+    //
+    //   if (currentDates.length !== initialDates.length) {
+    //     hasChanges = true;
+    //   } else {
+    //     for (let i = 0; i < currentDates.length; i++) {
+    //       if (currentDates[i] !== initialDates[i]) {
+    //         hasChanges = true;
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
 
     setIsFormDirty(hasChanges);
-  }, [formData, selectedDates, initialData]);
+  }, [formData, selectedDate, initialData]);
 
   // Interceptar beforeunload del navegador
   useEffect(() => {
@@ -549,16 +579,14 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
     } : null,
   }), [loading, isEditMode, handleNavigation, handleSubmit, router, isSaved, currentContactId, formData.name, formData.phone, formData.email, promiseId, studioSlug]);
 
+  // Sincronizar fecha única con formData
   useEffect(() => {
-    if (selectedDates.length > 0) {
-      const dateStrings = selectedDates.map((d) => {
-        const date = new Date(d);
-        date.setHours(0, 0, 0, 0);
-        return date.toISOString();
-      });
+    if (selectedDate) {
+      const date = new Date(selectedDate);
+      date.setHours(0, 0, 0, 0);
       setFormData((prev) => ({
         ...prev,
-        interested_dates: dateStrings,
+        interested_dates: [date.toISOString()],
       }));
     } else {
       setFormData((prev) => ({
@@ -566,21 +594,54 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
         interested_dates: undefined,
       }));
     }
-  }, [selectedDates]);
+  }, [selectedDate]);
+  
+  // Lógica de rango comentada por si se necesita en el futuro
+  // useEffect(() => {
+  //   if (selectedDates.length > 0) {
+  //     const dateStrings = selectedDates.map((d) => {
+  //       const date = new Date(d);
+  //       date.setHours(0, 0, 0, 0);
+  //       return date.toISOString();
+  //     });
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       interested_dates: dateStrings,
+  //     }));
+  //   } else {
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       interested_dates: undefined,
+  //     }));
+  //   }
+  // }, [selectedDates]);
 
   useEffect(() => {
-    if (selectedDates.length > 0 && !month) {
-      setMonth(selectedDates[0]);
+    if (selectedDate && !month) {
+      setMonth(selectedDate);
     }
-  }, [selectedDates, month]);
+  }, [selectedDate, month]);
+  
+  // Lógica de rango comentada por si se necesita en el futuro
+  // useEffect(() => {
+  //   if (selectedDates.length > 0 && !month) {
+  //     setMonth(selectedDates[0]);
+  //   }
+  // }, [selectedDates, month]);
 
   const formatDatesDisplay = () => {
-    if (selectedDates.length === 0) return 'Seleccionar fechas';
-    if (selectedDates.length === 1) {
-      return formatDate(selectedDates[0]);
-    }
-    return `${selectedDates.length} fechas seleccionadas`;
+    if (!selectedDate) return 'Seleccionar fecha';
+    return formatDate(selectedDate);
   };
+  
+  // Lógica de rango comentada por si se necesita en el futuro
+  // const formatDatesDisplay = () => {
+  //   if (selectedDates.length === 0) return 'Seleccionar fechas';
+  //   if (selectedDates.length === 1) {
+  //     return formatDate(selectedDates[0]);
+  //   }
+  //   return `${selectedDates.length} fechas seleccionadas`;
+  // };
 
   // Mostrar skeleton completo solo si no hay initialData (nueva promesa)
   // Si hay initialData, mostramos el formulario pero con skeletons en los selects
@@ -901,9 +962,72 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
                 {/* Fecha de Interés */}
                 <div>
                   <label className="text-sm font-medium text-zinc-300 block mb-2">
-                    Fecha(s) de Interés
+                    Fecha de Interés
                   </label>
                   <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-300 hover:border-zinc-600 transition-colors"
+                      >
+                        <span className={!selectedDate ? 'text-zinc-500' : ''}>
+                          {formatDatesDisplay()}
+                        </span>
+                        <CalendarIcon className="h-4 w-4 text-zinc-400" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-zinc-900 border-zinc-700" align="start">
+                      <ZenCalendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date: Date | undefined) => {
+                          // Asegurar que solo se seleccione una fecha
+                          if (date) {
+                            // Normalizar la fecha (sin horas)
+                            const normalizedDate = new Date(date);
+                            normalizedDate.setHours(0, 0, 0, 0);
+                            
+                            setSelectedDate(normalizedDate);
+                            setMonth(normalizedDate);
+                            
+                            // Cerrar popover inmediatamente después de seleccionar
+                            setCalendarOpen(false);
+                          } else {
+                            setSelectedDate(undefined);
+                            setMonth(undefined);
+                          }
+                        }}
+                        month={month}
+                        onMonthChange={setMonth}
+                        numberOfMonths={1}
+                        locale={es}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {selectedDate && (
+                    <div className="mt-3 p-3 bg-emerald-950/20 border border-emerald-800/30 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-zinc-300">
+                          Fecha seleccionada
+                        </span>
+                        <ZenButton
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          onClick={() => {
+                            setSelectedDate(undefined);
+                            setMonth(undefined);
+                          }}
+                        >
+                          Limpiar
+                        </ZenButton>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Lógica de rango comentada por si se necesita en el futuro */}
+                  {/* <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
@@ -970,7 +1094,7 @@ export const PromiseFormModal = forwardRef<PromiseFormRef, PromiseFormProps>(({
                         ))}
                       </div>
                     </div>
-                  )}
+                  )} */}
                 </div>
               </ZenCardContent>
             </ZenCard>
