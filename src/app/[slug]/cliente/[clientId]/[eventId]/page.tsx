@@ -18,7 +18,7 @@ import type { DashboardInfo } from '@/lib/actions/cliente/dashboard.actions';
 
 export default function EventoResumenPage() {
   const { evento, studioInfo } = useEvento();
-  usePageTitle({ sectionName: '', studioName: studioInfo?.studio_name });
+  usePageTitle(studioInfo?.studio_name || 'Resumen del evento');
   const { toasts, removeToast } = useToast();
   const params = useParams();
   const slug = params.slug as string;
@@ -120,11 +120,7 @@ export default function EventoResumenPage() {
 
       {/* Información del Evento */}
       <div className="mb-6">
-        <InformacionEventoCard
-          slug={slug}
-          clientId={clientId}
-          eventId={eventId}
-        />
+        <InformacionEventoCard />
       </div>
 
       {/* Flujo de Contrato - Mostrar según estado de cotización */}
@@ -152,22 +148,22 @@ export default function EventoResumenPage() {
           )}
 
           {/* Ver/Firmar contrato (si contract_generated o contract_signed) */}
-          {(dashboardInfo.cotizacion.status === 'contract_generated' || 
-            dashboardInfo.cotizacion.status === 'contract_signed') && 
-            dashboardInfo.contract && (
-            <div className="mb-6">
-              <ClientContractViewCard
-                studioSlug={slug}
-                contactId={clientId}
-                contract={dashboardInfo.contract}
-                cotizacionStatus={dashboardInfo.cotizacion.status}
-                onSuccess={() => {
-                  // Recargar dashboard
-                  window.location.reload();
-                }}
-              />
-            </div>
-          )}
+          {(dashboardInfo.cotizacion.status === 'contract_generated' ||
+            dashboardInfo.cotizacion.status === 'contract_signed') &&
+            dashboardInfo.contract && dashboardInfo.contract.content && (
+              <div className="mb-6">
+                <ClientContractViewCard
+                  studioSlug={slug}
+                  contactId={clientId}
+                  contract={dashboardInfo.contract}
+                  cotizacionStatus={dashboardInfo.cotizacion.status}
+                  onSuccess={() => {
+                    // Recargar dashboard
+                    window.location.reload();
+                  }}
+                />
+              </div>
+            )}
         </>
       )}
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { FileText, Receipt, Mail, X, LayoutDashboard, ArrowLeft, Image, Video, Download, Gift, Package } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ import {
   useZenSidebar,
 } from '@/components/ui/zen';
 import { ZenButton } from '@/components/ui/zen';
+import { obtenerDashboardInfo } from '@/lib/actions/cliente/dashboard.actions';
 
 interface EventoSidebarProps {
   slug: string;
@@ -24,6 +25,22 @@ export function EventoSidebar({ slug, clientId, eventId, eventoName }: EventoSid
   const router = useRouter();
   const pathname = usePathname();
   const { isOpen, toggleSidebar, isMobile } = useZenSidebar();
+  const [hasContract, setHasContract] = useState(false);
+
+  useEffect(() => {
+    const checkContract = async () => {
+      try {
+        const result = await obtenerDashboardInfo(eventId, clientId, slug);
+        if (result.success && result.data?.contract?.content) {
+          setHasContract(true);
+        }
+      } catch (error) {
+        console.error('[EventoSidebar] Error verificando contrato:', error);
+      }
+    };
+
+    checkContract();
+  }, [eventId, clientId, slug]);
 
   const isActive = (path: string) => {
     return pathname === path;
@@ -37,7 +54,6 @@ export function EventoSidebar({ slug, clientId, eventId, eventoName }: EventoSid
     }
   };
 
-
   const menuItems = [
     {
       id: 'evento',
@@ -47,7 +63,7 @@ export function EventoSidebar({ slug, clientId, eventId, eventoName }: EventoSid
     },
     {
       id: 'cotizaciones',
-      name: 'Mis Cotizaciones',
+      name: 'Mi Cotización',
       href: `/${slug}/cliente/${clientId}/${eventId}/cotizaciones`,
       icon: FileText,
     },
@@ -63,12 +79,12 @@ export function EventoSidebar({ slug, clientId, eventId, eventoName }: EventoSid
       href: `/${slug}/cliente/${clientId}/${eventId}/entrega-digital`,
       icon: Package,
     },
-    {
+    ...(hasContract ? [{
       id: 'contrato',
       name: 'Contrato',
       href: `/${slug}/cliente/${clientId}/${eventId}/contrato`,
-      icon: Package,
-    },
+      icon: FileText,
+    }] : []),
     // {
     //   id: 'invitacion',
     //   name: 'Invitación Digital',
