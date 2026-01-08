@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { PerfilSchema } from '@/lib/actions/schemas/perfil-schemas';
 import { PerfilData } from '@/app/[slug]/studio/config/account/perfil/types';
+import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@/lib/supabase/admin';
 
 interface ActionResult<T = unknown> {
     success: boolean;
@@ -116,6 +118,70 @@ export async function actualizarPerfil(
                     error: 'Ya existe un perfil con este correo electrónico'
                 };
             }
+
+            // Verificar que el email no esté en uso en Supabase Auth
+            const supabaseAdmin = createAdminClient();
+            const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+            const emailEnAuth = authUsers?.users.find(u => u.email === validatedData.email);
+            
+            if (emailEnAuth) {
+                return {
+                    success: false,
+                    error: 'Este correo electrónico ya está registrado en otra cuenta'
+                };
+            }
+
+            // Actualizar correo en Supabase Auth
+            const supabase = await createClient();
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+            if (userError || !user) {
+                return {
+                    success: false,
+                    error: 'Usuario no autenticado'
+                };
+            }
+
+            // Actualizar correo usando admin client para evitar confirmación por email
+            const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
+                user.id,
+                { email: validatedData.email, email_confirm: true }
+            );
+
+            if (updateAuthError) {
+                console.error('Error al actualizar correo en Supabase Auth:', updateAuthError);
+                return {
+                    success: false,
+                    error: 'Error al actualizar el correo de autenticación'
+                };
+            }
+
+            // Actualizar también en users y studio_user_profiles para mantener consistencia
+            await prisma.$transaction(async (tx) => {
+                // Actualizar users si existe
+                const dbUser = await tx.users.findUnique({
+                    where: { supabase_id: user.id }
+                });
+
+                if (dbUser) {
+                    await tx.users.update({
+                        where: { supabase_id: user.id },
+                        data: { email: validatedData.email }
+                    });
+                }
+
+                // Actualizar studio_user_profiles si existe
+                const studioProfile = await tx.studio_user_profiles.findUnique({
+                    where: { supabase_id: user.id }
+                });
+
+                if (studioProfile) {
+                    await tx.studio_user_profiles.update({
+                        where: { supabase_id: user.id },
+                        data: { email: validatedData.email }
+                    });
+                }
+            });
         }
 
         // Actualizar el lead
