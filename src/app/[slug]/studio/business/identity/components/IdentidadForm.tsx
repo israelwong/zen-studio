@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
+import React, { useState, useCallback } from 'react';
+import { ZenButton, ZenInput, ZenTextarea, ZenBadge } from '@/components/ui/zen';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
 import { Save, Check, Plus, X } from 'lucide-react';
 import { IdentidadData } from '../types';
@@ -17,6 +17,7 @@ interface IdentidadFormProps {
     onLogoLocalUpdate: (url: string | null) => void;
     studioSlug: string;
     loading?: boolean;
+    onDataChange?: () => Promise<void>;
 }
 
 export function IdentidadForm({
@@ -25,31 +26,59 @@ export function IdentidadForm({
     onLogoUpdate,
     onLogoLocalUpdate,
     studioSlug,
-    loading = false
+    loading = false,
+    onDataChange
 }: IdentidadFormProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const [showPalabrasModal, setShowPalabrasModal] = useState(false);
-    const [nuevaPalabra, setNuevaPalabra] = useState('');
+    const [tagInput, setTagInput] = useState('');
     const { triggerRefresh } = useLogoRefresh();
 
     const handleInputChange = (field: keyof IdentidadData, value: string) => {
         onLocalUpdate({ [field]: value });
     };
 
-    const handleAddPalabra = () => {
-        if (nuevaPalabra.trim() && !data.palabras_clave?.includes(nuevaPalabra.trim())) {
-            const nuevasPalabras = [...(data.palabras_clave || []), nuevaPalabra.trim()];
-            onLocalUpdate({ palabras_clave: nuevasPalabras });
-            setNuevaPalabra('');
-            setShowPalabrasModal(false);
-        }
-    };
+    // Manejar agregar tag (igual que PostEditorSheet)
+    const handleAddTag = useCallback((tag?: string) => {
+        const tagToAdd = tag || tagInput.trim();
+        if (!tagToAdd) return;
 
-    const handleRemovePalabra = (palabra: string) => {
-        const nuevasPalabras = data.palabras_clave?.filter(p => p !== palabra) || [];
+        // Procesar múltiples tags separados por coma o punto
+        const tagsToProcess = tagToAdd
+            .split(/[,.]/)
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
+
+        if (tagsToProcess.length === 0) return;
+
+        const newTags: string[] = [];
+        const duplicateTags: string[] = [];
+
+        tagsToProcess.forEach(tag => {
+            const normalizedTag = tag.toLowerCase();
+            if (!data.palabras_clave?.some(t => t.toLowerCase() === normalizedTag)) {
+                newTags.push(tag);
+            } else {
+                duplicateTags.push(tag);
+            }
+        });
+
+        if (newTags.length > 0) {
+            onLocalUpdate({ palabras_clave: [...(data.palabras_clave || []), ...newTags] });
+        }
+
+        if (duplicateTags.length > 0) {
+            toast.error(`${duplicateTags.length} palabra(s) clave ya existe(n)`);
+        }
+
+        setTagInput("");
+    }, [tagInput, data.palabras_clave, onLocalUpdate]);
+
+    // Manejar eliminar tag
+    const handleRemoveTag = useCallback((index: number) => {
+        const nuevasPalabras = data.palabras_clave?.filter((_, i) => i !== index) || [];
         onLocalUpdate({ palabras_clave: nuevasPalabras });
-    };
+    }, [data.palabras_clave, onLocalUpdate]);
 
     const handleSave = async () => {
         if (isSaving) return;
@@ -114,6 +143,7 @@ export function IdentidadForm({
                                         presentacion: data.presentacion || undefined
                                     };
                                     await actualizarIdentidadCompleta(studioSlug, identidadData);
+                                    await onDataChange?.();
                                 } catch (error) {
                                     console.error('Error saving identidad after logo update:', error);
                                 }
@@ -158,8 +188,8 @@ export function IdentidadForm({
                         hint="Este nombre aparecerá en tu perfil público"
                     />
 
-                    {/* Slogan - textarea compacto */}
-                    <ZenTextarea
+                    {/* Slogan - input de una línea */}
+                    <ZenInput
                         label="Slogan"
                         value={data.slogan || ''}
                         onChange={(e) => handleInputChange('slogan', e.target.value)}
@@ -167,7 +197,6 @@ export function IdentidadForm({
                         disabled={loading}
                         maxLength={100}
                         hint="Frase corta que describe tu estudio (máximo 100 caracteres)"
-                        rows={2}
                     />
 
                     {/* Presentación del Estudio */}
@@ -186,81 +215,97 @@ export function IdentidadForm({
             {/* Ficha: Palabras Clave */}
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
-                    <div className="flex items-center justify-between">
+                    <div>
                         <ZenCardTitle>Palabras Clave SEO</ZenCardTitle>
-                        <ZenButton
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setShowPalabrasModal(true)}
-                            disabled={loading}
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Agregar
-                        </ZenButton>
+                        <p className="text-xs text-zinc-400 mt-1">
+                            Agrega palabras clave relevantes para mejorar la visibilidad en búsquedas
+                        </p>
                     </div>
                 </ZenCardHeader>
-                <ZenCardContent className="p-8">
-                    <div className="max-w-2xl mx-auto">
-                        {/* Lista de palabras clave */}
+                <ZenCardContent className="p-6">
+                    <div className="max-w-2xl mx-auto space-y-4">
+                        {/* Input para agregar tags */}
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-300 mb-2">
+                                Agregar palabras clave
+                            </label>
+                            <div className="flex items-end gap-2">
+                                <div className="flex-1">
+                                    <ZenInput
+                                        value={tagInput}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            const lastChar = value[value.length - 1];
+
+                                            // Si el último carácter es coma o punto, agregar el tag antes del separador
+                                            if (lastChar === ',' || lastChar === '.') {
+                                                const tagBeforeSeparator = value.slice(0, -1).trim();
+                                                if (tagBeforeSeparator) {
+                                                    handleAddTag(tagBeforeSeparator);
+                                                } else {
+                                                    setTagInput("");
+                                                }
+                                            } else {
+                                                setTagInput(value);
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAddTag();
+                                            }
+                                        }}
+                                        placeholder="Escribe y presiona Enter, coma o punto"
+                                        label=""
+                                        disabled={loading}
+                                    />
+                                </div>
+                                <ZenButton
+                                    type="button"
+                                    onClick={() => handleAddTag()}
+                                    variant="outline"
+                                    size="md"
+                                    className="h-10 px-3 shrink-0"
+                                    disabled={loading}
+                                >
+                                    <Plus className="h-4 w-4" />
+                                </ZenButton>
+                            </div>
+                        </div>
+
+                        {/* Tags list */}
                         {data.palabras_clave && data.palabras_clave.length > 0 ? (
-                            <div className="flex flex-wrap gap-2.5">
-                                {data.palabras_clave.map((palabra, index) => (
-                                    <div key={index} className="inline-flex items-center gap-2 bg-zinc-800/50 border border-zinc-700/50 text-zinc-300 px-3 py-1.5 rounded-lg text-sm">
-                                        <span>{palabra}</span>
+                            <div className="flex flex-wrap gap-2">
+                                {data.palabras_clave.map((tag, index) => (
+                                    <ZenBadge
+                                        key={index}
+                                        variant="secondary"
+                                        className="flex items-center gap-1.5 pr-1"
+                                    >
+                                        <span>{tag}</span>
                                         <button
-                                            onClick={() => handleRemovePalabra(palabra)}
-                                            className="text-zinc-400 hover:text-red-400 transition-colors"
-                                            disabled={loading}
                                             type="button"
+                                            onClick={() => handleRemoveTag(index)}
+                                            className="hover:bg-zinc-700 rounded-full p-0.5 transition-colors"
+                                            disabled={loading}
+                                            aria-label={`Eliminar ${tag}`}
                                         >
-                                            <X className="h-3.5 w-3.5" />
+                                            <X className="h-3 w-3" />
                                         </button>
-                                    </div>
+                                    </ZenBadge>
                                 ))}
                             </div>
                         ) : (
-                            <p className="text-sm text-zinc-500">
-                                No hay palabras clave agregadas. Agrega palabras clave para mejorar el SEO.
-                            </p>
+                            <div className="text-center py-8 border border-dashed border-zinc-700/50 rounded-lg bg-zinc-800/20">
+                                <p className="text-sm text-zinc-400 mb-2">
+                                    No hay palabras clave agregadas
+                                </p>
+                                <p className="text-xs text-zinc-500">
+                                    Escribe palabras clave y presiona Enter o usa coma/punto para separar múltiples
+                                </p>
+                            </div>
                         )}
                     </div>
-
-                    {/* Modal para agregar palabra */}
-                    {showPalabrasModal && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                            <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-md mx-4">
-                                <h3 className="text-lg font-semibold text-white mb-4">
-                                    Agregar Palabra Clave
-                                </h3>
-                                <ZenInput
-                                    label="Palabra Clave"
-                                    value={nuevaPalabra}
-                                    onChange={(e) => setNuevaPalabra(e.target.value)}
-                                    placeholder="Ej: fotografía, eventos, retratos"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleAddPalabra()}
-                                />
-                                <div className="flex gap-3 mt-6">
-                                    <ZenButton
-                                        onClick={handleAddPalabra}
-                                        disabled={!nuevaPalabra.trim()}
-                                        size="sm"
-                                    >
-                                        Agregar
-                                    </ZenButton>
-                                    <ZenButton
-                                        variant="outline"
-                                        onClick={() => {
-                                            setShowPalabrasModal(false);
-                                            setNuevaPalabra('');
-                                        }}
-                                        size="sm"
-                                    >
-                                        Cancelar
-                                    </ZenButton>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </ZenCardContent>
             </ZenCard>
 

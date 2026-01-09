@@ -24,6 +24,7 @@ import {
     PanelLeftClose,
     PanelLeftOpen,
     Search,
+    Globe,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -116,6 +117,7 @@ export function StudioSidebar({ className, studioSlug, onCommandOpen }: StudioSi
             title: 'Configuración',
             icon: Settings,
             items: [
+                { id: 'perfil-negocio', name: 'Perfil de Negocio', href: `/config/perfil-negocio`, icon: Globe },
                 { id: 'contracts', name: 'Contratos', href: `/config/contratos`, icon: FileText },
                 { id: 'subscriptions', name: 'Suscripción', href: `/config/account/suscripcion`, icon: CreditCard },
                 { id: 'integraciones', name: 'Integraciones', href: `/config/integraciones`, icon: Plug },

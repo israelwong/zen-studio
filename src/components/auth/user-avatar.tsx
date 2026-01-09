@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { LogOut, CreditCard, UserCircle, Shield, Globe, Plus, FolderOpen } from "lucide-react";
+import { LogOut, CreditCard, UserCircle, Shield, Globe, Plus, FolderOpen, Settings } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { logout } from "@/lib/actions/auth/logout.action";
@@ -178,11 +178,11 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
 
                 <ZenDropdownMenuSeparator />
 
-                {/* Perfil Público */}
+                {/* Perfil de Negocio */}
                 {studioSlug && (
                     <>
                         <div className="px-2 py-1.5">
-                            <div className="text-xs font-medium text-zinc-400">Perfil público</div>
+                            <div className="text-xs font-medium text-zinc-400">Perfil de negocio</div>
                         </div>
                         <ZenDropdownMenuItem className="cursor-pointer" asChild>
                             <Link href={menuRoutes.verPerfilPublico} target="_blank" rel="noopener noreferrer">
@@ -190,6 +190,22 @@ export function UserAvatar({ className, studioSlug }: UserAvatarProps) {
                                 <span>Visitar perfil</span>
                             </Link>
                         </ZenDropdownMenuItem>
+                        <ZenDropdownMenuItem className="cursor-pointer" asChild>
+                            <Link href={`/${studioSlug}/studio/config/perfil-negocio`}>
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Editar perfil</span>
+                            </Link>
+                        </ZenDropdownMenuItem>
+                        <ZenDropdownMenuSeparator />
+                    </>
+                )}
+
+                {/* Contenido */}
+                {studioSlug && (
+                    <>
+                        <div className="px-2 py-1.5">
+                            <div className="text-xs font-medium text-zinc-400">Contenido</div>
+                        </div>
                         <ZenDropdownMenuItem className="cursor-pointer" asChild>
                             <Link href={`/${studioSlug}?createPost=true`} target="_blank" rel="noopener noreferrer">
                                 <Plus className="mr-2 h-4 w-4" />

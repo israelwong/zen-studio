@@ -68,6 +68,7 @@ export function MobilePreviewContainer({
                             data={data}
                             loading={loading}
                             studioSlug={studioSlug}
+                            previewMode={true}
                         />
                     </div>
                 )}
@@ -91,7 +92,8 @@ export function MobilePreviewContainer({
                         scrollbarColor: '#71717a transparent'
                     }}
                 >
-                    <div className="p-5">
+                    {/* Sin padding para variant='info' (ContactSection maneja su propio padding) */}
+                    <div className={contentVariant === 'info' ? '' : 'p-5'}>
                         {showContent && !children && contentVariant === 'faq' ? (
                             <FaqSection
                                 data={data}
@@ -112,7 +114,7 @@ export function MobilePreviewContainer({
 
                         {/* FAQ Section - Persistente antes del footer (solo si no está en el contenido principal) */}
                         {contentVariant !== 'faq' && data?.faq && Array.isArray(data.faq) && data.faq.length > 0 ? (
-                            <div className="mt-6">
+                            <div className={contentVariant === 'info' ? 'px-6 mt-6' : 'mt-6'}>
                                 <FaqSection
                                     data={data}
                                     loading={loading}
@@ -125,7 +127,7 @@ export function MobilePreviewContainer({
 
                         {/* Footer dentro del contenido */}
                         {showFooter && (
-                            <div className="mt-4">
+                            <div className={contentVariant === 'info' ? 'px-6 mt-4' : 'mt-4'}>
                                 <PublicPageFooter />
                             </div>
                         )}

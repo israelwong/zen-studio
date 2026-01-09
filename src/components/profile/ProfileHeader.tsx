@@ -24,6 +24,7 @@ interface ProfileHeaderProps {
     onCreateOffer?: () => void; // Callback para crear oferta
     isEditMode?: boolean; // Habilita botones de edición inline
     showBackButton?: boolean; // Muestra botón de regresar
+    previewMode?: boolean; // Modo preview: oculta acciones de usuario autenticado
 }
 
 /**
@@ -59,9 +60,11 @@ function getStudioInitials(studioName?: string): string {
  * - Builder preview (header sticky)
  * - Perfil público (header completo)
  */
-export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost, onCreateOffer, isEditMode = false, showBackButton = false }: ProfileHeaderProps) {
+export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost, onCreateOffer, isEditMode = false, showBackButton = false, previewMode = false }: ProfileHeaderProps) {
     const router = useRouter();
     const { user } = useAuth();
+    // En modo preview, comportarse como usuario no autenticado
+    const effectiveUser = previewMode ? null : user;
     const studioData = data || {};
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [mobileActionsOpen, setMobileActionsOpen] = useState(false);
@@ -146,7 +149,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
     };
 
     return (
-        <div className="sticky top-0 z-10 bg-zinc-900/50 backdrop-blur-lg w-full">
+        <div className={`sticky top-0 z-10 w-full ${previewMode ? 'bg-zinc-950' : 'bg-zinc-900/50 backdrop-blur-lg'}`}>
             <div className="w-full mx-auto max-w-[920px] px-4 py-5">
                 <div className="flex items-center">
                     {/* Columna 1: Botón regresar (opcional), Logo, nombre y slogan */}
@@ -249,7 +252,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
 
                     {/* Columna 2: Acciones según estado de autenticación */}
                     <div className="flex items-center gap-2">
-                        {user ? (
+                        {effectiveUser ? (
                             <>
                                 {/* Usuario autenticado */}
                                 {studioSlug && (
@@ -319,26 +322,28 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
                         ) : (
                             <>
                                 {/* Usuario no autenticado */}
-                                {/* Mobile: Solo botón hamburguesa */}
+                                {/* Mobile: Solo botón hamburguesa - siempre visible en preview */}
                                 <button
-                                    onClick={() => setMobileGuestActionsOpen(true)}
-                                    className="sm:hidden flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                    onClick={previewMode ? undefined : () => setMobileGuestActionsOpen(true)}
+                                    className={`${previewMode ? 'flex' : 'sm:hidden flex'} items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors ${previewMode ? 'cursor-default' : ''}`}
                                     aria-label="Menú"
+                                    disabled={previewMode}
                                 >
                                     <Menu className="w-4 h-4" />
                                 </button>
 
-                                {/* Desktop: Botones completos */}
-                                <div className="hidden sm:flex items-center gap-2">
-                                    <button
-                                        onClick={handleClientPortal}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-300 hover:text-zinc-100 bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700 rounded-lg transition-colors"
-                                        aria-label="Portal cliente"
-                                    >
-                                        <Users className="w-3.5 h-3.5" />
-                                        <span>Portal cliente</span>
-                                    </button>
-                                </div>
+                                {/* Desktop: Solo icono - oculto en preview */}
+                                {!previewMode && (
+                                    <div className="hidden sm:flex items-center gap-2">
+                                        <button
+                                            onClick={handleClientPortal}
+                                            className="flex items-center justify-center w-8 h-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                            aria-label="Portal cliente"
+                                        >
+                                            <Users className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
@@ -384,7 +389,7 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
             )}
 
             {/* Mobile Actions Sheet - Usuario autenticado */}
-            {user && studioSlug && (
+            {effectiveUser && studioSlug && (
                 <MobileActionsSheet
                     isOpen={mobileActionsOpen}
                     onClose={() => setMobileActionsOpen(false)}
@@ -395,8 +400,8 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
                 />
             )}
 
-            {/* Mobile Guest Actions Sheet - Usuario NO autenticado */}
-            {!user && (
+            {/* Mobile Guest Actions Sheet - Usuario NO autenticado (no en preview) */}
+            {!effectiveUser && !previewMode && (
                 <MobileGuestActionsSheet
                     isOpen={mobileGuestActionsOpen}
                     onClose={() => setMobileGuestActionsOpen(false)}
