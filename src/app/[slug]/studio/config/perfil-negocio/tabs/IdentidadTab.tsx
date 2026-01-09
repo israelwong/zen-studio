@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ZenButton, ZenInput } from '@/components/ui/zen';
+import { ZenButton, ZenInput, ZenTextarea } from '@/components/ui/zen';
 import { ZenCard, ZenCardContent } from '@/components/ui/zen';
 import { Save, Check } from 'lucide-react';
 import { AvatarManager } from '@/components/shared/avatar';
@@ -148,7 +148,7 @@ export function IdentidadTab({ builderData, loading, studioSlug, onUpdate, onDat
                             hint="Este nombre aparecerá en tu perfil público"
                         />
 
-                        <ZenInput
+                        <ZenTextarea
                             label="Slogan"
                             value={slogan}
                             onChange={(e) => {
@@ -159,6 +159,7 @@ export function IdentidadTab({ builderData, loading, studioSlug, onUpdate, onDat
                             placeholder="Ej: Capturando momentos únicos"
                             disabled={loading}
                             maxLength={100}
+                            rows={3}
                             hint="Frase corta que describe tu estudio (máximo 100 caracteres)"
                         />
                     </div>
