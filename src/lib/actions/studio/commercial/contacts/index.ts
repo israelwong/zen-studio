@@ -8,5 +8,6 @@ export {
   getSocialNetworks,
   getContactEvents,
   checkContactAssociations,
-  getContactPromises
+  getContactPromises,
+  createStandaloneEvent
 } from './contacts.actions';

@@ -115,6 +115,17 @@ export async function createCotizacion(
             status: 'ACTIVE',
           },
         });
+
+        // Actualizar contacto de "prospecto" a "cliente" cuando se crea un evento
+        if (contact && contact.status === 'prospecto') {
+          await prisma.studio_contacts.update({
+            where: { id: contactId },
+            data: {
+              status: 'cliente',
+              updated_at: new Date(),
+            },
+          });
+        }
       }
 
       eventoId = evento.id;

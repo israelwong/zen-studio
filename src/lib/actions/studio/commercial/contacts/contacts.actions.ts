@@ -710,7 +710,7 @@ export async function getSocialNetworks() {
 }
 
 /**
- * Obtener eventos asociados a un contacto (a través de cotizaciones)
+ * Obtener eventos asociados a un contacto (directamente por contact_id)
  */
 export async function getContactEvents(studioSlug: string, contactId: string) {
   try {
@@ -723,52 +723,37 @@ export async function getContactEvents(studioSlug: string, contactId: string) {
       return { success: false, error: 'Studio no encontrado', data: [] };
     }
 
-    // Obtener todas las cotizaciones del contacto
-    const cotizaciones = await prisma.studio_cotizaciones.findMany({
+    // Obtener eventos directamente por contact_id
+    const eventos = await prisma.studio_events.findMany({
       where: {
         studio_id: studio.id,
         contact_id: contactId
       },
       select: {
-        evento_id: true
-      }
-    });
-
-    // Extraer IDs únicos de eventos
-    const eventoIds = Array.from(new Set(cotizaciones.map(c => c.evento_id).filter((id): id is string => id !== null)));
-
-    if (eventoIds.length === 0) {
-      return { success: true, data: [] };
-    }
-
-    // Obtener eventos con información relevante
-    const eventos = await prisma.studio_events.findMany({
-      where: {
-        id: { in: eventoIds },
-        studio_id: studio.id
-      },
-      select: {
         id: true,
-        name: true,
         event_date: true,
         status: true,
+        promise_id: true,
+        cotizacion_id: true,
         event_type: {
           select: {
             id: true,
             name: true
           }
         },
-        cotizaciones: {
-          where: {
-            contact_id: contactId
-          },
+        promise: {
+          select: {
+            id: true,
+            name: true,
+            event_type_id: true
+          }
+        },
+        cotizacion: {
           select: {
             id: true,
             status: true,
             name: true
-          },
-          take: 1,
-          orderBy: { created_at: 'desc' }
+          }
         }
       },
       orderBy: { event_date: 'desc' }
@@ -777,14 +762,16 @@ export async function getContactEvents(studioSlug: string, contactId: string) {
     // Mapear a formato simplificado
     const mappedEvents = eventos.map(evento => ({
       id: evento.id,
-      name: evento.name || 'Sin nombre',
+      name: evento.promise?.name || 'Sin nombre',
       event_date: evento.event_date,
       status: evento.status,
       event_type: evento.event_type?.name || null,
-      cotizacion: evento.cotizaciones[0] ? {
-        id: evento.cotizaciones[0].id,
-        status: evento.cotizaciones[0].status,
-        name: evento.cotizaciones[0].name
+      promise_id: evento.promise_id,
+      cotizacion_id: evento.cotizacion_id,
+      cotizacion: evento.cotizacion ? {
+        id: evento.cotizacion.id,
+        status: evento.cotizacion.status,
+        name: evento.cotizacion.name
       } : null
     }));
 
@@ -951,6 +938,112 @@ export async function getContactPromises(
   } catch (error) {
     console.error('Error al obtener promesas del contacto:', error);
     return { success: false, error: 'Error interno del servidor', data: [] };
+  }
+}
+
+/**
+ * Crear evento standalone (sin promise/cotización asociada)
+ * Crea un promise "fantasma" para cumplir con el schema que requiere promise_id
+ */
+export async function createStandaloneEvent(
+  studioSlug: string,
+  contactId: string,
+  data: {
+    name: string;
+    event_date: Date;
+    event_type_id?: string | null;
+    event_location?: string | null;
+  }
+): Promise<{
+  success: boolean;
+  data?: { event_id: string; promise_id: string };
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true }
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que el contacto existe y pertenece al studio
+    const contact = await prisma.studio_contacts.findFirst({
+      where: {
+        id: contactId,
+        studio_id: studio.id
+      }
+    });
+
+    if (!contact) {
+      return { success: false, error: 'Contacto no encontrado' };
+    }
+
+    // Obtener etapa inicial del pipeline de eventos
+    const primeraEtapa = await prisma.studio_manager_pipeline_stages.findFirst({
+      where: {
+        studio_id: studio.id,
+        order: 1
+      },
+      select: { id: true }
+    });
+
+    // Crear promise "fantasma" para cumplir con el schema
+    const promise = await prisma.studio_promises.create({
+      data: {
+        studio_id: studio.id,
+        contact_id: contactId,
+        event_type_id: data.event_type_id || null,
+        event_location: data.event_location || null,
+        name: data.name,
+        event_date: data.event_date,
+        status: 'pending',
+        pipeline_stage_id: null, // No necesita estar en pipeline comercial
+      }
+    });
+
+    // Crear evento asociado al promise
+    const evento = await prisma.studio_events.create({
+      data: {
+        studio_id: studio.id,
+        contact_id: contactId,
+        promise_id: promise.id,
+        event_type_id: data.event_type_id || null,
+        stage_id: primeraEtapa?.id || null,
+        event_date: data.event_date,
+        status: 'ACTIVE',
+      }
+    });
+
+    // Actualizar contacto de "prospecto" a "cliente" cuando se crea un evento
+    if (contact.status === 'prospecto') {
+      await prisma.studio_contacts.update({
+        where: { id: contactId },
+        data: {
+          status: 'cliente',
+          updated_at: new Date(),
+        },
+      });
+    }
+
+    revalidatePath(`/${studioSlug}/studio/business/clientes/${contactId}`);
+    revalidatePath(`/${studioSlug}/studio/business/events`);
+
+    return {
+      success: true,
+      data: {
+        event_id: evento.id,
+        promise_id: promise.id
+      }
+    };
+  } catch (error) {
+    console.error('Error al crear evento standalone:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error interno del servidor'
+    };
   }
 }
 

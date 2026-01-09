@@ -1333,6 +1333,17 @@ export async function autorizarYCrearEvento(
         });
       }
 
+      // 7.4.1. Actualizar contacto de "prospecto" a "cliente" cuando se crea un evento
+      if (cotizacion.promise.contact && cotizacion.promise.contact.status === 'prospecto') {
+        await tx.studio_contacts.update({
+          where: { id: cotizacion.promise.contact_id },
+          data: {
+            status: 'cliente',
+            updated_at: new Date(),
+          },
+        });
+      }
+
       // 7.5. Actualizar cotización con snapshots (inmutables) y establecer relación con evento
       // IMPORTANTE: Usar la relación 'eventos' con connect para establecer evento_id
       await tx.studio_cotizaciones.update({

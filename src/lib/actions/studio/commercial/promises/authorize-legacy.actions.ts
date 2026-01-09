@@ -187,6 +187,21 @@ export async function autorizarCotizacionLegacy(
       });
       eventId = nuevoEvento.id;
 
+      // 1.1. Actualizar contacto de "prospecto" a "cliente" cuando se crea un evento
+      const contacto = await tx.studio_contacts.findUnique({
+        where: { id: contactId },
+        select: { status: true },
+      });
+      if (contacto && contacto.status === 'prospecto') {
+        await tx.studio_contacts.update({
+          where: { id: contactId },
+          data: {
+            status: 'cliente',
+            updated_at: new Date(),
+          },
+        });
+      }
+
       // 2. Actualizar cotización a "autorizada"
       await tx.studio_cotizaciones.update({
         where: { id: validated.cotizacion_id },
