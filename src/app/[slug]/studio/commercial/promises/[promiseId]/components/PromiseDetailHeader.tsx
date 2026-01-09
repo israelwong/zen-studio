@@ -16,6 +16,7 @@ interface PromiseDetailHeaderProps {
     promiseData: {
         has_event?: boolean;
         evento_id?: string | null;
+        evento_status?: string | null;
     } | null;
     contactData: {
         contactId: string;
@@ -142,8 +143,11 @@ export function PromiseDetailHeader({
                         const hasEvent = promiseData.has_event || false;
                         const isRestricted = isApprovedStage && hasEvent;
                         const eventoId = promiseData.evento_id || null;
+                        const eventoStatus = promiseData.evento_status;
+                        const eventoActivo = eventoStatus === 'ACTIVE' || eventoStatus === 'IN_PROGRESS';
 
-                        if (isRestricted && eventoId) {
+                        // Mostrar botón "Gestionar Evento" solo si hay evento contratado y activo
+                        if (isRestricted && typeof eventoId === 'string' && eventoId.trim() !== '' && eventoActivo) {
                             return (
                                 <ZenButton
                                     variant="primary"
@@ -166,8 +170,14 @@ export function PromiseDetailHeader({
                         }
 
                         const eventoId = promiseData.evento_id;
-                        if (eventoId) {
-                            return null; // Evento creado: ocultar botones
+                        const eventoStatus = promiseData.evento_status;
+                        
+                        // Solo ocultar si evento_id es un string no vacío Y el evento está activo (ACTIVE o IN_PROGRESS)
+                        // No ocultar si el evento está CANCELLED o ARCHIVED
+                        const eventoActivo = eventoStatus === 'ACTIVE' || eventoStatus === 'IN_PROGRESS';
+                        
+                        if (typeof eventoId === 'string' && eventoId.trim() !== '' && eventoActivo) {
+                            return null; // Evento contratado y activo: ocultar botones
                         }
 
                         // No hay evento: mostrar botones
@@ -206,8 +216,13 @@ export function PromiseDetailHeader({
                         }
 
                         const eventoId = promiseData.evento_id;
-                        if (eventoId) {
-                            return null; // Evento creado: ocultar dropdown
+                        const eventoStatus = promiseData.evento_status;
+                        
+                        // Solo ocultar si evento_id es un string no vacío Y el evento está activo (ACTIVE o IN_PROGRESS)
+                        const eventoActivo = eventoStatus === 'ACTIVE' || eventoStatus === 'IN_PROGRESS';
+                        
+                        if (typeof eventoId === 'string' && eventoId.trim() !== '' && eventoActivo) {
+                            return null; // Evento contratado y activo: ocultar dropdown
                         }
 
                         // No hay evento: mostrar dropdown

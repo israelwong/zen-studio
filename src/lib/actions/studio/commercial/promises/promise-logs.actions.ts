@@ -285,11 +285,48 @@ export async function getPromiseById(
             status: true,
           },
         },
+        quotes: {
+          select: {
+            id: true,
+            status: true,
+            evento_id: true,
+          },
+        },
       },
     });
 
     if (!promise) {
       return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    // Verificar si hay una cotización autorizada/aprobada con evento_id
+    // Esto es lo que realmente indica que se contrató (cuando se crea evento se autoriza la cotización)
+    // IMPORTANTE: Solo usar cotizaciones autorizadas/aprobadas con evento_id, NO la relación directa promise.event
+    const cotizacionAutorizada = promise.quotes.find((q) => {
+      // Excluir cotizaciones canceladas o archivadas
+      if (q.status === 'cancelada' || q.status === 'archivada') {
+        return false;
+      }
+      
+      const isAuthorizedStatus = q.status === 'aprobada' || 
+                                 q.status === 'autorizada' || 
+                                 q.status === 'approved';
+      
+      // Solo considerar autorizada si tiene evento_id (indica que se creó el evento)
+      return isAuthorizedStatus && !!q.evento_id;
+    });
+
+    const hasAuthorizedQuote = !!cotizacionAutorizada;
+    const eventoIdFromQuote = cotizacionAutorizada?.evento_id || null;
+    
+    // SOLO usar evento_id de la cotización autorizada (NO usar promise.event directamente)
+    // porque el evento solo se crea cuando se autoriza una cotización
+    const eventoIdFinal = eventoIdFromQuote;
+    
+    // Obtener el status del evento solo si hay cotización autorizada
+    let eventoStatusFinal: string | null = null;
+    if (eventoIdFromQuote && promise.event?.id === eventoIdFromQuote) {
+      eventoStatusFinal = promise.event.status || null;
     }
 
     return {
@@ -321,7 +358,8 @@ export async function getPromiseById(
         pipeline_stage_slug: promise.pipeline_stage?.slug || null,
         pipeline_stage_id: promise.pipeline_stage_id || null,
         has_event: !!promise.event,
-        evento_id: promise.event?.id || null,
+        evento_id: eventoIdFinal,
+        evento_status: eventoStatusFinal,
       },
     };
   } catch (error) {

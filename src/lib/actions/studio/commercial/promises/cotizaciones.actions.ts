@@ -29,6 +29,7 @@ export interface CotizacionListItem {
   updated_at: Date;
   order: number | null;
   archived: boolean;
+  visible_to_client: boolean;
   revision_of_id?: string | null;
   revision_number?: number | null;
   revision_status?: string | null;
@@ -143,7 +144,7 @@ export async function createCotizacion(
         description: validatedData.descripcion || null,
         price: validatedData.precio,
         status: 'pendiente',
-        visible_to_client: true,
+        visible_to_client: validatedData.visible_to_client ?? true,
       },
     });
 
@@ -227,6 +228,7 @@ export async function getCotizacionesByPromiseId(
         updated_at: true,
         order: true,
         archived: true,
+        visible_to_client: true,
         revision_of_id: true,
         revision_number: true,
         revision_status: true,
@@ -265,6 +267,7 @@ export async function getCotizacionesByPromiseId(
         updated_at: cot.updated_at,
         order: cot.order,
         archived: cot.archived,
+        visible_to_client: cot.visible_to_client,
         revision_of_id: cot.revision_of_id,
         revision_number: cot.revision_number,
         revision_status: cot.revision_status,
@@ -361,6 +364,7 @@ export async function getCotizacionById(
         promise_id: true,
         contact_id: true,
         evento_id: true,
+        visible_to_client: true,
         revision_of_id: true,
         revision_number: true,
         revision_status: true,
@@ -426,6 +430,7 @@ export async function getCotizacionById(
         promise_id: cotizacion.promise_id,
         contact_id: cotizacion.contact_id,
         evento_id: cotizacion.evento_id,
+        visible_to_client: cotizacion.visible_to_client,
         revision_of_id: cotizacion.revision_of_id,
         revision_number: cotizacion.revision_number,
         revision_status: cotizacion.revision_status,
@@ -718,7 +723,7 @@ export async function duplicateCotizacion(
         description: original.description,
         price: original.price,
         status: 'pendiente',
-        visible_to_client: original.visible_to_client,
+        visible_to_client: false, // Duplicadas siempre ocultas inicialmente (studio las editará)
         condiciones_comerciales_id: original.condiciones_comerciales_id,
         archived: false,
         order: newOrder,
@@ -780,6 +785,25 @@ export async function duplicateCotizacion(
       await calcularYGuardarPreciosCotizacion(nuevaCotizacion.id, studioSlug).catch((error) => {
         console.error('[COTIZACIONES] Error calculando precios en duplicación:', error);
         // No fallar la duplicación si el cálculo de precios falla
+      });
+    }
+
+    // Registrar log si hay promise_id
+    if (original.promise_id) {
+      const { logPromiseAction } = await import('./promise-logs.actions');
+      await logPromiseAction(
+        studioSlug,
+        original.promise_id,
+        'quotation_created',
+        'user', // Asumimos que es acción de usuario
+        null, // TODO: Obtener userId del contexto
+        {
+          quotationName: nuevaCotizacion.name,
+          price: nuevaCotizacion.price,
+        }
+      ).catch((error) => {
+        // No fallar si el log falla, solo registrar error
+        console.error('[COTIZACIONES] Error registrando log de cotización duplicada:', error);
       });
     }
 
@@ -970,6 +994,78 @@ export async function updateCotizacionName(
 }
 
 /**
+ * Toggle visibilidad de cotización para cliente
+ */
+export async function toggleCotizacionVisibility(
+  cotizacionId: string,
+  studioSlug: string
+): Promise<CotizacionResponse> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotización no encontrada' };
+    }
+
+    const updated = await prisma.studio_cotizaciones.update({
+      where: { id: cotizacionId },
+      data: { visible_to_client: !cotizacion.visible_to_client },
+    });
+
+    // Registrar log si hay promise_id
+    if (cotizacion.promise_id) {
+      const { logPromiseAction } = await import('./promise-logs.actions');
+      await logPromiseAction(
+        studioSlug,
+        cotizacion.promise_id,
+        'quotation_updated',
+        'user',
+        null,
+        {
+          quotationName: updated.name,
+          visibleToClient: updated.visible_to_client,
+        }
+      ).catch((error) => {
+        console.error('[COTIZACIONES] Error registrando log de visibilidad:', error);
+      });
+    }
+
+    revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    if (cotizacion.promise_id) {
+      revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
+    }
+
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        name: updated.name,
+      },
+    };
+  } catch (error) {
+    console.error('[COTIZACIONES] Error cambiando visibilidad:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al cambiar visibilidad',
+    };
+  }
+}
+
+/**
  * Actualizar cotización completa (nombre, descripción, precio, items)
  * IMPORTANTE: NO archiva otras cotizaciones - solo actualiza la cotización actual
  * El archivado de otras cotizaciones solo ocurre cuando se autoriza una cotización
@@ -1029,6 +1125,7 @@ export async function updateCotizacion(
           name: validatedData.nombre,
           description: validatedData.descripcion || null,
           price: validatedData.precio,
+          visible_to_client: validatedData.visible_to_client !== undefined ? validatedData.visible_to_client : undefined,
           updated_at: new Date(),
         },
       });

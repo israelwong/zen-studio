@@ -765,17 +765,8 @@ export async function crearAgendamiento(
     studioSlug: string,
     data: CreateAgendaData
 ): Promise<AgendaResponse> {
-    console.log('[AGENDA_UNIFIED] 🚀 INICIO crearAgendamiento:', {
-        studioSlug,
-        data: {
-            promise_id: data.promise_id,
-            evento_id: data.evento_id,
-            date: data.date,
-        },
-    });
     try {
         const validatedData = createAgendaSchema.parse(data);
-        console.log('[AGENDA_UNIFIED] ✅ Datos validados:', validatedData);
 
         const studio = await prisma.studios.findUnique({
             where: { slug: studioSlug },
@@ -815,7 +806,6 @@ export async function crearAgendamiento(
             }
         }
 
-        console.log('[AGENDA_UNIFIED] 📝 Creando agendamiento en BD...');
         const agenda = await prisma.studio_agenda.create({
             data: {
                 studio_id: studio.id,
@@ -940,14 +930,8 @@ export async function crearAgendamiento(
 
         // Crear notificación
         try {
-            console.log('[AGENDA_UNIFIED] Intentando crear notificación para agendamiento:', {
-                studio_id: studio.id,
-                agenda_id: agenda.id,
-                promise_id: agenda.promise_id,
-                evento_id: agenda.evento_id,
-            });
             const { notifyAgendaCreated } = await import('@/lib/notifications/studio');
-            const notificationResult = await notifyAgendaCreated(
+            await notifyAgendaCreated(
                 studio.id,
                 agenda.id,
                 agenda.promise_id,
@@ -955,11 +939,6 @@ export async function crearAgendamiento(
                 agenda.date,
                 agenda.concept
             );
-            console.log('[AGENDA_UNIFIED] Notificación creada exitosamente:', {
-                result: notificationResult,
-                type: Array.isArray(notificationResult) ? 'array' : typeof notificationResult,
-                length: Array.isArray(notificationResult) ? notificationResult.length : 'N/A',
-            });
         } catch (notificationError) {
             console.error('[AGENDA_UNIFIED] ❌ Error creando notificación:', notificationError);
             console.error('[AGENDA_UNIFIED] Stack trace:', notificationError instanceof Error ? notificationError.stack : 'N/A');

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreVertical, Copy, Archive, Trash2, Loader2, GripVertical, Edit2, CheckCircle, ArchiveRestore, XCircle } from 'lucide-react';
+import { MoreVertical, Copy, Archive, Trash2, Loader2, GripVertical, Edit2, CheckCircle, ArchiveRestore, XCircle, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   ZenBadge,
@@ -26,6 +26,7 @@ import {
   unarchiveCotizacion,
   duplicateCotizacion,
   updateCotizacionName,
+  toggleCotizacionVisibility,
   cancelarCotizacion,
   cancelarCotizacionYEvento,
   pasarACierre,
@@ -40,6 +41,7 @@ interface PromiseQuotesPanelCardProps {
   promiseId?: string | null;
   contactId?: string | null;
   onUpdate?: (cotizacionId: string) => void;
+  onVisibilityToggle?: (cotizacionId: string, visible: boolean) => void;
   isDuplicating?: boolean;
   onDuplicateStart?: (id: string) => void;
   onDuplicateComplete?: (newCotizacion: CotizacionListItem) => void;
@@ -59,6 +61,7 @@ export function PromiseQuotesPanelCard({
   promiseId,
   contactId,
   onUpdate,
+  onVisibilityToggle,
   isDuplicating = false,
   onDuplicateStart,
   onDuplicateComplete,
@@ -364,6 +367,49 @@ export function PromiseQuotesPanelCard({
     setShowEditNameModal(false);
   };
 
+  const handleToggleVisibility = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isProcessingRef.current || loading) return;
+    
+    const newVisibility = !cotizacion.visible_to_client;
+    
+    // Actualización optimista inmediata
+    if (onVisibilityToggle) {
+      onVisibilityToggle(cotizacion.id, newVisibility);
+    }
+    
+    isProcessingRef.current = true;
+    setLoading(true);
+    try {
+      const result = await toggleCotizacionVisibility(cotizacion.id, studioSlug);
+      if (result.success) {
+        toast.success(
+          newVisibility 
+            ? 'Cotización visible para el prospecto' 
+            : 'Cotización ocultada del prospecto'
+        );
+        // Recargar desde servidor para sincronizar
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Error al cambiar visibilidad');
+        // Revertir cambio optimista si falla
+        if (onVisibilityToggle) {
+          onVisibilityToggle(cotizacion.id, cotizacion.visible_to_client);
+        }
+      }
+    } catch {
+      toast.error('Error al cambiar visibilidad');
+      // Revertir cambio optimista si falla
+      if (onVisibilityToggle) {
+        onVisibilityToggle(cotizacion.id, cotizacion.visible_to_client);
+      }
+    } finally {
+      setLoading(false);
+      isProcessingRef.current = false;
+    }
+  };
+
   const handlePasarACierreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!promiseId) {
@@ -554,7 +600,24 @@ export function PromiseQuotesPanelCard({
               </p>
             </div>
           </div>
-          <div onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            {/* Icono de visibilidad */}
+            {!(isArchivada && hasApprovedQuote) && (
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={handleToggleVisibility}
+                disabled={loading || isDuplicating}
+                title={cotizacion.visible_to_client ? 'Ocultar del prospecto' : 'Mostrar al prospecto'}
+              >
+                {cotizacion.visible_to_client ? (
+                  <Eye className="h-4 w-4 text-emerald-400" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-zinc-500" />
+                )}
+              </ZenButton>
+            )}
             {/* Ocultar menú si es archivada Y hay cotización en cierre */}
             {!(isArchivada && hasApprovedQuote) && (
               <ZenDropdownMenu>

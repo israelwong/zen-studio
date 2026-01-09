@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import { ZenButton, ZenInput, ZenTextarea, ZenBadge, ZenCard, ZenCardContent } from '@/components/ui/zen';
+import { ZenButton, ZenInput, ZenTextarea, ZenBadge, ZenCard, ZenCardContent, ZenSwitch } from '@/components/ui/zen';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/shadcn/dialog';
 import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
@@ -74,7 +74,7 @@ export function CotizacionForm({
   const [loading, setLoading] = useState(false);
   const isEditMode = !!cotizacionId;
   const onLoadingChangeRef = useRef(onLoadingChange);
-  
+
   // Mantener referencia actualizada sin causar re-renders
   useEffect(() => {
     onLoadingChangeRef.current = onLoadingChange;
@@ -84,6 +84,7 @@ export function CotizacionForm({
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [precioPersonalizado, setPrecioPersonalizado] = useState<string | number>('');
+  const [visibleToClient, setVisibleToClient] = useState(true);
   const [items, setItems] = useState<{ [servicioId: string]: number }>({});
   const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
   const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
@@ -109,7 +110,7 @@ export function CotizacionForm({
         ]);
 
         // Validar cotización si está en modo edición
-        let cotizacionData: { name: string; description: string | null; price: number; promise_id: string | null; contact_id: string | null; items: Array<{ item_id: string; quantity: number }> } | null = null;
+        let cotizacionData: NonNullable<typeof cotizacionResult.data> | null = null;
 
         if (cotizacionId) {
           if (!cotizacionResult.success || !cotizacionResult.data) {
@@ -127,7 +128,7 @@ export function CotizacionForm({
 
           // Validar que tiene promiseId (de props o de datos) o contactId
           // Si promiseId viene como prop, es válido aunque cotizacionData.promise_id sea null
-          if (!promiseId && !cotizacionData.promise_id && !contactId) {
+          if (!promiseId && cotizacionData && !cotizacionData.promise_id && !contactId) {
             toast.error('La cotización no tiene los datos necesarios para editar');
             setCargandoCatalogo(false);
             if (promiseId) {
@@ -192,6 +193,7 @@ export function CotizacionForm({
           setNombre(cotizacionData.name);
           setDescripcion(cotizacionData.description || '');
           setPrecioPersonalizado(cotizacionData.price);
+          setVisibleToClient((cotizacionData as { visible_to_client?: boolean }).visible_to_client ?? true);
 
           // Cargar items de la cotización (filtrar items sin item_id válido)
           const cotizacionItems: { [id: string]: number } = {};
@@ -681,6 +683,7 @@ export function CotizacionForm({
         nombre: nombre.trim(),
         descripcion: descripcion.trim() || undefined,
         precio: precioFinal,
+        visible_to_client: visibleToClient,
         items: Object.fromEntries(
           itemsSeleccionados.map(([itemId, cantidad]) => [itemId, cantidad])
         ),
@@ -1042,6 +1045,17 @@ export function CotizacionForm({
             </div>
           </div>
 
+          {/* Switch de visibilidad */}
+          <div className="mt-4 p-4 border border-zinc-700 rounded-lg bg-zinc-800/30">
+            <ZenSwitch
+              checked={visibleToClient}
+              onCheckedChange={setVisibleToClient}
+              label="Visible para el cliente"
+              description="Si está activado, el prospecto podrá ver esta cotización en el portal público"
+              variant="green"
+            />
+          </div>
+
           {/* Ficha de Condición Comercial Pre-Autorizada */}
           {isPreAutorizada && condicionComercialPreAutorizada && (
             <div className="mt-4">
@@ -1105,7 +1119,7 @@ export function CotizacionForm({
 
                     {/* Botón de autorizar */}
                     {onAutorizar && !isAlreadyAuthorized && (
-                      <div className="pt-2 border-t border-zinc-700/50">
+                      <div className="pt-2">
                         <ZenButton
                           type="button"
                           variant="primary"

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { ContactEventInfoCard } from '@/components/shared/contact-info';
 import { PromiseQuotesPanel } from './cotizaciones/PromiseQuotesPanel';
 import { PromiseTags } from './PromiseTags';
-import { PromiseAgendamiento } from './eventos/PromiseAgendamiento';
 import { ContactEventFormModal } from '@/components/shared/contact-info';
 import { AuthorizeCotizacionModal } from './cotizaciones/AuthorizeCotizacionModal';
 import { PromiseClosingProcessSection } from './cierre/PromiseClosingProcessSection';
@@ -106,7 +105,7 @@ export function PromiseCardView({
       // Encontrar la cotización aprobada
       if (cotizacionesResult.success && cotizacionesResult.data) {
         const approvedQuote = cotizacionesResult.data.find(
-          (c) => (c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved') && c.status !== 'archivada'
+          (c) => c.status === 'aprobada' || c.status === 'autorizada' || c.status === 'approved'
         );
         if (approvedQuote) {
           setSelectedCotizacion({
@@ -219,18 +218,6 @@ export function PromiseCardView({
               isLoadingPromiseData={false}
               onAuthorizeClick={() => setShowAuthorizeModal(true)}
             />
-
-            {/* Agendamiento (solo si está guardado) */}
-            {isSaved && promiseId && (
-              <div>
-                <PromiseAgendamiento
-                  studioSlug={studioSlug}
-                  promiseId={promiseId}
-                  isSaved={isSaved}
-                  eventoId={eventoId}
-                />
-              </div>
-            )}
 
             {/* Etiquetas (solo si está guardado) */}
             {isSaved && promiseId && (

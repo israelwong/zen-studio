@@ -418,6 +418,12 @@ export function PromiseQuotesPanel({
         // Refrescar desde servidor para sincronizar
         router.refresh();
       }}
+      onVisibilityToggle={(cotizacionId, visible) => {
+        // Actualización optimista: cambiar solo visible_to_client
+        setCotizaciones((prev) =>
+          prev.map((c) => (c.id === cotizacionId ? { ...c, visible_to_client: visible } : c))
+        );
+      }}
       onUnarchive={(id) => {
         // Actualización local: cambiar status a pendiente
         setCotizaciones((prev) =>
@@ -441,8 +447,8 @@ export function PromiseQuotesPanel({
   return (
     <>
       {/* Card "Cotizaciones" */}
-      <ZenCard className="min-h-[300px] flex flex-col">
-        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 flex-shrink-0">
+      <ZenCard className="min-h-[500px] flex flex-col">
+        <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
           <div className="flex items-center justify-between">
             <ZenCardTitle className="text-sm font-medium flex items-center pt-1">Cotizaciones</ZenCardTitle>
             {!hasApprovedQuote && (
@@ -500,7 +506,6 @@ export function PromiseQuotesPanel({
           <div
             className="relative overflow-y-auto [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-600 [&::-webkit-scrollbar-thumb]:rounded [&::-webkit-scrollbar-thumb:hover]:bg-zinc-500"
             style={{
-              maxHeight: cotizacionesParaListado.length > 2 ? '312px' : 'none',
               scrollbarWidth: 'thin',
               scrollbarColor: '#52525b transparent',
             }}
@@ -535,7 +540,7 @@ export function PromiseQuotesPanel({
                 ))}
               </div>
             ) : cotizacionesParaListado.length === 0 ? (
-              <div className="flex flex-col items-center justify-center min-h-[200px]">
+              <div className="flex flex-col items-center justify-center min-h-[400px]">
                 {!eventTypeId ? (
                   <p className="text-xs text-zinc-500 text-center px-4">
                     Selecciona un tipo de evento para crear cotizaciones
@@ -596,10 +601,6 @@ export function PromiseQuotesPanel({
                   </div>
                 )}
               </>
-            )}
-            {/* Gradiente inferior - proporcional a la altura del área scrollable */}
-            {cotizacionesParaListado.length > 2 && (
-              <div className="sticky bottom-0 h-[78px] pointer-events-none bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent z-10" />
             )}
           </div>
         </ZenCardContent>

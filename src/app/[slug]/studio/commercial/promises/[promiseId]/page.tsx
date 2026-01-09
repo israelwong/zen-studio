@@ -109,7 +109,9 @@ export default function EditarPromesaPage() {
             promiseId: result.data.promise_id,
             has_event: result.data.has_event,
             evento_id: result.data.evento_id ?? null,
+            evento_status: result.data.evento_status ?? null,
           });
+          
           setContactData({
             contactId: result.data.contact_id,
             contactName: result.data.contact_name,
@@ -583,6 +585,7 @@ export default function EditarPromesaPage() {
             contactName: promiseData.name,
             phone: promiseData.phone,
           } : null}
+          eventoId={promiseData.evento_id || null}
           onCopyLink={async () => {
             const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
             try {

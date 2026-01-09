@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import Image from 'next/image';
 import { Trash2, GripVertical, ZoomIn, Upload } from 'lucide-react';
 import { MediaItem, MediaBlockConfig } from '@/types/content-blocks';
@@ -182,7 +182,7 @@ interface ImageGridProps {
     isUploading?: boolean;
 }
 
-export function ImageGrid({
+function ImageGridComponent({
     media,
     title,
     description,
@@ -292,8 +292,38 @@ export function ImageGrid({
         setActiveId(null);
     };
 
-    // Componente para cada imagen sortable con animaciones mejoradas
-    function SortableImageItem({ item, index }: { item: MediaItem; index: number }) {
+    // Componente para cada imagen sortable con animaciones mejoradas - Memoizado para evitar re-renders innecesarios
+    const SortableImageItem = memo(function SortableImageItem({
+        item,
+        index,
+        activeId,
+        isEditable,
+        configLightbox,
+        handleImageClick,
+        hasMultipleVideos,
+        borderStyleClass,
+        aspectClass,
+        showCaptions,
+        showSizeLabel,
+        showDeleteButtons,
+        onDelete,
+        configColumns
+    }: {
+        item: MediaItem;
+        index: number;
+        activeId: string | null;
+        isEditable: boolean;
+        configLightbox: boolean;
+        handleImageClick: (index: number) => void;
+        hasMultipleVideos: boolean;
+        borderStyleClass: string;
+        aspectClass: string;
+        showCaptions: boolean;
+        showSizeLabel: boolean;
+        showDeleteButtons: boolean;
+        onDelete?: (mediaId: string) => void;
+        configColumns: number;
+    }) {
         const {
             attributes,
             listeners,
@@ -424,9 +454,6 @@ export function ImageGrid({
                     {showDeleteButtons && onDelete && (
                         <button
                             onClick={(e) => {
-                                console.log('Delete button clicked for item:', item.id);
-                                console.log('Current media array:', media.map(m => m.id));
-                                console.log('Item to delete:', item);
                                 e.preventDefault();
                                 e.stopPropagation();
                                 onDelete(item.id);
@@ -456,7 +483,16 @@ export function ImageGrid({
                 )}
             </div>
         );
-    }
+    }, (prevProps, nextProps) => {
+        // Comparación personalizada: solo re-renderizar si el item cambió o si activeId cambió
+        return (
+            prevProps.item.id === nextProps.item.id &&
+            prevProps.item.file_url === nextProps.item.file_url &&
+            prevProps.item.thumbnail_url === nextProps.item.thumbnail_url &&
+            prevProps.activeId === nextProps.activeId &&
+            prevProps.index === nextProps.index
+        );
+    });
 
     // Removido: lógica que ocultaba el dropzone cuando no hay media
     // Ahora siempre mostramos el dropzone para permitir subir archivos
@@ -499,8 +535,22 @@ export function ImageGrid({
                         }}
                     >
                         {/* Sortable Items existentes */}
+                        {/* PROBLEMA: Parpadeos al subir/eliminar/reordenar imágenes
+                         * 
+                         * CAUSA RAÍZ:
+                         * - Cada vez que cambia el array `media`, React re-renderiza todo el SortableContext
+                         * - Los items se desmontan y remontan causando parpadeos visibles
+                         * - A diferencia de ContentBlocksEditor donde cada bloque es un componente separado
+                         *   (SortableBlock) que solo se re-renderiza cuando cambia su propio bloque,
+                         *   aquí todo el ImageGrid se re-renderiza cuando cambia cualquier item del array
+                         * 
+                         * SOLUCIÓN (como en ContentBlocksEditor):
+                         * 1. Usar React.memo en SortableImageItem para evitar re-renders innecesarios
+                         * 2. O usar una estructura similar donde cada item de media sea un componente separado
+                         * 3. O usar useMemo para memoizar el array de items antes de pasarlo a SortableContext
+                         * 4. O usar una key estable que no cambie cuando solo se reordena (usar index + id)
+                         */}
                         <SortableContext
-                            key={media.map(item => item.id).join('-')} // Forzar re-render cuando cambien los IDs
                             items={media.map(item => item.id)}
                             strategy={rectSortingStrategy}
                         >
@@ -509,6 +559,18 @@ export function ImageGrid({
                                     key={item.id}
                                     item={item}
                                     index={index}
+                                    activeId={activeId}
+                                    isEditable={isEditable}
+                                    configLightbox={configLightbox}
+                                    handleImageClick={handleImageClick}
+                                    hasMultipleVideos={hasMultipleVideos}
+                                    borderStyleClass={borderStyleClass}
+                                    aspectClass={aspectClass}
+                                    showCaptions={showCaptions}
+                                    showSizeLabel={showSizeLabel}
+                                    showDeleteButtons={showDeleteButtons}
+                                    onDelete={onDelete}
+                                    configColumns={configColumns}
                                 />
                             ))}
                         </SortableContext>
@@ -579,12 +641,24 @@ export function ImageGrid({
                         )}
                     </div>
                 ) : (
-                    <div className={`grid ${columnsClass} ${gapClass}`} key={media.map(item => item.id).join('-')}>
+                    <div className={`grid ${columnsClass} ${gapClass}`}>
                         {media.map((item, index) => (
                             <SortableImageItem
                                 key={item.id}
                                 item={item}
                                 index={index}
+                                activeId={activeId}
+                                isEditable={isEditable}
+                                configLightbox={configLightbox}
+                                handleImageClick={handleImageClick}
+                                hasMultipleVideos={hasMultipleVideos}
+                                borderStyleClass={borderStyleClass}
+                                aspectClass={aspectClass}
+                                showCaptions={showCaptions}
+                                showSizeLabel={showSizeLabel}
+                                showDeleteButtons={showDeleteButtons}
+                                onDelete={onDelete}
+                                configColumns={configColumns}
                             />
                         ))}
                     </div>
@@ -652,3 +726,25 @@ export function ImageGrid({
         </div>
     );
 }
+
+// Exportar componente memoizado para evitar re-renders innecesarios cuando las props no cambian
+export const ImageGrid = memo(ImageGridComponent, (prevProps, nextProps) => {
+    // Comparación personalizada: solo re-renderizar si media cambió realmente
+    if (prevProps.media.length !== nextProps.media.length) {
+        return false; // Re-renderizar si cambió la longitud
+    }
+
+    // Comparar IDs de media para detectar cambios reales
+    const prevIds = prevProps.media.map(m => m.id).join(',');
+    const nextIds = nextProps.media.map(m => m.id).join(',');
+    if (prevIds !== nextIds) {
+        return false; // Re-renderizar si cambió algún ID
+    }
+
+    // Comparar otras props importantes
+    return (
+        prevProps.isUploading === nextProps.isUploading &&
+        prevProps.isEditable === nextProps.isEditable &&
+        prevProps.showDeleteButtons === nextProps.showDeleteButtons
+    );
+});

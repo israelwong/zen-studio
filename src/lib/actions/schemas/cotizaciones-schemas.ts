@@ -30,6 +30,7 @@ export const createCotizacionSchema = z.object({
     (items) => Object.values(items).some((qty) => qty > 0),
     'Debe incluir al menos un item con cantidad mayor a 0'
   ),
+  visible_to_client: z.boolean().optional().default(true),
 });
 
 export type CreateCotizacionData = z.infer<typeof createCotizacionSchema>;
@@ -44,6 +45,7 @@ export const updateCotizacionSchema = z.object({
     (items) => Object.values(items).some((qty) => qty > 0),
     'Debe incluir al menos un item con cantidad mayor a 0'
   ),
+  visible_to_client: z.boolean().optional(),
 });
 
 export type UpdateCotizacionData = z.infer<typeof updateCotizacionSchema>;
