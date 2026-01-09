@@ -362,7 +362,22 @@ export function EditSocialNetworksModal({
 
                 <form onSubmit={(e) => { e.preventDefault(); handleSaveAll(); }} className="space-y-4 mt-4">
                     {loading ? (
-                        <div className="text-center py-12 text-zinc-500 text-sm">Cargando...</div>
+                        <div className="space-y-3">
+                            {REDES_PRINCIPALES.map((red) => (
+                                <div
+                                    key={red.slug}
+                                    className="relative rounded-lg border border-zinc-800 bg-zinc-900/50 animate-pulse"
+                                >
+                                    <div className="flex items-center gap-3 p-3">
+                                        <div className="w-10 h-10 rounded-lg bg-zinc-800 shrink-0" />
+                                        <div className="flex-1 min-w-0 space-y-2">
+                                            <div className="h-3 bg-zinc-800 rounded w-20" />
+                                            <div className="h-4 bg-zinc-800 rounded w-full" />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     ) : (
                         <div className="space-y-3">
                             {REDES_PRINCIPALES.map((red) => {

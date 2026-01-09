@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn
 import { Globe, Smartphone } from 'lucide-react';
 import { ProfileHeader, ProfileNavTabs, ProfileContent } from '@/components/profile';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Tabs components
 import { IdentidadTab } from './tabs/IdentidadTab';
@@ -21,15 +22,24 @@ export default function PerfilNegocioPage() {
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { user } = useAuth();
     const studioSlug = params.slug as string;
 
     const [builderData, setBuilderData] = useState<BuilderProfileData | null>(null);
     const [loading, setLoading] = useState(true);
     const [mounted, setMounted] = useState(false);
 
-    // Obtener tab inicial de manera segura
-    const tabFromUrl = (searchParams.get('tab') as TabValue) || 'identidad';
+    // Obtener tab inicial de manera segura - validar que sea un tab válido
+    const getValidTab = (tab: string | null): TabValue => {
+        const validTabs: TabValue[] = ['identidad', 'contacto', 'redes'];
+        return (validTabs.includes(tab as TabValue) ? tab : 'identidad') as TabValue;
+    };
+
+    const tabFromUrl = getValidTab(searchParams.get('tab'));
     const [currentTab, setCurrentTab] = useState<TabValue>(tabFromUrl);
+
+    // En la página de configuración, si hay usuario autenticado, es el owner
+    const isOwner = !!user;
 
     useEffect(() => {
         document.title = 'Zenly Studio - Perfil de Negocio';
@@ -40,15 +50,21 @@ export default function PerfilNegocioPage() {
         setMounted(true);
     }, []);
 
-    // Sincronizar tab con URL después de montar
+    // Asegurar que siempre haya un tab válido en la URL (por defecto: identidad)
     useEffect(() => {
         if (mounted) {
-            const newTab = (searchParams.get('tab') as TabValue) || 'identidad';
-            if (newTab !== currentTab) {
-                setCurrentTab(newTab);
+            const urlTab = searchParams.get('tab');
+            const validTab = getValidTab(urlTab);
+
+            // Si no hay tab en la URL o es inválido, redirigir a identidad
+            if (!urlTab || validTab !== urlTab) {
+                router.replace(`/${studioSlug}/studio/config/perfil-negocio?tab=identidad`, { scroll: false });
+                setCurrentTab('identidad');
+            } else if (validTab !== currentTab) {
+                setCurrentTab(validTab);
             }
         }
-    }, [searchParams, mounted, currentTab]);
+    }, [searchParams, mounted, currentTab, studioSlug, router]);
 
     useEffect(() => {
         const loadData = async () => {
@@ -118,18 +134,18 @@ export default function PerfilNegocioPage() {
             zonas_trabajo: builderData.studio.zonas_trabajo,
         },
         contactInfo: {
-            phones: builderData.contactInfo.phones.map(phone => ({
+            phones: (builderData.contactInfo?.phones || []).map(phone => ({
                 id: phone.id,
                 number: phone.number,
                 type: phone.type as 'LLAMADAS' | 'WHATSAPP' | 'AMBOS',
                 label: phone.label,
                 is_active: phone.is_active
             })),
-            address: builderData.contactInfo.address,
-            website: builderData.contactInfo.website,
-            email: builderData.contactInfo.email,
+            address: builderData.contactInfo?.address,
+            website: builderData.contactInfo?.website,
+            email: builderData.contactInfo?.email,
             maps_url: builderData.studio.maps_url,
-            horarios: builderData.contactInfo.horarios.map(horario => ({
+            horarios: (builderData.contactInfo?.horarios || []).map(horario => ({
                 id: horario.id || `temp-${horario.dia}`,
                 dia: horario.dia,
                 apertura: horario.apertura,
@@ -310,6 +326,7 @@ export default function PerfilNegocioPage() {
                                             builderData={builderData}
                                             loading={loading}
                                             studioSlug={studioSlug}
+                                            onUpdate={handleUpdate}
                                             onDataChange={handleDataRefresh}
                                         />
                                     </TabsContent>

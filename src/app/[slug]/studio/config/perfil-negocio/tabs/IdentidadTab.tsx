@@ -1,10 +1,14 @@
 'use client';
 
-import React, { useCallback } from 'react';
-import { IdentidadForm } from '@/app/[slug]/studio/business/identity/components/IdentidadForm';
-import { actualizarLogo } from '@/lib/actions/studio/profile/identidad';
-import { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
-import { BuilderProfileData, BuilderStudioProfile } from '@/types/builder-profile';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ZenButton, ZenInput } from '@/components/ui/zen';
+import { ZenCard, ZenCardContent } from '@/components/ui/zen';
+import { Save, Check } from 'lucide-react';
+import { AvatarManager } from '@/components/shared/avatar';
+import { actualizarLogo, actualizarIdentidadCompleta } from '@/lib/actions/studio/profile/identidad';
+import { useLogoRefresh } from '@/hooks/useLogoRefresh';
+import { toast } from 'sonner';
+import { BuilderProfileData } from '@/types/builder-profile';
 
 interface IdentidadTabProps {
     builderData: BuilderProfileData | null;
@@ -15,109 +19,175 @@ interface IdentidadTabProps {
 }
 
 export function IdentidadTab({ builderData, loading, studioSlug, onUpdate, onDataChange }: IdentidadTabProps) {
-    const handleLocalUpdate = useCallback((data: unknown) => {
-        onUpdate((prev: BuilderProfileData | null) => {
-            if (!prev) return null;
-            const updateData = data as Partial<IdentidadData>;
+    const { triggerRefresh } = useLogoRefresh();
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+    const [studioName, setStudioName] = useState('');
+    const [slogan, setSlogan] = useState('');
 
-            const studioUpdate: Partial<BuilderStudioProfile> = {};
+    useEffect(() => {
+        if (builderData?.studio) {
+            setStudioName(builderData.studio.studio_name || '');
+            setSlogan(builderData.studio.slogan || '');
+        }
+    }, [builderData]);
 
-            if ('studio_name' in updateData) studioUpdate.studio_name = updateData.studio_name;
-            if ('slogan' in updateData) studioUpdate.slogan = updateData.slogan;
-            if ('presentacion' in updateData) studioUpdate.presentation = updateData.presentacion;
-            if ('logo_url' in updateData) studioUpdate.logo_url = updateData.logo_url;
-            if ('palabras_clave' in updateData) {
-                studioUpdate.keywords = Array.isArray(updateData.palabras_clave)
-                    ? updateData.palabras_clave.join(', ')
-                    : updateData.palabras_clave;
-            }
-
-            return {
-                ...prev,
-                studio: { ...prev.studio, ...studioUpdate },
-            };
-        });
-    }, [onUpdate]);
-
-    const handleLogoLocalUpdate = useCallback((url: string | null) => {
+    const handleLocalUpdate = useCallback((field: 'studio_name' | 'slogan', value: string) => {
         onUpdate((prev: BuilderProfileData | null) => {
             if (!prev) return null;
             return {
                 ...prev,
-                studio: { ...prev.studio, logo_url: url }
+                studio: { ...prev.studio, [field]: value }
             };
         });
     }, [onUpdate]);
+
+    const handleSave = async () => {
+        if (isSaving) return;
+
+        setIsSaving(true);
+        setSaveSuccess(false);
+
+        try {
+            await actualizarIdentidadCompleta(studioSlug, {
+                nombre: studioName || '',
+                slogan: slogan || undefined,
+            });
+
+            setSaveSuccess(true);
+            toast.success('Identidad guardada correctamente');
+            await onDataChange?.();
+
+            setTimeout(() => setSaveSuccess(false), 2000);
+        } catch (error) {
+            console.error('Error saving identidad:', error);
+            toast.error('Error al guardar la identidad. Inténtalo de nuevo.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     if (loading) {
         return (
             <div className="space-y-6">
+                <div className="h-32 bg-zinc-800/50 rounded-lg animate-pulse"></div>
                 <div className="h-12 bg-zinc-800/50 rounded-lg animate-pulse"></div>
                 <div className="h-12 bg-zinc-800/50 rounded-lg animate-pulse"></div>
-                <div className="h-24 bg-zinc-800/50 rounded-lg animate-pulse"></div>
             </div>
         );
     }
 
-    // Función helper para parsear keywords
-    const parseKeywords = (keywords: string | null | undefined): string[] => {
-        if (!keywords) return [];
-        
-        const trimmed = keywords.trim();
-        
-        // Si está vacío o es un array vacío en string
-        if (!trimmed || trimmed === '[]' || trimmed === '""') {
-            return [];
-        }
-        
-        // Si parece ser JSON (empieza con [), intentar parsear
-        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
-            try {
-                const parsed = JSON.parse(trimmed);
-                return Array.isArray(parsed)
-                    ? parsed.filter((k: unknown) => k && typeof k === 'string').map((k: string) => k.trim()).filter((k: string) => k)
-                    : [];
-            } catch {
-                // Si falla el parse, tratar como string normal separado por comas
-            }
-        }
-        
-        // Si es un string normal separado por comas
-        return trimmed.split(',').map(k => k.trim()).filter(k => k && k !== '[]' && k !== '""');
-    };
-
     return (
-        <IdentidadForm
-            data={builderData?.studio ? {
-                id: builderData.studio.id,
-                studio_name: builderData.studio.studio_name,
-                slug: studioSlug,
-                slogan: builderData.studio.slogan,
-                presentacion: builderData.studio.presentation,
-                palabras_clave: parseKeywords(builderData.studio.keywords),
-                logo_url: builderData.studio.logo_url,
-                pagina_web: builderData.studio.website,
-            } : {
-                id: 'temp-id',
-                studio_name: 'Mi Estudio',
-                slug: studioSlug,
-                slogan: null,
-                presentacion: null,
-                palabras_clave: [],
-                logo_url: null,
-                pagina_web: null,
-            }}
-            onLocalUpdate={handleLocalUpdate}
-            onLogoUpdate={async (url: string) => {
-                try {
-                    await actualizarLogo(studioSlug, { tipo: 'logo', url });
-                } catch (error) {
-                    console.error('Error updating logo:', error);
-                }
-            }}
-            onLogoLocalUpdate={handleLogoLocalUpdate}
-            studioSlug={studioSlug}
-            onDataChange={onDataChange}
-        />
+        <div className="space-y-8">
+            {/* Logo */}
+            <div className="flex justify-center">
+                <div className="flex flex-col items-center gap-3">
+                    <AvatarManager
+                        url={builderData?.studio?.logo_url || null}
+                        onUpdate={async (url: string) => {
+                            try {
+                                await actualizarLogo(studioSlug, { tipo: 'logo', url });
+                                await actualizarIdentidadCompleta(studioSlug, {
+                                    nombre: studioName || '',
+                                    slogan: slogan || undefined,
+                                    logo_url: url,
+                                });
+                                await onDataChange?.();
+                                triggerRefresh();
+                            } catch (error) {
+                                console.error('Error updating logo:', error);
+                            }
+                        }}
+                        onLocalUpdate={(url: string | null) => {
+                            onUpdate((prev: BuilderProfileData | null) => {
+                                if (!prev) return null;
+                                return {
+                                    ...prev,
+                                    studio: { ...prev.studio, logo_url: url }
+                                };
+                            });
+                        }}
+                        studioSlug={studioSlug}
+                        category="identidad"
+                        subcategory="logos"
+                        size="md"
+                        variant="default"
+                        loading={loading}
+                        cropTitle="Ajustar logo del estudio"
+                        cropDescription="Arrastra y redimensiona el área circular para ajustar tu logo."
+                        cropInstructions={[
+                            "• Arrastra para mover el área de recorte",
+                            "• Usa las esquinas para redimensionar",
+                            "• El área circular será tu logo del estudio"
+                        ]}
+                        successMessage="Logo actualizado exitosamente"
+                        deleteMessage="Logo eliminado"
+                        showAdjustButton={true}
+                    />
+                    <p className="text-xs text-zinc-400 text-center">
+                        PNG, JPG, SVG hasta 10MB
+                    </p>
+                </div>
+            </div>
+
+            {/* Campos */}
+            <ZenCard variant="default" padding="none">
+                <ZenCardContent className="p-6">
+                    <div className="space-y-6 max-w-2xl mx-auto">
+                        <ZenInput
+                            label="Nombre del Estudio"
+                            required
+                            value={studioName}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setStudioName(value);
+                                handleLocalUpdate('studio_name', value);
+                            }}
+                            placeholder="Ej: Studio Fotografía María"
+                            disabled={loading}
+                            hint="Este nombre aparecerá en tu perfil público"
+                        />
+
+                        <ZenInput
+                            label="Slogan"
+                            value={slogan}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setSlogan(value);
+                                handleLocalUpdate('slogan', value);
+                            }}
+                            placeholder="Ej: Capturando momentos únicos"
+                            disabled={loading}
+                            maxLength={100}
+                            hint="Frase corta que describe tu estudio (máximo 100 caracteres)"
+                        />
+                    </div>
+                </ZenCardContent>
+            </ZenCard>
+
+            {/* Botón de Guardar */}
+            <div className="flex justify-end pt-2">
+                <ZenButton
+                    onClick={handleSave}
+                    disabled={loading || isSaving}
+                    loading={isSaving}
+                    loadingText="Guardando..."
+                    variant="primary"
+                    size="md"
+                >
+                    {saveSuccess ? (
+                        <>
+                            <Check className="h-4 w-4 mr-2" />
+                            Guardado
+                        </>
+                    ) : (
+                        <>
+                            <Save className="h-4 w-4 mr-2" />
+                            Guardar Cambios
+                        </>
+                    )}
+                </ZenButton>
+            </div>
+        </div>
     );
 }
