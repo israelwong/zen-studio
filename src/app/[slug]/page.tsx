@@ -19,6 +19,11 @@ interface PublicProfilePageProps {
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
     const { slug } = await params;
 
+    // Excluir rutas reservadas como /s (short URLs)
+    if (slug === 's') {
+        redirect('/');
+    }
+
     try {
         // Fetch complete profile data
         const result = await getStudioProfileBySlug({ slug });
@@ -67,6 +72,14 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
  */
 export async function generateMetadata({ params }: PublicProfilePageProps): Promise<Metadata> {
     const { slug } = await params;
+
+    // Excluir rutas reservadas como /s (short URLs)
+    if (slug === 's') {
+        return {
+            title: 'Studio no encontrado',
+            description: 'El estudio solicitado no está disponible',
+        };
+    }
 
     try {
         const result = await getStudioProfileBySlug({ slug });

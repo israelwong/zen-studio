@@ -586,15 +586,6 @@ export default function EditarPromesaPage() {
             phone: promiseData.phone,
           } : null}
           eventoId={promiseData.evento_id || null}
-          onCopyLink={async () => {
-            const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
-            try {
-              await navigator.clipboard.writeText(previewUrl);
-              toast.success('Link copiado al portapapeles');
-            } catch (error) {
-              toast.error('Error al copiar link');
-            }
-          }}
           onPreview={() => {
             const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
             window.open(previewUrl, '_blank');

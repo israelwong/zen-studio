@@ -824,6 +824,7 @@ model studios {
   promise_pipeline_stages                         studio_promise_pipeline_stages[]
   promise_tags                                    studio_promise_tags[]
   promises                                        studio_promises[]
+  short_urls                                      studio_short_urls[]
   recurring_expenses                              studio_recurring_expenses[]
   revenue_transactions                            studio_revenue_transactions[]
   studio_role_permissions                         studio_role_permissions[]
@@ -1347,6 +1348,7 @@ model studio_promises {
   pipeline_stage                  studio_promise_pipeline_stages? @relation(fields: [pipeline_stage_id], references: [id])
   studio                          studios                         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   tags                            studio_promises_tags[]
+  short_urls                      studio_short_urls[]
 
   @@index([studio_id, contact_id])
   @@index([studio_id, status])
@@ -1421,6 +1423,24 @@ model studio_promises_tags {
   @@unique([promise_id, tag_id])
   @@index([promise_id])
   @@index([tag_id])
+}
+
+model studio_short_urls {
+  id           String          @id @default(cuid())
+  short_code   String          @unique
+  original_url String
+  studio_id    String
+  promise_id   String
+  studio_slug  String
+  clicks       Int             @default(0)
+  created_at   DateTime        @default(now())
+  updated_at   DateTime        @updatedAt
+  studio       studios         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  promise      studio_promises @relation(fields: [promise_id], references: [id], onDelete: Cascade)
+
+  @@index([short_code])
+  @@index([studio_id, promise_id])
+  @@index([studio_slug])
 }
 
 model studio_events {

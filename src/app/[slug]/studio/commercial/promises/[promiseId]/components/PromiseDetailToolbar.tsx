@@ -6,11 +6,13 @@ import { ZenButton, ZenBadge } from '@/components/ui/zen';
 import { PromiseNotesButton } from './PromiseNotesButton';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { logWhatsAppSent, logProfileShared } from '@/lib/actions/studio/commercial/promises';
+import { getOrCreateShortUrl } from '@/lib/actions/studio/commercial/promises/promise-short-url.actions';
 import { obtenerAgendamientoPorPromise, type AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import { AgendaFormModal } from '@/components/shared/agenda';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { getPromiseViewStats, getCotizacionClickStats, getPaqueteClickStats } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
+import { toast } from 'sonner';
 
 interface PromiseDetailToolbarProps {
   studioSlug: string;
@@ -30,7 +32,6 @@ export function PromiseDetailToolbar({
   promiseId,
   contactData,
   eventoId,
-  onCopyLink,
   onPreview,
 }: PromiseDetailToolbarProps) {
   const [linkCopied, setLinkCopied] = useState(false);
@@ -344,16 +345,33 @@ export function PromiseDetailToolbar({
             variant="ghost"
             size="sm"
             onClick={async () => {
-              const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}`;
-              await onCopyLink();
-              setLinkCopied(true);
-              setTimeout(() => setLinkCopied(false), 2000);
+              if (!promiseId) return;
               
-              // Registrar log
-              if (promiseId && contactData) {
-                logProfileShared(studioSlug, promiseId, contactData.contactName, previewUrl).catch((error) => {
-                  console.error('Error registrando copia de URL:', error);
-                });
+              try {
+                // Obtener o crear URL corta
+                const result = await getOrCreateShortUrl(studioSlug, promiseId);
+                
+                if (!result.success || !result.data) {
+                  toast.error('Error al generar URL corta');
+                  return;
+                }
+
+                const shortUrl = `${window.location.origin}/s/${result.data.shortCode}`;
+                
+                // Copiar al portapapeles
+                await navigator.clipboard.writeText(shortUrl);
+                setLinkCopied(true);
+                setTimeout(() => setLinkCopied(false), 2000);
+                
+                // Registrar log
+                if (contactData) {
+                  logProfileShared(studioSlug, promiseId, contactData.contactName, shortUrl).catch((error) => {
+                    console.error('Error registrando copia de URL:', error);
+                  });
+                }
+              } catch (error) {
+                console.error('Error copiando URL:', error);
+                toast.error('Error al copiar URL');
               }
             }}
             className={`gap-1.5 px-2.5 py-1.5 h-7 text-xs ${linkCopied ? 'bg-emerald-500/20 text-emerald-400' : ''}`}

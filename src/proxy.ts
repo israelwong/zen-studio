@@ -12,11 +12,15 @@ function isReservedPath(path: string): boolean {
     "/terms", "/privacy", "/_next", "/favicon.ico", "/robots.txt", "/sitemap.xml",
     "/auth/callback", // Callback de Supabase Auth OAuth
     "/onboarding", // Rutas de onboarding
+    "/s", // Rutas de URLs cortas (short URLs)
   ];
 
   return reservedPaths.some((reserved) => {
     if (reserved === "/demo") {
       return path === "/demo" || path.startsWith("/demo/");
+    }
+    if (reserved === "/s") {
+      return path === "/s" || path.startsWith("/s/");
     }
     return path.startsWith(reserved);
   });
