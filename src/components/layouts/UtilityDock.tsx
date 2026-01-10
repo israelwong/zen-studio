@@ -1,9 +1,35 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, ContactRound, CalendarCheck } from 'lucide-react';
+import { Calendar, ContactRound, CalendarCheck, FileText, Shield, Receipt, CreditCard } from 'lucide-react';
 import { ZenButton } from '@/components/ui/zen';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
+import dynamic from 'next/dynamic';
+
+const TerminosCondicionesEditor = dynamic(
+  () => import('@/components/shared/terminos-condiciones/TerminosCondicionesEditor').then(mod => mod.TerminosCondicionesEditor),
+  { ssr: false }
+);
+
+const AvisoPrivacidadManager = dynamic(
+  () => import('@/components/shared/avisos-privacidad/AvisoPrivacidadManager').then(mod => mod.AvisoPrivacidadManager),
+  { ssr: false }
+);
+
+const ContractTemplateManagerModal = dynamic(
+  () => import('@/components/shared/contracts/ContractTemplateManagerModal').then(mod => mod.ContractTemplateManagerModal),
+  { ssr: false }
+);
+
+const CondicionesComercialesManager = dynamic(
+  () => import('@/components/shared/condiciones-comerciales/CondicionesComercialesManager').then(mod => mod.CondicionesComercialesManager),
+  { ssr: false }
+);
+
+const PaymentMethodsModal = dynamic(
+  () => import('@/components/shared/payments/PaymentMethodsModal').then(mod => mod.PaymentMethodsModal),
+  { ssr: false }
+);
 
 interface UtilityDockProps {
   studioSlug: string;
@@ -21,6 +47,11 @@ export function UtilityDock({
   const [isMounted, setIsMounted] = useState(false);
   const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [terminosCondicionesOpen, setTerminosCondicionesOpen] = useState(false);
+  const [avisoPrivacidadOpen, setAvisoPrivacidadOpen] = useState(false);
+  const [contratosOpen, setContratosOpen] = useState(false);
+  const [condicionesComercialesOpen, setCondicionesComercialesOpen] = useState(false);
+  const [metodosPagoOpen, setMetodosPagoOpen] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -72,64 +103,304 @@ export function UtilityDock({
 
   return (
     <aside
-      className={`shrink-0 border-l border-zinc-800 bg-zinc-950/50 flex flex-col py-4 gap-2 z-20 transition-all duration-200 ease-in-out ${
-        isHovered ? 'w-36 items-start px-3' : 'w-12 items-center px-0'
-      }`}
+      className="relative shrink-0 w-12 border-l border-zinc-800 bg-zinc-950/50 flex flex-col items-center py-4 gap-2 z-40 overflow-visible"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Agenda */}
-      {onAgendaClick && (
-        <ZenButton
-          variant="ghost"
-          size={isHovered ? 'sm' : 'icon'}
-          className={`rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors ${
-            isHovered ? 'h-10 w-full justify-start gap-2 px-3' : 'h-10 w-10'
-          }`}
-          onClick={onAgendaClick}
-        >
-          <Calendar className="h-5 w-5 shrink-0" />
-          {isHovered && <span className="text-sm font-medium">Agenda</span>}
-          <span className="sr-only">Agenda</span>
-        </ZenButton>
-      )}
+      {/* Overlay expandido - posición absoluta que se expande hacia la izquierda sin afectar layout */}
+      <div
+        className={`absolute right-0 top-0 h-full bg-zinc-950/80 backdrop-blur-md border-l border-zinc-800 flex flex-col items-start py-4 px-3 shadow-xl transition-all duration-200 ease-in-out ${
+          isHovered ? 'w-56 opacity-100 pointer-events-auto' : 'w-12 opacity-0 pointer-events-none'
+        }`}
+        style={{
+          transform: isHovered ? 'translateX(0)' : 'translateX(0)',
+        }}
+      >
+        {/* SECCIÓN 1: Calendario */}
+        <div className="flex flex-col gap-2 w-full">
+          {/* Título de sección */}
+          <div className="px-3 py-1">
+            <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Calendario</span>
+          </div>
 
-      {/* Tareas Operativas - Solo si Google Calendar está conectado */}
-      {onTareasOperativasClick && isMounted && hasGoogleCalendar && (
-        <ZenButton
-          variant="ghost"
-          size={isHovered ? 'sm' : 'icon'}
-          className={`rounded-full text-purple-400 hover:text-purple-300 hover:bg-purple-900/20 transition-colors ${
-            isHovered ? 'h-10 w-full justify-start gap-2 px-3' : 'h-10 w-10'
-          }`}
-          onClick={onTareasOperativasClick}
-        >
-          <CalendarCheck className="h-5 w-5 shrink-0" />
-          {isHovered && <span className="text-sm font-medium">Tareas Operativas</span>}
-          <span className="sr-only">Tareas Operativas</span>
-        </ZenButton>
-      )}
+          {/* General */}
+          {onAgendaClick && (
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={onAgendaClick}
+            >
+              <Calendar className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">General</span>
+              <span className="sr-only">General</span>
+            </ZenButton>
+          )}
 
-      {/* Divider */}
+          {/* Operativo - Solo si Google Calendar está conectado */}
+          {onTareasOperativasClick && isMounted && hasGoogleCalendar && (
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 transition-colors"
+              onClick={onTareasOperativasClick}
+            >
+              <CalendarCheck className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Operativo</span>
+              <span className="sr-only">Operativo</span>
+            </ZenButton>
+          )}
+        </div>
+
+        {/* Divider entre secciones */}
+        {onContactsClick && <div className="w-full h-px bg-zinc-800 my-2" />}
+
+        {/* SECCIÓN 2: Contactos */}
+        {onContactsClick && (
+          <div className="flex flex-col gap-2 w-full">
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={onContactsClick}
+            >
+              <ContactRound className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Contactos</span>
+              <span className="sr-only">Contactos</span>
+            </ZenButton>
+          </div>
+        )}
+
+        {/* Divider entre secciones */}
+        <div className="w-full h-px bg-zinc-800 my-2" />
+
+        {/* SECCIÓN 3: Configuración */}
+        <div className="flex flex-col gap-2 w-full">
+          {/* SUBSECCIÓN: Legales */}
+          <div className="flex flex-col gap-2 w-full">
+            {/* Título de subsección */}
+            <div className="px-3 py-1">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Legales</span>
+            </div>
+
+            {/* Términos y Condiciones */}
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={() => setTerminosCondicionesOpen(true)}
+            >
+              <FileText className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Términos y Condiciones</span>
+              <span className="sr-only">Términos y Condiciones</span>
+            </ZenButton>
+
+            {/* Aviso de Privacidad */}
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={() => setAvisoPrivacidadOpen(true)}
+            >
+              <Shield className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Aviso de Privacidad</span>
+              <span className="sr-only">Aviso de Privacidad</span>
+            </ZenButton>
+
+            {/* Contratos */}
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={() => setContratosOpen(true)}
+            >
+              <FileText className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Contratos</span>
+              <span className="sr-only">Contratos</span>
+            </ZenButton>
+          </div>
+
+          {/* Divider entre subsecciones */}
+          <div className="w-full h-px bg-zinc-800/50 my-1" />
+
+          {/* SUBSECCIÓN: Comercial */}
+          <div className="flex flex-col gap-2 w-full">
+            {/* Título de subsección */}
+            <div className="px-3 py-1">
+              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Comercial</span>
+            </div>
+
+            {/* Condiciones Comerciales */}
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={() => setCondicionesComercialesOpen(true)}
+            >
+              <Receipt className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Condiciones Comerciales</span>
+              <span className="sr-only">Condiciones Comerciales</span>
+            </ZenButton>
+
+            {/* Métodos de Pago */}
+            <ZenButton
+              variant="ghost"
+              size="sm"
+              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={() => setMetodosPagoOpen(true)}
+            >
+              <CreditCard className="h-5 w-5 shrink-0" />
+              <span className="text-xs font-medium">Métodos de Pago</span>
+              <span className="sr-only">Métodos de Pago</span>
+            </ZenButton>
+          </div>
+        </div>
+      </div>
+
+      {/* Botones base - siempre visibles (colapsados) */}
+      {/* SECCIÓN 1: Calendario */}
+      <div className="flex flex-col gap-2 items-center">
+        {onAgendaClick && (
+          <ZenButton
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+            onClick={onAgendaClick}
+          >
+            <Calendar className="h-5 w-5" />
+            <span className="sr-only">General</span>
+          </ZenButton>
+        )}
+
+        {onTareasOperativasClick && isMounted && hasGoogleCalendar && (
+          <ZenButton
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-sm text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/20 transition-colors"
+            onClick={onTareasOperativasClick}
+          >
+            <CalendarCheck className="h-5 w-5" />
+            <span className="sr-only">Operativo</span>
+          </ZenButton>
+        )}
+      </div>
+
+      {/* Divider entre secciones */}
+      {onContactsClick && <div className="w-8 h-px bg-zinc-800 my-2" />}
+
+      {/* SECCIÓN 2: Contactos */}
       {onContactsClick && (
-        <div className={`h-px bg-zinc-800 my-2 ${isHovered ? 'w-full' : 'w-8'}`} />
+        <div className="flex flex-col gap-2 items-center">
+          <ZenButton
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+            onClick={onContactsClick}
+          >
+            <ContactRound className="h-5 w-5" />
+            <span className="sr-only">Contactos</span>
+          </ZenButton>
+        </div>
       )}
 
-      {/* Contactos */}
-      {onContactsClick && (
+      {/* Divider entre secciones */}
+      <div className="w-8 h-px bg-zinc-800 my-2" />
+
+      {/* SECCIÓN 3: Configuración */}
+      {/* Legales */}
+      <div className="flex flex-col gap-2 items-center">
         <ZenButton
           variant="ghost"
-          size={isHovered ? 'sm' : 'icon'}
-          className={`rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors ${
-            isHovered ? 'h-10 w-full justify-start gap-2 px-3' : 'h-10 w-10'
-          }`}
-          onClick={onContactsClick}
+          size="icon"
+          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+          onClick={() => setTerminosCondicionesOpen(true)}
+          title="Términos y Condiciones"
         >
-          <ContactRound className="h-5 w-5 shrink-0" />
-          {isHovered && <span className="text-sm font-medium">Contactos</span>}
-          <span className="sr-only">Contactos</span>
+          <FileText className="h-5 w-5" />
+          <span className="sr-only">Términos y Condiciones</span>
         </ZenButton>
-      )}
+
+        <ZenButton
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+          onClick={() => setAvisoPrivacidadOpen(true)}
+          title="Aviso de Privacidad"
+        >
+          <Shield className="h-5 w-5" />
+          <span className="sr-only">Aviso de Privacidad</span>
+        </ZenButton>
+
+        <ZenButton
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+          onClick={() => setContratosOpen(true)}
+          title="Contratos"
+        >
+          <FileText className="h-5 w-5" />
+          <span className="sr-only">Contratos</span>
+        </ZenButton>
+      </div>
+
+      {/* Divider entre subsecciones */}
+      <div className="w-6 h-px bg-zinc-800/50 my-1" />
+
+      {/* Comercial */}
+      <div className="flex flex-col gap-2 items-center">
+        <ZenButton
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+          onClick={() => setCondicionesComercialesOpen(true)}
+          title="Condiciones Comerciales"
+        >
+          <Receipt className="h-5 w-5" />
+          <span className="sr-only">Condiciones Comerciales</span>
+        </ZenButton>
+
+        <ZenButton
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+          onClick={() => setMetodosPagoOpen(true)}
+          title="Métodos de Pago"
+        >
+          <CreditCard className="h-5 w-5" />
+          <span className="sr-only">Métodos de Pago</span>
+        </ZenButton>
+      </div>
+
+      {/* Modales Legales */}
+      <TerminosCondicionesEditor
+        studioSlug={studioSlug}
+        isOpen={terminosCondicionesOpen}
+        onClose={() => setTerminosCondicionesOpen(false)}
+      />
+
+      <AvisoPrivacidadManager
+        studioSlug={studioSlug}
+        isOpen={avisoPrivacidadOpen}
+        onClose={() => setAvisoPrivacidadOpen(false)}
+      />
+
+      <ContractTemplateManagerModal
+        isOpen={contratosOpen}
+        onClose={() => setContratosOpen(false)}
+        studioSlug={studioSlug}
+      />
+
+      <CondicionesComercialesManager
+        studioSlug={studioSlug}
+        isOpen={condicionesComercialesOpen}
+        onClose={() => setCondicionesComercialesOpen(false)}
+      />
+
+      <PaymentMethodsModal
+        isOpen={metodosPagoOpen}
+        onClose={() => setMetodosPagoOpen(false)}
+        studioSlug={studioSlug}
+      />
     </aside>
   );
 }

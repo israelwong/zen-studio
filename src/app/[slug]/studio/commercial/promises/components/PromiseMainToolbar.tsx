@@ -49,8 +49,8 @@ export function PromiseMainToolbar({
           <span>Aviso de Privacidad</span>
         </ZenButton>
 
-        {/* Botón Etiquetas */}
-        <ZenButton
+        {/* Botón Etiquetas - Comentado por si se usa posteriormente */}
+        {/* <ZenButton
           variant="ghost"
           size="sm"
           onClick={onTagsClick}
@@ -58,7 +58,7 @@ export function PromiseMainToolbar({
         >
           <Tag className="h-3.5 w-3.5" />
           <span>Etiquetas</span>
-        </ZenButton>
+        </ZenButton> */}
       </div>
 
       {/* Grupo: Métodos de Pago */}

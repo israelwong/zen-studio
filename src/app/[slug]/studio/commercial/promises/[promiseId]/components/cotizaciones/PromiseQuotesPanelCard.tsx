@@ -195,10 +195,10 @@ export function PromiseQuotesPanelCard({
   };
 
   const handleClick = () => {
-
-    // Si la cotización está autorizada y tiene evento_id, enrutar al evento
-    const isAuthorized = cotizacion.status === 'aprobada' || cotizacion.status === 'autorizada' || cotizacion.status === 'approved';
-    if (isAuthorized && cotizacion.evento_id) {
+    // Si la cotización tiene evento_id asociado, redirigir al evento
+    // Esto aplica para estados: aprobada/autorizada/approved, en_cierre, contract_signed
+    const estadosConEvento = ['aprobada', 'autorizada', 'approved', 'en_cierre', 'contract_signed'];
+    if (estadosConEvento.includes(cotizacion.status) && cotizacion.evento_id) {
       router.push(`/${studioSlug}/studio/business/events/${cotizacion.evento_id}`);
       return;
     }
