@@ -34,6 +34,7 @@ import {
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { AuthorizeCotizacionModal } from './AuthorizeCotizacionModal';
 import { ClosingProcessInfoModal, getClosingProcessInfoDismissed } from '../cierre/ClosingProcessInfoModal';
+import { getCotizacionClicks } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
 
 interface PromiseQuotesPanelCardProps {
   cotizacion: CotizacionListItem;
@@ -91,6 +92,7 @@ export function PromiseQuotesPanelCard({
   const [editingName, setEditingName] = useState(cotizacion.name);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
+  const [clickCount, setClickCount] = useState<number | null>(null);
 
   // Sincronizar editingName cuando cambie cotizacion.name (solo si el modal no está abierto)
   useEffect(() => {
@@ -108,6 +110,22 @@ export function PromiseQuotesPanelCard({
       }, 100);
     }
   }, [showEditNameModal]);
+
+  // Cargar contador de clicks
+  useEffect(() => {
+    const loadClickCount = async () => {
+      try {
+        const result = await getCotizacionClicks(cotizacion.id);
+        if (result.success && result.data) {
+          setClickCount(result.data.clicks);
+        }
+      } catch (error) {
+        console.debug('[PromiseQuotesPanelCard] Failed to load click count:', error);
+      }
+    };
+
+    loadClickCount();
+  }, [cotizacion.id]);
 
   const {
     attributes,
@@ -602,6 +620,15 @@ export function PromiseQuotesPanelCard({
                     {cotizacion.revision_number && cotizacion.revision_status === 'pending_revision' && (
                       <span className="ml-1">#{cotizacion.revision_number}</span>
                     )}
+                  </ZenBadge>
+                )}
+                {clickCount !== null && clickCount > 0 && (
+                  <ZenBadge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0.5 rounded-full"
+                    title={`${clickCount} click${clickCount > 1 ? 's' : ''} en esta cotización`}
+                  >
+                    👁️ {clickCount}
                   </ZenBadge>
                 )}
               </div>

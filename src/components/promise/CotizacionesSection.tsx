@@ -6,6 +6,7 @@ import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenBadge } from '
 import type { PublicCotizacion } from '@/types/public-promise';
 import { CotizacionDetailSheet } from './CotizacionDetailSheet';
 import { getTotalServicios, getFirstServicios } from '@/lib/utils/public-promise';
+import { trackCotizacionClick } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
 
 interface CondicionComercial {
   id: string;
@@ -31,6 +32,8 @@ interface CotizacionesSectionProps {
   cotizaciones: PublicCotizacion[];
   promiseId: string;
   studioSlug: string;
+  studioId?: string;
+  sessionId?: string;
   condicionesComerciales?: CondicionComercial[];
   terminosCondiciones?: TerminoCondicion[];
   showCategoriesSubtotals?: boolean;
@@ -46,6 +49,8 @@ export function CotizacionesSection({
   cotizaciones,
   promiseId,
   studioSlug,
+  studioId,
+  sessionId,
   condicionesComerciales,
   terminosCondiciones,
   showCategoriesSubtotals = false,
@@ -67,6 +72,25 @@ export function CotizacionesSection({
       }
     }
   }, [cotizaciones, selectedCotizacion]);
+
+  // Manejar click en cotización
+  const handleCotizacionClick = (cotizacion: PublicCotizacion) => {
+    // Abrir sheet de detalle
+    setSelectedCotizacion(cotizacion);
+
+    // Trackear click si tenemos studioId y sessionId
+    if (studioId && sessionId) {
+      trackCotizacionClick(
+        studioId,
+        promiseId,
+        cotizacion.id,
+        cotizacion.name,
+        sessionId
+      ).catch((error) => {
+        console.debug('[CotizacionesSection] Failed to track click:', error);
+      });
+    }
+  };
 
   // Ordenar cotizaciones por order antes de renderizar
   const cotizacionesOrdenadas = React.useMemo(
@@ -130,7 +154,7 @@ export function CotizacionesSection({
                 <ZenCard
                   key={cotizacion.id}
                   className="bg-zinc-900/50 border-zinc-800 hover:border-zinc-600 transition-all duration-200 cursor-pointer group"
-                  onClick={() => setSelectedCotizacion(cotizacion)}
+                  onClick={() => handleCotizacionClick(cotizacion)}
                 >
                   <ZenCardHeader>
                     <div className="flex items-start justify-between">

@@ -3449,6 +3449,7 @@ enum ContentType {
   PORTFOLIO
   OFFER
   PACKAGE
+  PROMISE
 }
 
 enum AnalyticsEventType {
@@ -3474,4 +3475,6 @@ enum AnalyticsEventType {
   TIME_60S
   SIDEBAR_VIEW
   OFFER_CLICK
+  COTIZACION_CLICK
+  PAQUETE_CLICK
 }

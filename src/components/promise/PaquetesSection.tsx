@@ -8,6 +8,7 @@ import type { PublicPaquete } from '@/types/public-promise';
 import { PaqueteDetailSheet } from './PaqueteDetailSheet';
 import { getTotalServicios, getFirstServicios } from '@/lib/utils/public-promise';
 import { cn } from '@/lib/utils';
+import { trackPaqueteClick } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
 
 interface CondicionComercial {
     id: string;
@@ -49,6 +50,8 @@ export function PaquetesSection({
     paquetes,
     promiseId,
     studioSlug,
+    studioId,
+    sessionId,
     showAsAlternative = false,
     condicionesComerciales,
     terminosCondiciones,
@@ -59,8 +62,25 @@ export function PaquetesSection({
     showOfferConditions = false,
     showPackages = false,
     cotizaciones = [],
-}: PaquetesSectionProps) {
+}: PaquetesSectionProps & { studioId?: string; sessionId?: string }) {
     const [selectedPaquete, setSelectedPaquete] = useState<PublicPaquete | null>(null);
+
+    const handlePaqueteClick = (paquete: PublicPaquete) => {
+        setSelectedPaquete(paquete);
+        
+        // Trackear click si tenemos studioId y sessionId
+        if (studioId && sessionId) {
+            trackPaqueteClick(
+                studioId,
+                promiseId,
+                paquete.id,
+                paquete.name,
+                sessionId
+            ).catch((error) => {
+                console.debug('[PaquetesSection] Failed to track click:', error);
+            });
+        }
+    };
     const [activeIndex, setActiveIndex] = useState(0);
     const [autoplayEnabled, setAutoplayEnabled] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -160,7 +180,7 @@ export function PaquetesSection({
                                 >
                                     <ZenCard
                                         className="bg-zinc-900/50 border-zinc-800 hover:border-blue-500/50 transition-all duration-200 cursor-pointer group h-full overflow-hidden"
-                                        onClick={() => setSelectedPaquete(paquete)}
+                                        onClick={() => handlePaqueteClick(paquete)}
                                     >
                                         <div className="flex items-stretch gap-4 p-4">
                                             {/* Cover cuadrado */}

@@ -19,6 +19,7 @@ import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promi
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 import { PromisePageProvider, usePromisePageContext } from './PromisePageContext';
 import { ProgressOverlay } from './ProgressOverlay';
+import { trackPromisePageView } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
 
 interface PromisePageClientProps {
   promise: {
@@ -126,7 +127,49 @@ function PromisePageContent({
   const [hideCotizacionesPaquetes, setHideCotizacionesPaquetes] = useState(false);
   // Estado para rastrear si estamos en proceso de autorización (para evitar restauración prematura)
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
+  // Generar o recuperar sessionId para tracking
+  useEffect(() => {
+    const storageKey = `promise_session_${promiseId}`;
+    let storedSessionId = localStorage.getItem(storageKey);
+    if (!storedSessionId) {
+      storedSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem(storageKey, storedSessionId);
+    }
+    setSessionId(storedSessionId);
+  }, [promiseId]);
+
+  // Tracking de visita a la página (cada vez que se carga/refresca, solo si NO es preview)
+  const lastTrackTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!sessionId || !studio.id) return;
+
+    // Detectar si es preview mode desde URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const isPreview = urlParams.get('preview') === 'true';
+
+    if (isPreview) {
+      return;
+    }
+
+    // Evitar múltiples tracks muy cercanos (menos de 500ms) para prevenir duplicados en re-renders
+    const now = Date.now();
+    const timeSinceLastTrack = now - lastTrackTimeRef.current;
+
+    if (timeSinceLastTrack < 500) {
+      return;
+    }
+
+    // Marcar tiempo de tracking
+    lastTrackTimeRef.current = now;
+
+    // Registrar visita (cada refresh cuenta como nueva visita)
+    trackPromisePageView(studio.id, promiseId, sessionId, isPreview).catch((error) => {
+      console.debug('[PromisePageClient] Failed to track page view:', error);
+    });
+  }, [sessionId, promiseId, studio.id]);
 
   // Restaurar estado cuando hay un error en el proceso
   useEffect(() => {
@@ -472,6 +515,8 @@ function PromisePageContent({
                 initialCotizaciones={cotizaciones}
                 promiseId={promiseId}
                 studioSlug={studioSlug}
+                studioId={studio.id}
+                sessionId={sessionId || undefined}
                 condicionesComerciales={condicionesFiltradas}
                 terminosCondiciones={terminos_condiciones}
                 showCategoriesSubtotals={shareSettings.show_categories_subtotals}
@@ -489,6 +534,8 @@ function PromisePageContent({
             {!hideCotizacionesPaquetes && !showProgressOverlay && shareSettings.show_packages && paquetes.length > 0 && (
               <PaquetesSection
                 paquetes={paquetes}
+                studioId={studio.id}
+                sessionId={sessionId || undefined}
                 promiseId={promiseId}
                 studioSlug={studioSlug}
                 showAsAlternative={initialCotizaciones.length > 0}

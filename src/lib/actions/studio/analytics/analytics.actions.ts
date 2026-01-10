@@ -4,13 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { analyticsQueue } from "@/lib/analytics-queue";
 
-export type ContentType = 'POST' | 'PORTFOLIO' | 'OFFER' | 'PACKAGE';
+export type ContentType = 'POST' | 'PORTFOLIO' | 'OFFER' | 'PACKAGE' | 'PROMISE';
 
 export type AnalyticsEventType =
   | 'PAGE_VIEW'
   | 'FEED_VIEW'
   | 'SIDEBAR_VIEW'     // Oferta visible en sidebar
   | 'OFFER_CLICK'      // Click en oferta
+  | 'COTIZACION_CLICK' // Click en cotización
+  | 'PAQUETE_CLICK'    // Click en paquete
   | 'MODAL_OPEN'
   | 'MODAL_CLOSE'
   | 'NEXT_CONTENT'
