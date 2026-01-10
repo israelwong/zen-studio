@@ -2,7 +2,8 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getStudioProfileBySlug } from '@/lib/actions/public/profile.actions';
 import { getConversionMetrics } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
-import { ConversionMetrics, AnalyticsSkeleton } from '../components';
+import { AnalyticsSkeleton } from '../components';
+import { ConversionMetricsClient } from './components/ConversionMetricsClient';
 import { Target } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
 
     const studio = result.data.studio;
 
-    // Obtener datos de conversión
+    // Obtener datos iniciales de conversión (mes actual)
     const conversionResult = await getConversionMetrics(studio.id);
 
     if (!conversionResult.success) {
@@ -52,8 +53,6 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
         );
     }
 
-    const conversionData = conversionResult.data;
-
     return (
         <div className="space-y-8">
             {/* Conversion Metrics */}
@@ -66,7 +65,10 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
                         Reportes de Conversión
                     </h2>
                 </div>
-                <ConversionMetrics data={conversionData} />
+                <ConversionMetricsClient 
+                    studioId={studio.id} 
+                    initialData={conversionResult.data} 
+                />
             </div>
         </div>
     );

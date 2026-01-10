@@ -7,16 +7,34 @@ import { getStudioOwnerId, createOwnerExclusionFilter } from "@/lib/utils/analyt
 /**
  * Obtener métricas de conversión de ofertas
  */
-export async function getConversionMetrics(studioId: string) {
+export async function getConversionMetrics(
+    studioId: string,
+    options?: {
+        eventDateFrom?: Date;
+        eventDateTo?: Date;
+    }
+) {
     try {
         // Límite de tiempo: últimos 90 días
         const dateLimit = new Date();
         dateLimit.setDate(dateLimit.getDate() - 90);
 
-        // Fecha inicio del mes actual
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
+        // Fecha inicio del mes actual (por defecto)
+        const startOfMonth = options?.eventDateFrom || (() => {
+            const date = new Date();
+            date.setDate(1);
+            date.setHours(0, 0, 0, 0);
+            return date;
+        })();
+
+        // Fecha fin (por defecto: fin del mes actual)
+        const endOfMonth = options?.eventDateTo || (() => {
+            const date = new Date();
+            date.setMonth(date.getMonth() + 1);
+            date.setDate(0);
+            date.setHours(23, 59, 59, 999);
+            return date;
+        })();
 
         // Obtener owner_id y crear filtro de exclusión
         const ownerId = await getStudioOwnerId(studioId);
@@ -89,32 +107,37 @@ export async function getConversionMetrics(studioId: string) {
             }),
 
             // Clicks en paquetes (últimos 90 días)
-            prisma.studio_content_analytics.groupBy({
-                by: ['content_id'],
+            // Nota: Los clicks se guardan con content_type: 'PROMISE' y paqueteId en metadata
+            prisma.studio_content_analytics.findMany({
                 where: {
                     studio_id: studioId,
-                    content_type: 'PACKAGE',
+                    content_type: 'PROMISE',
                     event_type: 'PAQUETE_CLICK',
                     created_at: { gte: dateLimit },
                     ...ownerExclusionFilter,
                 },
-                _count: {
-                    id: true,
+                select: {
+                    metadata: true,
                 },
-                orderBy: {
-                    _count: {
-                        id: 'desc',
-                    },
-                },
-                take: 10,
+                take: 10000, // Limitar para performance
             }),
 
-            // Eventos convertidos este mes (status COMPLETED)
+            // Eventos convertidos (filtro solo por fecha, sin estado)
+            // Eventos son los que se convirtieron desde promesas con cotización autorizada/aprobada
+            // Filtramos por created_at (cuando se creó el evento desde la promesa)
             prisma.studio_events.count({
                 where: {
                     studio_id: studioId,
-                    status: 'COMPLETED',
-                    created_at: { gte: startOfMonth },
+                    cotizacion_id: { not: null },
+                    cotizacion: {
+                        status: {
+                            in: ['aprobada', 'autorizada', 'approved'],
+                        },
+                    },
+                    created_at: {
+                        gte: startOfMonth,
+                        lte: endOfMonth,
+                    },
                 },
             }),
 
@@ -163,11 +186,29 @@ export async function getConversionMetrics(studioId: string) {
             count: p._count.id,
         }));
 
+        // Agrupar clicks por paquete_id desde metadata
+        const clicksByPaquete = packageClicks.reduce((acc, click) => {
+            const metadata = click.metadata as Record<string, unknown>;
+            const paqueteId = metadata?.paquete_id as string;
+            if (!paqueteId) return acc;
+
+            if (!acc[paqueteId]) {
+                acc[paqueteId] = 0;
+            }
+            acc[paqueteId]++;
+            return acc;
+        }, {} as Record<string, number>);
+
+        // Ordenar por clicks y obtener top 10
+        const topPaqueteIds = Object.entries(clicksByPaquete)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+            .map(([id]) => id);
+
         // Obtener detalles de paquetes más vistos
-        const topPackageIds = packageClicks.map(p => p.content_id);
-        const topPackages = topPackageIds.length > 0 ? await prisma.studio_paquetes.findMany({
+        const topPackages = topPaqueteIds.length > 0 ? await prisma.studio_paquetes.findMany({
             where: {
-                id: { in: topPackageIds },
+                id: { in: topPaqueteIds },
             },
             select: {
                 id: true,
@@ -182,7 +223,7 @@ export async function getConversionMetrics(studioId: string) {
         }) : [];
 
         const topPackagesWithClicks = topPackages.map(pkg => {
-            const clicks = packageClicks.find(c => c.content_id === pkg.id)?._count.id || 0;
+            const clicks = clicksByPaquete[pkg.id] || 0;
             return {
                 id: pkg.id,
                 name: pkg.name,

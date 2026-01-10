@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Target, TrendingUp, MousePointerClick, DollarSign, Percent, Package, Calendar, Eye } from 'lucide-react';
+import { Target, TrendingUp, MousePointerClick, DollarSign, Percent, Calendar, Eye } from 'lucide-react';
 import { ZenCard } from '@/components/ui/zen';
 import Image from 'next/image';
 
@@ -151,18 +151,9 @@ export function ConversionMetrics({ data }: ConversionMetricsProps) {
                         <div className="p-1.5 rounded-lg bg-purple-500/10">
                             <Calendar className="w-4 h-4 text-purple-400" />
                         </div>
-                        <h3 className="text-sm font-semibold text-white">Eventos y Promesas</h3>
+                        <h3 className="text-sm font-semibold text-white">Promesas y Eventos</h3>
                     </div>
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20">
-                            <div>
-                                <p className="text-xs font-medium text-zinc-400">Eventos Convertidos</p>
-                                <p className="text-sm text-zinc-300 mt-0.5">Este mes</p>
-                            </div>
-                            <p className="text-lg font-bold text-purple-400">
-                                {data.eventsConvertedThisMonth.toLocaleString()}
-                            </p>
-                        </div>
                         <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20">
                             <div>
                                 <p className="text-xs font-medium text-zinc-400">Promesas Pendientes</p>
@@ -172,29 +163,18 @@ export function ConversionMetrics({ data }: ConversionMetricsProps) {
                                 {data.pendingPromises.toLocaleString()}
                             </p>
                         </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Eventos Convertidos</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">En el período seleccionado</p>
+                            </div>
+                            <p className="text-lg font-bold text-purple-400">
+                                {data.eventsConvertedThisMonth.toLocaleString()}
+                            </p>
+                        </div>
                     </div>
                 </ZenCard>
             </div>
-
-            {/* Paquetes por Categoría */}
-            {data.packagesByCategory.length > 0 && (
-                <ZenCard className="p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                        <div className="p-1.5 rounded-lg bg-emerald-500/10">
-                            <Package className="w-4 h-4 text-emerald-400" />
-                        </div>
-                        <h3 className="text-sm font-semibold text-white">Paquetes por Categoría</h3>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {data.packagesByCategory.map((category) => (
-                            <div key={category.categoryId} className="p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors">
-                                <p className="text-xs font-medium text-zinc-400 mb-1">{category.categoryName}</p>
-                                <p className="text-lg font-bold text-white">{category.count} paquetes</p>
-                            </div>
-                        ))}
-                    </div>
-                </ZenCard>
-            )}
 
             {/* Top Paquetes Más Vistos */}
             {data.topPackages.length > 0 && (
@@ -210,12 +190,11 @@ export function ConversionMetrics({ data }: ConversionMetricsProps) {
                             <div key={pkg.id} className="flex items-center gap-4 p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors">
                                 {/* Ranking */}
                                 <div className="flex-shrink-0">
-                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                        index === 0 ? 'bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400' :
-                                        index === 1 ? 'bg-gradient-to-br from-zinc-400/20 to-zinc-600/20 border border-zinc-400/30 text-zinc-300' :
-                                        index === 2 ? 'bg-gradient-to-br from-orange-400/20 to-orange-600/20 border border-orange-400/30 text-orange-400' :
-                                        'bg-zinc-800/50 border border-zinc-700 text-zinc-500'
-                                    }`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${index === 0 ? 'bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400' :
+                                            index === 1 ? 'bg-gradient-to-br from-zinc-400/20 to-zinc-600/20 border border-zinc-400/30 text-zinc-300' :
+                                                index === 2 ? 'bg-gradient-to-br from-orange-400/20 to-orange-600/20 border border-orange-400/30 text-orange-400' :
+                                                    'bg-zinc-800/50 border border-zinc-700 text-zinc-500'
+                                        }`}>
                                         {index + 1}
                                     </div>
                                 </div>
