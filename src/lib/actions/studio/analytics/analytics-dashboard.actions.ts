@@ -13,6 +13,15 @@ export async function getConversionMetrics(studioId: string) {
         const dateLimit = new Date();
         dateLimit.setDate(dateLimit.getDate() - 90);
 
+        // Fecha inicio del mes actual
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
+
+        // Obtener owner_id y crear filtro de exclusión
+        const ownerId = await getStudioOwnerId(studioId);
+        const ownerExclusionFilter = await createOwnerExclusionFilter(studioId, ownerId);
+
         // Obtener todas las ofertas del studio
         const offers = await prisma.studio_offers.findMany({
             where: {
@@ -26,38 +35,36 @@ export async function getConversionMetrics(studioId: string) {
 
         const offerIds = offers.map(o => o.id);
 
-        if (offerIds.length === 0) {
-            return {
-                success: true,
-                data: {
-                    totalSubmissions: 0,
-                    totalLandingVisits: 0,
-                    totalLeadformVisits: 0,
-                    conversionRate: 0,
-                    clickThroughRate: 0,
-                    totalConversionValue: 0,
-                    submissionsByOffer: [],
-                },
-            };
-        }
-
-        // Obtener visitas y submissions en paralelo
-        const [landingVisits, leadformVisits, submissions] = await Promise.all([
-            prisma.studio_offer_visits.count({
+        // Obtener datos en paralelo
+        const [
+            landingVisits,
+            leadformVisits,
+            submissions,
+            packagesByCategory,
+            packageClicks,
+            eventsThisMonth,
+            pendingPromises,
+        ] = await Promise.all([
+            // Visitas landing
+            offerIds.length > 0 ? prisma.studio_offer_visits.count({
                 where: {
                     offer_id: { in: offerIds },
                     visit_type: 'landing',
                     created_at: { gte: dateLimit },
                 },
-            }),
-            prisma.studio_offer_visits.count({
+            }) : Promise.resolve(0),
+
+            // Visitas leadform
+            offerIds.length > 0 ? prisma.studio_offer_visits.count({
                 where: {
                     offer_id: { in: offerIds },
                     visit_type: 'leadform',
                     created_at: { gte: dateLimit },
                 },
-            }),
-            prisma.studio_offer_submissions.findMany({
+            }) : Promise.resolve(0),
+
+            // Submissions
+            offerIds.length > 0 ? prisma.studio_offer_submissions.findMany({
                 where: {
                     offer_id: { in: offerIds },
                     created_at: { gte: dateLimit },
@@ -67,10 +74,61 @@ export async function getConversionMetrics(studioId: string) {
                     offer_id: true,
                     conversion_value: true,
                 },
+            }) : Promise.resolve([]),
+
+            // Paquetes por categoría (event_type)
+            prisma.studio_paquetes.groupBy({
+                by: ['event_type_id'],
+                where: {
+                    studio_id: studioId,
+                    status: 'active',
+                },
+                _count: {
+                    id: true,
+                },
+            }),
+
+            // Clicks en paquetes (últimos 90 días)
+            prisma.studio_content_analytics.groupBy({
+                by: ['content_id'],
+                where: {
+                    studio_id: studioId,
+                    content_type: 'PACKAGE',
+                    event_type: 'PAQUETE_CLICK',
+                    created_at: { gte: dateLimit },
+                    ...ownerExclusionFilter,
+                },
+                _count: {
+                    id: true,
+                },
+                orderBy: {
+                    _count: {
+                        id: 'desc',
+                    },
+                },
+                take: 10,
+            }),
+
+            // Eventos convertidos este mes (status COMPLETED)
+            prisma.studio_events.count({
+                where: {
+                    studio_id: studioId,
+                    status: 'COMPLETED',
+                    created_at: { gte: startOfMonth },
+                },
+            }),
+
+            // Promesas pendientes
+            prisma.studio_promises.count({
+                where: {
+                    studio_id: studioId,
+                    status: 'pending',
+                    is_test: false,
+                },
             }),
         ]);
 
-        // Calcular métricas
+        // Calcular métricas de ofertas
         const totalSubmissions = submissions.length;
         const totalConversionValue = submissions.reduce((sum, s) => {
             return sum + (s.conversion_value ? Number(s.conversion_value) : 0);
@@ -84,20 +142,55 @@ export async function getConversionMetrics(studioId: string) {
             ? (leadformVisits / landingVisits) * 100
             : 0;
 
-        // Submissions por oferta
-        const submissionsByOffer = submissions.reduce((acc, s) => {
-            const offerId = s.offer_id;
-            if (!acc[offerId]) {
-                acc[offerId] = { offerId, count: 0, value: 0 };
-            }
-            acc[offerId].count++;
-            acc[offerId].value += s.conversion_value ? Number(s.conversion_value) : 0;
-            return acc;
-        }, {} as Record<string, { offerId: string; count: number; value: number }>);
+        // Obtener nombres de categorías de eventos
+        const eventTypeIds = packagesByCategory.map(p => p.event_type_id);
+        const eventTypes = await prisma.studio_event_types.findMany({
+            where: {
+                id: { in: eventTypeIds },
+            },
+            select: {
+                id: true,
+                name: true,
+            },
+        });
 
-        const topOffers = Object.values(submissionsByOffer)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5);
+        const eventTypesMap = new Map(eventTypes.map(et => [et.id, et.name]));
+
+        // Paquetes por categoría con nombres
+        const packagesByCategoryData = packagesByCategory.map(p => ({
+            categoryId: p.event_type_id,
+            categoryName: eventTypesMap.get(p.event_type_id) || 'Sin categoría',
+            count: p._count.id,
+        }));
+
+        // Obtener detalles de paquetes más vistos
+        const topPackageIds = packageClicks.map(p => p.content_id);
+        const topPackages = topPackageIds.length > 0 ? await prisma.studio_paquetes.findMany({
+            where: {
+                id: { in: topPackageIds },
+            },
+            select: {
+                id: true,
+                name: true,
+                cover_url: true,
+                event_types: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        }) : [];
+
+        const topPackagesWithClicks = topPackages.map(pkg => {
+            const clicks = packageClicks.find(c => c.content_id === pkg.id)?._count.id || 0;
+            return {
+                id: pkg.id,
+                name: pkg.name,
+                coverUrl: pkg.cover_url,
+                categoryName: pkg.event_types?.name || 'Sin categoría',
+                clicks,
+            };
+        }).sort((a, b) => b.clicks - a.clicks);
 
         return {
             success: true,
@@ -108,7 +201,10 @@ export async function getConversionMetrics(studioId: string) {
                 conversionRate,
                 clickThroughRate,
                 totalConversionValue,
-                topOffers,
+                packagesByCategory: packagesByCategoryData,
+                topPackages: topPackagesWithClicks,
+                eventsConvertedThisMonth: eventsThisMonth,
+                pendingPromises,
             },
         };
     } catch (error) {

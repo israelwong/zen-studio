@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Target, TrendingUp, MousePointerClick, DollarSign, Percent } from 'lucide-react';
+import { Target, TrendingUp, MousePointerClick, DollarSign, Percent, Package, Calendar, Eye } from 'lucide-react';
 import { ZenCard } from '@/components/ui/zen';
+import Image from 'next/image';
 
 interface ConversionMetricsProps {
     data: {
@@ -12,7 +13,10 @@ interface ConversionMetricsProps {
         conversionRate: number;
         clickThroughRate: number;
         totalConversionValue: number;
-        topOffers: Array<{ offerId: string; count: number; value: number }>;
+        packagesByCategory: Array<{ categoryId: string; categoryName: string; count: number }>;
+        topPackages: Array<{ id: string; name: string; coverUrl: string | null; categoryName: string; clicks: number }>;
+        eventsConvertedThisMonth: number;
+        pendingPromises: number;
     };
 }
 
@@ -71,78 +75,186 @@ export function ConversionMetrics({ data }: ConversionMetricsProps) {
 
     return (
         <div className="space-y-6">
-            {/* Main Metrics */}
-            <div>
-                <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">
-                    Conversiones
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {cards.map((card, index) => (
-                        <ZenCard key={index} className="p-5 hover:border-zinc-700 transition-colors group relative overflow-hidden">
-                            <div className={`absolute inset-0 bg-gradient-to-br ${card.bgColor} opacity-0 group-hover:opacity-100 transition-opacity`} />
-                            <div className="relative">
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className={`p-2.5 rounded-lg bg-gradient-to-br ${card.bgColor} border ${card.borderColor}`}>
-                                        <card.icon className={`w-4 h-4 ${card.color}`} />
-                                    </div>
+            {/* Main Metrics Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {cards.map((card, index) => (
+                    <ZenCard key={index} className="p-5 hover:border-zinc-700 transition-colors group relative overflow-hidden">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${card.bgColor} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                        <div className="relative">
+                            <div className="flex items-start justify-between mb-3">
+                                <div className={`p-2.5 rounded-lg bg-gradient-to-br ${card.bgColor} border ${card.borderColor}`}>
+                                    <card.icon className={`w-4 h-4 ${card.color}`} />
                                 </div>
-                                <p className="text-xs font-medium text-zinc-400 mb-2">
-                                    {card.title}
-                                </p>
-                                <p className={`text-2xl font-bold ${card.color} mb-1`}>
-                                    {card.isPercent
-                                        ? formatPercent(card.value)
-                                        : card.isCurrency
-                                            ? formatNumber(card.value)
-                                            : card.value.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-zinc-500 line-clamp-1">
-                                    {card.description}
-                                </p>
                             </div>
-                        </ZenCard>
-                    ))}
-                </div>
+                            <p className="text-xs font-medium text-zinc-400 mb-2">
+                                {card.title}
+                            </p>
+                            <p className={`text-2xl font-bold ${card.color} mb-1`}>
+                                {card.isPercent
+                                    ? formatPercent(card.value)
+                                    : card.isCurrency
+                                        ? formatNumber(card.value)
+                                        : card.value.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-zinc-500 line-clamp-1">
+                                {card.description}
+                            </p>
+                        </div>
+                    </ZenCard>
+                ))}
             </div>
 
-            {/* Detailed Stats */}
-            <ZenCard className="p-5">
-                <div className="flex items-center gap-2 mb-4">
-                    <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                        <MousePointerClick className="w-4 h-4 text-cyan-400" />
-                    </div>
-                    <h3 className="text-sm font-semibold text-white">Funnel de Conversión</h3>
-                </div>
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/30">
-                        <div>
-                            <p className="text-xs font-medium text-zinc-400">Visitas Landing</p>
-                            <p className="text-sm text-zinc-300 mt-0.5">Usuarios que vieron la oferta</p>
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Funnel de Conversión */}
+                <ZenCard className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 rounded-lg bg-cyan-500/10">
+                            <MousePointerClick className="w-4 h-4 text-cyan-400" />
                         </div>
-                        <p className="text-lg font-bold text-white">
-                            {data.totalLandingVisits.toLocaleString()}
-                        </p>
+                        <h3 className="text-sm font-semibold text-white">Funnel de Conversión</h3>
                     </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/30">
-                        <div>
-                            <p className="text-xs font-medium text-zinc-400">Visitas Leadform</p>
-                            <p className="text-sm text-zinc-300 mt-0.5">Usuarios que vieron el formulario</p>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/30">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Visitas Landing</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">Usuarios que vieron la oferta</p>
+                            </div>
+                            <p className="text-lg font-bold text-white">
+                                {data.totalLandingVisits.toLocaleString()}
+                            </p>
                         </div>
-                        <p className="text-lg font-bold text-blue-400">
-                            {data.totalLeadformVisits.toLocaleString()}
-                        </p>
-                    </div>
-                    <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
-                        <div>
-                            <p className="text-xs font-medium text-zinc-400">Conversiones</p>
-                            <p className="text-sm text-zinc-300 mt-0.5">Formularios completados</p>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-zinc-800/30">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Visitas Leadform</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">Usuarios que vieron el formulario</p>
+                            </div>
+                            <p className="text-lg font-bold text-blue-400">
+                                {data.totalLeadformVisits.toLocaleString()}
+                            </p>
                         </div>
-                        <p className="text-lg font-bold text-emerald-400">
-                            {data.totalSubmissions.toLocaleString()}
-                        </p>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-500/5 border border-emerald-500/20">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Conversiones</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">Formularios completados</p>
+                            </div>
+                            <p className="text-lg font-bold text-emerald-400">
+                                {data.totalSubmissions.toLocaleString()}
+                            </p>
+                        </div>
                     </div>
-                </div>
-            </ZenCard>
+                </ZenCard>
+
+                {/* Eventos y Promesas */}
+                <ZenCard className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 rounded-lg bg-purple-500/10">
+                            <Calendar className="w-4 h-4 text-purple-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Eventos y Promesas</h3>
+                    </div>
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Eventos Convertidos</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">Este mes</p>
+                            </div>
+                            <p className="text-lg font-bold text-purple-400">
+                                {data.eventsConvertedThisMonth.toLocaleString()}
+                            </p>
+                        </div>
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20">
+                            <div>
+                                <p className="text-xs font-medium text-zinc-400">Promesas Pendientes</p>
+                                <p className="text-sm text-zinc-300 mt-0.5">Requieren atención</p>
+                            </div>
+                            <p className="text-lg font-bold text-orange-400">
+                                {data.pendingPromises.toLocaleString()}
+                            </p>
+                        </div>
+                    </div>
+                </ZenCard>
+            </div>
+
+            {/* Paquetes por Categoría */}
+            {data.packagesByCategory.length > 0 && (
+                <ZenCard className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                            <Package className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Paquetes por Categoría</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {data.packagesByCategory.map((category) => (
+                            <div key={category.categoryId} className="p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors">
+                                <p className="text-xs font-medium text-zinc-400 mb-1">{category.categoryName}</p>
+                                <p className="text-lg font-bold text-white">{category.count} paquetes</p>
+                            </div>
+                        ))}
+                    </div>
+                </ZenCard>
+            )}
+
+            {/* Top Paquetes Más Vistos */}
+            {data.topPackages.length > 0 && (
+                <ZenCard className="p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                        <div className="p-1.5 rounded-lg bg-blue-500/10">
+                            <Eye className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-white">Paquetes Más Vistos</h3>
+                    </div>
+                    <div className="space-y-3">
+                        {data.topPackages.map((pkg, index) => (
+                            <div key={pkg.id} className="flex items-center gap-4 p-3 rounded-lg bg-zinc-800/30 hover:bg-zinc-800/50 transition-colors">
+                                {/* Ranking */}
+                                <div className="flex-shrink-0">
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                        index === 0 ? 'bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400' :
+                                        index === 1 ? 'bg-gradient-to-br from-zinc-400/20 to-zinc-600/20 border border-zinc-400/30 text-zinc-300' :
+                                        index === 2 ? 'bg-gradient-to-br from-orange-400/20 to-orange-600/20 border border-orange-400/30 text-orange-400' :
+                                        'bg-zinc-800/50 border border-zinc-700 text-zinc-500'
+                                    }`}>
+                                        {index + 1}
+                                    </div>
+                                </div>
+
+                                {/* Cover Image */}
+                                {pkg.coverUrl && (
+                                    <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-zinc-800 border border-zinc-700">
+                                        <Image
+                                            src={pkg.coverUrl}
+                                            alt={pkg.name}
+                                            fill
+                                            className="object-cover"
+                                            unoptimized
+                                        />
+                                    </div>
+                                )}
+
+                                {/* Content Info */}
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-semibold text-white truncate mb-1">
+                                        {pkg.name}
+                                    </p>
+                                    <p className="text-xs text-zinc-500">
+                                        {pkg.categoryName}
+                                    </p>
+                                </div>
+
+                                {/* Clicks */}
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                    <Eye className="w-4 h-4 text-zinc-500" />
+                                    <span className="text-sm font-semibold text-white">
+                                        {pkg.clicks.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </ZenCard>
+            )}
         </div>
     );
 }
