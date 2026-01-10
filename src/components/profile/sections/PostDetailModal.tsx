@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { PostRenderer } from '@/components/posts/PostRenderer';
 import { AlertCircle, Home, Image as ImageIcon } from 'lucide-react';
+import { useContentAnalytics } from '@/hooks/useContentAnalytics';
 
 interface PostMedia {
     id: string;
@@ -37,6 +38,8 @@ interface Post {
 interface PostDetailModalProps {
     post: Post | null;
     studioSlug: string;
+    studioId?: string;
+    ownerUserId?: string | null;
     isOpen: boolean;
     onClose: () => void;
     onNext?: () => void;
@@ -57,6 +60,8 @@ interface PostDetailModalProps {
 export function PostDetailModal({
     post,
     studioSlug,
+    studioId,
+    ownerUserId,
     isOpen,
     onClose,
     onNext,
@@ -66,6 +71,21 @@ export function PostDetailModal({
     isArchived = false,
     onRestore
 }: PostDetailModalProps) {
+    // Analytics hook para tracking
+    const analytics = useContentAnalytics({
+        studioId: studioId || '',
+        contentType: 'POST',
+        contentId: post?.id || '',
+        ownerUserId,
+    });
+
+    // Trackear cuando se abre el modal
+    useEffect(() => {
+        if (isOpen && post?.id && studioId) {
+            analytics.trackModalOpen();
+        }
+    }, [isOpen, post?.id, studioId, analytics]);
+
     // Manejar ESC para cerrar
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
@@ -201,6 +221,8 @@ export function PostDetailModal({
                     <PostRenderer
                         post={postWithCTA}
                         studioSlug={studioSlug}
+                        studioId={studioId}
+                        ownerUserId={ownerUserId}
                         onNext={onNext}
                         onPrev={onPrev}
                         hasNext={hasNext}

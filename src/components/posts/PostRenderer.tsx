@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { MediaItem } from "@/lib/actions/schemas/post-schemas";
 import { ImageCarousel } from "@/components/shared/media";
+import { useContentAnalytics } from "@/hooks/useContentAnalytics";
 
 interface PostRendererProps {
   post: {
@@ -40,6 +41,8 @@ interface PostRendererProps {
     };
   };
   studioSlug: string;
+  studioId?: string;
+  ownerUserId?: string | null;
   onNext?: () => void;
   onPrev?: () => void;
   hasNext?: boolean;
@@ -114,6 +117,9 @@ export function PostRenderer({ post, studioSlug, onNext, onPrev, hasNext, hasPre
       await navigator.clipboard.writeText(window.location.href);
       setLinkCopied(true);
       toast.success("Enlace copiado al portapapeles");
+
+      // Trackear evento de compartir
+      analytics.trackLinkCopy();
 
       // Resetear después de 2 segundos
       setTimeout(() => {

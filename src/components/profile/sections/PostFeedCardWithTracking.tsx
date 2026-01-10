@@ -102,12 +102,18 @@ export function PostFeedCardWithTracking({
         };
     }, [analytics]);
 
+    // Handler para tracking de clicks en media
+    const handleMediaClick = (mediaId: string) => {
+        analytics.trackMediaClick(mediaId);
+    };
+
     return (
         <div ref={cardRef}>
             <PostFeedCard
                 post={post}
                 onPostClick={onPostClick}
                 onEditPost={onEditPost}
+                onMediaClick={handleMediaClick}
             />
         </div>
     );

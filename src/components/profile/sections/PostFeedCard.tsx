@@ -36,6 +36,7 @@ interface PostFeedCardProps {
     };
     onPostClick?: (postSlug: string) => void;
     onEditPost?: (postId: string) => void; // Callback para editar post
+    onMediaClick?: (mediaId: string) => void; // Callback para tracking de clicks en media
 }
 
 /**
@@ -46,7 +47,7 @@ interface PostFeedCardProps {
  * - Galería con carousel y lightbox completo
  * - Click en caption abre modal de post detalle
  */
-export function PostFeedCard({ post, onPostClick, onEditPost }: PostFeedCardProps) {
+export function PostFeedCard({ post, onPostClick, onEditPost, onMediaClick }: PostFeedCardProps) {
     const params = useParams();
     const studioSlug = params?.slug as string;
     const { user } = useAuth();
@@ -185,14 +186,22 @@ export function PostFeedCard({ post, onPostClick, onEditPost }: PostFeedCardProp
                 <>
                     {/* Si hay más de una imagen, mostrar carousel/galería */}
                     {post.media.length > 1 ? (
-                        <PostCarouselContent media={post.media} />
+                        <PostCarouselContent 
+                            media={post.media}
+                            {...(onMediaClick && { onMediaClick })}
+                        />
                     ) : (
                         /* Si hay solo un elemento, mostrar tamaño original sin recortar */
                         firstMedia && (
                             <>
                                 <div
                                     className="relative w-full cursor-pointer"
-                                    onClick={() => setLightboxOpen(true)}
+                                    onClick={() => {
+                                        setLightboxOpen(true);
+                                        if (onMediaClick && firstMedia.id) {
+                                            onMediaClick(firstMedia.id);
+                                        }
+                                    }}
                                 >
                                     {firstMedia.file_type === 'image' ? (
                                         <Image

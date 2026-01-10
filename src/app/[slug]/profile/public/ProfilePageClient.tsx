@@ -19,6 +19,7 @@ import { PortfolioDetailModal } from '@/components/profile/sections/PortfolioDet
 import { SearchCommandPalette } from '@/components/profile/SearchCommandPalette';
 import { PostEditorSheet } from '@/components/profile/sheets/PostEditorSheet';
 import { ProfileContentView } from './ProfileContentView';
+import { trackContentEvent } from '@/lib/actions/studio/analytics/analytics.actions';
 
 interface PublicOffer {
     id: string;
@@ -69,6 +70,46 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
     // Verificar si hay FAQs activas (solo para usuarios públicos)
     const faq = (studio as unknown as { faq?: Array<{ id: string; pregunta: string; respuesta: string; orden: number; is_active: boolean }> }).faq || [];
     const hasActiveFAQs = faq.some(f => f.is_active);
+
+    // Tracking de visita al perfil público (solo una vez por sesión)
+    useEffect(() => {
+        if (isOwner || !studio?.id) return;
+
+        const sessionKey = `profile_view_${studio.id}`;
+        const alreadyTracked = sessionStorage.getItem(sessionKey);
+
+        if (alreadyTracked) return;
+
+        // Obtener o crear sessionId
+        let sessionId = localStorage.getItem(`profile_session_${studio.id}`);
+        if (!sessionId) {
+            sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem(`profile_session_${studio.id}`, sessionId);
+        }
+
+        // Detectar origen del tráfico
+        const referrer = typeof window !== 'undefined' ? document.referrer : undefined;
+        const trafficSource = referrer?.includes(window.location.origin) ? 'profile' : 'external';
+
+        // Trackear visita al perfil
+        trackContentEvent({
+            studioId: studio.id,
+            contentType: 'PACKAGE', // Usamos PACKAGE como placeholder, metadata indica que es perfil
+            contentId: studio.id,
+            eventType: 'PAGE_VIEW',
+            sessionId,
+            metadata: {
+                profile_view: true,
+                traffic_source: trafficSource,
+                referrer: referrer || undefined,
+            },
+        }).catch(() => {
+            // Silencioso - no interrumpir UX
+        });
+
+        // Marcar como trackeado en esta sesión
+        sessionStorage.setItem(sessionKey, 'true');
+    }, [studio?.id, isOwner]);
 
     // Detectar scroll para agregar margen al NavTabs
     useEffect(() => {
@@ -411,6 +452,8 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
             <PostDetailModal
                 post={selectedPostWithStudio}
                 studioSlug={studioSlug}
+                studioId={studio.id}
+                ownerUserId={studio.owner_id}
                 isOpen={!!selectedPostSlug}
                 onClose={handleCloseModal}
                 onNext={handleNextPost}

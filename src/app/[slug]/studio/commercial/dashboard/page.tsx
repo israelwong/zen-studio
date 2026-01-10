@@ -1,14 +1,13 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getStudioProfileBySlug } from '@/lib/actions/public/profile.actions';
-import { getStudioAnalyticsSummary, getTopContent } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
-import { AnalyticsOverviewCards, TopContentList, AnalyticsSkeleton } from './components';
-import { LayoutDashboard, BarChart3, TrendingUp } from 'lucide-react';
-import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
+import { getStudioAnalyticsSummary, getTopContent, getConversionMetrics } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
+import { AnalyticsOverviewCards, TopContentList, AnalyticsSkeleton, TrafficSourceStats, ConversionMetrics } from './components';
+import { LayoutDashboard, BarChart3, TrendingUp, Globe, Target } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Zenly Studio - Dashboard',
-  description: 'Vista general de tu estudio y contenido',
+    title: 'Zenly Studio - Dashboard',
+    description: 'Vista general de tu estudio y contenido',
 };
 
 interface DashboardPageProps {
@@ -35,9 +34,10 @@ async function DashboardContent({ studioSlug }: { studioSlug: string }) {
     const studio = result.data.studio;
 
     // Obtener datos de analytics
-    const [summaryResult, topContentResult] = await Promise.all([
+    const [summaryResult, topContentResult, conversionResult] = await Promise.all([
         getStudioAnalyticsSummary(studio.id),
-        getTopContent(studio.id, 10)
+        getTopContent(studio.id, 10),
+        getConversionMetrics(studio.id),
     ]);
 
     if (!summaryResult.success || !topContentResult.success) {
@@ -48,48 +48,75 @@ async function DashboardContent({ studioSlug }: { studioSlug: string }) {
         );
     }
 
-    return (
-        <div className="space-y-6">
-            {/* Welcome Card */}
-            <ZenCard className="p-6">
-                <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-emerald-500/10">
-                        <LayoutDashboard className="w-6 h-6 text-emerald-400" />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-white mb-1">
-                            Bienvenido, {studio.studio_name}
-                        </h2>
-                        <p className="text-sm text-zinc-400">
-                            Aquí está el resumen de tu perfil público y contenido
-                        </p>
-                    </div>
-                </div>
-            </ZenCard>
+    // Validar que data existe
+    if (!summaryResult.data || !topContentResult.data) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-zinc-400">Error al cargar datos de analytics</p>
+            </div>
+        );
+    }
 
-            {/* Analytics Section */}
+    const analyticsData = summaryResult.data;
+    const topContentData = topContentResult.data;
+
+    return (
+        <div className="space-y-8">
+            {/* Main Stats Grid */}
             <div>
-                <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-emerald-400" />
-                    <h3 className="text-lg font-semibold text-white">
-                        Estadísticas de Contenido
-                    </h3>
+                <div className="flex items-center gap-2 mb-6">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                        <BarChart3 className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">
+                        Resumen General
+                    </h2>
                 </div>
-                <AnalyticsOverviewCards data={summaryResult.data} />
+                <AnalyticsOverviewCards data={analyticsData} />
             </div>
 
-            {/* Top Content Section */}
-            <div>
-                <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-emerald-400" />
-                    <h3 className="text-lg font-semibold text-white">
-                        Contenido Más Popular
-                    </h3>
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Top Content - Takes 2 columns */}
+                <div className="lg:col-span-2">
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="p-1.5 rounded-lg bg-blue-500/10">
+                            <TrendingUp className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">
+                            Contenido Más Popular
+                        </h2>
+                    </div>
+                    <TopContentList
+                        posts={topContentData.posts}
+                        studioSlug={studioSlug}
+                    />
                 </div>
-                <TopContentList
-                    posts={topContentResult.data.posts}
-                    studioSlug={studioSlug}
-                />
+
+                {/* Traffic Sources - Takes 1 column */}
+                {analyticsData.profile && (
+                    analyticsData.profile.trafficSources ||
+                    analyticsData.profile.topReferrers?.length ||
+                    analyticsData.profile.topUtmSources?.length
+                ) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="p-1.5 rounded-lg bg-purple-500/10">
+                                    <Globe className="w-5 h-5 text-purple-400" />
+                                </div>
+                                <h2 className="text-xl font-bold text-white">
+                                    Origen del Tráfico
+                                </h2>
+                            </div>
+                            <TrafficSourceStats
+                                trafficSources={analyticsData.profile.trafficSources}
+                                topReferrers={analyticsData.profile.topReferrers}
+                                topUtmSources={analyticsData.profile.topUtmSources}
+                                utmMediums={analyticsData.profile.utmMediums}
+                                utmCampaigns={analyticsData.profile.utmCampaigns}
+                            />
+                        </div>
+                    )}
             </div>
         </div>
     );
@@ -100,23 +127,6 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
 
     return (
         <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <ZenCard variant="default" padding="none" className="mb-6">
-                <ZenCardHeader className="border-b border-zinc-800">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-600/20 rounded-lg">
-                            <LayoutDashboard className="h-5 w-5 text-emerald-400" />
-                        </div>
-                        <div>
-                            <ZenCardTitle>Dashboard</ZenCardTitle>
-                            <ZenCardDescription>
-                                Vista general de tu estudio y contenido
-                            </ZenCardDescription>
-                        </div>
-                    </div>
-                </ZenCardHeader>
-            </ZenCard>
-
             {/* Content */}
             <Suspense fallback={<AnalyticsSkeleton />}>
                 <DashboardContent studioSlug={slug} />

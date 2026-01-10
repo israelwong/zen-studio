@@ -21,6 +21,7 @@ interface PostMedia {
 
 interface PostCarouselContentProps {
     media: PostMedia[];
+    onMediaClick?: (mediaId: string) => void; // Callback para tracking de clicks en media
 }
 
 /**
@@ -103,6 +104,10 @@ export function PostCarouselContent({ media }: PostCarouselContentProps) {
     const handleImageClick = (index: number) => {
         setLightboxIndex(index);
         setLightboxOpen(true);
+        // Trackear click en media
+        if (onMediaClick && mediaItems[index]?.id) {
+            onMediaClick(mediaItems[index].id);
+        }
     };
 
     if (mediaItems.length === 0) {
