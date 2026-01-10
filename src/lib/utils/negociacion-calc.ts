@@ -111,12 +111,11 @@ export interface ValidacionMargen {
  * Calcula el precio negociado y el impacto en utilidad
  * 
  * @param params - Parámetros de negociación
- * @returns Resultado con todos los cálculos
- * @throws Error si el precio negociado es menor a costo + gasto
+ * @returns Resultado con todos los cálculos, o null si el precio es inválido
  */
 export function calcularPrecioNegociado(
   params: CalculoNegociacionParams
-): CalculoNegociacionResult {
+): CalculoNegociacionResult | null {
   const {
     cotizacionOriginal,
     precioPersonalizado,
@@ -164,9 +163,8 @@ export function calcularPrecioNegociado(
   // 6. Validar precio mínimo
   const precioMinimo = costoTotal + gastoTotal;
   if (precioFinal < precioMinimo) {
-    throw new Error(
-      `El precio negociado (${formatearMoneda(precioFinal)}) no puede ser menor al costo total + gasto total (${formatearMoneda(precioMinimo)})`
-    );
+    // Retornar null en lugar de lanzar error para manejar en UI
+    return null;
   }
 
   // 7. Calcular utilidad

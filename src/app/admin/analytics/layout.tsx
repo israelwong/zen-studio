@@ -1,6 +1,6 @@
 "use client";
 
-import { SectionLayout } from "@/components/layouts/section-layout";
+import { SectionLayout } from "@/app/admin/components/section-layout";
 import { Target, Users, DollarSign, BarChart3 } from "lucide-react";
 
 const analyticsNavigation = [

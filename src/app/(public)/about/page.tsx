@@ -18,39 +18,16 @@ export default function AboutPage() {
             {/* Content Section */}
             <section className="py-20 px-4">
                 <div className="container mx-auto max-w-4xl">
-                    <div className="grid md:grid-cols-2 gap-12 items-center">
-                        <div>
-                            <h2 className="text-3xl font-bold mb-6">Nuestra Misión</h2>
-                            <p className="text-lg text-gray-300 mb-6">
-                                Simplificar la gestión de estudios creativos mediante tecnología innovadora,
-                                permitiendo que los profesionales se enfoquen en lo que más aman: crear.
-                            </p>
-                            <p className="text-lg text-gray-300">
-                                Creemos que cada creativo merece herramientas profesionales que impulsen
-                                su crecimiento y optimicen su productividad.
-                            </p>
-                        </div>
-                        <div className="bg-zinc-800 p-8 rounded-lg">
-                            <h3 className="text-2xl font-bold mb-4">¿Por qué Zenly Studio?</h3>
-                            <ul className="space-y-3">
-                                <li className="flex items-center">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-                                    Gestión integral de clientes y proyectos
-                                </li>
-                                <li className="flex items-center">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-                                    Control financiero avanzado
-                                </li>
-                                <li className="flex items-center">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-                                    Automatización de procesos
-                                </li>
-                                <li className="flex items-center">
-                                    <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
-                                    Reportes y analytics en tiempo real
-                                </li>
-                            </ul>
-                        </div>
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl font-bold mb-6">Nuestra Misión</h2>
+                        <p className="text-lg text-gray-300 mb-6 max-w-2xl mx-auto">
+                            Simplificar la gestión de estudios creativos mediante tecnología innovadora,
+                            permitiendo que los profesionales se enfoquen en lo que más aman: crear.
+                        </p>
+                        <p className="text-lg text-gray-300 max-w-2xl mx-auto">
+                            Creemos que cada creativo merece herramientas profesionales que impulsen
+                            su crecimiento y optimicen su productividad.
+                        </p>
                     </div>
                 </div>
             </section>
@@ -58,13 +35,7 @@ export default function AboutPage() {
             {/* Simple Footer */}
             <footer className="bg-zinc-800 py-12 px-4">
                 <div className="container mx-auto max-w-6xl">
-                    <div className="grid md:grid-cols-4 gap-8">
-                        <div>
-                            <h3 className="text-xl font-bold mb-4">Zenly Studio</h3>
-                            <p className="text-gray-400">
-                                La plataforma integral para gestión de estudios creativos.
-                            </p>
-                        </div>
+                    <div className="grid md:grid-cols-3 gap-8">
                         <div>
                             <h4 className="font-semibold mb-4">Plataforma</h4>
                             <ul className="space-y-2 text-gray-400">
@@ -77,7 +48,6 @@ export default function AboutPage() {
                             <h4 className="font-semibold mb-4">Acceso</h4>
                             <ul className="space-y-2 text-gray-400">
                                 <li><a href="/login" className="hover:text-white transition-colors">Iniciar Sesión</a></li>
-                                <li><a href="/sign-up" className="hover:text-white transition-colors">Registrarse</a></li>
                                 <li><a href="/admin" className="hover:text-white transition-colors">Admin</a></li>
                             </ul>
                         </div>
@@ -85,8 +55,6 @@ export default function AboutPage() {
                             <h4 className="font-semibold mb-4">Soporte</h4>
                             <ul className="space-y-2 text-gray-400">
                                 <li><a href="/contact" className="hover:text-white transition-colors">Contacto</a></li>
-                                <li><a href="/help" className="hover:text-white transition-colors">Ayuda</a></li>
-                                <li><a href="/docs" className="hover:text-white transition-colors">Documentación</a></li>
                             </ul>
                         </div>
                     </div>

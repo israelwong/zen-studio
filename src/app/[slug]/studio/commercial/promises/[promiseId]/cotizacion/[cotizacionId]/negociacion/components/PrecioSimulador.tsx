@@ -117,10 +117,15 @@ export function PrecioSimulador({
             <div className="p-3 rounded-lg border bg-red-950/40 border-red-800/30">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 text-red-400" />
-                <p className="text-sm text-red-400">
-                  El precio no puede ser menor al costo total + gasto total (
-                  {formatearMoneda(precioMinimo)})
-                </p>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-400 mb-1">
+                    Precio inválido
+                  </p>
+                  <p className="text-xs text-red-300">
+                    El precio ({formatearMoneda(precioPersonalizado)}) no puede ser menor al costo total + gasto total (
+                    {formatearMoneda(precioMinimo)}). Ajusta el precio para continuar.
+                  </p>
+                </div>
               </div>
             </div>
           )}

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { SectionLayout } from '@/components/layouts/section-layout';
+import { SectionLayout } from '@/app/admin/components/section-layout';
 import { Play, History, Settings, Plus } from 'lucide-react';
 
 const campaignNavigation = [

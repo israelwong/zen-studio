@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { StudioSidebar } from './StudioSidebar';
-import { AppHeader } from './AppHeader';
-import { ZenMagicChatWrapper } from './ZenMagic';
-import { UtilityDock } from '@/components/layouts/UtilityDock';
-import { CommandMenu } from '@/components/layouts/CommandMenu';
-import { useZenMagicChat } from './ZenMagic';
+import { StudioSidebar } from '../sidebar/StudioSidebar';
+import { AppHeader } from '../header/AppHeader';
+import { ZenMagicChatWrapper } from '../ZenMagic';
+import { UtilityDock } from '../tools/UtilityDock';
+import { CommandMenu } from '../tools/CommandMenu';
+import { useZenMagicChat } from '../ZenMagic';
 import { useContactsSheet } from '@/components/shared/contacts/ContactsSheetContext';
 import { AgendaUnifiedSheet } from '@/components/shared/agenda';
 import { ContactsSheet } from '@/components/shared/contacts';

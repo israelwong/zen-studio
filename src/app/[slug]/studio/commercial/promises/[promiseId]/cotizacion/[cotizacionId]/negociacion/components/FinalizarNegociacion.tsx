@@ -72,7 +72,27 @@ export function FinalizarNegociacion({
     }
 
     if (!calculoNegociado) {
-      toast.error('No hay cambios para aplicar');
+      // Verificar si es porque el precio es inválido
+      const precioMinimo = cotizacionOriginal.items.reduce(
+        (sum, item) =>
+          sum +
+          ((item.cost ?? 0) * item.quantity) +
+          ((item.expense ?? 0) * item.quantity),
+        0
+      );
+      if (
+        negociacionState.precioPersonalizado !== null &&
+        negociacionState.precioPersonalizado < precioMinimo
+      ) {
+        toast.error(
+          `El precio negociado no puede ser menor al costo total + gasto total (${precioMinimo.toLocaleString('es-MX', {
+            style: 'currency',
+            currency: 'MXN',
+          })})`
+        );
+      } else {
+        toast.error('No hay cambios válidos para aplicar');
+      }
       return;
     }
 

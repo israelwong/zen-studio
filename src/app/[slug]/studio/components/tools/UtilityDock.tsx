@@ -109,9 +109,8 @@ export function UtilityDock({
     >
       {/* Overlay expandido - posición absoluta que se expande hacia la izquierda sin afectar layout */}
       <div
-        className={`absolute right-0 top-0 h-full bg-zinc-950/80 backdrop-blur-md border-l border-zinc-800 flex flex-col items-start py-4 px-3 shadow-xl transition-all duration-200 ease-in-out ${
-          isHovered ? 'w-56 opacity-100 pointer-events-auto' : 'w-12 opacity-0 pointer-events-none'
-        }`}
+        className={`absolute right-0 top-0 h-full bg-zinc-950/80 backdrop-blur-md border-l border-zinc-800 flex flex-col items-start py-4 px-3 shadow-xl transition-all duration-200 ease-in-out ${isHovered ? 'w-56 opacity-100 pointer-events-auto' : 'w-12 opacity-0 pointer-events-none'
+          }`}
         style={{
           transform: isHovered ? 'translateX(0)' : 'translateX(0)',
         }}
@@ -215,8 +214,8 @@ export function UtilityDock({
               onClick={() => setContratosOpen(true)}
             >
               <FileText className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Contratos</span>
-              <span className="sr-only">Contratos</span>
+              <span className="text-xs font-medium">Plantilla de contratos</span>
+              <span className="sr-only">Plantilla de contratos</span>
             </ZenButton>
           </div>
 
@@ -339,7 +338,7 @@ export function UtilityDock({
           title="Contratos"
         >
           <FileText className="h-5 w-5" />
-          <span className="sr-only">Contratos</span>
+          <span className="sr-only">Plantilla de contratos</span>
         </ZenButton>
       </div>
 
@@ -404,4 +403,3 @@ export function UtilityDock({
     </aside>
   );
 }
-

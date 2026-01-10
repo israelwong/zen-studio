@@ -1,3 +1,3 @@
-export { SectionLayout } from './SectionLayout';
-export { StudioSidebar } from './StudioSidebar';
-export { StorageIndicator } from './StorageIndicator';
+export { SectionLayout } from './layout/SectionLayout';
+export { StudioSidebar } from './sidebar/StudioSidebar';
+export { StorageIndicator } from './ui/StorageIndicator';

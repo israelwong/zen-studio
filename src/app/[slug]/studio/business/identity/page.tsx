@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { getBuilderData } from '@/lib/actions/studio/builder-data.actions';
 import { BuilderProfileData } from '@/types/builder-profile';
-import { SectionLayout } from '@/app/[slug]/studio/components/SectionLayout';
+import { SectionLayout } from '@/app/[slug]/studio/components/layout/SectionLayout';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/shadcn/tabs';
 import { Briefcase } from 'lucide-react';

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { SectionLayout } from '@/components/layouts/section-layout';
+import { SectionLayout } from '@/app/admin/components/section-layout';
 import { Plus } from 'lucide-react';
 import { RedesSocialesPageClient } from './RedesSocialesPageClient';
 import { PlataformaModal } from './PlataformaModal';

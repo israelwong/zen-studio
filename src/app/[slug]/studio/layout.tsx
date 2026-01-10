@@ -4,9 +4,9 @@ import { ZenMagicChatProvider } from './components/ZenMagic';
 import { ContactsSheetProvider } from '@/components/shared/contacts/ContactsSheetContext';
 import { SessionTimeoutProvider } from '@/components/providers/SessionTimeoutProvider';
 import { RealtimeProvider } from '@/components/providers/RealtimeProvider';
-import { StudioInitializer } from './components/StudioInitializer';
+import { StudioInitializer } from './components/init/StudioInitializer';
 import { Toaster } from '@/components/ui/shadcn/sonner';
-import { StudioLayoutWrapper } from './components/StudioLayoutWrapper';
+import { StudioLayoutWrapper } from './components/layout/StudioLayoutWrapper';
 
 export default async function StudioLayout({
     children,
