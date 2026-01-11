@@ -30,8 +30,8 @@ export function ProfileContentView({ activeTab, profileData, onPostClick, onPort
         case 'inicio-fotos':
         case 'inicio-videos':
             // Determinar filtro según el tab activo
-            const filter = activeTab === 'inicio-fotos' ? 'photos' : 
-                          activeTab === 'inicio-videos' ? 'videos' : 'all';
+            const filter = activeTab === 'inicio-fotos' ? 'photos' :
+                activeTab === 'inicio-videos' ? 'videos' : 'all';
             return (
                 <ProfileContent
                     variant="inicio"

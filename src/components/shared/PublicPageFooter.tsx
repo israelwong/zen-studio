@@ -16,7 +16,7 @@ export function PublicPageFooter() {
     const displayDomain = domain || 'zenly.mx';
 
     return (
-        <footer className=" p-3 mt-10 pt-5 pb-5 relative">
+        <footer className=" p-3 pt-5 pb-5 relative">
             {/* Créditos Zenly - Minimalista y discreto */}
             <div className="mt-8 pt-4 relative">
                 {/* Separador elegante con efecto de profundidad */}

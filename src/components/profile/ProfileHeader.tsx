@@ -332,15 +332,16 @@ export function ProfileHeader({ data, loading = false, studioSlug, onCreatePost,
                                     <Menu className="w-4 h-4" />
                                 </button>
 
-                                {/* Desktop: Solo icono - oculto en preview */}
+                                {/* Desktop: Botón con icono y texto - oculto en preview */}
                                 {!previewMode && (
                                     <div className="hidden sm:flex items-center gap-2">
                                         <button
                                             onClick={handleClientPortal}
-                                            className="flex items-center justify-center w-8 h-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
-                                            aria-label="Portal cliente"
+                                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 rounded-md transition-colors"
+                                            aria-label="Acceso cliente"
                                         >
                                             <Users className="w-4 h-4" />
+                                            <span>Acceso cliente</span>
                                         </button>
                                     </div>
                                 )}
