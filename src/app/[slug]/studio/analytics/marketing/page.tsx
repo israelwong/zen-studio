@@ -57,14 +57,6 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
         <div className="space-y-8">
             {/* Conversion Metrics */}
             <div>
-                <div className="flex items-center gap-2 mb-6">
-                    <div className="p-1.5 rounded-lg bg-yellow-500/10">
-                        <Target className="w-5 h-5 text-yellow-400" />
-                    </div>
-                    <h2 className="text-xl font-bold text-white">
-                        Reportes de Conversión
-                    </h2>
-                </div>
                 <ConversionMetricsClient 
                     studioId={studio.id} 
                     initialData={conversionResult.data} 

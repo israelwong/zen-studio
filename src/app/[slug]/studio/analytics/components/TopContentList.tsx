@@ -48,17 +48,14 @@ export function TopContentList({ posts, studioSlug }: TopContentListProps) {
                             <TrendingUp className="w-5 h-5 text-blue-400" />
                         </div>
                         <h3 className="text-lg font-semibold text-white">
-                            Contenido Más Visto
+                            Top 5 en Interacción
                         </h3>
                     </div>
-                    <span className="text-xs text-zinc-500">
-                        {posts.length} {posts.length === 1 ? 'post' : 'posts'}
-                    </span>
                 </div>
             </div>
 
             <div className="divide-y divide-zinc-800">
-                {posts.map((post, index) => (
+                {posts.slice(0, 5).map((post, index) => (
                     <Link
                         key={post.id}
                         href={`/${studioSlug}?post=${post.slug}`}

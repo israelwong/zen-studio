@@ -260,15 +260,32 @@ export async function getConversionMetrics(
 /**
  * Obtener resumen de analytics del studio
  */
-export async function getStudioAnalyticsSummary(studioId: string) {
+export async function getStudioAnalyticsSummary(
+    studioId: string,
+    options?: {
+        dateFrom?: Date;
+        dateTo?: Date;
+    }
+) {
     try {
         // Obtener owner_id y crear filtro de exclusión
         const ownerId = await getStudioOwnerId(studioId);
         const ownerExclusionFilter = await createOwnerExclusionFilter(studioId, ownerId);
 
-        // Límite de tiempo: últimos 90 días para optimizar performance
-        const dateLimit = new Date();
-        dateLimit.setDate(dateLimit.getDate() - 90);
+        // Límite de tiempo: usar rango proporcionado o últimos 90 días por defecto
+        const dateLimit = options?.dateFrom || (() => {
+            const limit = new Date();
+            limit.setDate(limit.getDate() - 90);
+            return limit;
+        })();
+        
+        const dateTo = options?.dateTo || new Date();
+
+        // Construir filtro de fecha
+        const dateFilter: { gte: Date; lte?: Date } = { gte: dateLimit };
+        if (dateTo) {
+            dateFilter.lte = dateTo;
+        }
 
         // Paralelizar queries independientes
         const [postsStats, portfoliosStats, offersStats, profileViewsFull, postClicksData] = await Promise.all([
@@ -278,7 +295,7 @@ export async function getStudioAnalyticsSummary(studioId: string) {
                 where: {
                     studio_id: studioId,
                     content_type: 'POST',
-                    created_at: { gte: dateLimit },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 _count: {
@@ -292,7 +309,7 @@ export async function getStudioAnalyticsSummary(studioId: string) {
                 where: {
                     studio_id: studioId,
                     content_type: 'PORTFOLIO',
-                    created_at: { gte: dateLimit },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 _count: {
@@ -306,7 +323,7 @@ export async function getStudioAnalyticsSummary(studioId: string) {
                 where: {
                     studio_id: studioId,
                     content_type: 'OFFER',
-                    created_at: { gte: dateLimit },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 _count: {
@@ -316,14 +333,13 @@ export async function getStudioAnalyticsSummary(studioId: string) {
 
             // Stats de perfil público (usando PACKAGE como contentType con metadata.profile_view)
             // Obtener datos completos de visitas al perfil para calcular métricas avanzadas (excluyendo owner)
-            // LIMITADO a últimos 90 días y ordenado por fecha descendente para optimizar
             prisma.studio_content_analytics.findMany({
                 where: {
                     studio_id: studioId,
                     content_type: 'PACKAGE',
                     content_id: studioId, // El content_id es el mismo studio_id para perfiles
                     event_type: 'PAGE_VIEW',
-                    created_at: { gte: dateLimit },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 select: {
@@ -350,7 +366,7 @@ export async function getStudioAnalyticsSummary(studioId: string) {
                     studio_id: studioId,
                     content_type: 'POST',
                     event_type: { in: ['MODAL_OPEN', 'MEDIA_CLICK'] },
-                    created_at: { gte: dateLimit },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 select: {
@@ -492,8 +508,28 @@ export async function getStudioAnalyticsSummary(studioId: string) {
 /**
  * Obtener contenido más visto (posts y portfolios)
  */
-export async function getTopContent(studioId: string, limit = 10) {
+export async function getTopContent(
+    studioId: string,
+    limit = 10,
+    options?: {
+        dateFrom?: Date;
+        dateTo?: Date;
+    }
+) {
     try {
+        // Construir filtro de fecha
+        const dateFilter: { gte?: Date; lte?: Date } = {};
+        if (options?.dateFrom) {
+            dateFilter.gte = options.dateFrom;
+        } else {
+            // Por defecto: últimos 90 días
+            const dateLimit = new Date();
+            dateLimit.setDate(dateLimit.getDate() - 90);
+            dateFilter.gte = dateLimit;
+        }
+        if (options?.dateTo) {
+            dateFilter.lte = options.dateTo;
+        }
         // Obtener owner_id y crear filtro de exclusión
         const ownerId = await getStudioOwnerId(studioId);
         const ownerExclusionFilter = await createOwnerExclusionFilter(studioId, ownerId);
@@ -505,6 +541,7 @@ export async function getTopContent(studioId: string, limit = 10) {
                 studio_id: studioId,
                 content_type: 'POST',
                 event_type: 'FEED_VIEW',
+                created_at: dateFilter,
                 ...ownerExclusionFilter,
             },
             _count: {
@@ -552,6 +589,7 @@ export async function getTopContent(studioId: string, limit = 10) {
                     content_type: 'POST',
                     event_type: { in: ['MODAL_OPEN', 'MEDIA_CLICK'] },
                     content_id: { in: postIds },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 _count: {
@@ -565,6 +603,7 @@ export async function getTopContent(studioId: string, limit = 10) {
                     content_type: 'POST',
                     event_type: 'LINK_COPY',
                     content_id: { in: postIds },
+                    created_at: dateFilter,
                     ...ownerExclusionFilter,
                 },
                 _count: {

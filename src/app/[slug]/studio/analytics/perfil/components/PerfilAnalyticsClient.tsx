@@ -1,22 +1,29 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, Target } from 'lucide-react';
+import { Calendar, BarChart3, TrendingUp, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ZenButton } from '@/components/ui/zen';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { ZenCalendar } from '@/components/ui/zen/base/ZenCalendar';
-import { ConversionMetrics, ConversionMetricsSkeleton } from '../../components';
-import { getConversionMetrics } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
+import { AnalyticsOverviewCards, TopContentList, TrafficSourceStats } from '../../components';
+import { getStudioAnalyticsSummary, getTopContent } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
 import type { DateRange } from 'react-day-picker';
 
-interface ConversionMetricsClientProps {
+interface PerfilAnalyticsClientProps {
     studioId: string;
-    initialData: Awaited<ReturnType<typeof getConversionMetrics>>['data'];
+    studioSlug: string;
+    initialSummaryData: Awaited<ReturnType<typeof getStudioAnalyticsSummary>>['data'];
+    initialTopContentData: Awaited<ReturnType<typeof getTopContent>>['data'];
 }
 
-export function ConversionMetricsClient({ studioId, initialData }: ConversionMetricsClientProps) {
+export function PerfilAnalyticsClient({
+    studioId,
+    studioSlug,
+    initialSummaryData,
+    initialTopContentData,
+}: PerfilAnalyticsClientProps) {
     const [mounted, setMounted] = useState(false);
     const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
     const [dateRange, setDateRange] = useState<DateRange | undefined>(() => {
@@ -30,7 +37,8 @@ export function ConversionMetricsClient({ studioId, initialData }: ConversionMet
     const [tempRange, setTempRange] = useState<DateRange | undefined>(undefined);
     const [calendarOpen, setCalendarOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState(initialData);
+    const [summaryData, setSummaryData] = useState(initialSummaryData);
+    const [topContentData, setTopContentData] = useState(initialTopContentData);
 
     // Evitar problemas de hidratación renderizando Popover solo en cliente
     useEffect(() => {
@@ -44,15 +52,25 @@ export function ConversionMetricsClient({ studioId, initialData }: ConversionMet
         const loadData = async () => {
             setLoading(true);
             try {
-                const result = await getConversionMetrics(studioId, {
-                    eventDateFrom: dateRange.from!,
-                    eventDateTo: dateRange.to!,
-                });
-                if (result.success && result.data) {
-                    setData(result.data);
+                const [summaryResult, topContentResult] = await Promise.all([
+                    getStudioAnalyticsSummary(studioId, {
+                        dateFrom: dateRange.from!,
+                        dateTo: dateRange.to!,
+                    }),
+                    getTopContent(studioId, 5, {
+                        dateFrom: dateRange.from!,
+                        dateTo: dateRange.to!,
+                    }),
+                ]);
+
+                if (summaryResult.success && summaryResult.data) {
+                    setSummaryData(summaryResult.data);
+                }
+                if (topContentResult.success && topContentResult.data) {
+                    setTopContentData(topContentResult.data);
                 }
             } catch (error) {
-                console.error('Error cargando métricas:', error);
+                console.error('Error cargando analytics:', error);
             } finally {
                 setLoading(false);
             }
@@ -90,7 +108,7 @@ export function ConversionMetricsClient({ studioId, initialData }: ConversionMet
         return `${fromFormatted} - ${toFormatted}`;
     };
 
-    if (!data) {
+    if (!summaryData || !topContentData) {
         return (
             <div className="text-center py-12">
                 <p className="text-zinc-400">No hay datos disponibles</p>
@@ -99,15 +117,15 @@ export function ConversionMetricsClient({ studioId, initialData }: ConversionMet
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-8">
             {/* Header con título y filtro */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-yellow-500/10">
-                        <Target className="w-5 h-5 text-yellow-400" />
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                        <BarChart3 className="w-5 h-5 text-emerald-400" />
                     </div>
                     <h2 className="text-xl font-bold text-white">
-                        Reportes de Conversión
+                        Resumen General de Interacciones
                     </h2>
                 </div>
                 <div className="flex items-center gap-3">
@@ -162,12 +180,60 @@ export function ConversionMetricsClient({ studioId, initialData }: ConversionMet
                 </div>
             </div>
 
-            {/* Métricas */}
-            {loading ? (
-                <ConversionMetricsSkeleton />
-            ) : (
-                <ConversionMetrics data={data} />
-            )}
+            {/* Main Stats Grid */}
+            <div>
+                <AnalyticsOverviewCards data={summaryData} />
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Top Content - Takes 2 columns */}
+                <div className="lg:col-span-2">
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="p-1.5 rounded-lg bg-blue-500/10">
+                            <TrendingUp className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <h2 className="text-xl font-bold text-white">
+                            Contenido Destacado
+                        </h2>
+                    </div>
+                    {loading ? (
+                        <div className="text-center py-12">
+                            <p className="text-zinc-400">Cargando...</p>
+                        </div>
+                    ) : (
+                        <TopContentList
+                            posts={topContentData.posts}
+                            studioSlug={studioSlug}
+                        />
+                    )}
+                </div>
+
+                {/* Traffic Sources - Takes 1 column */}
+                {summaryData.profile && (
+                    (summaryData.profile.trafficSources ||
+                        summaryData.profile.topReferrers?.length ||
+                        summaryData.profile.topUtmSources?.length)
+                ) && (
+                        <div>
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="p-1.5 rounded-lg bg-purple-500/10">
+                                    <Globe className="w-5 h-5 text-purple-400" />
+                                </div>
+                                <h2 className="text-xl font-bold text-white">
+                                    Origen del Tráfico
+                                </h2>
+                            </div>
+                            <TrafficSourceStats
+                                trafficSources={summaryData.profile.trafficSources}
+                                topReferrers={summaryData.profile.topReferrers}
+                                topUtmSources={summaryData.profile.topUtmSources}
+                                utmMediums={summaryData.profile.utmMediums}
+                                utmCampaigns={summaryData.profile.utmCampaigns}
+                            />
+                        </div>
+                    )}
+            </div>
         </div>
     );
 }
