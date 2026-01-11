@@ -2966,6 +2966,8 @@ model studio_offer_leadforms {
   event_type_id              String?
   enable_event_name          Boolean       @default(false)
   event_name_required        Boolean       @default(false)
+  enable_event_duration      Boolean       @default(false)
+  event_duration_required    Boolean       @default(false)
   offer                      studio_offers @relation(fields: [offer_id], references: [id], onDelete: Cascade)
 
   @@index([offer_id])

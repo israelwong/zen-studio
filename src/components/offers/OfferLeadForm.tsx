@@ -50,6 +50,8 @@ interface OfferLeadFormProps {
   emailRequired?: boolean;
   enableEventName?: boolean; // Solicitar nombre del evento
   eventNameRequired?: boolean; // Nombre del evento obligatorio
+  enableEventDuration?: boolean; // Solicitar duración del evento
+  eventDurationRequired?: boolean; // Duración del evento obligatoria
   coverUrl?: string | null;
   coverType?: string | null;
   isPreview?: boolean;
@@ -78,6 +80,8 @@ export function OfferLeadForm({
   emailRequired = false,
   enableEventName = false,
   eventNameRequired = false,
+  enableEventDuration = false,
+  eventDurationRequired = false,
   coverUrl,
   coverType,
   isPreview = false,
@@ -203,6 +207,7 @@ export function OfferLeadForm({
     email: string;
     interest_date?: string;
     event_name?: string;
+    event_duration?: string;
     event_type_id?: string | null;
   }) => {
     setIsSubmitting(true);
@@ -226,6 +231,8 @@ export function OfferLeadForm({
         phone: data.phone,
         email: data.email || "",
         interest_date: data.interest_date,
+        event_name: data.event_name,
+        event_duration: data.event_duration,
         event_type_id: data.event_type_id || eventTypeId || undefined,
         custom_fields: customFields,
         utm_source: urlParams.get("utm_source") || undefined,
@@ -428,6 +435,8 @@ export function OfferLeadForm({
                 validateWithCalendar={validateWithCalendar}
                 enableEventName={enableEventName}
                 eventNameRequired={eventNameRequired}
+                enableEventDuration={enableEventDuration}
+                eventDurationRequired={eventDurationRequired}
                 eventTypeId={eventTypeId}
                 eventTypeName={eventTypeName}
                 studioId={studioId}

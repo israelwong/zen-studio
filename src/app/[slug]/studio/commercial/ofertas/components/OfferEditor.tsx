@@ -14,7 +14,7 @@ import {
   ZenConfirmModal
 } from "@/components/ui/zen";
 import { OfferEditorProvider, useOfferEditor, type OfferEditorTab } from "./OfferEditorContext";
-import { BasicInfoTab } from "./tabs/BasicInfoTab";
+import { InfoTab } from "./tabs/InfoTab";
 import { LandingPageTab } from "./tabs/LandingPageTab";
 import { LeadFormTab } from "./tabs/LeadFormTab";
 import { createOffer, updateOffer, deleteOffer } from "@/lib/actions/studio/offers/offers.actions";
@@ -631,7 +631,7 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
 
       {/* Tab Content */}
       {activeTab === "basic" && (
-        <BasicInfoTab
+        <InfoTab
           studioSlug={studioSlug}
           mode={currentMode}
           offerId={currentOffer?.id}

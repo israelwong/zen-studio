@@ -9,7 +9,7 @@ import { checkOfferSlugExists } from "@/lib/actions/studio/offers/offers.actions
 import { obtenerCondicionComercial } from "@/lib/actions/studio/config/condiciones-comerciales.actions";
 import { obtenerTipoEventoPorId } from "@/lib/actions/studio/negocio/tipos-evento.actions"; // Solo para inicialización en modo edición
 
-interface BasicInfoTabProps {
+interface InfoTabProps {
   studioSlug: string;
   mode: "create" | "edit";
   offerId?: string;
@@ -19,7 +19,7 @@ interface BasicInfoTabProps {
   savedOfferId?: string | null;
 }
 
-export function BasicInfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSaving, savedOfferId }: BasicInfoTabProps) {
+export function InfoTab({ studioSlug, mode, offerId, onSave, onCancel, isSaving, savedOfferId }: InfoTabProps) {
   // Usar savedOfferId si está disponible (después del primer guardado), sino offerId
   const currentOfferId = savedOfferId || offerId;
   const { formData, updateFormData } = useOfferEditor();

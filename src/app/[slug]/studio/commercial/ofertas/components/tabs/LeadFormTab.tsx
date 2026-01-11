@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from "@/components/ui/zen";
 import { MobilePreviewFull } from "@/components/previews";
-import { LeadFormEditor } from "@/components/shared/forms";
+import { LeadFormEditor } from "../editors/LeadFormEditor";
 import { OfferLeadForm } from "@/components/offers/OfferLeadForm";
 import { useOfferEditor } from "../OfferEditorContext";
 import { getStudioIdBySlug } from "@/lib/actions/studio/offers/offers.actions";
@@ -83,6 +83,8 @@ export function LeadFormTab({ studioSlug, studioId: initialStudioId, onSave, onC
                 emailRequired={leadformData.email_required}
                 enableEventName={leadformData.enable_event_name || false}
                 eventNameRequired={leadformData.event_name_required || false}
+                enableEventDuration={leadformData.enable_event_duration || false}
+                eventDurationRequired={leadformData.event_duration_required || false}
                 coverUrl={formData.cover_media_url}
                 coverType={formData.cover_media_type}
                 isPreview={true}

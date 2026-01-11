@@ -22,6 +22,8 @@ export interface LeadFormConfig {
   validate_with_calendar: boolean;
   enable_event_name: boolean; // Solicitar nombre del evento
   event_name_required: boolean; // Nombre del evento obligatorio
+  enable_event_duration: boolean; // Solicitar duración del evento
+  event_duration_required: boolean; // Duración del evento obligatoria
   success_message: string;
   success_redirect_url: string;
 }
@@ -242,6 +244,40 @@ export function LeadFormEditor({
                       onUpdate({ event_name_required: checked })
                     }
                     label="Nombre del evento obligatorio"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Duración del evento */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-4">
+            <div className="mb-3">
+              <h4 className="text-sm font-medium text-zinc-300">
+                Duración del evento
+              </h4>
+              <p className="text-xs text-zinc-500 mt-1">
+                Solicita la duración del evento en horas para calcular mejor las cotizaciones y paquetes dinámicos
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <ZenSwitch
+                checked={formData.enable_event_duration || false}
+                onCheckedChange={(checked) =>
+                  onUpdate({ enable_event_duration: checked })
+                }
+                label="Solicitar duración del evento"
+              />
+
+              {formData.enable_event_duration && (
+                <div className="space-y-2 pl-4 border-l-2 border-zinc-700/50">
+                  <ZenSwitch
+                    checked={formData.event_duration_required || false}
+                    onCheckedChange={(checked) =>
+                      onUpdate({ event_duration_required: checked })
+                    }
+                    label="Duración del evento obligatoria"
                   />
                 </div>
               )}

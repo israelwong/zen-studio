@@ -37,6 +37,8 @@ interface LeadFormData {
   validate_with_calendar: boolean;
   enable_event_name: boolean; // Solicitar nombre del evento
   event_name_required: boolean; // Nombre del evento obligatorio
+  enable_event_duration: boolean; // Solicitar duración del evento
+  event_duration_required: boolean; // Duración del evento obligatoria
   fields_config: {
     fields: LeadFormField[];
   };
@@ -113,6 +115,8 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
     validate_with_calendar: (initialOffer?.leadform?.validate_with_calendar as boolean) || false,
     enable_event_name: (initialOffer?.leadform?.enable_event_name as boolean) || false,
     event_name_required: (initialOffer?.leadform?.event_name_required as boolean) || false,
+    enable_event_duration: (initialOffer?.leadform?.enable_event_duration as boolean) || false,
+    event_duration_required: (initialOffer?.leadform?.event_duration_required as boolean) || false,
     fields_config: {
       fields: (initialOffer?.leadform?.fields_config?.fields || []) as LeadFormField[],
     },
@@ -182,6 +186,8 @@ export function OfferEditorProvider({ children, initialOffer }: OfferEditorProvi
         validate_with_calendar: leadformData.validate_with_calendar,
         enable_event_name: leadformData.enable_event_name,
         event_name_required: leadformData.event_name_required,
+        enable_event_duration: leadformData.enable_event_duration,
+        event_duration_required: leadformData.event_duration_required,
       },
     };
 

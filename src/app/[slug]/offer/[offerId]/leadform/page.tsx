@@ -128,6 +128,8 @@ export default async function PublicOfferLeadFormPage({
               emailRequired={offer.leadform.email_required}
               enableEventName={offer.leadform.enable_event_name || false}
               eventNameRequired={offer.leadform.event_name_required || false}
+              enableEventDuration={offer.leadform.enable_event_duration || false}
+              eventDurationRequired={offer.leadform.event_duration_required || false}
               coverUrl={offer.cover_media_url}
               coverType={offer.cover_media_type}
               isPreview={isPreview}

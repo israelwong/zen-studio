@@ -127,6 +127,8 @@ export async function createOffer(
               validate_with_calendar: validatedData.leadform.validate_with_calendar,
               enable_event_name: validatedData.leadform.enable_event_name,
               event_name_required: validatedData.leadform.event_name_required,
+              enable_event_duration: validatedData.leadform.enable_event_duration,
+              event_duration_required: validatedData.leadform.event_duration_required,
             },
           },
         },
@@ -241,6 +243,8 @@ export async function createOffer(
             validate_with_calendar: offer.leadform.validate_with_calendar,
             enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
             event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
+            enable_event_duration: (offer.leadform as any).enable_event_duration as boolean | undefined,
+            event_duration_required: (offer.leadform as any).event_duration_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -398,6 +402,8 @@ export async function updateOffer(
             validate_with_calendar: validatedData.leadform.validate_with_calendar,
             enable_event_name: validatedData.leadform.enable_event_name,
             event_name_required: validatedData.leadform.event_name_required,
+            enable_event_duration: validatedData.leadform.enable_event_duration,
+            event_duration_required: validatedData.leadform.event_duration_required,
           },
         };
       }
@@ -530,6 +536,8 @@ export async function updateOffer(
             validate_with_calendar: offer.leadform.validate_with_calendar,
             enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
             event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
+            enable_event_duration: (offer.leadform as any).enable_event_duration as boolean | undefined,
+            event_duration_required: (offer.leadform as any).event_duration_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -676,6 +684,8 @@ export async function getOffer(
             validate_with_calendar: offer.leadform.validate_with_calendar,
             enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
             event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
+            enable_event_duration: (offer.leadform as any).enable_event_duration as boolean | undefined,
+            event_duration_required: (offer.leadform as any).event_duration_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }
@@ -841,6 +851,8 @@ export async function getPublicOffer(
             validate_with_calendar: offer.leadform.validate_with_calendar,
             enable_event_name: (offer.leadform as any).enable_event_name as boolean | undefined,
             event_name_required: (offer.leadform as any).event_name_required as boolean | undefined,
+            enable_event_duration: (offer.leadform as any).enable_event_duration as boolean | undefined,
+            event_duration_required: (offer.leadform as any).event_duration_required as boolean | undefined,
             created_at: offer.leadform.created_at,
             updated_at: offer.leadform.updated_at,
           }

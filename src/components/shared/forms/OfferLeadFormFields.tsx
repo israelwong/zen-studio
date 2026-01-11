@@ -26,6 +26,8 @@ export interface OfferLeadFormFieldsProps {
   validateWithCalendar?: boolean;
   enableEventName?: boolean; // Solicitar nombre del evento
   eventNameRequired?: boolean; // Nombre del evento obligatorio
+  enableEventDuration?: boolean; // Solicitar duración del evento
+  eventDurationRequired?: boolean; // Duración del evento obligatoria
   eventTypeId?: string | null;
   eventTypeName?: string | null; // Nombre del tipo de evento para placeholder dinámico
   studioId: string;
@@ -57,6 +59,8 @@ export function OfferLeadFormFields({
   validateWithCalendar = false,
   enableEventName = false,
   eventNameRequired = false,
+  enableEventDuration = false,
+  eventDurationRequired = false,
   eventTypeId,
   eventTypeName,
   studioId,
@@ -150,6 +154,17 @@ export function OfferLeadFormFields({
     });
   }
 
+  // Agregar campo de duración del evento si está habilitado
+  if (enableEventDuration) {
+    basicFields.push({
+      id: "event_duration",
+      type: "number",
+      label: "Duración del evento (horas)",
+      required: eventDurationRequired,
+      placeholder: "Ej: 6",
+    });
+  }
+
   // Solo campos básicos (custom fields omitidos para max conversión)
   const allFields = basicFields;
 
@@ -218,6 +233,13 @@ export function OfferLeadFormFields({
         }
       }
 
+      if (value && field.type === "number") {
+        const numValue = parseInt(value, 10);
+        if (isNaN(numValue) || numValue <= 0) {
+          newErrors[field.id] = "La duración debe ser un número positivo";
+        }
+      }
+
       // Validar fecha de interés con agenda
       if (
         field.id === "interest_date" &&
@@ -283,6 +305,7 @@ export function OfferLeadFormFields({
         email: formData.email || "",
         interest_date: formData.interest_date,
         event_name: formData.event_name || undefined,
+        event_duration: formData.event_duration || undefined,
         event_type_id: eventTypeId,
       });
 
@@ -548,7 +571,9 @@ export function OfferLeadFormFields({
                   ? "tel"
                   : field.type === "email"
                     ? "email"
-                    : "text"
+                    : field.type === "number"
+                      ? "number"
+                      : "text"
               }
               value={formData[field.id] || ""}
               onChange={(e) => {
@@ -556,6 +581,10 @@ export function OfferLeadFormFields({
                 if (field.type === "phone") {
                   const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
                   handleInputChange(field.id, digitsOnly);
+                } else if (field.type === "number") {
+                  // Solo permitir números positivos
+                  const numValue = e.target.value.replace(/\D/g, "");
+                  handleInputChange(field.id, numValue);
                 } else {
                   handleInputChange(field.id, e.target.value);
                 }
