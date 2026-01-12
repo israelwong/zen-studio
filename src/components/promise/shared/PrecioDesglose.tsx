@@ -1,6 +1,6 @@
 'use client';
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useMemo } from 'react';
 
 interface PrecioDesgloseProps {
   precioBase: number;
@@ -38,14 +38,30 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
     },
     ref
   ) => {
-    // Si hay precio final negociado, ese es el precio a pagar (ya incluye todo)
-    // Si no, calcular precio final incluyendo cortesías
-    const precioFinalAPagar = precioFinalNegociado ?? (precioConDescuento - cortesias);
-    const tienePrecioNegociado = precioFinalNegociado !== null && precioFinalNegociado !== undefined;
+    // Usar useMemo para asegurar consistencia entre servidor y cliente
+    const { precioFinalAPagar, tienePrecioNegociado, ahorroTotal, precioNegociadoNormalizado } = useMemo(() => {
+      // Normalizar precioFinalNegociado: convertir null/undefined a null explícitamente
+      const precioNegociado = precioFinalNegociado != null && precioFinalNegociado > 0 
+        ? Number(precioFinalNegociado) 
+        : null;
+      
+      // Si hay precio final negociado, ese es el precio a pagar (ya incluye todo)
+      // Si no, calcular precio final incluyendo cortesías
+      const precioFinal = precioNegociado ?? (precioConDescuento - cortesias);
+      const tieneNegociado = precioNegociado !== null;
 
-    const ahorroTotal = tienePrecioNegociado && precioFinalNegociado 
-      ? precioBase - precioFinalNegociado 
-      : 0;
+      // Calcular ahorro total solo si hay precio negociado válido y es menor que el precio base
+      const ahorro = tieneNegociado && precioNegociado !== null && precioNegociado < precioBase
+        ? precioBase - precioNegociado 
+        : 0;
+
+      return {
+        precioFinalAPagar: precioFinal,
+        tienePrecioNegociado: tieneNegociado,
+        ahorroTotal: ahorro,
+        precioNegociadoNormalizado: precioNegociado,
+      };
+    }, [precioFinalNegociado, precioConDescuento, cortesias, precioBase]);
 
     return (
       <div ref={ref} className="mt-4 bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
@@ -57,12 +73,12 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
               {formatPrice(precioBase)}
             </span>
           </div>
-          {tienePrecioNegociado && (
+          {tienePrecioNegociado && precioNegociadoNormalizado !== null && (
             <>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Precio negociado</span>
                 <span className="text-sm font-medium text-blue-400">
-                  {formatPrice(precioFinalNegociado)}
+                  {formatPrice(precioNegociadoNormalizado)}
                 </span>
               </div>
               {ahorroTotal > 0 && (

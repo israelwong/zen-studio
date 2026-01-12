@@ -43,6 +43,7 @@ interface AutorizarCotizacionModalProps {
   onSuccess?: () => void;
   onPreparing?: () => void;
   onCloseDetailSheet?: () => void;
+  isFromNegociacion?: boolean;
 }
 
 type ProgressStep = 'validating' | 'sending' | 'registering' | 'collecting' | 'generating_contract' | 'preparing' | 'completed' | 'error';
@@ -61,6 +62,7 @@ export function AutorizarCotizacionModal({
   onSuccess,
   onPreparing: onPreparingProp,
   onCloseDetailSheet,
+  isFromNegociacion = false,
 }: AutorizarCotizacionModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -267,19 +269,23 @@ export function AutorizarCotizacionModal({
 
               {precioCalculado ? (
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-zinc-400">Precio base</span>
-                    <span className="text-sm font-medium text-zinc-300">
-                      {formatPrice(precioCalculado.precioBase)}
-                    </span>
-                  </div>
-                  {precioCalculado.descuentoCondicion > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-zinc-400">Descuento adicional</span>
-                      <span className="text-sm font-medium text-red-400">
-                        -{precioCalculado.descuentoCondicion}%
-                      </span>
-                    </div>
+                  {!isFromNegociacion && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-zinc-400">Precio base</span>
+                        <span className="text-sm font-medium text-zinc-300">
+                          {formatPrice(precioCalculado.precioBase)}
+                        </span>
+                      </div>
+                      {precioCalculado.descuentoCondicion > 0 && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-zinc-400">Descuento adicional</span>
+                          <span className="text-sm font-medium text-red-400">
+                            -{precioCalculado.descuentoCondicion}%
+                          </span>
+                        </div>
+                      )}
+                    </>
                   )}
                   <div className="flex justify-between items-center pt-2">
                     <span className="text-sm font-semibold text-white">Total a pagar</span>

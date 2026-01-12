@@ -9,6 +9,7 @@ import { PublicServiciosTree } from '@/components/promise/PublicServiciosTree';
 import { PrecioDesglose } from '@/components/promise/shared/PrecioDesglose';
 import { AutorizarCotizacionModal } from '@/components/promise/AutorizarCotizacionModal';
 import { TerminosCondiciones } from '@/components/promise/shared/TerminosCondiciones';
+import { ProgressOverlay } from '@/components/promise/ProgressOverlay';
 import type { PublicCotizacion } from '@/types/public-promise';
 import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
 import { usePromisePageContext } from '@/components/promise/PromisePageContext';
@@ -79,7 +80,16 @@ export function NegociacionView({
   promiseId,
 }: NegociacionViewProps) {
   const router = useRouter();
-  const { onSuccess } = usePromisePageContext();
+  const {
+    onSuccess,
+    showProgressOverlay,
+    progressStep,
+    progressError,
+    autoGenerateContract,
+    setShowProgressOverlay,
+    setProgressStep,
+    setProgressError,
+  } = usePromisePageContext();
   const [showAutorizarModal, setShowAutorizarModal] = useState(false);
 
   const formatPrice = (price: number) => {
@@ -213,11 +223,19 @@ export function NegociacionView({
     if (onSuccess) {
       onSuccess();
     }
-    // Redirigir a cierre después de un breve delay
-    setTimeout(() => {
-      router.push(`/${studioSlug}/promise/${promiseId}/cierre`);
-    }, 100);
+    // NO redirigir aquí - la redirección ocurrirá cuando el proceso termine
   };
+
+  // Redirigir a cierre cuando el proceso esté completado y el overlay se haya cerrado
+  useEffect(() => {
+    if (progressStep === 'completed' && !showProgressOverlay) {
+      // Pequeño delay para asegurar que el overlay se haya cerrado completamente
+      const timer = setTimeout(() => {
+        router.push(`/${studioSlug}/promise/${promiseId}/cierre`);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [progressStep, showProgressOverlay, router, studioSlug, promiseId]);
 
   return (
     <>
@@ -356,8 +374,27 @@ export function NegociacionView({
           showPackages={shareSettings.show_packages}
           autoGenerateContract={shareSettings.auto_generate_contract}
           onSuccess={handleSuccess}
+          isFromNegociacion={true}
         />
       )}
+
+      {/* Overlay de progreso */}
+      <ProgressOverlay
+        show={showProgressOverlay}
+        currentStep={progressStep}
+        error={progressError}
+        autoGenerateContract={autoGenerateContract}
+        onClose={() => {
+          setShowProgressOverlay(false);
+          setProgressError(null);
+          setProgressStep('validating');
+        }}
+        onRetry={() => {
+          setProgressError(null);
+          setProgressStep('validating');
+          setShowProgressOverlay(false);
+        }}
+      />
     </>
   );
 }
