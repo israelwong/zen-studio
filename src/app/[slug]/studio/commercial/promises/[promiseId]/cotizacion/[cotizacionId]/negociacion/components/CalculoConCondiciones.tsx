@@ -40,8 +40,8 @@ export function CalculoConCondiciones({
   }, [cotizacionOriginal, condicionComercial, configuracionPrecios]);
 
 
-  // Precio base sin condiciones comerciales
-  const precioBaseSinCondiciones = cotizacionOriginal.price;
+  // Precio base sin condiciones comerciales (usar precio original si existe)
+  const precioBaseSinCondiciones = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
 
   // Precio con condiciones comerciales
   const precioConCondiciones = calculoConCondicion?.precioFinal ?? precioBaseSinCondiciones;

@@ -2087,6 +2087,7 @@ model studio_cotizaciones {
   revision_status                        String?
 
   // Campos de negociación
+  negociacion_precio_original            Decimal?                                     @db.Decimal(10, 2)
   negociacion_precio_personalizado       Decimal?                                     @db.Decimal(10, 2)
   negociacion_descuento_adicional        Decimal?                                     @db.Decimal(10, 2)
   negociacion_notas                      String?                                      @db.Text

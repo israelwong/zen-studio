@@ -246,8 +246,9 @@ export default function NegociacionPage() {
           (sum, item) => sum + ((item.expense ?? 0) * item.quantity),
           0
         );
+        const precioOriginal = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
         const utilidadNetaOriginal =
-          cotizacionOriginal.price - costoTotalOriginal - gastoTotalOriginal;
+          precioOriginal - costoTotalOriginal - gastoTotalOriginal;
         const impactoUtilidad = utilidadNeta - utilidadNetaOriginal;
 
         return {
@@ -356,7 +357,7 @@ export default function NegociacionPage() {
           {/* 1. Precio cotización original */}
           <ComparacionView
             original={{
-              precioFinal: cotizacionOriginal.price,
+              precioFinal: cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price, // Usar precio original si existe
               costoTotal:
                 calculoNegociado?.costoTotal ??
                 cotizacionOriginal.items.reduce(
@@ -370,7 +371,7 @@ export default function NegociacionPage() {
                   0
                 ),
               utilidadNeta:
-                cotizacionOriginal.price -
+                (cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price) -
                 (calculoNegociado?.costoTotal ??
                   cotizacionOriginal.items.reduce(
                     (sum, item) => sum + (item.cost || 0) * item.quantity,
@@ -458,7 +459,8 @@ export default function NegociacionPage() {
                     }
                     return sum;
                   }, 0);
-                  const precioBaseDesglose = (precioConCondiciones ?? cotizacionOriginal.price) - montoItemsCortesia;
+                  const precioOriginal = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
+                  const precioBaseDesglose = (precioConCondiciones ?? precioOriginal) - montoItemsCortesia;
 
                   return (
                     <DesgloseDinamico
@@ -480,17 +482,18 @@ export default function NegociacionPage() {
                     (sum, item) => sum + ((item.expense ?? 0) * item.quantity),
                     0
                   );
+                  const precioOriginal = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
                   const utilidadNetaOriginal =
-                    cotizacionOriginal.price - costoTotalOriginal - gastoTotalOriginal;
+                    precioOriginal - costoTotalOriginal - gastoTotalOriginal;
                   const margenOriginal =
-                    cotizacionOriginal.price > 0
-                      ? (utilidadNetaOriginal / cotizacionOriginal.price) * 100
+                    precioOriginal > 0
+                      ? (utilidadNetaOriginal / precioOriginal) * 100
                       : 0;
 
                   return (
                     <ImpactoUtilidad
                       original={{
-                        precioFinal: cotizacionOriginal.price,
+                        precioFinal: precioOriginal,
                         utilidadNeta: utilidadNetaOriginal,
                         margenPorcentaje: margenOriginal,
                       }}

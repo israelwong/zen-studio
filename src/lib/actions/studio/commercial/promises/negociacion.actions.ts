@@ -49,6 +49,7 @@ export async function loadCotizacionParaNegociacion(
         status: true,
         promise_id: true,
         condiciones_comerciales_id: true,
+        negociacion_precio_original: true,
         negociacion_precio_personalizado: true,
         negociacion_descuento_adicional: true,
         negociacion_notas: true,
@@ -113,16 +114,24 @@ export async function loadCotizacionParaNegociacion(
     // Obtener condición comercial temporal si existe
     const condicionTemporal = cotizacion.condicion_comercial_negociacion;
 
+    // Determinar precio original: usar negociacion_precio_original si existe, sino usar price
+    // Esto asegura que siempre tengamos el precio original para cálculos y presentación
+    const precioOriginal = cotizacion.negociacion_precio_original 
+      ? Number(cotizacion.negociacion_precio_original)
+      : cotizacion.price; // Fallback para negociaciones antiguas sin precio original guardado
+
     return {
       success: true,
       data: {
         id: cotizacion.id,
         name: cotizacion.name,
         description: cotizacion.description,
-        price: cotizacion.price,
+        price: cotizacion.price, // Precio actual (negociado si está en negociación)
+        precioOriginal, // Precio original antes de negociar
         status: cotizacion.status,
         items,
         // Datos de negociación guardados (si la cotización ya está en negociación)
+        negociacion_precio_original: precioOriginal,
         negociacion_precio_personalizado: cotizacion.negociacion_precio_personalizado 
           ? Number(cotizacion.negociacion_precio_personalizado) 
           : null,
@@ -257,6 +266,7 @@ export async function crearVersionNegociada(
           selected_by_prospect: false, // IMPORTANTE: Cotizaciones en negociaci?n NO est?n autorizadas por el prospecto
           // NO es revisi?n - no incluir revision_of_id, revision_number, revision_status
           // Campos de negociaci?n
+          negociacion_precio_original: cotizacionOriginal.price, // Guardar precio original de la cotización base
           negociacion_precio_personalizado: validatedData.precio_personalizado
             ? validatedData.precio_personalizado
             : null,
@@ -431,7 +441,7 @@ export async function aplicarCambiosNegociacion(
     await prisma.$transaction(async (tx) => {
       // Preparar datos de actualización
       const updateData: any = {
-        price: precioFinal,
+        price: precioFinal, // Precio negociado (lo que pagará el cliente)
         status: 'negociacion', // Cambiar estado a negociaci?n al guardar
         selected_by_prospect: false, // IMPORTANTE: Asegurar que no est? autorizada por prospecto
         negociacion_precio_personalizado:
@@ -447,6 +457,14 @@ export async function aplicarCambiosNegociacion(
       // Solo establecer negociacion_created_at si no existe (primera vez que se guarda como negociación)
       if (!cotizacion.negociacion_created_at) {
         updateData.negociacion_created_at = new Date();
+      }
+
+      // Solo establecer negociacion_precio_original si no existe (preservar precio original)
+      // Si ya existe, mantenerlo para que los cálculos siempre se hagan sobre el precio original
+      if (!cotizacion.negociacion_precio_original) {
+        // Si viene de 'pendiente', guardar el precio actual como original
+        // Si ya está en 'negociacion', el precio original ya debería estar guardado
+        updateData.negociacion_precio_original = cotizacion.price;
       }
 
       // 1. Actualizar cotizaci?n con campos de negociaci?n

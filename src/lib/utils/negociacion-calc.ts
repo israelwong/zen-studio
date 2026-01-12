@@ -37,10 +37,12 @@ export interface CotizacionCompleta {
   id: string;
   name: string;
   description: string | null;
-  price: number;
+  price: number; // Precio actual (negociado si está en negociación)
+  precioOriginal?: number; // Precio original antes de negociar (para cálculos y presentación)
   status: string;
   items: CotizacionItem[];
   // Datos de negociación guardados (opcionales, solo si la cotización ya está en negociación)
+  negociacion_precio_original?: number | null;
   negociacion_precio_personalizado?: number | null;
   negociacion_descuento_adicional?: number | null;
   negociacion_notas?: string | null;
@@ -180,7 +182,9 @@ export function calcularPrecioNegociado(
     precioFinal > 0 ? (utilidadNeta / precioFinal) * 100 : 0;
 
   // 8. Calcular impacto vs original
-  const utilidadOriginal = cotizacionOriginal.price - costoTotal - gastoTotal;
+  // Usar precio original si existe, sino usar price (para compatibilidad con negociaciones antiguas)
+  const precioOriginal = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
+  const utilidadOriginal = precioOriginal - costoTotal - gastoTotal;
   const impactoUtilidad = utilidadNeta - utilidadOriginal;
 
   return {
