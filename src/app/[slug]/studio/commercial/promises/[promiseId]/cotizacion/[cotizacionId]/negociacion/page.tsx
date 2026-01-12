@@ -2,14 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2 } from 'lucide-react';
-import {
-  ZenCard,
-  ZenCardContent,
-  ZenCardHeader,
-  ZenCardTitle,
-  ZenButton,
-} from '@/components/ui/zen';
+import { ArrowLeft } from 'lucide-react';
+import { ZenCard, ZenCardContent } from '@/components/ui/zen';
 import { loadCotizacionParaNegociacion } from '@/lib/actions/studio/commercial/promises/negociacion.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 import type { CotizacionCompleta } from '@/lib/utils/negociacion-calc';
@@ -23,6 +17,7 @@ import { SelectorCondicionesComerciales } from './components/SelectorCondiciones
 import { PrecioSimulador } from './components/PrecioSimulador';
 import { ImpactoUtilidad } from './components/ImpactoUtilidad';
 import { FinalizarNegociacion } from './components/FinalizarNegociacion';
+import { NegociacionSkeleton } from './components/NegociacionSkeleton';
 import {
   calcularPrecioNegociado,
   validarMargenNegociado,
@@ -180,11 +175,8 @@ export default function NegociacionPage() {
 
   // Calcular precio negociado en tiempo real
   const calculoNegociado = useMemo(() => {
-    if (!cotizacionOriginal || !configPrecios) {
-      return null;
-    }
+    if (!cotizacionOriginal || !configPrecios) return null;
 
-    // Calcular siempre si hay algún cambio en la negociación
     const tieneCambios =
       negociacionState.itemsCortesia.size > 0 ||
       negociacionState.precioPersonalizado !== null ||
@@ -192,12 +184,9 @@ export default function NegociacionPage() {
       negociacionState.condicionComercialId !== null ||
       negociacionState.condicionComercialTemporal !== null;
 
-    if (!tieneCambios) {
-      return null;
-    }
+    if (!tieneCambios) return null;
 
     try {
-      // Obtener condiciรณn comercial seleccionada
       let condicionComercial: CondicionComercial | CondicionComercialTemporal | null = null;
 
       if (negociacionState.condicionComercialId) {
@@ -220,23 +209,21 @@ export default function NegociacionPage() {
         condicionComercial = negociacionState.condicionComercialTemporal;
       }
 
-      // Si hay precio personalizado, usarlo como precio final (sin aplicar descuentos de condición comercial)
-      // El precio personalizado ya viene del input "Precio negociado" que es el precio final deseado
       if (negociacionState.precioPersonalizado !== null) {
-        // Calcular costos y gastos (siempre se suman, incluso si es cortesía)
-        const costoTotal = cotizacionOriginal.items.reduce((sum, item) => {
-          return sum + (item.cost || 0) * item.quantity;
-        }, 0);
-        const gastoTotal = cotizacionOriginal.items.reduce((sum, item) => {
-          return sum + (item.expense || 0) * item.quantity;
-        }, 0);
+        const costoTotal = cotizacionOriginal.items.reduce(
+          (sum, item) => sum + (item.cost || 0) * item.quantity,
+          0
+        );
+        const gastoTotal = cotizacionOriginal.items.reduce(
+          (sum, item) => sum + (item.expense || 0) * item.quantity,
+          0
+        );
         const utilidadNeta = negociacionState.precioPersonalizado - costoTotal - gastoTotal;
         const margenPorcentaje =
           negociacionState.precioPersonalizado > 0
             ? (utilidadNeta / negociacionState.precioPersonalizado) * 100
             : 0;
 
-        // Calcular utilidad original para el impacto
         const costoTotalOriginal = cotizacionOriginal.items.reduce(
           (sum, item) => sum + ((item.cost ?? 0) * item.quantity),
           0
@@ -246,8 +233,7 @@ export default function NegociacionPage() {
           0
         );
         const precioOriginal = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
-        const utilidadNetaOriginal =
-          precioOriginal - costoTotalOriginal - gastoTotalOriginal;
+        const utilidadNetaOriginal = precioOriginal - costoTotalOriginal - gastoTotalOriginal;
         const impactoUtilidad = utilidadNeta - utilidadNetaOriginal;
 
         return {
@@ -286,7 +272,7 @@ export default function NegociacionPage() {
     cotizacionOriginal,
     configPrecios,
     negociacionState,
-    condicionComercialCompleta,
+    condicionesComerciales,
   ]);
 
   // Validaciรณn de margen
@@ -302,18 +288,7 @@ export default function NegociacionPage() {
   }, [calculoNegociado]);
 
   if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto p-6">
-        <ZenCard>
-          <ZenCardContent className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
-              <p className="text-zinc-400">Cargando datos de negociaciรณn...</p>
-            </div>
-          </ZenCardContent>
-        </ZenCard>
-      </div>
-    );
+    return <NegociacionSkeleton />;
   }
 
   if (!cotizacionOriginal || !configPrecios) {

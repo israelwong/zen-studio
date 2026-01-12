@@ -249,11 +249,6 @@ export function PublicServiciosTree({ servicios, showPrices = false, showSubtota
                                                 x{cantidad}
                                               </span>
                                             </h6>
-                                            {servicio.is_courtesy && (
-                                              <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-medium">
-                                                Cortesía
-                                              </span>
-                                            )}
                                           </div>
                                           {(servicio.description_snapshot || servicio.description) && (
                                             <p className="text-xs text-zinc-400 mt-1 leading-relaxed">

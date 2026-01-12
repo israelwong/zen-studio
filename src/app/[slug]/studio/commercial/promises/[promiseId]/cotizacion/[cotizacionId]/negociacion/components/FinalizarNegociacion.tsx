@@ -248,15 +248,23 @@ export function FinalizarNegociacion({
         )}
 
         {/* Botones */}
-        <div className="flex gap-3">
+        <div className="space-y-3">
           <ZenButton
             variant="primary"
             onClick={handleFinalizar}
             disabled={loading}
             loading={loading}
-            className="flex-1"
+            className="w-full"
           >
             {isUpdating ? 'Actualizar Negociación' : 'Crear Cotización en Negociación'}
+          </ZenButton>
+          <ZenButton
+            variant="outline"
+            onClick={() => router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`)}
+            disabled={loading}
+            className="w-full"
+          >
+            Cancelar
           </ZenButton>
         </div>
       </ZenCardContent>

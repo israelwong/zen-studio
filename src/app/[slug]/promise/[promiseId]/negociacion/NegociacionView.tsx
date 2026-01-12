@@ -91,11 +91,16 @@ export function NegociacionView({
     }).format(price);
   };
 
-  // Calcular precio base (con descuento de cotización si aplica)
-  const precioBase = useMemo(() => {
-    if (!cotizacion.discount) return cotizacion.price;
-    return cotizacion.price - (cotizacion.price * cotizacion.discount) / 100;
+  // Obtener precio original (usar negociacion_precio_original si existe, sino el precio de la cotización)
+  const precioOriginal = useMemo(() => {
+    return cotizacion.negociacion_precio_original ?? cotizacion.price;
   }, [cotizacion]);
+
+  // Calcular precio base (precio original con descuento de cotización si aplica)
+  const precioBase = useMemo(() => {
+    if (!cotizacion.discount) return precioOriginal;
+    return precioOriginal - (precioOriginal * cotizacion.discount) / 100;
+  }, [precioOriginal, cotizacion.discount]);
 
   // Calcular total de cortesías (suma de subtotales de items con is_courtesy: true)
   const totalCortesias = useMemo(() => {
@@ -113,33 +118,47 @@ export function NegociacionView({
   }, [cotizacion]);
 
   // Calcular precio con condición comercial
+  // Si hay precio personalizado negociado, ese es el precio final a pagar
   const precioCalculado = useMemo(() => {
+    // Si hay precio personalizado negociado, usarlo como precio final
+    const precioFinal = cotizacion.negociacion_precio_personalizado ?? null;
+    
+    // Calcular precio con descuento de condición comercial (para referencia)
     const descuentoCondicion = condicionesComerciales.discount_percentage ?? 0;
     const precioConDescuento = descuentoCondicion > 0
       ? precioBase - (precioBase * descuentoCondicion) / 100
       : precioBase;
 
+    // Si hay precio personalizado, ese es el precio a pagar (ya incluye todo)
+    // Si no, usar el precio con descuento de condición comercial
+    const precioAPagar = precioFinal ?? precioConDescuento;
+
     const advanceType: 'percentage' | 'fixed_amount' = (condicionesComerciales.advance_type === 'fixed_amount' || condicionesComerciales.advance_type === 'percentage')
       ? condicionesComerciales.advance_type
       : 'percentage';
+    
+    // Calcular anticipo basado en el precio a pagar
     const anticipo = advanceType === 'fixed_amount' && condicionesComerciales.advance_amount
       ? condicionesComerciales.advance_amount
       : (condicionesComerciales.advance_percentage ?? 0) > 0
-        ? (precioConDescuento * (condicionesComerciales.advance_percentage ?? 0)) / 100
+        ? (precioAPagar * (condicionesComerciales.advance_percentage ?? 0)) / 100
         : 0;
     const anticipoPorcentaje = advanceType === 'percentage' ? (condicionesComerciales.advance_percentage ?? 0) : null;
-    const diferido = precioConDescuento - anticipo;
+    const diferido = precioAPagar - anticipo;
 
     return {
       precioBase,
+      precioOriginal,
+      precioFinalNegociado: precioFinal,
       descuentoCondicion,
       precioConDescuento,
+      precioAPagar,
       advanceType,
       anticipoPorcentaje,
       anticipo,
       diferido,
     };
-  }, [precioBase, condicionesComerciales, totalCortesias]);
+  }, [precioBase, precioOriginal, cotizacion.negociacion_precio_personalizado, condicionesComerciales, totalCortesias]);
 
   // Función para verificar cambios de estado y redirigir si es necesario
   const checkAndRedirect = useCallback(async () => {
@@ -264,7 +283,7 @@ export function NegociacionView({
             <h3 className="text-lg font-semibold text-white mb-4">
               Condiciones Comerciales
             </h3>
-            <div className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+            <div className="bg-blue-950/30 rounded-lg p-4 border border-blue-500/30">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <h4 className="text-base font-semibold text-white mb-1">
@@ -276,15 +295,16 @@ export function NegociacionView({
                     </p>
                   )}
                 </div>
-                <ZenBadge variant="secondary">Definida</ZenBadge>
+                <ZenBadge variant="secondary" className="text-xs px-2 py-0.5 rounded-full">Definida</ZenBadge>
               </div>
             </div>
 
             {/* Cálculo de precio con la condición comercial */}
             <PrecioDesglose
-              precioBase={precioCalculado.precioBase}
+              precioBase={precioCalculado.precioOriginal}
               descuentoCondicion={precioCalculado.descuentoCondicion}
               precioConDescuento={precioCalculado.precioConDescuento}
+              precioFinalNegociado={precioCalculado.precioFinalNegociado}
               advanceType={precioCalculado.advanceType}
               anticipoPorcentaje={precioCalculado.anticipoPorcentaje}
               anticipo={precioCalculado.anticipo}
@@ -329,9 +349,9 @@ export function NegociacionView({
           condicionesComercialesMetodoPagoId={null}
           precioCalculado={{
             ...precioCalculado,
-            // Ajustar precio con cortesías
-            precioConDescuento: precioCalculado.precioConDescuento - totalCortesias,
-            diferido: precioCalculado.diferido - totalCortesias,
+            // Si hay precio negociado, usar ese; sino ajustar con cortesías
+            precioConDescuento: precioCalculado.precioFinalNegociado ?? (precioCalculado.precioConDescuento - totalCortesias),
+            diferido: precioCalculado.diferido,
           }}
           showPackages={shareSettings.show_packages}
           autoGenerateContract={shareSettings.auto_generate_contract}

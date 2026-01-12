@@ -79,6 +79,8 @@ export interface PublicCotizacion {
     name: string;
   } | null;
   selected_by_prospect?: boolean;
+  negociacion_precio_original?: number | null;
+  negociacion_precio_personalizado?: number | null;
   // Multimedia agregada de todos los items
   items_media?: Array<{
     id: string;

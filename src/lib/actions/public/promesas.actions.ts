@@ -594,6 +594,8 @@ export async function getPublicPromiseData(
             selected_by_prospect: true,
             visible_to_client: true,
             order: true,
+            negociacion_precio_original: true,
+            negociacion_precio_personalizado: true,
             cotizacion_items: {
               select: {
                 id: true,
@@ -944,6 +946,12 @@ export async function getPublicPromiseData(
           }
           : null,
         selected_by_prospect: cot.selected_by_prospect || false,
+        negociacion_precio_original: (cot as any).negociacion_precio_original 
+          ? Number((cot as any).negociacion_precio_original) 
+          : null,
+        negociacion_precio_personalizado: (cot as any).negociacion_precio_personalizado 
+          ? Number((cot as any).negociacion_precio_personalizado) 
+          : null,
         items_media: cotizacionMedia.length > 0 ? cotizacionMedia : undefined,
         // Información del contrato si está disponible
         // El contrato se almacena en studio_cotizaciones_cierre (tabla temporal)
