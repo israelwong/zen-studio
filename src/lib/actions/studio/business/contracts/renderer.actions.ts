@@ -152,6 +152,8 @@ export async function getPromiseContractData(
         status: true,
         selected_by_prospect: true,
         tyc_accepted: true,
+        negociacion_precio_personalizado: true,
+        negociacion_precio_original: true,
         cotizacion_items: {
           select: COTIZACION_ITEMS_SELECT_STANDARD,
           orderBy: {
@@ -226,13 +228,30 @@ export async function getPromiseContractData(
       }
     }
 
+    // Verificar si hay precio negociado (modo negociación)
+    const precioNegociado = cotizacion.negociacion_precio_personalizado 
+      ? Number(cotizacion.negociacion_precio_personalizado) 
+      : null;
+    const precioOriginalNegociacion = cotizacion.negociacion_precio_original 
+      ? Number(cotizacion.negociacion_precio_original) 
+      : null;
+    const esNegociacion = precioNegociado !== null && precioNegociado > 0;
+
     // Calcular anticipo si hay condiciones
     let montoAnticipo: number | undefined;
     let totalFinal = precioBase;
     let descuentoAplicado = descuentoExistente;
+    let precioOriginalParaContrato = precioBaseReal;
+    let ahorroTotal: number | undefined;
 
-    if (condiciones) {
-      // Calcular descuento si hay porcentaje de descuento en condiciones comerciales
+    if (esNegociacion && precioNegociado !== null) {
+      // MODO NEGOCIACIÓN: usar precio negociado como total final
+      totalFinal = precioNegociado;
+      precioOriginalParaContrato = precioOriginalNegociacion ?? precioBaseReal;
+      ahorroTotal = precioOriginalParaContrato - precioNegociado;
+      descuentoAplicado = 0; // No mostrar descuento en modo negociación
+    } else if (condiciones) {
+      // MODO NORMAL: calcular descuento si hay porcentaje de descuento en condiciones comerciales
       if (condiciones.discount_percentage) {
         // El descuento se calcula sobre el precio base real (antes de cualquier descuento)
         descuentoAplicado = (precioBaseReal * condiciones.discount_percentage) / 100;
@@ -246,7 +265,10 @@ export async function getPromiseContractData(
         totalFinal = precioBase;
         descuentoAplicado = 0;
       }
+    }
 
+    // Calcular anticipo basado en totalFinal (ya sea negociado o normal)
+    if (condiciones) {
       if (condiciones.advance_type === "percentage" && condiciones.advance_percentage) {
         montoAnticipo = (totalFinal * condiciones.advance_percentage) / 100;
       } else if (condiciones.advance_type === "fixed_amount" && condiciones.advance_amount) {
@@ -335,9 +357,14 @@ export async function getPromiseContractData(
         porcentaje_anticipo: condiciones.advance_percentage || undefined,
         tipo_anticipo: (condiciones.advance_type as "percentage" | "fixed_amount") || undefined,
         monto_anticipo: montoAnticipo,
-        total_contrato: precioBaseReal, // Precio base antes de descuentos
-        total_final: totalFinal, // Precio después de descuentos
-        descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado
+        total_contrato: esNegociacion ? precioOriginalParaContrato : precioBaseReal, // Precio original en negociación, precio base antes de descuentos en normal
+        total_final: totalFinal, // Precio negociado en negociación, precio después de descuentos en normal
+        descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado (0 en negociación)
+        // Campos para modo negociación
+        es_negociacion: esNegociacion,
+        precio_negociado: precioNegociado ?? undefined,
+        precio_original: esNegociacion ? precioOriginalParaContrato : undefined,
+        ahorro_total: ahorroTotal,
       } : undefined,
     };
 

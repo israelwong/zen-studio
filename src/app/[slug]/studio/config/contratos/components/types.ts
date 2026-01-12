@@ -40,6 +40,11 @@ export interface CondicionesComercialesData {
     metodo_pago: string;
     descripcion?: string;
   }>;
+  // Campos para modo negociación
+  precio_negociado?: number;
+  precio_original?: number;
+  ahorro_total?: number;
+  es_negociacion?: boolean;
 }
 
 export interface ParsedVariable {
