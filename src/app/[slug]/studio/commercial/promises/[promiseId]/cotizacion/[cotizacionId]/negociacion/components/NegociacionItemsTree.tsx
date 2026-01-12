@@ -117,9 +117,9 @@ export function NegociacionItemsTree({
   return (
     <ZenCard>
       <ZenCardHeader>
-        <ZenCardTitle>Items de la Cotización</ZenCardTitle>
+        <ZenCardTitle>Servicios Incluidos</ZenCardTitle>
         <ZenCardDescription>
-          Revisa los items y marca como cortesía los que se incluyen sin cargo
+          Revisa los servicios y marca como cortesía los que se incluyen sin cargo
         </ZenCardDescription>
       </ZenCardHeader>
       <ZenCardContent className="space-y-4">
@@ -202,8 +202,9 @@ export function NegociacionItemsTree({
                                 return (
                                   <div
                                     key={item.id}
+                                    onClick={() => toggleCortesia(item.id)}
                                     className={cn(
-                                      'flex items-center justify-between py-3 px-2 pl-6 hover:bg-zinc-700/20 transition-colors',
+                                      'flex items-center justify-between py-3 px-2 pl-6 hover:bg-zinc-700/20 transition-colors cursor-pointer',
                                       'border-t border-b border-zinc-700/30',
                                       itemIndex === 0 && 'border-t-0',
                                       isCortesia &&
@@ -213,12 +214,6 @@ export function NegociacionItemsTree({
                                     {/* Nivel 3: Item */}
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 mb-1">
-                                        <input
-                                          type="checkbox"
-                                          checked={isCortesia}
-                                          onChange={() => toggleCortesia(item.id)}
-                                          className="rounded border-zinc-700 bg-zinc-800 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
-                                        />
                                         <span
                                           className={cn(
                                             'text-sm font-medium truncate',
@@ -240,11 +235,11 @@ export function NegociacionItemsTree({
                                         )}
                                       </div>
                                       {item.description && (
-                                        <p className="text-xs text-zinc-400 line-clamp-1 ml-6">
+                                        <p className="text-xs text-zinc-400 line-clamp-1">
                                           {item.description}
                                         </p>
                                       )}
-                                      <div className="flex items-center gap-4 mt-2 text-xs ml-6">
+                                      <div className="flex items-center gap-4 mt-2 text-xs">
                                         <span className="text-zinc-500">
                                           Cantidad: {item.quantity}
                                         </span>
@@ -260,6 +255,11 @@ export function NegociacionItemsTree({
                                             ? formatearMoneda(0)
                                             : formatearMoneda(precioItem)}
                                         </span>
+                                        {item.cost !== null && item.cost !== undefined && (
+                                          <span className="text-amber-400">
+                                            Costo: {formatearMoneda((item.cost || 0) * item.quantity)}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   </div>

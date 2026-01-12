@@ -46,13 +46,15 @@ export function FinalizarNegociacion({
   onNotasChange,
 }: FinalizarNegociacionProps) {
   const router = useRouter();
-  const [nombreVersion, setNombreVersion] = useState(
-    `${cotizacionOriginal.name} - Negociada`
-  );
-  const [loading, setLoading] = useState(false);
-
+  
   // Detectar si estamos editando una negociación existente o creando una nueva
   const isUpdating = cotizacionOriginal.status === 'negociacion';
+  
+  // Solo agregar "- Negociada" si estamos creando una nueva negociación
+  const [nombreVersion, setNombreVersion] = useState(
+    isUpdating ? cotizacionOriginal.name : `${cotizacionOriginal.name} - Negociada`
+  );
+  const [loading, setLoading] = useState(false);
 
   const tieneCambios =
     negociacionState.precioPersonalizado !== null ||
