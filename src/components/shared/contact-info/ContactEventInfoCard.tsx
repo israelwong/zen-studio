@@ -71,6 +71,7 @@ interface ContactEventInfoCardProps {
     event_type_name?: string | null;
     event_location?: string | null;
     event_name?: string | null; // Nombre del evento
+    duration_hours?: number | null; // Duración del evento en horas
     event_date?: Date | null; // Para eventos confirmados
     interested_dates?: string[] | null; // Para promesas
     address?: string | null; // Para eventos confirmados
@@ -321,7 +322,7 @@ function ContactHoverCard({
       <HoverCardTrigger asChild>
         <button
           type="button"
-          className="text-sm text-zinc-200 hover:text-emerald-400 transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
+          className="text-sm text-emerald-400 hover:text-emerald-300 transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
         >
           {displayName}
         </button>
@@ -651,7 +652,7 @@ export function ContactEventInfoCard({
                   isReferrer={false}
                 />
               ) : (
-                <p className="text-sm text-zinc-200">{contactData.name}</p>
+                <p className="text-sm text-emerald-400">{contactData.name}</p>
               )}
             </div>
             <div>
@@ -697,69 +698,6 @@ export function ContactEventInfoCard({
             <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wide">
               Detalles del Evento
             </h3>
-
-            {/* Nombre del Evento */}
-            {eventData.event_name ? (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Nombre del Evento
-                </label>
-                <p className="text-sm text-zinc-200 font-medium">{eventData.event_name}</p>
-              </div>
-            ) : (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Nombre del Evento
-                </label>
-                <p className="text-sm text-zinc-400 italic">No especificado</p>
-              </div>
-            )}
-
-            {/* Tipo de Evento - Badge destacado */}
-            {eventData.event_type_name ? (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-2">
-                  Tipo de Evento
-                </label>
-                <ZenBadge
-                  variant="outline"
-                  className="bg-blue-500/20 text-blue-400 border-blue-400/50 font-medium px-2 py-0.5 text-xs"
-                >
-                  {eventData.event_type_name}
-                </ZenBadge>
-              </div>
-            ) : (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Tipo de Evento
-                </label>
-                <p className="text-sm text-zinc-400 italic">No especificado</p>
-              </div>
-            )}
-
-            {/* Locación / Sede */}
-            {eventData.event_location ? (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Locación / Sede
-                </label>
-                <p className="text-sm text-zinc-200">{eventData.event_location}</p>
-              </div>
-            ) : eventData.address ? (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Locación / Sede
-                </label>
-                <p className="text-sm text-zinc-200">{eventData.address}</p>
-              </div>
-            ) : (
-              <div>
-                <label className="text-xs font-medium text-zinc-400 block mb-1">
-                  Locación / Sede
-                </label>
-                <p className="text-sm text-zinc-400 italic">No especificada</p>
-              </div>
-            )}
 
             {/* Fecha del Evento - Badge con color según urgencia */}
             {eventData.event_date ? (
@@ -808,6 +746,81 @@ export function ContactEventInfoCard({
                   Fecha del Evento
                 </label>
                 <p className="text-sm text-zinc-400 italic">Sin fecha seleccionada</p>
+              </div>
+            )}
+
+            {/* Tipo de Evento - Badge destacado */}
+            {eventData.event_type_name ? (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-2">
+                  Tipo de Evento
+                </label>
+                <ZenBadge
+                  variant="outline"
+                  className="bg-blue-500/20 text-blue-400 border-blue-400/50 font-medium px-2 py-0.5 text-xs"
+                >
+                  {eventData.event_type_name}
+                </ZenBadge>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Tipo de Evento
+                </label>
+                <p className="text-sm text-zinc-400 italic">No especificado</p>
+              </div>
+            )}
+
+            {/* Nombre del Evento */}
+            {eventData.event_name ? (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Nombre del Evento
+                </label>
+                <p className="text-sm text-zinc-200 font-medium">{eventData.event_name}</p>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Nombre del Evento
+                </label>
+                <p className="text-sm text-zinc-400 italic">No especificado</p>
+              </div>
+            )}
+
+            {/* Duración del Evento */}
+            {eventData.duration_hours ? (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Duración del Evento
+                </label>
+                <p className="text-sm text-zinc-200">
+                  {eventData.duration_hours} {eventData.duration_hours === 1 ? 'hora' : 'horas'}
+                </p>
+              </div>
+            ) : null}
+
+            {/* Locación / Sede */}
+            {eventData.event_location ? (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Locación / Sede
+                </label>
+                <p className="text-sm text-zinc-200">{eventData.event_location}</p>
+              </div>
+            ) : eventData.address ? (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Locación / Sede
+                </label>
+                <p className="text-sm text-zinc-200">{eventData.address}</p>
+              </div>
+            ) : (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 block mb-1">
+                  Locación / Sede
+                </label>
+                <p className="text-sm text-zinc-400 italic">No especificada</p>
               </div>
             )}
           </div>

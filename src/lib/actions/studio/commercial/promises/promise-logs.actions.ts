@@ -15,7 +15,7 @@ const createPromiseLogSchema = z.object({
 export type CreatePromiseLogData = z.infer<typeof createPromiseLogSchema>;
 
 /**
- * Tipos de acciones que pueden generar logs automáticos
+ * Tipos de acciones que pueden generar logs autom?ticos
  */
 export type PromiseLogAction =
   | 'promise_created'
@@ -51,7 +51,7 @@ const LOG_ACTIONS: Record<
   stage_change: (meta) => {
     const from = (meta?.from as string) || 'desconocida';
     const to = (meta?.to as string) || 'desconocida';
-    return `Cambio de etapa: ${from} → ${to}`;
+    return `Cambio de etapa: ${from} ? ${to}`;
   },
   whatsapp_sent: (meta) => {
     const contactName = (meta?.contactName as string) || 'contacto';
@@ -72,24 +72,24 @@ const LOG_ACTIONS: Record<
     return `Email enviado a ${contactName}`;
   },
   quotation_created: (meta) => {
-    const quotationName = (meta?.quotationName as string) || 'cotización';
+    const quotationName = (meta?.quotationName as string) || 'cotizaci?n';
     const price = meta?.price as number;
     const priceFormatted = price ? `$${price.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '';
-    return `Cotización creada: ${quotationName}${priceFormatted ? ` (${priceFormatted})` : ''}`;
+    return `Cotizaci?n creada: ${quotationName}${priceFormatted ? ` (${priceFormatted})` : ''}`;
   },
   quotation_updated: (meta) => {
-    const quotationName = (meta?.quotationName as string) || 'cotización';
-    return `Cotización actualizada: ${quotationName}`;
+    const quotationName = (meta?.quotationName as string) || 'cotizaci?n';
+    return `Cotizaci?n actualizada: ${quotationName}`;
   },
   quotation_deleted: (meta) => {
-    const quotationName = (meta?.quotationName as string) || 'cotización';
-    return `Cotización eliminada: ${quotationName}`;
+    const quotationName = (meta?.quotationName as string) || 'cotizaci?n';
+    return `Cotizaci?n eliminada: ${quotationName}`;
   },
   quotation_authorized: (meta) => {
-    const quotationName = (meta?.quotationName as string) || 'cotización';
+    const quotationName = (meta?.quotationName as string) || 'cotizaci?n';
     const amount = meta?.amount as number;
     const amountFormatted = amount ? `$${amount.toLocaleString('es-MX', { minimumFractionDigits: 2 })}` : '';
-    return `Cotización autorizada: ${quotationName}${amountFormatted ? ` (${amountFormatted})` : ''}`;
+    return `Cotizaci?n autorizada: ${quotationName}${amountFormatted ? ` (${amountFormatted})` : ''}`;
   },
   contact_updated: (meta) => {
     const changes = meta?.changes as string[] || [];
@@ -141,7 +141,7 @@ const LOG_ACTIONS: Record<
   event_cancelled: (meta) => {
     const eventName = (meta?.eventName as string) || 'evento';
     const quotationName = meta?.quotationName as string;
-    return `Evento cancelado: ${eventName}${quotationName ? ` (Cotización: ${quotationName})` : ''}`;
+    return `Evento cancelado: ${eventName}${quotationName ? ` (Cotizaci?n: ${quotationName})` : ''}`;
   },
 };
 
@@ -217,6 +217,7 @@ export async function getPromiseById(
   event_type_name: string | null;
   event_location: string | null;
   event_name: string | null; // Nombre del evento
+  duration_hours: number | null; // Duraci?n del evento en horas
   interested_dates: string[] | null;
   event_date: Date | null;
   defined_date: Date | null;
@@ -299,9 +300,9 @@ export async function getPromiseById(
       return { success: false, error: 'Promesa no encontrada' };
     }
 
-    // Verificar si hay una cotización autorizada/aprobada con evento_id
-    // Esto es lo que realmente indica que se contrató (cuando se crea evento se autoriza la cotización)
-    // IMPORTANTE: Solo usar cotizaciones autorizadas/aprobadas con evento_id, NO la relación directa promise.event
+    // Verificar si hay una cotizaci?n autorizada/aprobada con evento_id
+    // Esto es lo que realmente indica que se contrat? (cuando se crea evento se autoriza la cotizaci?n)
+    // IMPORTANTE: Solo usar cotizaciones autorizadas/aprobadas con evento_id, NO la relaci?n directa promise.event
     const cotizacionAutorizada = promise.quotes.find((q) => {
       // Excluir cotizaciones canceladas o archivadas
       if (q.status === 'cancelada' || q.status === 'archivada') {
@@ -312,18 +313,18 @@ export async function getPromiseById(
                                  q.status === 'autorizada' || 
                                  q.status === 'approved';
       
-      // Solo considerar autorizada si tiene evento_id (indica que se creó el evento)
+      // Solo considerar autorizada si tiene evento_id (indica que se cre? el evento)
       return isAuthorizedStatus && !!q.evento_id;
     });
 
     const hasAuthorizedQuote = !!cotizacionAutorizada;
     const eventoIdFromQuote = cotizacionAutorizada?.evento_id || null;
     
-    // SOLO usar evento_id de la cotización autorizada (NO usar promise.event directamente)
-    // porque el evento solo se crea cuando se autoriza una cotización
+    // SOLO usar evento_id de la cotizaci?n autorizada (NO usar promise.event directamente)
+    // porque el evento solo se crea cuando se autoriza una cotizaci?n
     const eventoIdFinal = eventoIdFromQuote;
     
-    // Obtener el status del evento solo si hay cotización autorizada
+    // Obtener el status del evento solo si hay cotizaci?n autorizada
     let eventoStatusFinal: string | null = null;
     if (eventoIdFromQuote && promise.event?.id === eventoIdFromQuote) {
       eventoStatusFinal = promise.event.status || null;
@@ -342,6 +343,7 @@ export async function getPromiseById(
         event_type_name: promise.event_type?.name || null,
         event_location: promise.event_location || null,
         event_name: promise.name || null,
+        duration_hours: promise.duration_hours || null,
         interested_dates: promise.tentative_dates
           ? (promise.tentative_dates as string[])
           : null,
@@ -535,8 +537,8 @@ export async function createPromiseLog(
 }
 
 /**
- * Función helper centralizada para registrar acciones automáticas
- * Genera el contenido del log basado en el tipo de acción y metadata
+ * Funci?n helper centralizada para registrar acciones autom?ticas
+ * Genera el contenido del log basado en el tipo de acci?n y metadata
  */
 export async function logPromiseAction(
   studioSlug: string,
@@ -557,15 +559,15 @@ export async function logPromiseAction(
       return { success: false, error: 'Promesa no encontrada' };
     }
 
-    // Generar contenido basado en la acción
+    // Generar contenido basado en la acci?n
     const contentGenerator = LOG_ACTIONS[action];
     if (!contentGenerator) {
-      return { success: false, error: `Acción desconocida: ${action}` };
+      return { success: false, error: `Acci?n desconocida: ${action}` };
     }
 
     const content = contentGenerator(metadata);
 
-    // Determinar user_id según el source
+    // Determinar user_id seg?n el source
     const finalUserId = source === 'user' ? userId || null : null;
 
     const log = await prisma.studio_promise_logs.create({
@@ -609,10 +611,10 @@ export async function logPromiseAction(
       data: promiseLog,
     };
   } catch (error) {
-    console.error('[PROMISE_LOGS] Error registrando acción:', error);
+    console.error('[PROMISE_LOGS] Error registrando acci?n:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Error al registrar acción',
+      error: error instanceof Error ? error.message : 'Error al registrar acci?n',
     };
   }
 }

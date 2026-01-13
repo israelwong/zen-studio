@@ -56,6 +56,7 @@ export default function EditarPromesaPage() {
     event_type_name: string | null;
     event_location: string | null;
     event_name: string | null;
+    duration_hours: number | null;
     event_date: Date | null;
     interested_dates: string[] | null;
     acquisition_channel_id?: string | null;
@@ -96,6 +97,7 @@ export default function EditarPromesaPage() {
             event_type_name: result.data.event_type_name || null,
             event_location: result.data.event_location || null,
             event_name: result.data.event_name || null,
+            duration_hours: result.data.duration_hours ?? null,
             event_date: result.data.event_date || null,
             interested_dates: result.data.interested_dates,
             acquisition_channel_id: result.data.acquisition_channel_id ?? null,
@@ -520,6 +522,7 @@ export default function EditarPromesaPage() {
           event_type_name: result.data.event_type_name || null,
           event_location: result.data.event_location || null,
           event_name: result.data.event_name || null,
+          duration_hours: result.data.duration_hours ?? null,
           event_date: result.data.event_date || null,
           interested_dates: result.data.interested_dates,
           acquisition_channel_id: result.data.acquisition_channel_id ?? null,
@@ -606,6 +609,7 @@ export default function EditarPromesaPage() {
               event_type_name: promiseData.event_type_name || undefined,
               event_location: promiseData.event_location || undefined,
               event_name: promiseData.event_name || undefined,
+              duration_hours: promiseData.duration_hours ?? undefined,
               event_date: promiseData.event_date || undefined,
               interested_dates: promiseData.interested_dates,
               acquisition_channel_id: promiseData.acquisition_channel_id || undefined,
@@ -637,6 +641,7 @@ export default function EditarPromesaPage() {
           event_type_id: promiseData.event_type_id || undefined,
           event_location: promiseData.event_location || undefined,
           event_name: promiseData.event_name || undefined,
+          duration_hours: promiseData.duration_hours ?? undefined,
           event_date: promiseData.event_date || undefined,
           interested_dates: promiseData.interested_dates || undefined,
           acquisition_channel_id: promiseData.acquisition_channel_id || undefined,

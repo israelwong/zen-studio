@@ -632,6 +632,7 @@ export function ContactEventFormModal({
                     formData.event_type_id !== (initialData.event_type_id || '') ||
                     formData.event_location !== (initialData.event_location || '') ||
                     formData.event_name !== (initialData.event_name || '') ||
+                    formData.duration_hours !== (initialData.duration_hours ?? undefined) ||
                     formData.acquisition_channel_id !== (initialData.acquisition_channel_id || '') ||
                     formData.social_network_id !== (initialData.social_network_id || undefined) ||
                     formData.referrer_contact_id !== (initialData.referrer_contact_id || undefined) ||
@@ -674,30 +675,31 @@ export function ContactEventFormModal({
                 toast.success(isEditMode ? 'Promesa actualizada exitosamente' : 'Promesa registrada exitosamente');
 
                 if (isEditMode) {
-                    // Disparar evento de actualización de contacto para sincronizar componentes
-                    triggerContactUpdate(result.data.id, {
-                        id: result.data.id,
-                        name: result.data.name,
-                        phone: result.data.phone,
-                        email: result.data.email,
-                        address: result.data.address,
-                        acquisition_channel_id: result.data.acquisition_channel_id,
-                        social_network_id: result.data.social_network_id,
-                        referrer_contact_id: result.data.referrer_contact_id,
-                        referrer_name: result.data.referrer_name,
-                        // Datos del evento
-                        event_type_id: result.data.event_type_id,
-                        event_name: result.data.event_name,
-                        event_location: result.data.event_location,
-                        event_type: result.data.event_type,
-                        interested_dates: result.data.interested_dates,
-                        event_date: result.data.event_date,
-                    });
-
                     // En modo edición, cerrar modal y refrescar
                     onClose();
                     if (onSuccess) {
+                        // Si hay onSuccess, usarlo (ya maneja la recarga)
                         onSuccess();
+                    } else {
+                        // Solo disparar evento si no hay onSuccess (para otros componentes que escuchan)
+                        triggerContactUpdate(result.data.id, {
+                            id: result.data.id,
+                            name: result.data.name,
+                            phone: result.data.phone,
+                            email: result.data.email,
+                            address: result.data.address,
+                            acquisition_channel_id: result.data.acquisition_channel_id,
+                            social_network_id: result.data.social_network_id,
+                            referrer_contact_id: result.data.referrer_contact_id,
+                            referrer_name: result.data.referrer_name,
+                            // Datos del evento
+                            event_type_id: result.data.event_type_id,
+                            event_name: result.data.event_name,
+                            event_location: result.data.event_location,
+                            event_type: result.data.event_type,
+                            interested_dates: result.data.interested_dates,
+                            event_date: result.data.event_date,
+                        });
                     }
                 } else {
                     // En modo creación, obtener promiseId y redirigir
@@ -1289,9 +1291,18 @@ export function ContactEventFormModal({
                                             onSelect={(dates) => {
                                                 const dateArray = dates as Date[] | undefined;
                                                 if (dateArray) {
-                                                    setSelectedDates(dateArray);
-                                                    if (dateArray.length > 0) {
-                                                        setMonth(dateArray[0]);
+                                                    // Eliminar duplicados basándose en la fecha (sin hora)
+                                                    const uniqueDates = Array.from(
+                                                        new Map(
+                                                            dateArray.map((date) => {
+                                                                const dateKey = date.toISOString().split('T')[0];
+                                                                return [dateKey, date];
+                                                            })
+                                                        ).values()
+                                                    );
+                                                    setSelectedDates(uniqueDates);
+                                                    if (uniqueDates.length > 0) {
+                                                        setMonth(uniqueDates[0]);
                                                     }
                                                     // NO cerrar popover automáticamente - esperar botón Confirmar
                                                 } else {
@@ -1374,35 +1385,42 @@ export function ContactEventFormModal({
                             )}
                         {selectedDates.length > 1 && (
                             <div className="flex flex-wrap gap-2 mt-2">
-                                {selectedDates
-                                    .sort((a, b) => a.getTime() - b.getTime())
-                                    .map((date) => {
-                                        const dateKey = date.toISOString().split('T')[0];
-                                        const hasConflict = conflictosPorFecha.has(dateKey);
-                                        return (
-                                            <div
-                                                key={dateKey}
-                                                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border ${hasConflict
-                                                    ? 'bg-amber-900/20 text-amber-300 border-amber-700/50'
-                                                    : 'bg-emerald-900/20 text-emerald-300 border-emerald-700/50'
-                                                    }`}
+                                {Array.from(
+                                    new Map(
+                                        selectedDates
+                                            .sort((a, b) => a.getTime() - b.getTime())
+                                            .map((date) => {
+                                                const dateKey = date.toISOString().split('T')[0];
+                                                return [dateKey, date];
+                                            })
+                                    ).values()
+                                ).map((date, index) => {
+                                    const dateKey = date.toISOString().split('T')[0];
+                                    const hasConflict = conflictosPorFecha.has(dateKey);
+                                    return (
+                                        <div
+                                            key={`${dateKey}-${index}`}
+                                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs border ${hasConflict
+                                                ? 'bg-amber-900/20 text-amber-300 border-amber-700/50'
+                                                : 'bg-emerald-900/20 text-emerald-300 border-emerald-700/50'
+                                                }`}
+                                        >
+                                            <span>{formatDate(date)}</span>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setSelectedDates(selectedDates.filter(d => d.toISOString().split('T')[0] !== dateKey));
+                                                }}
+                                                className="hover:bg-zinc-800/50 rounded p-0.5 transition-colors"
+                                                title="Eliminar fecha"
                                             >
-                                                <span>{formatDate(date)}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        e.stopPropagation();
-                                                        setSelectedDates(selectedDates.filter(d => d.toISOString().split('T')[0] !== dateKey));
-                                                    }}
-                                                    className="hover:bg-zinc-800/50 rounded p-0.5 transition-colors"
-                                                    title="Eliminar fecha"
-                                                >
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        );
-                                    })}
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                         {Array.from(conflictosPorFecha.entries()).map(([dateKey, conflictos]) => {

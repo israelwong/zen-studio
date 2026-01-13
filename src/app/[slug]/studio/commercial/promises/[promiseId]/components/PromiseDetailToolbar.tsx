@@ -394,12 +394,11 @@ export function PromiseDetailToolbar({
             variant="ghost"
             size="sm"
             onClick={() => {
-              const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}?preview=true`;
-              window.open(previewUrl, '_blank');
               onPreview();
               
               // Registrar log
               if (promiseId && contactData) {
+                const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}?preview=true`;
                 logProfileShared(studioSlug, promiseId, contactData.contactName, previewUrl).catch((error) => {
                   console.error('Error registrando vista previa:', error);
                 });

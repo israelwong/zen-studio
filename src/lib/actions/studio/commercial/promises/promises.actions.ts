@@ -932,8 +932,11 @@ export async function updatePromise(
 
       // duration_hours solo se guarda si hay event_type_id (igual que event_location)
       if (validatedData.duration_hours !== undefined) {
-        const durationHoursUpdate = validatedData.event_type_id && validatedData.duration_hours
-          ? validatedData.duration_hours
+        // Si hay event_type_id y duration_hours tiene valor, guardarlo
+        // Si hay event_type_id pero duration_hours es null, guardar null (limpiar)
+        // Si no hay event_type_id, siempre guardar null
+        const durationHoursUpdate = validatedData.event_type_id
+          ? (validatedData.duration_hours ?? null)
           : null;
         updateData.duration_hours = durationHoursUpdate;
       }
@@ -968,27 +971,33 @@ export async function updatePromise(
         }
       }
 
-      promise = await prisma.studio_promises.update({
-        where: { id: latestPromise.id },
-        data: updateData as Prisma.studio_promisesUpdateInput,
-        include: {
-          event_type: {
-            select: {
-              id: true,
-              name: true,
+      // Solo actualizar si hay cambios en los datos de la promesa
+      if (Object.keys(updateData).length > 0) {
+        promise = await prisma.studio_promises.update({
+          where: { id: latestPromise.id },
+          data: updateData as Prisma.studio_promisesUpdateInput,
+          include: {
+            event_type: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            pipeline_stage: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                color: true,
+                order: true,
+              },
             },
           },
-          pipeline_stage: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              color: true,
-              order: true,
-            },
-          },
-        },
-      });
+        });
+      } else {
+        // Si no hay cambios en la promesa, usar la promesa existente
+        promise = latestPromise;
+      }
     } else {
       // Crear nueva promesa si no existe
       const stageId = validatedData.promise_pipeline_stage_id ||
