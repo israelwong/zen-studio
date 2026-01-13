@@ -269,6 +269,92 @@ export async function getCotizacionesByPromiseId(
 }
 
 /**
+ * Obtener cotización autorizada con evento asociado a una promesa
+ */
+export async function getCotizacionAutorizadaByPromiseId(
+  promiseId: string
+): Promise<{
+  success: boolean;
+  data?: CotizacionListItem | null;
+  error?: string;
+}> {
+  try {
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        promise_id: promiseId,
+        status: { in: ['autorizada', 'aprobada', 'approved', 'contract_generated', 'contract_signed'] },
+        evento_id: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        status: true,
+        description: true,
+        created_at: true,
+        updated_at: true,
+        order: true,
+        archived: true,
+        visible_to_client: true,
+        revision_of_id: true,
+        revision_number: true,
+        revision_status: true,
+        selected_by_prospect: true,
+        selected_at: true,
+        discount: true,
+        evento_id: true,
+        condiciones_comerciales_id: true,
+        condiciones_comerciales: {
+          select: {
+            id: true,
+            name: true,
+            discount_percentage: true,
+            advance_percentage: true,
+            advance_type: true,
+            advance_amount: true,
+          },
+        },
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: true, data: null };
+    }
+
+    return {
+      success: true,
+      data: {
+        id: cotizacion.id,
+        name: cotizacion.name,
+        price: Number(cotizacion.price),
+        status: cotizacion.status,
+        description: cotizacion.description,
+        created_at: cotizacion.created_at,
+        updated_at: cotizacion.updated_at,
+        order: cotizacion.order,
+        archived: cotizacion.archived,
+        visible_to_client: cotizacion.visible_to_client,
+        revision_of_id: cotizacion.revision_of_id,
+        revision_number: cotizacion.revision_number,
+        revision_status: cotizacion.revision_status,
+        selected_by_prospect: cotizacion.selected_by_prospect,
+        selected_at: cotizacion.selected_at,
+        discount: cotizacion.discount ? Number(cotizacion.discount) : null,
+        evento_id: cotizacion.evento_id,
+        condiciones_comerciales_id: cotizacion.condiciones_comerciales_id,
+        condiciones_comerciales: cotizacion.condiciones_comerciales,
+      },
+    };
+  } catch (error) {
+    console.error('[COTIZACIONES] Error obteniendo cotización autorizada:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener cotización autorizada',
+    };
+  }
+}
+
+/**
  * Obtener cotizaciรณn por ID con todos sus datos
  */
 export async function getCotizacionById(
@@ -292,6 +378,8 @@ export async function getCotizacionById(
     condiciones_comerciales_metodo_pago_id?: string | null;
     selected_by_prospect?: boolean;
     selected_at?: Date | null;
+    negociacion_precio_original?: number | null;
+    negociacion_precio_personalizado?: number | null;
     items: Array<{
       item_id: string;
       quantity: number;
@@ -352,6 +440,8 @@ export async function getCotizacionById(
         condiciones_comerciales_metodo_pago_id: true,
         selected_by_prospect: true,
         selected_at: true,
+        negociacion_precio_original: true,
+        negociacion_precio_personalizado: true,
         cotizacion_items: {
           select: {
             ...COTIZACION_ITEMS_SELECT_STANDARD,
@@ -418,6 +508,12 @@ export async function getCotizacionById(
         condiciones_comerciales_metodo_pago_id: cotizacion.condiciones_comerciales_metodo_pago_id,
         selected_by_prospect: cotizacion.selected_by_prospect,
         selected_at: cotizacion.selected_at,
+        negociacion_precio_original: cotizacion.negociacion_precio_original !== null && cotizacion.negociacion_precio_original !== undefined
+          ? Number(cotizacion.negociacion_precio_original)
+          : null,
+        negociacion_precio_personalizado: cotizacion.negociacion_precio_personalizado !== null && cotizacion.negociacion_precio_personalizado !== undefined
+          ? Number(cotizacion.negociacion_precio_personalizado)
+          : null,
         items: itemsOrdenados,
       },
     };

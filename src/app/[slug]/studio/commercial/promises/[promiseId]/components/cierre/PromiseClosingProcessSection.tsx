@@ -5,7 +5,7 @@ import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from 
 import { FileText, HelpCircle } from 'lucide-react';
 import { PromiseClosingProcessCard } from './PromiseClosingProcessCard';
 import { CotizacionAutorizadaCard } from './CotizacionAutorizadaCard';
-import { getCotizacionesByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { getCotizacionesByPromiseId, getCotizacionAutorizadaByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { ClosingProcessInfoModal } from './ClosingProcessInfoModal';
@@ -39,6 +39,7 @@ export function PromiseClosingProcessSection({
   acquisitionChannelId,
 }: PromiseClosingProcessSectionProps) {
   const [cotizaciones, setCotizaciones] = useState<CotizacionListItem[]>([]);
+  const [cotizacionAutorizada, setCotizacionAutorizada] = useState<CotizacionListItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
@@ -50,9 +51,16 @@ export function PromiseClosingProcessSection({
 
     setLoading(true);
     try {
+      // Cargar cotizaciones normales (pendiente, negociacion, en_cierre, etc.)
       const result = await getCotizacionesByPromiseId(promiseId);
       if (result.success && result.data) {
         setCotizaciones(result.data);
+      }
+
+      // Buscar también cotización autorizada con evento (no incluida en getCotizacionesByPromiseId)
+      const autorizadaResult = await getCotizacionAutorizadaByPromiseId(promiseId);
+      if (autorizadaResult.success) {
+        setCotizacionAutorizada(autorizadaResult.data || null);
       }
     } catch (error) {
       console.error('[PromiseClosingProcessSection] Error loading cotizaciones:', error);
@@ -103,7 +111,8 @@ export function PromiseClosingProcessSection({
       // CRÍTICO: Si cambió evento_id y el nuevo status es 'autorizada', recargar inmediatamente
       // Esto asegura que se muestre CotizacionAutorizadaCard cuando se crea el evento
       if (changeInfo?.camposCambiados?.includes('evento_id')) {
-        if (newRecord?.status === 'autorizada' && newRecord?.evento_id) {
+        const estadosAutorizados = ['autorizada', 'aprobada', 'approved', 'contract_generated', 'contract_signed'];
+        if (estadosAutorizados.includes(newRecord?.status) && newRecord?.evento_id) {
           loadCotizaciones();
           return;
         }
@@ -130,11 +139,7 @@ export function PromiseClosingProcessSection({
   // ============================================
 
   // 1. Validar si hay cotización autorizada con evento creado
-  const cotizacionAutorizada = cotizaciones.find(
-    (c) =>
-      c.status === 'autorizada' &&
-      !!c.evento_id // Debe tener evento_id asignado
-  );
+  // Usar el estado separado que se carga específicamente para cotizaciones autorizadas
   const tieneCotizacionAutorizada = !!cotizacionAutorizada && !!promiseId && !!cotizacionAutorizada.evento_id;
 
   // 2. Validar si hay cotización en proceso de cierre (solo 'en_cierre', no 'aprobada' o 'approved')

@@ -178,13 +178,11 @@ export function PromiseClosingProcessCard({
           pago_metodo_id: data.pago_metodo_id,
         });
 
-        // Obtener campos de negociación desde la respuesta
-        if (data.negociacion_precio_original !== undefined || data.negociacion_precio_personalizado !== undefined) {
-          setNegociacionData({
-            negociacion_precio_original: data.negociacion_precio_original ?? null,
-            negociacion_precio_personalizado: data.negociacion_precio_personalizado ?? null,
-          });
-        }
+        // Obtener campos de negociación desde la respuesta (siempre actualizar, incluso si son null)
+        setNegociacionData({
+          negociacion_precio_original: data.negociacion_precio_original ?? null,
+          negociacion_precio_personalizado: data.negociacion_precio_personalizado ?? null,
+        });
       }
     } catch (error) {
       console.error('[loadRegistroCierre] Error:', error);
@@ -1197,6 +1195,12 @@ export function PromiseClosingProcessCard({
               promiseId={promiseId}
               condicionesComerciales={condicionesData?.condiciones_comerciales as any}
               hideSubtotals={true}
+              negociacionPrecioOriginal={
+                cotizacionCompleta.negociacion_precio_original ?? negociacionData.negociacion_precio_original
+              }
+              negociacionPrecioPersonalizado={
+                cotizacionCompleta.negociacion_precio_personalizado ?? negociacionData.negociacion_precio_personalizado
+              }
             />
           ) : (
             <div className="text-center py-8 text-zinc-400">

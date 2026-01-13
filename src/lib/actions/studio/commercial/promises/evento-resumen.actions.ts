@@ -137,7 +137,14 @@ export async function obtenerResumenEventoCreado(
           event_date: evento.event_date,
           name: evento.promise?.name || null,
         },
-        cotizacion: evento.cotizacion,
+        cotizacion: {
+          ...evento.cotizacion,
+          price: Number(evento.cotizacion.price),
+          discount: evento.cotizacion.discount ? Number(evento.cotizacion.discount) : null,
+          condiciones_comerciales_advance_amount_snapshot: evento.cotizacion.condiciones_comerciales_advance_amount_snapshot != null
+            ? Number(evento.cotizacion.condiciones_comerciales_advance_amount_snapshot)
+            : null,
+        },
         pagos,
         totalPagado,
         montoInicial,

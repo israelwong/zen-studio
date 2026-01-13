@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { formatearMoneda } from '@/lib/actions/studio/catalogo/calcular-precio';
-import { PrecioDesglose } from '@/components/promise/shared/PrecioDesglose';
+import { CondicionesFinancierasResumen } from '@/components/shared/cotizaciones';
 import type { ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 import type {
   CondicionComercial,
@@ -40,79 +39,42 @@ export function CalculoConCondiciones({
   }, [cotizacionOriginal, condicionComercial, configuracionPrecios]);
 
 
-  // Precio base sin condiciones comerciales (usar precio original si existe)
-  const precioBaseSinCondiciones = cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price;
+  // Verificar si hay precio negociado guardado (modo negociación)
+  const precioNegociadoGuardado = cotizacionOriginal.negociacion_precio_personalizado ?? null;
+  const precioOriginalNegociacion = cotizacionOriginal.negociacion_precio_original ?? null;
+  const tienePrecioNegociado = precioNegociadoGuardado !== null && precioNegociadoGuardado > 0;
 
-  // Precio con condiciones comerciales
-  const precioConCondiciones = calculoConCondicion?.precioFinal ?? precioBaseSinCondiciones;
+  // Precio base para el desglose:
+  // - Si hay precio negociado guardado: usar precio original de negociación como precio base
+  // - Si no hay precio negociado: usar precio calculado con condiciones comerciales como precio base
+  const precioBaseParaDesglose = tienePrecioNegociado && precioOriginalNegociacion !== null
+    ? precioOriginalNegociacion
+    : (calculoConCondicion?.precioFinal ?? (cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price));
 
-  // Descuento aplicado por condición comercial
-  const descuentoAplicado = calculoConCondicion?.descuentoTotal ?? 0;
+  // Convertir condición comercial a formato compatible con CondicionesFinancierasResumen
+  const condicionParaResumen = condicionComercial ? {
+    id: condicionComercial.id || '',
+    name: condicionComercial.name,
+    description: condicionComercial.description ?? null,
+    discount_percentage: condicionComercial.discount_percentage ?? null,
+    advance_type: condicionComercial.advance_type || 'percentage',
+    advance_percentage: condicionComercial.advance_percentage ?? null,
+    advance_amount: condicionComercial.advance_amount ?? null,
+  } : null;
 
-  // Porcentaje de descuento
-  const descuentoPorcentaje = useMemo(() => {
-    if (!condicionComercial?.discount_percentage) {
-      return 0;
-    }
-    return condicionComercial.discount_percentage;
-  }, [condicionComercial]);
-
-  // Calcular anticipo y diferido
-  const anticipoYdiferido = useMemo(() => {
-    if (!condicionComercial || !calculoConCondicion) {
-      return {
-        anticipo: 0,
-        diferido: precioConCondiciones,
-        anticipoPorcentaje: null,
-        advanceType: 'percentage' as const,
-      };
-    }
-
-    const precioFinal = calculoConCondicion.precioFinal;
-    let anticipo = 0;
-    let anticipoPorcentaje: number | null = null;
-    const advanceType = (condicionComercial.advance_type || 'percentage') as
-      | 'percentage'
-      | 'fixed_amount';
-
-    if (advanceType === 'fixed_amount' && condicionComercial.advance_amount) {
-      anticipo = condicionComercial.advance_amount;
-    } else if (
-      advanceType === 'percentage' &&
-      condicionComercial.advance_percentage
-    ) {
-      anticipoPorcentaje = condicionComercial.advance_percentage;
-      anticipo = precioFinal * (condicionComercial.advance_percentage / 100);
-    }
-
-    const diferido = precioFinal - anticipo;
-
-    return {
-      anticipo,
-      diferido,
-      anticipoPorcentaje,
-      advanceType,
-    };
-  }, [condicionComercial, calculoConCondicion, precioConCondiciones]);
-
-
-  if (!condicionComercial) {
+  if (!condicionComercial || !condicionParaResumen) {
     return null;
   }
 
   return (
     <div className="space-y-4">
       {/* Resumen de Pago con condiciones comerciales aplicadas */}
-      <PrecioDesglose
-        precioBase={precioBaseSinCondiciones}
-        descuentoCondicion={descuentoPorcentaje}
-        precioConDescuento={precioConCondiciones}
-        advanceType={anticipoYdiferido.advanceType}
-        anticipoPorcentaje={anticipoYdiferido.anticipoPorcentaje}
-        anticipo={anticipoYdiferido.anticipo}
-        diferido={anticipoYdiferido.diferido}
+      <CondicionesFinancierasResumen
+        precioBase={precioBaseParaDesglose}
+        condicion={condicionParaResumen}
+        negociacionPrecioOriginal={tienePrecioNegociado ? precioOriginalNegociacion : null}
+        negociacionPrecioPersonalizado={precioNegociadoGuardado}
       />
-
     </div>
   );
 }

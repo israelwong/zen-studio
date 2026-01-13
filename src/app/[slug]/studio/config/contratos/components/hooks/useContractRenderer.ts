@@ -116,6 +116,9 @@ export function useContractRenderer({
       "@telefono_studio": (eventData.telefono_studio || "").toUpperCase(),
       "@correo_studio": (eventData.correo_studio || "").toUpperCase(),
       "@direccion_studio": (eventData.direccion_studio || "").toUpperCase(),
+      "@banco": (eventData.banco || "").toUpperCase(),
+      "@titular": (eventData.titular || "").toUpperCase(),
+      "@clabe": eventData.clabe || "",
     };
 
     // Variables de negocio/comerciales (sin mayúsculas)
@@ -157,6 +160,9 @@ export function useContractRenderer({
       "{correo_studio}": (eventData.correo_studio || "").toUpperCase(),
       "{direccion_studio}": (eventData.direccion_studio || "").toUpperCase(),
       "{fecha_firma_cliente}": eventData.fecha_firma_cliente || "",
+      "{banco}": (eventData.banco || "").toUpperCase(),
+      "{titular}": (eventData.titular || "").toUpperCase(),
+      "{clabe}": eventData.clabe || "",
     };
 
     // Reemplazar variables @variable

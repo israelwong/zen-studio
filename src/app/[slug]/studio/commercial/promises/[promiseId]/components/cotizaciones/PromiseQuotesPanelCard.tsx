@@ -695,15 +695,6 @@ export function PromiseQuotesPanelCard({
                     )}
                   </ZenBadge>
                 )}
-                {clickCount !== null && clickCount > 0 && (
-                  <ZenBadge
-                    variant="secondary"
-                    className="text-[10px] px-1.5 py-0.5 rounded-full"
-                    title={`${clickCount} click${clickCount > 1 ? 's' : ''} en esta cotización`}
-                  >
-                    👁️ {clickCount}
-                  </ZenBadge>
-                )}
               </div>
               {/* Mostrar precio original si hay descuento aplicado */}
               {(() => {

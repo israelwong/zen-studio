@@ -99,6 +99,9 @@ export interface EventContractData {
   direccion_studio?: string;
   fecha_firma_cliente?: string;
   servicios_incluidos: ServiceCategory[];
+  banco?: string;
+  titular?: string;
+  clabe?: string;
 }
 
 export interface ServiceCategory {
@@ -250,6 +253,28 @@ export const CONTRACT_VARIABLES: ContractVariable[] = [
     label: "Fecha de Firma del Cliente",
     description: "Fecha en que el cliente firmó el contrato",
     example: "15 de enero de 2025",
+  },
+  // Bancario
+  {
+    key: "@banco",
+    label: "Banco",
+    description: "Nombre del banco configurado para transferencias",
+    example: "Banorte",
+    category: "studio",
+  },
+  {
+    key: "@titular",
+    label: "Titular de la Cuenta",
+    description: "Nombre del titular de la cuenta bancaria",
+    example: "Juan Pérez",
+    category: "studio",
+  },
+  {
+    key: "@clabe",
+    label: "CLABE Interbancaria",
+    description: "CLABE de 18 dígitos para transferencias SPEI",
+    example: "012345678901234567",
+    category: "studio",
   },
   // Legacy
   {

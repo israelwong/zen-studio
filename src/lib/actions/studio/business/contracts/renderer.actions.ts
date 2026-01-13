@@ -6,6 +6,7 @@ import { EventContractData, ServiceCategory } from "@/types/contracts";
 import type { CondicionesComercialesData } from "@/app/[slug]/studio/config/contratos/components/types";
 import { renderCondicionesComercialesBlock } from "@/app/[slug]/studio/config/contratos/components/utils/contract-renderer";
 import { construirEstructuraJerarquicaCotizacion, COTIZACION_ITEMS_SELECT_STANDARD } from "@/lib/actions/studio/commercial/promises/cotizacion-structure.utils";
+import { obtenerInfoBancariaTransferencia } from "@/lib/actions/shared/metodos-pago.actions";
 
 // Tipo extendido que incluye condiciones comerciales y datos adicionales
 export interface EventContractDataWithConditions extends EventContractData {
@@ -355,6 +356,22 @@ export async function getPromiseContractData(
       });
     }
 
+    // Obtener información bancaria del estudio
+    let banco: string | undefined;
+    let titular: string | undefined;
+    let clabe: string | undefined;
+    try {
+      const bankInfoResult = await obtenerInfoBancariaTransferencia(studio.id);
+      if (bankInfoResult.success && bankInfoResult.data) {
+        banco = bankInfoResult.data.banco;
+        titular = bankInfoResult.data.titular;
+        clabe = bankInfoResult.data.clabe;
+      }
+    } catch (error) {
+      console.error('[getPromiseContractData] Error obteniendo información bancaria:', error);
+      // Continuar sin información bancaria si hay error
+    }
+
     const eventData: EventContractDataWithConditions = {
       nombre_studio: studio.studio_name,
       nombre_representante: studio.representative_name || undefined,
@@ -372,6 +389,9 @@ export async function getPromiseContractData(
       servicios_incluidos: serviciosLegacy, // Formato legacy para [SERVICIOS_INCLUIDOS]
       total_contrato: `$${totalFinal.toLocaleString('es-MX', { minimumFractionDigits: 2 })} MXN`,
       condiciones_pago: condiciones?.description || "Por definir",
+      banco,
+      titular,
+      clabe,
       subtotal: precioBaseReal,
       descuento: descuentoAplicado,
       total: totalFinal,
@@ -490,6 +510,8 @@ export async function getEventContractData(
             selected_by_prospect: true,
             tyc_accepted: true,
             condiciones_comerciales_id: true,
+            negociacion_precio_original: true,
+            negociacion_precio_personalizado: true,
             // Snapshots inmutables (prioridad cuando existen)
             condiciones_comerciales_name_snapshot: true,
             condiciones_comerciales_description_snapshot: true,
@@ -670,8 +692,19 @@ export async function getEventContractData(
       })
     );
 
+    // Verificar si hay precio negociado (modo negociación)
+    const precioNegociado = cotizacionAprobada.negociacion_precio_personalizado 
+      ? Number(cotizacionAprobada.negociacion_precio_personalizado) 
+      : null;
+    const precioOriginalNegociacion = cotizacionAprobada.negociacion_precio_original 
+      ? Number(cotizacionAprobada.negociacion_precio_original) 
+      : null;
+    const esNegociacion = precioNegociado !== null && precioNegociado > 0;
+
     // Calcular total
-    const totalContrato = Number(cotizacionAprobada.price);
+    const precioBase = Number(cotizacionAprobada.price);
+    const descuentoExistente = cotizacionAprobada.discount ? Number(cotizacionAprobada.discount) : 0;
+    const precioBaseReal = descuentoExistente > 0 ? precioBase + descuentoExistente : precioBase;
     
     // Priorizar snapshots inmutables de condiciones comerciales sobre la relación
     const tieneSnapshots = !!cotizacionAprobada.condiciones_comerciales_name_snapshot;
@@ -681,29 +714,47 @@ export async function getEventContractData(
       discount_percentage: cotizacionAprobada.condiciones_comerciales_discount_percentage_snapshot,
       advance_percentage: cotizacionAprobada.condiciones_comerciales_advance_percentage_snapshot,
       advance_type: cotizacionAprobada.condiciones_comerciales_advance_type_snapshot,
-      advance_amount: cotizacionAprobada.condiciones_comerciales_advance_amount_snapshot,
+      advance_amount: cotizacionAprobada.condiciones_comerciales_advance_amount_snapshot != null
+        ? Number(cotizacionAprobada.condiciones_comerciales_advance_amount_snapshot)
+        : null,
     } : cotizacionAprobada.condiciones_comerciales;
     
-    // Calcular descuento: puede ser porcentaje o monto fijo
-    let descuento = 0;
-    if (condiciones) {
+    // Calcular total final y descuento según modo
+    let totalFinal: number;
+    let descuentoAplicado: number;
+    let precioOriginalParaContrato: number;
+    let ahorroTotal: number | undefined;
+
+    if (esNegociacion && precioNegociado !== null) {
+      // MODO NEGOCIACIÓN: usar precio negociado como total final
+      totalFinal = precioNegociado;
+      precioOriginalParaContrato = precioOriginalNegociacion ?? precioBaseReal;
+      ahorroTotal = precioOriginalParaContrato - precioNegociado;
+      descuentoAplicado = 0; // No mostrar descuento en modo negociación
+    } else if (condiciones) {
+      // MODO NORMAL: calcular descuento si hay porcentaje de descuento en condiciones comerciales
       if (condiciones.discount_percentage) {
-        // Descuento porcentual
-        descuento = totalContrato * (Number(condiciones.discount_percentage) / 100);
-      } else if (cotizacionAprobada.discount) {
-        // Descuento fijo desde la cotización
-        descuento = Number(cotizacionAprobada.discount);
+        descuentoAplicado = (precioBaseReal * Number(condiciones.discount_percentage)) / 100;
+        totalFinal = precioBaseReal - descuentoAplicado;
+      } else if (descuentoExistente > 0) {
+        descuentoAplicado = descuentoExistente;
+        totalFinal = precioBase;
+      } else {
+        totalFinal = precioBase;
+        descuentoAplicado = 0;
       }
-    } else if (cotizacionAprobada.discount) {
-      // Descuento directo en la cotización
-      descuento = Number(cotizacionAprobada.discount);
+      precioOriginalParaContrato = precioBaseReal;
+    } else {
+      // Sin condiciones comerciales
+      totalFinal = precioBase;
+      descuentoAplicado = descuentoExistente;
+      precioOriginalParaContrato = precioBaseReal;
     }
-    const totalFinal = totalContrato - descuento;
 
     // Preparar datos de condiciones comerciales si existen
     let condicionesData: CondicionesComercialesData | undefined;
     if (condiciones) {
-      // Calcular monto de anticipo
+      // Calcular monto de anticipo basado en totalFinal (ya sea negociado o normal)
       let montoAnticipoCalculado: number | undefined;
       if (condiciones.advance_percentage && condiciones.advance_type === "percentage") {
         montoAnticipoCalculado = totalFinal * (Number(condiciones.advance_percentage) / 100);
@@ -718,9 +769,14 @@ export async function getEventContractData(
         tipo_anticipo: (condiciones.advance_type as "percentage" | "fixed_amount") || undefined,
         monto_anticipo: montoAnticipoCalculado,
         porcentaje_descuento: condiciones.discount_percentage || undefined,
-        total_contrato: totalContrato,
+        total_contrato: esNegociacion ? precioOriginalParaContrato : precioBaseReal,
         total_final: totalFinal,
-        descuento_aplicado: descuento,
+        descuento_aplicado: descuentoAplicado,
+        // Campos para modo negociación
+        es_negociacion: esNegociacion,
+        precio_negociado: precioNegociado ?? undefined,
+        precio_original: esNegociacion ? precioOriginalParaContrato : undefined,
+        ahorro_total: ahorroTotal,
         // TODO: Agregar condiciones_metodo_pago si están disponibles en la relación
         condiciones_metodo_pago: undefined,
       };
@@ -750,6 +806,22 @@ export async function getEventContractData(
       });
     }
 
+    // Obtener información bancaria del estudio
+    let banco: string | undefined;
+    let titular: string | undefined;
+    let clabe: string | undefined;
+    try {
+      const bankInfoResult = await obtenerInfoBancariaTransferencia(studio.id);
+      if (bankInfoResult.success && bankInfoResult.data) {
+        banco = bankInfoResult.data.banco;
+        titular = bankInfoResult.data.titular;
+        clabe = bankInfoResult.data.clabe;
+      }
+    } catch (error) {
+      console.error('[getEventContractData] Error obteniendo información bancaria:', error);
+      // Continuar sin información bancaria si hay error
+    }
+
     const contractData: EventContractDataWithConditions = {
       nombre_cliente: event.promise.contact.name,
       email_cliente: event.promise.contact.email || undefined,
@@ -771,6 +843,9 @@ export async function getEventContractData(
       direccion_studio: studio.address || undefined,
       fecha_firma_cliente: fechaFirmaCliente,
       servicios_incluidos: serviciosIncluidos,
+      banco,
+      titular,
+      clabe,
       condicionesData,
     };
 
@@ -805,6 +880,9 @@ export async function renderContractContent(
       "@telefono_studio": (eventData.telefono_studio || "").toUpperCase(),
       "@correo_studio": (eventData.correo_studio || "").toUpperCase(),
       "@direccion_studio": (eventData.direccion_studio || "").toUpperCase(),
+      "@banco": (eventData.banco || "").toUpperCase(),
+      "@titular": (eventData.titular || "").toUpperCase(),
+      "@clabe": eventData.clabe || "",
     };
 
     // Variables de negocio/comerciales (sin mayúsculas)
@@ -846,6 +924,9 @@ export async function renderContractContent(
       "{correo_studio}": (eventData.correo_studio || "").toUpperCase(),
       "{direccion_studio}": (eventData.direccion_studio || "").toUpperCase(),
       "{fecha_firma_cliente}": eventData.fecha_firma_cliente || "",
+      "{banco}": (eventData.banco || "").toUpperCase(),
+      "{titular}": (eventData.titular || "").toUpperCase(),
+      "{clabe}": eventData.clabe || "",
     };
 
     // Reemplazar variables @variable

@@ -6,6 +6,7 @@ import { Pencil, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatearMoneda } from '@/lib/actions/studio/catalogo/calcular-precio';
 import { useParams, useRouter } from 'next/navigation';
 import { construirEstructuraJerarquicaCotizacion } from '@/lib/actions/studio/commercial/promises/cotizacion-structure.utils';
+import { CondicionesFinancierasResumen } from './CondicionesFinancierasResumen';
 
 interface ResumenCotizacionProps {
   cotizacion: {
@@ -54,6 +55,8 @@ interface ResumenCotizacionProps {
     advance_amount: number | null;
   } | null;
   hideSubtotals?: boolean;
+  negociacionPrecioOriginal?: number | null;
+  negociacionPrecioPersonalizado?: number | null;
 }
 
 /**
@@ -307,81 +310,20 @@ export function ResumenCotizacion({ cotizacion, studioSlug: propStudioSlug, prom
         {/* Resumen Financiero con Condiciones Comerciales */}
         {condicionesComerciales && (
           <div className="pt-4 border-t border-zinc-700">
-            <h4 className="text-sm font-semibold text-zinc-300 mb-2">Condiciones Comerciales</h4>
-            {condicionesComerciales.description && (
-              <p className="text-xs text-zinc-400 mb-3 leading-relaxed">{condicionesComerciales.description}</p>
-            )}
-            <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-3 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">Precio base:</span>
-                <span className="text-zinc-300 font-medium">{formatearMoneda(cotizacion.price)}</span>
-              </div>
-              
-              {condicionesComerciales.discount_percentage && condicionesComerciales.discount_percentage > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-400">Descuento ({condicionesComerciales.discount_percentage}%):</span>
-                  <span className="text-red-400 font-medium">
-                    -{formatearMoneda((cotizacion.price * condicionesComerciales.discount_percentage) / 100)}
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-sm pt-2 border-t border-zinc-700/50">
-                <span className="text-zinc-300 font-medium">Subtotal:</span>
-                <span className="text-zinc-200 font-semibold">
-                  {formatearMoneda(
-                    condicionesComerciales.discount_percentage
-                      ? cotizacion.price - (cotizacion.price * condicionesComerciales.discount_percentage) / 100
-                      : cotizacion.price
-                  )}
-                </span>
-              </div>
-
-              {(() => {
-                const precioConDescuento = condicionesComerciales.discount_percentage
-                  ? cotizacion.price - (cotizacion.price * condicionesComerciales.discount_percentage) / 100
-                  : cotizacion.price;
-                
-                const anticipo = condicionesComerciales.advance_type === 'fixed_amount' && condicionesComerciales.advance_amount
-                  ? condicionesComerciales.advance_amount
-                  : condicionesComerciales.advance_percentage
-                    ? (precioConDescuento * condicionesComerciales.advance_percentage) / 100
-                    : 0;
-                
-                const diferido = precioConDescuento - anticipo;
-
-                if (anticipo > 0) {
-                  return (
-                    <>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-400">
-                          Anticipo {condicionesComerciales.advance_type === 'fixed_amount' 
-                            ? '(monto fijo)' 
-                            : `(${condicionesComerciales.advance_percentage}%)`}:
-                        </span>
-                        <span className="text-emerald-400 font-medium">{formatearMoneda(anticipo)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-zinc-400">Diferido:</span>
-                        <span className="text-amber-400 font-medium">{formatearMoneda(diferido)}</span>
-                      </div>
-                    </>
-                  );
-                }
-                return null;
-              })()}
-
-              <div className="flex items-center justify-between text-base pt-2 border-t border-zinc-700/50">
-                <span className="text-zinc-200 font-bold">Total a pagar:</span>
-                <span className="text-emerald-400 font-bold text-lg">
-                  {formatearMoneda(
-                    condicionesComerciales.discount_percentage
-                      ? cotizacion.price - (cotizacion.price * condicionesComerciales.discount_percentage) / 100
-                      : cotizacion.price
-                  )}
-                </span>
-              </div>
-            </div>
+            <CondicionesFinancierasResumen
+              precioBase={cotizacion.price}
+              condicion={{
+                id: condicionesComerciales.id,
+                name: condicionesComerciales.name,
+                description: condicionesComerciales.description ?? null,
+                discount_percentage: condicionesComerciales.discount_percentage ?? null,
+                advance_type: condicionesComerciales.advance_type || 'percentage',
+                advance_percentage: condicionesComerciales.advance_percentage ?? null,
+                advance_amount: condicionesComerciales.advance_amount ?? null,
+              }}
+              negociacionPrecioOriginal={negociacionPrecioOriginal}
+              negociacionPrecioPersonalizado={negociacionPrecioPersonalizado}
+            />
           </div>
         )}
       </ZenCardContent>

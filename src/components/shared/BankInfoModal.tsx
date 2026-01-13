@@ -18,11 +18,11 @@ interface BankInfoModalProps {
   studioName?: string;
 }
 
-export function BankInfoModal({ 
-  isOpen, 
-  onClose, 
+export function BankInfoModal({
+  isOpen,
+  onClose,
   bankInfo,
-  studioName 
+  studioName
 }: BankInfoModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -37,8 +37,12 @@ export function BankInfoModal({
     <ZenDialog
       isOpen={isOpen}
       onClose={onClose}
-      title="Información Bancaria"
-      icon={<Building2 className="h-5 w-5" />}
+      title={
+        <div className="flex items-center gap-2">
+          <Building2 className="h-5 w-5" />
+          <span>Información Bancaria</span>
+        </div>
+      }
     >
       <div className="space-y-4">
         {studioName && (
