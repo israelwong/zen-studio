@@ -653,25 +653,24 @@ export async function getTopContent(
             })
         ]);
 
-        // Mapear con conteo de vistas, clics y shares (asegurar serialización)
+        // Mapear con conteo de vistas, clics y shares (asegurar serialización y tipos correctos)
         const postsWithViews = posts.map(post => {
             const viewCount = topPosts.find(tp => tp.content_id === post.id)?._count.id || 0;
             const clicksCount = clicksData.find(c => c.content_id === post.id)?._count.id || 0;
             const sharesCount = sharesData.find(s => s.content_id === post.id)?._count.id || 0;
             
-            // Asegurar que coverImage sea string o null (no undefined)
-            const coverImage = post.media[0]?.thumbnail_url || post.media[0]?.file_url || null;
+            // coverImage debe ser string | undefined (no null)
+            const coverImage = post.media[0]?.thumbnail_url || post.media[0]?.file_url;
             
             return {
                 id: post.id,
                 slug: post.slug || '',
-                title: post.title || '',
+                title: post.title || null, // string | null
                 caption: post.caption || null,
-                view_count: typeof post.view_count === 'number' ? post.view_count : 0,
                 analyticsViews: typeof viewCount === 'number' ? viewCount : 0,
-                analyticsClicks: typeof clicksCount === 'number' ? clicksCount : 0,
-                analyticsShares: typeof sharesCount === 'number' ? sharesCount : 0,
-                coverImage: typeof coverImage === 'string' ? coverImage : null,
+                analyticsClicks: clicksCount > 0 ? clicksCount : undefined, // opcional
+                analyticsShares: sharesCount > 0 ? sharesCount : undefined, // opcional
+                coverImage: typeof coverImage === 'string' ? coverImage : undefined, // string | undefined
             };
         }).sort((a, b) => b.analyticsViews - a.analyticsViews);
 

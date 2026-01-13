@@ -64,12 +64,11 @@ export function TopContentList({ posts, studioSlug }: TopContentListProps) {
                     >
                         {/* Ranking Badge */}
                         <div className="flex-shrink-0">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
-                                index === 0 ? 'bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400' :
-                                index === 1 ? 'bg-gradient-to-br from-zinc-400/20 to-zinc-600/20 border border-zinc-400/30 text-zinc-300' :
-                                index === 2 ? 'bg-gradient-to-br from-orange-400/20 to-orange-600/20 border border-orange-400/30 text-orange-400' :
-                                'bg-zinc-800/50 border border-zinc-700 text-zinc-500'
-                            }`}>
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${index === 0 ? 'bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 border border-yellow-400/30 text-yellow-400' :
+                                    index === 1 ? 'bg-gradient-to-br from-zinc-400/20 to-zinc-600/20 border border-zinc-400/30 text-zinc-300' :
+                                        index === 2 ? 'bg-gradient-to-br from-orange-400/20 to-orange-600/20 border border-orange-400/30 text-orange-400' :
+                                            'bg-zinc-800/50 border border-zinc-700 text-zinc-500'
+                                }`}>
                                 {index + 1}
                             </div>
                         </div>
@@ -112,7 +111,7 @@ export function TopContentList({ posts, studioSlug }: TopContentListProps) {
                                     <div className="flex items-center gap-1.5" title="Clics">
                                         <MousePointerClick className="w-3.5 h-3.5 text-zinc-500" />
                                         <span className="text-xs font-medium text-zinc-400">
-                                            {formatNumber(post.analyticsClicks)}
+                                            {formatNumber(post.analyticsClicks ?? 0)}
                                         </span>
                                     </div>
                                 )}
@@ -122,7 +121,7 @@ export function TopContentList({ posts, studioSlug }: TopContentListProps) {
                                     <div className="flex items-center gap-1.5" title="Compartidos">
                                         <Share2 className="w-3.5 h-3.5 text-zinc-500" />
                                         <span className="text-xs font-medium text-zinc-400">
-                                            {formatNumber(post.analyticsShares)}
+                                            {formatNumber(post.analyticsShares ?? 0)}
                                         </span>
                                     </div>
                                 )}
