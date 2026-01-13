@@ -227,6 +227,12 @@ export function PerfilAnalyticsClient({
 
             {/* Main Stats Grid */}
             <div>
+                {console.log('[PerfilAnalyticsClient] 🎨 Renderizando AnalyticsOverviewCards con datos:', {
+                    profile: summaryData.profile,
+                    posts: summaryData.posts,
+                    portfolios: summaryData.portfolios,
+                    offers: summaryData.offers,
+                })}
                 <AnalyticsOverviewCards data={summaryData} />
             </div>
 
