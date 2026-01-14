@@ -36,11 +36,15 @@ export async function getContractTemplates(
       return { success: false, error: "Studio no encontrado" };
     }
 
-    // Si hay eventTypeId, incluir plantillas específicas del tipo Y plantillas generales (sin event_type_id)
+    // Construir whereClause correctamente para Prisma
     const whereClause: any = {
       studio_id: studio.id,
-      ...(filters?.isActive !== undefined && { is_active: filters.isActive }),
     };
+
+    // Agregar filtro de isActive si está definido
+    if (filters?.isActive !== undefined) {
+      whereClause.is_active = filters.isActive;
+    }
 
     // Agregar filtro de eventTypeId: incluir específicas del tipo Y generales (null)
     if (filters?.eventTypeId) {

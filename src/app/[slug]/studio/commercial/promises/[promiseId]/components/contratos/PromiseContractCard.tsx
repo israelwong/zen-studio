@@ -110,18 +110,18 @@ export function PromiseContractCard({
     try {
       // Importar dinámicamente para evitar dependencias circulares
       const { getCotizacionesByPromiseId } = await import('@/lib/actions/studio/commercial/promises/cotizaciones.actions');
-      const result = await getCotizacionesByPromiseId(studioSlug, eventId);
-      
+      const result = await getCotizacionesByPromiseId(eventId);
+
       if (result.success && result.data) {
         // Buscar cotización autorizada o en proceso de contrato
-        const authorized = result.data.find(c => 
-          c.status === 'contract_pending' || 
-          c.status === 'contract_generated' || 
+        const authorized = result.data.find(c =>
+          c.status === 'contract_pending' ||
+          c.status === 'contract_generated' ||
           c.status === 'contract_signed' ||
           c.status === 'autorizada' ||
           c.status === 'aprobada'
         );
-        
+
         if (authorized) {
           setAuthorizedCotizacion({
             id: authorized.id,
@@ -597,11 +597,10 @@ export function PromiseContractCard({
     return (
       <div
         key={contractItem.id}
-        className={`p-3 rounded border relative group transition-colors ${
-          isCancelled
+        className={`p-3 rounded border relative group transition-colors ${isCancelled
             ? 'bg-zinc-900/50 border-zinc-800/50 opacity-75'
             : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
-        }`}
+          }`}
       >
         <div className="flex items-start justify-between gap-3 pr-8">
           <div className="flex-1 min-w-0">
@@ -687,7 +686,7 @@ export function PromiseContractCard({
             )}
           </div>
 
-            {/* Botones de acción - solo para contratos activos */}
+          {/* Botones de acción - solo para contratos activos */}
           {!isCancelled && (
             <div className="absolute top-2 right-2 flex items-center gap-1">
               {/* Botón Ver */}
@@ -877,7 +876,7 @@ export function PromiseContractCard({
             {allContracts
               .filter(c => c.status !== 'CANCELLED')
               .map((contractItem) => renderContractItem(contractItem, true))}
-            
+
             {/* Botón para ver contratos cancelados */}
             {hasCancelledContracts && (
               <div className="pt-2 border-t border-zinc-800">
@@ -974,7 +973,7 @@ export function PromiseContractCard({
             description={
               <div className="space-y-3 text-sm">
                 <p>Una vez publicado, el cliente podrá visualizar el contrato en su portal para autorizarlo.</p>
-                
+
                 <div className="p-3 bg-amber-950/20 border border-amber-800/30 rounded-lg space-y-2">
                   <p className="text-amber-400 font-medium flex items-center gap-2">
                     <span className="text-base">⚠️</span>
@@ -992,8 +991,8 @@ export function PromiseContractCard({
                     Cancelación mutua
                   </p>
                   <p className="text-zinc-300 text-xs">
-                    Si es necesario cancelar un contrato firmado, cualquiera de las partes puede solicitar la cancelación. 
-                    Ambas partes (estudio y cliente) deben estar de acuerdo para que la cancelación se complete. 
+                    Si es necesario cancelar un contrato firmado, cualquiera de las partes puede solicitar la cancelación.
+                    Ambas partes (estudio y cliente) deben estar de acuerdo para que la cancelación se complete.
                     Todas las acciones de cancelación quedan registradas en el historial.
                   </p>
                 </div>

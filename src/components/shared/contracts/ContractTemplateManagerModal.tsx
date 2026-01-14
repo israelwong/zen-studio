@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Loader2 } from "lucide-react";
 import { ZenDialog } from "@/components/ui/zen/modals/ZenDialog";
 import { ZenButton } from "@/components/ui/zen";
@@ -56,25 +56,24 @@ export function ContractTemplateManagerModal({
   const [defaultTemplateCreated, setDefaultTemplateCreated] = useState(false);
   const [hasValidStudioData, setHasValidStudioData] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      initializeModal();
-    } else {
-      // Resetear estados cuando se cierra el modal
-      setStudioDataModalOpen(false);
-      setShowDefaultTemplateMessage(false);
-      setDefaultTemplateCreated(false);
-      setHasValidStudioData(false);
-      setLoading(true);
-    }
-  }, [isOpen, studioSlug, eventTypeId]);
-
-  const initializeModal = async () => {
+  const initializeModal = useCallback(async () => {
     setLoading(true);
-    // 1. Verificar datos del estudio
+    
+    // Cargar plantillas primero, independientemente de la validación de datos del estudio
+    const templatesResult = await getContractTemplates(studioSlug, {
+      ...(eventTypeId && { eventTypeId }),
+      // No filtrar por isActive para mostrar todas (activas e inactivas)
+    });
+    
+    if (templatesResult.success && templatesResult.data) {
+      setTemplates(templatesResult.data);
+    }
+    
+    // Verificar datos del estudio en paralelo (no bloquea la carga de plantillas)
     const studioDataResult = await getStudioContractData(studioSlug);
     if (!studioDataResult.success || !studioDataResult.data) {
-      toast.error(studioDataResult.error || "Error al verificar datos del estudio");
+      // Si falla obtener datos del estudio, solo mostrar advertencia pero permitir gestionar plantillas
+      setHasValidStudioData(false);
       setLoading(false);
       return;
     }
@@ -90,51 +89,48 @@ export function ContractTemplateManagerModal({
 
     const validation = await validateStudioContractData(contractData);
     if (!validation.isValid) {
-      // Si faltan datos, mostrar modal de datos del estudio
-      // Pero mantener el modal principal abierto para mostrar después
+      // Si faltan datos, mostrar advertencia pero las plantillas ya están cargadas
       setStudioDataModalFromValidation(true);
       setStudioDataModalOpen(true);
       setHasValidStudioData(false);
-      // No cargar plantillas si no hay datos válidos
       setLoading(false);
       return;
     }
 
-    // 2. Si datos completos, verificar y crear plantilla default si es necesario
+    // Si datos completos, verificar y crear plantilla default si es necesario
     setHasValidStudioData(true);
-    await ensureDefaultTemplate();
-  };
-
-  const ensureDefaultTemplate = async () => {
-    try {
-      // Verificar si existe plantilla default
-      const templatesResult = await getContractTemplates(studioSlug, {
-        isActive: true,
-      });
-
-      if (templatesResult.success && templatesResult.data) {
-        const hasDefault = templatesResult.data.some((t) => t.is_default);
-        
-        if (!hasDefault) {
-          // Crear plantilla default automáticamente
-          const createResult = await createDefaultTemplateForStudio(studioSlug);
-          if (createResult.success) {
-            setDefaultTemplateCreated(true);
-            setShowDefaultTemplateMessage(true);
-            // Recargar plantillas
-            await loadTemplates();
-          }
-        }
+    
+    // Verificar si existe plantilla default usando las plantillas ya cargadas
+    const hasDefault = templatesResult.success && templatesResult.data 
+      ? templatesResult.data.some((t) => t.is_default)
+      : false;
+    
+    if (!hasDefault) {
+      // Crear plantilla default automáticamente
+      const createResult = await createDefaultTemplateForStudio(studioSlug);
+      if (createResult.success && createResult.data) {
+        setDefaultTemplateCreated(true);
+        setShowDefaultTemplateMessage(true);
+        // Agregar la nueva plantilla al estado sin recargar todo
+        setTemplates((prev) => [createResult.data!, ...prev]);
       }
-
-      // Cargar plantillas normalmente
-      await loadTemplates();
-    } catch (error) {
-      console.error("Error ensuring default template:", error);
-      // Continuar cargando plantillas aunque falle la creación de default
-      await loadTemplates();
     }
-  };
+    
+    setLoading(false);
+  }, [studioSlug, eventTypeId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      initializeModal();
+    } else {
+      // Resetear estados cuando se cierra el modal
+      setStudioDataModalOpen(false);
+      setShowDefaultTemplateMessage(false);
+      setDefaultTemplateCreated(false);
+      setHasValidStudioData(false);
+      setLoading(true);
+    }
+  }, [isOpen, initializeModal]);
 
   const loadTemplates = async () => {
     setLoading(true);
@@ -340,34 +336,41 @@ export function ContractTemplateManagerModal({
             </div>
           )}
 
-          {hasValidStudioData && (
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-zinc-400">
-                {templates.length} plantilla{templates.length !== 1 ? "s" : ""} disponible{templates.length !== 1 ? "s" : ""}
-              </p>
-              <div className="flex items-center gap-2">
-                <ZenButton
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-zinc-400">
+              {templates.length} plantilla{templates.length !== 1 ? "s" : ""} disponible{templates.length !== 1 ? "s" : ""}
+            </p>
+            <div className="flex items-center gap-2">
+              <ZenButton
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setStudioDataModalFromValidation(false);
+                  setStudioDataModalOpen(true);
+                }}
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                Editar datos legales del estudio
+              </ZenButton>
+              <ZenButton
+                variant="default"
+                size="sm"
+                onClick={() => {
+                  if (!hasValidStudioData) {
                     setStudioDataModalFromValidation(false);
                     setStudioDataModalOpen(true);
-                  }}
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Editar datos legales del estudio
-                </ZenButton>
-                <ZenButton
-                  variant="default"
-                  size="sm"
-                  onClick={() => setCreateModalOpen(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Crear Nueva Plantilla
-                </ZenButton>
-              </div>
+                    return;
+                  }
+                  setCreateModalOpen(true);
+                }}
+                disabled={!hasValidStudioData}
+                title={!hasValidStudioData ? "Completa los datos del estudio para crear plantillas" : undefined}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Crear Nueva Plantilla
+              </ZenButton>
             </div>
-          )}
+          </div>
 
           {loading ? (
             <div className="relative rounded-lg border border-zinc-800 overflow-hidden">
@@ -420,7 +423,7 @@ export function ContractTemplateManagerModal({
                 </table>
               </div>
             </div>
-          ) : hasValidStudioData ? (
+          ) : (
             <ContractTemplatesTable
               templates={templates}
               onEdit={handleEdit}
@@ -429,7 +432,7 @@ export function ContractTemplateManagerModal({
               onDelete={handleDeleteClick}
               onSetDefault={handleSetDefault}
             />
-          ) : null}
+          )}
         </div>
       </ZenDialog>
 
@@ -550,7 +553,8 @@ export function ContractTemplateManagerModal({
           // Marcar que ahora tenemos datos válidos
           setHasValidStudioData(true);
           // Después de guardar datos, verificar y crear plantilla default
-          await ensureDefaultTemplate();
+          // Recargar plantillas después de guardar datos del estudio
+          await loadTemplates();
           // El modal principal se mantiene abierto y muestra las plantillas
         }}
       />

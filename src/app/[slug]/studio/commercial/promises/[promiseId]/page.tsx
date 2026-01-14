@@ -693,7 +693,7 @@ export default function EditarPromesaPage() {
         isOpen={templatesModalOpen}
         onClose={() => setTemplatesModalOpen(false)}
         studioSlug={studioSlug}
-        eventTypeId={promiseData?.event_type_id || undefined}
+        // No pasar eventTypeId para mostrar TODAS las plantillas del estudio
       />
 
       {/* Sheet de bitácora */}

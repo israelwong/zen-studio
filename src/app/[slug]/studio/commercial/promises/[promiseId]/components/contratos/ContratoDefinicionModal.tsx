@@ -6,13 +6,7 @@ import { FileText, Loader2, Eye } from 'lucide-react';
 import { getContractTemplates } from '@/lib/actions/studio/business/contracts/templates.actions';
 import { actualizarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import { toast } from 'sonner';
-
-interface ContractTemplate {
-  id: string;
-  name: string;
-  description: string | null;
-  is_default: boolean;
-}
+import type { ContractTemplate } from '@/types/contracts';
 
 interface ContratoDefinicionModalProps {
   isOpen: boolean;
@@ -53,8 +47,8 @@ export function ContratoDefinicionModal({
         isActive: true,
       });
       if (result.success && result.data) {
-        setTemplates(result.data);
-        
+        setTemplates(result.data as ContractTemplate[]);
+
         // Si no hay template seleccionado, seleccionar el default
         if (!selectedTemplateId && result.data.length > 0) {
           const defaultTemplate = result.data.find(t => t.is_default) || result.data[0];

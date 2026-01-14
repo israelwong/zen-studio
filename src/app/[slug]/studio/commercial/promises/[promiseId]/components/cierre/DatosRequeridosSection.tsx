@@ -13,6 +13,7 @@ interface DatosRequeridosSectionProps {
     event_name: string | null;
     event_type_name: string | null;
     event_location?: string | null;
+    duration_hours?: number | null;
   };
   onEditarClick: () => void;
 }
@@ -30,6 +31,7 @@ export const DatosRequeridosSection = memo(function DatosRequeridosSection({
     event_name: !!promiseData.event_name,
     event_location: !!promiseData.event_location,
     event_date: !!promiseData.event_date,
+    duration_hours: !!promiseData.duration_hours,
   }), [promiseData]);
 
   const completedFields = useMemo(() => 
@@ -37,7 +39,7 @@ export const DatosRequeridosSection = memo(function DatosRequeridosSection({
     [clientCompletion]
   );
 
-  const totalFields = 7;
+  const totalFields = 8;
   const clientPercentage = Math.round((completedFields / totalFields) * 100);
 
   return (
@@ -133,7 +135,8 @@ export const DatosRequeridosSection = memo(function DatosRequeridosSection({
     prevProps.promiseData.address === nextProps.promiseData.address &&
     prevProps.promiseData.event_name === nextProps.promiseData.event_name &&
     prevProps.promiseData.event_location === nextProps.promiseData.event_location &&
-    prevProps.promiseData.event_date?.getTime() === nextProps.promiseData.event_date?.getTime()
+    prevProps.promiseData.event_date?.getTime() === nextProps.promiseData.event_date?.getTime() &&
+    prevProps.promiseData.duration_hours === nextProps.promiseData.duration_hours
   );
 });
 

@@ -50,6 +50,7 @@ interface PromiseClosingProcessCardProps {
     event_name: string | null;
     event_type_name: string | null;
     event_location?: string | null;
+    duration_hours?: number | null;
   };
   studioSlug: string;
   promiseId: string;
@@ -207,7 +208,7 @@ export function PromiseClosingProcessCard({
         setContractData(prev => {
           const prevSignedAt = normalizeDate(prev?.contract_signed_at);
           const newSignedAt = normalizeDate(result.data!.contract_signed_at);
-          
+
           const hasChanges =
             prev?.contract_version !== result.data!.contract_version ||
             prev?.contract_template_id !== result.data!.contract_template_id ||
@@ -235,7 +236,7 @@ export function PromiseClosingProcessCard({
   // Cargar registro de cierre
   useEffect(() => {
     loadRegistroCierre();
-  }, [cotizacion.id]);
+  }, [cotizacion.id, loadRegistroCierre]);
 
   // Escuchar cambios en tiempo real del proceso de cierre (contratos, pagos, etc.)
   // Y cambios en el estado de la cotización (pendiente → en_cierre, en_cierre → pendiente)
@@ -247,19 +248,19 @@ export function PromiseClosingProcessCard({
       // Solo actualizar si es la cotización actual
       if (cotizacionId === cotizacion.id) {
         const p = payload as any;
-        
+
         // Verificar si es un evento de cierre real (table: 'studio_cotizaciones_cierre')
         const isCierreEvent = p?.table === 'studio_cotizaciones_cierre' || p?.payload?.table === 'studio_cotizaciones_cierre';
-        
+
         if (isCierreEvent) {
           // Verificar si el evento incluye cambios en contract_signed_at
           const record = p.record || p.new || p.payload?.new || p.payload?.record;
           const oldRecord = p.old || p.payload?.old || p.payload?.old_record;
-          
+
           // Si hay un cambio en contract_signed_at, forzar actualización inmediata
-          const signedAtChanged = record?.contract_signed_at && 
+          const signedAtChanged = record?.contract_signed_at &&
             (!oldRecord || oldRecord.contract_signed_at !== record.contract_signed_at);
-          
+
           // Actualizar el contrato localmente para reflejar cambios (firma, regeneración, etc.)
           updateContractLocally();
           return;
@@ -270,21 +271,21 @@ export function PromiseClosingProcessCard({
         if (changeInfo?.statusChanged) {
           const oldStatus = changeInfo.oldStatus;
           const newStatus = changeInfo.newStatus;
-          
+
           // Si cambió a autorizada desde en_cierre, no hacer nada (ya se manejó en handleConfirmAutorizar)
           if (oldStatus === 'en_cierre' && newStatus === 'autorizada') {
             // El toast ya se mostró en handleConfirmAutorizar, no mostrar otro
             return;
           }
-          
+
           // Si cambió de pendiente a en_cierre (o estados relacionados), recargar registro completo
           // También si cambió de en_cierre a pendiente (cancelación de cierre)
           const estadosCierre = ['en_cierre', 'contract_pending', 'contract_generated', 'contract_signed'];
           const estadosPendiente = ['pendiente', 'pending'];
-          
+
           const pasoACierre = estadosPendiente.includes(oldStatus) && estadosCierre.includes(newStatus);
           const salioDeCierre = estadosCierre.includes(oldStatus) && estadosPendiente.includes(newStatus);
-          
+
           if (pasoACierre || salioDeCierre) {
             // Recargar registro completo cuando cambia el estado de cierre
             loadRegistroCierre();
@@ -526,9 +527,9 @@ export function PromiseClosingProcessCard({
     const warnings: string[] = [];
 
     // Cliente creado manualmente: selected_by_prospect === false/null/undefined
-    const isClienteManual = !cotizacion.selected_by_prospect || 
-                            cotizacion.selected_by_prospect === null || 
-                            cotizacion.selected_by_prospect === undefined;
+    const isClienteManual = !cotizacion.selected_by_prospect ||
+      cotizacion.selected_by_prospect === null ||
+      cotizacion.selected_by_prospect === undefined;
     const isClienteNuevo = cotizacion.selected_by_prospect === true; // Caso 1 y 2
 
     if (isClienteManual) {
@@ -817,9 +818,9 @@ export function PromiseClosingProcessCard({
     }
 
     // Cliente creado manualmente: selected_by_prospect === false/null/undefined
-    const isClienteManual = !cotizacion.selected_by_prospect || 
-                            cotizacion.selected_by_prospect === null || 
-                            cotizacion.selected_by_prospect === undefined;
+    const isClienteManual = !cotizacion.selected_by_prospect ||
+      cotizacion.selected_by_prospect === null ||
+      cotizacion.selected_by_prospect === undefined;
 
     // Si es cliente manual, solo requiere datos del cliente completos
     if (isClienteManual) {
@@ -1000,50 +1001,50 @@ export function PromiseClosingProcessCard({
               </div>
             </div>
 
-        <div className="space-y-2 mb-4">
-          {/* CONDICIONES COMERCIALES */}
-          <CondicionesSection
-            condicionesData={condicionesData}
-            loadingRegistro={loadingRegistro}
-            precioBase={cotizacion.price}
-            onDefinirClick={handleDefinirCondiciones}
-            onQuitarCondiciones={handleQuitarCondiciones}
-            negociacionPrecioOriginal={negociacionData.negociacion_precio_original}
-            negociacionPrecioPersonalizado={negociacionData.negociacion_precio_personalizado}
-            isRemovingCondiciones={isRemovingCondiciones}
-          />
+            <div className="space-y-2 mb-4">
+              {/* CONDICIONES COMERCIALES */}
+              <CondicionesSection
+                condicionesData={condicionesData}
+                loadingRegistro={loadingRegistro}
+                precioBase={cotizacion.price}
+                onDefinirClick={handleDefinirCondiciones}
+                onQuitarCondiciones={handleQuitarCondiciones}
+                negociacionPrecioOriginal={negociacionData.negociacion_precio_original}
+                negociacionPrecioPersonalizado={negociacionData.negociacion_precio_personalizado}
+                isRemovingCondiciones={isRemovingCondiciones}
+              />
 
-          {/* DATOS REQUERIDOS PARA CONTRATO */}
-          <DatosRequeridosSection
-            promiseData={localPromiseData}
-            onEditarClick={() => setShowEditPromiseModal(true)}
-          />
+              {/* DATOS REQUERIDOS PARA CONTRATO */}
+              <DatosRequeridosSection
+                promiseData={localPromiseData}
+                onEditarClick={() => setShowEditPromiseModal(true)}
+              />
 
-          {/* CONTRATO DIGITAL */}
-          <ContratoSection
-            contractData={contractData}
-            loadingRegistro={loadingRegistro}
-            cotizacionStatus={cotizacion.status}
-            isClienteNuevo={cotizacion.selected_by_prospect === true}
-            onContratoButtonClick={handleContratoButtonClick}
-            showContratoOptionsModal={showContratoOptionsModal}
-            onCloseContratoOptionsModal={handleCloseContratoOptions}
-            onContratoSuccess={handleContratoSuccess}
-            studioSlug={studioSlug}
-            promiseId={promiseId}
-            cotizacionId={cotizacion.id}
-            eventTypeId={eventTypeId || null}
-            condicionesComerciales={condicionesData?.condiciones_comerciales || null}
-            promiseData={localPromiseData}
-          />
+              {/* CONTRATO DIGITAL */}
+              <ContratoSection
+                contractData={contractData}
+                loadingRegistro={loadingRegistro}
+                cotizacionStatus={cotizacion.status}
+                isClienteNuevo={cotizacion.selected_by_prospect === true}
+                onContratoButtonClick={handleContratoButtonClick}
+                showContratoOptionsModal={showContratoOptionsModal}
+                onCloseContratoOptionsModal={handleCloseContratoOptions}
+                onContratoSuccess={handleContratoSuccess}
+                studioSlug={studioSlug}
+                promiseId={promiseId}
+                cotizacionId={cotizacion.id}
+                eventTypeId={eventTypeId || null}
+                condicionesComerciales={condicionesData?.condiciones_comerciales || null}
+                promiseData={localPromiseData}
+              />
 
-          {/* PAGO INICIAL */}
-          <PagoSection
-            pagoData={pagoData}
-            loadingRegistro={loadingRegistro}
-            onRegistrarPagoClick={handleRegistrarPagoClick}
-          />
-        </div>
+              {/* PAGO INICIAL */}
+              <PagoSection
+                pagoData={pagoData}
+                loadingRegistro={loadingRegistro}
+                onRegistrarPagoClick={handleRegistrarPagoClick}
+              />
+            </div>
 
             {/* CTAs */}
             <div className="space-y-2">
@@ -1055,14 +1056,14 @@ export function PromiseClosingProcessCard({
                 loading={isAuthorizing || loadingRegistro}
               >
                 <CheckCircle2 className="w-4 h-4 mr-2" />
-            Autorizar y Crear Evento
-          </ZenButton>
-          <ZenButton
-            variant="outline"
-            className="w-full text-zinc-400 hover:text-red-400 hover:border-red-500"
-            onClick={() => setShowCancelModal(true)}
-          >
-            <XCircle className="h-4 w-4 mr-2" />
+                Autorizar y Crear Evento
+              </ZenButton>
+              <ZenButton
+                variant="outline"
+                className="w-full text-zinc-400 hover:text-red-400 hover:border-red-500"
+                onClick={() => setShowCancelModal(true)}
+              >
+                <XCircle className="h-4 w-4 mr-2" />
                 Cancelar Cierre
               </ZenButton>
             </div>
@@ -1246,6 +1247,7 @@ export function PromiseClosingProcessCard({
             event_name: localPromiseData.event_name || undefined,
             event_location: localPromiseData.event_location || undefined,
             event_date: localPromiseData.event_date || undefined,
+            duration_hours: localPromiseData.duration_hours ?? undefined,
             acquisition_channel_id: acquisitionChannelId || undefined,
           }}
           onSuccess={handlePromiseDataUpdated}
