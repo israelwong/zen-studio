@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, Edit2 } from 'lucide-react';
 import { ZenDialog, ZenButton } from '@/components/ui/zen';
 import { ContractPreview } from '@/app/[slug]/studio/config/contratos/components';
@@ -92,10 +92,20 @@ export function ContractPreviewForPromiseModal({
     }
   };
 
-  const contentToPreview = customContent || template.content;
-
+  // Si hay eventData con condicionesData, usar template.content para permitir re-renderizado
+  // con el desglose completo. Si no hay eventData o es contrato firmado, usar customContent.
   // Determinar si es modo read-only (evento creado o contrato firmado)
   const isReadOnly = isContractSigned || !!eventId;
+
+  // Si hay eventData con condicionesData, usar template.content para permitir re-renderizado
+  // con el desglose completo. Si no hay eventData o es contrato firmado, usar customContent.
+  const contentToPreview = useMemo(() => {
+    if (isReadOnly || !eventData?.condicionesData) {
+      return customContent || template.content;
+    }
+    // Si hay condicionesData disponible, usar template original para re-renderizar con desglose
+    return template.content;
+  }, [customContent, template.content, eventData?.condicionesData, isReadOnly]);
 
   return (
     <ZenDialog

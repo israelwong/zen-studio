@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { notifyEventCreated } from '@/lib/notifications/studio/helpers/event-notifications';
+import { getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
+import { getPromiseContractData } from '@/lib/actions/studio/business/contracts/renderer.actions';
+import { renderContractContent } from '@/lib/actions/studio/business/contracts/renderer.actions';
 
 /**
  * Normaliza una fecha de pago a fecha local sin hora para evitar problemas de zona horaria
@@ -51,7 +54,7 @@ interface RegistroCierreData {
 }
 
 /**
- * Obtiene el registro de cierre de una cotización
+ * Obtiene el registro de cierre de una cotizaci?n
  */
 export async function obtenerRegistroCierre(
   studioSlug: string,
@@ -67,7 +70,7 @@ export async function obtenerRegistroCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -76,7 +79,7 @@ export async function obtenerRegistroCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     const registro = await prisma.studio_cotizaciones_cierre.findUnique({
@@ -91,7 +94,7 @@ export async function obtenerRegistroCierre(
       return { success: false, error: 'Registro de cierre no encontrado' };
     }
 
-    // Obtener información de la última versión del contrato
+    // Obtener informaci?n de la ?ltima versi?n del contrato
     const ultimaVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
       where: { cotizacion_id: cotizacionId },
       orderBy: { version: 'desc' },
@@ -103,7 +106,7 @@ export async function obtenerRegistroCierre(
       },
     });
 
-    // Convertir Decimal a number para serialización
+    // Convertir Decimal a number para serializaci?n
     return {
       success: true,
       data: {
@@ -155,8 +158,8 @@ export async function obtenerRegistroCierre(
 }
 
 /**
- * Crea un registro de cierre para una cotización
- * Se llama automáticamente al pasar una cotización a estado "en_cierre"
+ * Crea un registro de cierre para una cotizaci?n
+ * Se llama autom?ticamente al pasar una cotizaci?n a estado "en_cierre"
  */
 export async function crearRegistroCierre(
   studioSlug: string,
@@ -172,7 +175,7 @@ export async function crearRegistroCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -181,7 +184,7 @@ export async function crearRegistroCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Verificar que no exista ya un registro
@@ -245,7 +248,7 @@ export async function actualizarCondicionesCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -254,7 +257,7 @@ export async function actualizarCondicionesCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Actualizar o crear registro de cierre
@@ -293,7 +296,7 @@ export async function actualizarCondicionesCierre(
 }
 
 /**
- * Obtiene solo los datos del contrato para actualización local (sin recargar todo el registro)
+ * Obtiene solo los datos del contrato para actualizaci?n local (sin recargar todo el registro)
  */
 export async function obtenerDatosContratoCierre(
   studioSlug: string,
@@ -333,7 +336,7 @@ export async function obtenerDatosContratoCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     const registro = await prisma.studio_cotizaciones_cierre.findUnique({
@@ -351,7 +354,7 @@ export async function obtenerDatosContratoCierre(
       return { success: false, error: 'Registro de cierre no encontrado' };
     }
 
-    // Obtener información de la última versión del contrato
+    // Obtener informaci?n de la ?ltima versi?n del contrato
     const ultimaVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
       where: { cotizacion_id: cotizacionId },
       orderBy: { version: 'desc' },
@@ -389,7 +392,7 @@ export async function obtenerDatosContratoCierre(
 }
 
 /**
- * Obtener solo datos de condiciones comerciales para actualización local
+ * Obtener solo datos de condiciones comerciales para actualizaci?n local
  */
 export async function obtenerDatosCondicionesCierre(
   studioSlug: string,
@@ -429,7 +432,7 @@ export async function obtenerDatosCondicionesCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     const registro = await prisma.studio_cotizaciones_cierre.findUnique({
@@ -471,7 +474,7 @@ export async function obtenerDatosCondicionesCierre(
 }
 
 /**
- * Obtener solo datos de pago para actualización local
+ * Obtener solo datos de pago para actualizaci?n local
  */
 export async function obtenerDatosPagoCierre(
   studioSlug: string,
@@ -506,7 +509,7 @@ export async function obtenerDatosPagoCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     const registro = await prisma.studio_cotizaciones_cierre.findUnique({
@@ -524,7 +527,7 @@ export async function obtenerDatosPagoCierre(
       return { success: false, error: 'Registro de cierre no encontrado' };
     }
 
-    // Obtener nombre del método de pago si existe
+    // Obtener nombre del m?todo de pago si existe
     let pago_metodo_nombre: string | null = null;
     if (registro.pago_metodo_id) {
       const metodoPago = await prisma.studio_metodos_pago.findUnique({
@@ -573,7 +576,7 @@ export async function quitarCondicionesCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -582,7 +585,7 @@ export async function quitarCondicionesCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Actualizar registro de cierre para quitar condiciones
@@ -634,7 +637,7 @@ export async function actualizarContratoCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -643,10 +646,10 @@ export async function actualizarContratoCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
-    // Si templateId está vacío, limpiar el contrato
+    // Si templateId est? vac?o, limpiar el contrato
     const isClearing = !templateId || templateId.trim() === '';
 
     // Normalizar customContent: si es un objeto, extraer el string
@@ -672,17 +675,17 @@ export async function actualizarContratoCierre(
       },
     });
 
-    // Determinar si es una edición manual del estudio (customContent presente)
+    // Determinar si es una edici?n manual del estudio (customContent presente)
     const isManualEdit = customContent !== null && customContent !== undefined;
 
-    // Detectar si se está volviendo a agregar una plantilla después de haberla desasociado
+    // Detectar si se est? volviendo a agregar una plantilla despu?s de haberla desasociado
     const isReAddingTemplate = !isClearing &&
       registroActual &&
       !registroActual.contract_template_id &&
       templateId &&
       templateId.trim() !== '';
 
-    // Detectar si se está cambiando de una plantilla a otra
+    // Detectar si se est? cambiando de una plantilla a otra
     const isChangingTemplate = !isClearing &&
       registroActual &&
       registroActual.contract_template_id &&
@@ -696,12 +699,12 @@ export async function actualizarContratoCierre(
       !registroActual.contract_template_id &&
       !registroActual.contract_content;
 
-    // Si es edición manual y existe un registro, siempre versionar
+    // Si es edici?n manual y existe un registro, siempre versionar
     if (isManualEdit && registroActual && !isClearing) {
       const currentVersion = registroActual.contract_version || 1;
       const newVersion = currentVersion + 1;
 
-      // Guardar versión anterior antes de actualizar (solo si existe contenido previo y no existe ya la versión)
+      // Guardar versi?n anterior antes de actualizar (solo si existe contenido previo y no existe ya la versi?n)
       if (registroActual.contract_content) {
         const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
           where: {
@@ -717,13 +720,13 @@ export async function actualizarContratoCierre(
               version: currentVersion,
               content: registroActual.contract_content,
               change_type: 'MANUAL_EDIT',
-              change_reason: 'Edición manual del contrato por el estudio',
+              change_reason: 'Edici?n manual del contrato por el estudio',
             },
           });
         }
       }
 
-      // Actualizar registro con nuevo contenido y versión incrementada
+      // Actualizar registro con nuevo contenido y versi?n incrementada
       const registro = await prisma.studio_cotizaciones_cierre.update({
         where: { cotizacion_id: cotizacionId },
         data: {
@@ -748,7 +751,7 @@ export async function actualizarContratoCierre(
         },
       };
     } else if (isFirstTimeAssociating) {
-      // Primera vez asociando plantilla: empezar en versión 1
+      // Primera vez asociando plantilla: empezar en versi?n 1
       const registro = await prisma.studio_cotizaciones_cierre.update({
         where: { cotizacion_id: cotizacionId },
         data: {
@@ -773,11 +776,11 @@ export async function actualizarContratoCierre(
         },
       };
     } else if (isReAddingTemplate || isChangingTemplate) {
-      // Volver a agregar plantilla después de desasociar o cambiar de plantilla: versionar el cambio
+      // Volver a agregar plantilla despu?s de desasociar o cambiar de plantilla: versionar el cambio
       const currentVersion = registroActual.contract_version || 1;
       const newVersion = currentVersion + 1;
 
-      // Guardar versión anterior antes de actualizar (solo si existe contenido previo y no existe ya la versión)
+      // Guardar versi?n anterior antes de actualizar (solo si existe contenido previo y no existe ya la versi?n)
       if (registroActual.contract_content) {
         const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
           where: {
@@ -794,14 +797,14 @@ export async function actualizarContratoCierre(
               content: registroActual.contract_content,
               change_type: isReAddingTemplate ? 'TEMPLATE_REASSIGNED' : 'TEMPLATE_CHANGED',
               change_reason: isReAddingTemplate
-                ? 'Plantilla de contrato reasignada después de desasociación'
+                ? 'Plantilla de contrato reasignada despu?s de desasociaci?n'
                 : 'Plantilla de contrato cambiada',
             },
           });
         }
       }
 
-      // Actualizar registro con nueva plantilla y versión incrementada
+      // Actualizar registro con nueva plantilla y versi?n incrementada
       const registro = await prisma.studio_cotizaciones_cierre.update({
         where: { cotizacion_id: cotizacionId },
         data: {
@@ -827,7 +830,7 @@ export async function actualizarContratoCierre(
       };
     } else {
       // Primera vez o limpiar contrato: crear/actualizar sin versionado
-      // Si se está limpiando (desasociando plantilla), eliminar el historial de versiones
+      // Si se est? limpiando (desasociando plantilla), eliminar el historial de versiones
       if (isClearing && registroActual) {
         // Eliminar todas las versiones del historial cuando se desasocia la plantilla
         await prisma.studio_cotizaciones_cierre_contract_versions.deleteMany({
@@ -841,13 +844,13 @@ export async function actualizarContratoCierre(
           cotizacion_id: cotizacionId,
           contract_template_id: isClearing ? null : templateId,
           contract_content: isClearing ? null : contentToSave,
-          contract_version: 1, // Primera versión
+          contract_version: 1, // Primera versi?n
           contrato_definido: !isClearing,
         },
         update: {
           contract_template_id: isClearing ? null : templateId,
           contract_content: isClearing ? null : contentToSave,
-          // Si se está limpiando, resetear a versión 1 ya que eliminamos el historial
+          // Si se est? limpiando, resetear a versi?n 1 ya que eliminamos el historial
           contract_version: isClearing ? 1 : (registroActual?.contract_version || 1),
           contrato_definido: !isClearing,
         },
@@ -877,6 +880,172 @@ export async function actualizarContratoCierre(
 }
 
 /**
+ * Regenera el contrato con los datos actualizados de la cotizaci?n y contacto
+ * Crea una nueva versi?n con tipo AUTO_REGENERATE
+ */
+export async function regenerarContratoCierre(
+  studioSlug: string,
+  cotizacionId: string,
+  promiseId: string
+): Promise<CierreResponse> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que la cotizaci?n pertenece al studio
+    const cotizacion = await prisma.studio_cotizaciones.findFirst({
+      where: {
+        id: cotizacionId,
+        studio_id: studio.id,
+        promise_id: promiseId,
+      },
+    });
+
+    if (!cotizacion) {
+      return { success: false, error: 'Cotizaci?n no encontrada' };
+    }
+
+    // Verificar que el contrato no est? firmado
+    if (cotizacion.status === 'contract_signed') {
+      return { success: false, error: 'No se puede regenerar un contrato firmado' };
+    }
+
+    // Obtener registro de cierre actual
+    const registroCierre = await prisma.studio_cotizaciones_cierre.findUnique({
+      where: { cotizacion_id: cotizacionId },
+      include: {
+        condiciones_comerciales: true,
+      },
+    });
+
+    if (!registroCierre || !registroCierre.contrato_definido || !registroCierre.contract_template_id) {
+      return { success: false, error: 'No hay contrato generado para regenerar' };
+    }
+
+    // Obtener la plantilla del contrato
+    const templateResult = await getContractTemplate(studioSlug, registroCierre.contract_template_id);
+    if (!templateResult.success || !templateResult.data) {
+      return { success: false, error: 'No se encontr? la plantilla del contrato' };
+    }
+
+    const template = templateResult.data;
+
+    // Obtener condiciones comerciales si existen
+    const condicionComercialInfo = registroCierre.condiciones_comerciales ? {
+      id: registroCierre.condiciones_comerciales.id,
+      name: registroCierre.condiciones_comerciales.name,
+      description: registroCierre.condiciones_comerciales.description || null,
+      discount_percentage: registroCierre.condiciones_comerciales.discount_percentage || null,
+      advance_percentage: registroCierre.condiciones_comerciales.advance_percentage || null,
+      advance_type: registroCierre.condiciones_comerciales.advance_type || null,
+      advance_amount: registroCierre.condiciones_comerciales.advance_amount || null,
+    } : undefined;
+
+    // Obtener datos actualizados de la promesa para renderizar el contrato
+    const contractDataResult = await getPromiseContractData(
+      studioSlug,
+      promiseId,
+      cotizacionId,
+      condicionComercialInfo
+    );
+
+    if (!contractDataResult.success || !contractDataResult.data) {
+      return { success: false, error: contractDataResult.error || 'Error al obtener datos del contrato' };
+    }
+
+    // Renderizar contenido del contrato con datos actualizados
+    const renderResult = await renderContractContent(
+      template.content,
+      contractDataResult.data,
+      contractDataResult.data.condicionesData
+    );
+
+    if (!renderResult.success || !renderResult.data) {
+      return { success: false, error: renderResult.error || 'Error al renderizar contrato' };
+    }
+
+    const renderedContent = renderResult.data;
+    const currentVersion = registroCierre.contract_version || 1;
+    const newVersion = currentVersion + 1;
+
+    // Guardar versi?n anterior antes de actualizar (solo si no existe ya)
+    const existingPreviousVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: {
+        cotizacion_id: cotizacionId,
+        version: currentVersion,
+      },
+    });
+
+    if (!existingPreviousVersion && registroCierre.contract_content) {
+      await prisma.studio_cotizaciones_cierre_contract_versions.create({
+        data: {
+          cotizacion_id: cotizacionId,
+          version: currentVersion,
+          content: registroCierre.contract_content,
+          change_type: 'AUTO_REGENERATE',
+          change_reason: 'Regeneraci?n autom?tica por actualizaci?n de datos de la cotizaci?n o contacto',
+        },
+      });
+    }
+
+    // Actualizar el contenido del contrato y la versi?n en studio_cotizaciones_cierre
+    await prisma.studio_cotizaciones_cierre.update({
+      where: { cotizacion_id: cotizacionId },
+      data: {
+        contract_content: renderedContent,
+        contract_version: newVersion,
+      },
+    });
+
+    // Crear nueva versi?n (solo si no existe ya)
+    const existingNewVersion = await prisma.studio_cotizaciones_cierre_contract_versions.findFirst({
+      where: {
+        cotizacion_id: cotizacionId,
+        version: newVersion,
+      },
+    });
+
+    if (!existingNewVersion) {
+      await prisma.studio_cotizaciones_cierre_contract_versions.create({
+        data: {
+          cotizacion_id: cotizacionId,
+          version: newVersion,
+          content: renderedContent,
+          change_type: 'AUTO_REGENERATE',
+          change_reason: 'Regeneraci?n autom?tica por actualizaci?n de datos de la cotizaci?n o contacto',
+        },
+      });
+    }
+
+    revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    if (cotizacion.promise_id) {
+      revalidatePath(`/${studioSlug}/studio/commercial/promises/${cotizacion.promise_id}`);
+      revalidatePath(`/${studioSlug}/promise/${cotizacion.promise_id}`);
+    }
+
+    return {
+      success: true,
+      data: {
+        id: registroCierre.id,
+        cotizacion_id: registroCierre.cotizacion_id,
+      },
+    };
+  } catch (error) {
+    console.error('[regenerarContratoCierre] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al regenerar contrato',
+    };
+  }
+}
+
+/**
  * Actualiza el pago en el registro de cierre
  * Si todos los campos son null, se marca como "promesa de pago" (pago_registrado = false)
  * Si hay datos, se marca como "pago registrado" (pago_registrado = true)
@@ -901,7 +1070,7 @@ export async function actualizarPagoCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -910,7 +1079,7 @@ export async function actualizarPagoCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Determinar si es pago registrado o promesa de pago
@@ -958,7 +1127,7 @@ export async function actualizarPagoCierre(
 }
 
 /**
- * Elimina el registro de cierre de una cotización
+ * Elimina el registro de cierre de una cotizaci?n
  * Se llama al cancelar el cierre
  */
 export async function eliminarRegistroCierre(
@@ -975,7 +1144,7 @@ export async function eliminarRegistroCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -984,7 +1153,7 @@ export async function eliminarRegistroCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Eliminar registro si existe
@@ -1041,7 +1210,7 @@ export async function obtenerVersionesContratoCierre(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // Verificar que la cotización pertenece al studio
+    // Verificar que la cotizaci?n pertenece al studio
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -1050,7 +1219,7 @@ export async function obtenerVersionesContratoCierre(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     // Obtener todas las versiones del contrato
@@ -1081,25 +1250,25 @@ export async function obtenerVersionesContratoCierre(
 }
 
 /**
- * Autoriza una cotización y crea el evento asociado
+ * Autoriza una cotizaci?n y crea el evento asociado
  *
- * ORDEN DE EJECUCIÓN (en transacción atómica):
- * 1. Validar studio, cotización y registro de cierre
- * 2. Validar datos según tipo de cliente (manual vs nuevo)
+ * ORDEN DE EJECUCI?N (en transacci?n at?mica):
+ * 1. Validar studio, cotizaci?n y registro de cierre
+ * 2. Validar datos seg?n tipo de cliente (manual vs nuevo)
  * 3. Crear snapshots de condiciones comerciales (si existen)
  * 4. Crear snapshots de contrato (si existe)
- * 5. Crear o actualizar evento (con cotizacion_id para establecer relación)
- * 6. Actualizar cotización con snapshots y status 'autorizada'
- *    (La relación evento_autorizado se establece automáticamente cuando evento tiene cotizacion_id)
+ * 5. Crear o actualizar evento (con cotizacion_id para establecer relaci?n)
+ * 6. Actualizar cotizaci?n con snapshots y status 'autorizada'
+ *    (La relaci?n evento_autorizado se establece autom?ticamente cuando evento tiene cotizacion_id)
  * 7. Registrar pago inicial (si aplica)
  * 8. Eliminar todas las etiquetas asociadas a la promesa
  * 9. Cambiar etapa de promesa a 'aprobado'
  * 10. Archivar otras cotizaciones de la promesa
  * 11. Eliminar citas comerciales y crear agenda del evento (si hay fecha)
  * 12. Eliminar registro temporal de cierre
- * 13. Crear log de autorización
+ * 13. Crear log de autorizaci?n
  *
- * @returns Evento creado y cotización autorizada
+ * @returns Evento creado y cotizaci?n autorizada
  */
 export async function autorizarYCrearEvento(
   studioSlug: string,
@@ -1129,7 +1298,7 @@ export async function autorizarYCrearEvento(
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    // 2. Validar cotización y promesa
+    // 2. Validar cotizaci?n y promesa
     const cotizacion = await prisma.studio_cotizaciones.findFirst({
       where: {
         id: cotizacionId,
@@ -1152,13 +1321,13 @@ export async function autorizarYCrearEvento(
     });
 
     if (!cotizacion) {
-      return { success: false, error: 'Cotización no encontrada' };
+      return { success: false, error: 'Cotizaci?n no encontrada' };
     }
 
     if (cotizacion.status !== 'en_cierre') {
       return {
         success: false,
-        error: 'La cotización debe estar en estado de cierre',
+        error: 'La cotizaci?n debe estar en estado de cierre',
       };
     }
 
@@ -1178,17 +1347,17 @@ export async function autorizarYCrearEvento(
     });
 
     if (!registroCierre) {
-      return { success: false, error: 'No se encontró el registro de cierre' };
+      return { success: false, error: 'No se encontr? el registro de cierre' };
     }
 
-    // 4. Validaciones según tipo de cliente
+    // 4. Validaciones seg?n tipo de cliente
     const isClienteManual = !cotizacion.selected_by_prospect || 
                             cotizacion.selected_by_prospect === null || 
                             cotizacion.selected_by_prospect === undefined;
 
     if (isClienteManual) {
       // Cliente creado manualmente: condiciones comerciales y contrato son opcionales
-      // Si están definidas, se guardarán en snapshots (sin requerir firma)
+      // Si est?n definidas, se guardar?n en snapshots (sin requerir firma)
       // No requiere validaciones adicionales
     } else {
       // Cliente nuevo (selected_by_prospect === true): requiere condiciones comerciales y contrato
@@ -1209,7 +1378,7 @@ export async function autorizarYCrearEvento(
         return { success: false, error: 'Debe definir el contrato' };
       }
 
-      // Validación: contrato firmado SOLO si la cotización fue seleccionada por el prospecto
+      // Validaci?n: contrato firmado SOLO si la cotizaci?n fue seleccionada por el prospecto
       if (!registroCierre.contract_signed_at) {
         return {
           success: false,
@@ -1219,7 +1388,7 @@ export async function autorizarYCrearEvento(
       }
     }
 
-    // 5. Obtener primera etapa del pipeline de eventos (debe ser "Planeación" con order: 0)
+    // 5. Obtener primera etapa del pipeline de eventos (debe ser "Planeaci?n" con order: 0)
     const primeraEtapa = await prisma.studio_manager_pipeline_stages.findFirst({
       where: {
         studio_id: studio.id,
@@ -1231,7 +1400,7 @@ export async function autorizarYCrearEvento(
     if (!primeraEtapa) {
       return {
         success: false,
-        error: 'No se encontró una etapa inicial activa en el pipeline de eventos. Asegúrate de tener al menos una etapa con order: 0.',
+        error: 'No se encontr? una etapa inicial activa en el pipeline de eventos. Aseg?rate de tener al menos una etapa con order: 0.',
       };
     }
 
@@ -1246,13 +1415,13 @@ export async function autorizarYCrearEvento(
     if (!etapaAprobado) {
       return {
         success: false,
-        error: 'No se encontró la etapa "approved" en el pipeline de promesas',
+        error: 'No se encontr? la etapa "approved" en el pipeline de promesas',
       };
     }
 
-    // 7. TRANSACCIÓN ATÓMICA
+    // 7. TRANSACCI?N AT?MICA
     const result = await prisma.$transaction(async (tx) => {
-      // 7.1. Verificar si ya existe un evento para esta promesa (dentro de la transacción para evitar race conditions)
+      // 7.1. Verificar si ya existe un evento para esta promesa (dentro de la transacci?n para evitar race conditions)
       const eventoExistente = await tx.studio_events.findFirst({
         where: {
           promise_id: promiseId,
@@ -1265,18 +1434,18 @@ export async function autorizarYCrearEvento(
         },
       });
 
-      // Validar solo si hay conflicto con otra cotización activa
+      // Validar solo si hay conflicto con otra cotizaci?n activa
       if (eventoExistente && eventoExistente.status === 'ACTIVE') {
-        // Si ya existe un evento activo asociado a otra cotización, retornar error
+        // Si ya existe un evento activo asociado a otra cotizaci?n, retornar error
         if (eventoExistente.cotizacion_id && 
             eventoExistente.cotizacion_id !== cotizacionId) {
-          throw new Error('Ya existe un evento activo para esta promesa asociado a otra cotización');
+          throw new Error('Ya existe un evento activo para esta promesa asociado a otra cotizaci?n');
         }
-        // Si existe evento para esta misma cotización y está activo, actualizar
+        // Si existe evento para esta misma cotizaci?n y est? activo, actualizar
       }
 
-      // 7.2. Crear snapshots de condiciones comerciales (si están definidas)
-      // Para clientes manuales son opcionales, pero si están definidas deben guardarse
+      // 7.2. Crear snapshots de condiciones comerciales (si est?n definidas)
+      // Para clientes manuales son opcionales, pero si est?n definidas deben guardarse
       const condicionSnapshot = registroCierre.condiciones_comerciales_definidas && registroCierre.condiciones_comerciales
         ? {
             name: registroCierre.condiciones_comerciales.name,
@@ -1299,8 +1468,8 @@ export async function autorizarYCrearEvento(
           }
         : null;
 
-      // 7.3. Crear snapshots de contrato (si está definido)
-      // Para clientes manuales es opcional, pero si está definido debe guardarse
+      // 7.3. Crear snapshots de contrato (si est? definido)
+      // Para clientes manuales es opcional, pero si est? definido debe guardarse
       // Si hay template_id pero no content personalizado, usar el contenido de la plantilla
       const contratoSnapshot = registroCierre.contrato_definido && registroCierre.contract_template_id
         ? {
@@ -1356,16 +1525,16 @@ export async function autorizarYCrearEvento(
         });
       }
 
-      // 7.5. Actualizar cotización con snapshots (inmutables) y establecer relación con evento
-      // IMPORTANTE: Usar la relación 'eventos' con connect para establecer evento_id
+      // 7.5. Actualizar cotizaci?n con snapshots (inmutables) y establecer relaci?n con evento
+      // IMPORTANTE: Usar la relaci?n 'eventos' con connect para establecer evento_id
       await tx.studio_cotizaciones.update({
         where: { id: cotizacionId },
         data: {
           status: 'autorizada',
           eventos: {
-            connect: { id: evento.id }, // Establecer relación bidireccional con el evento creado
+            connect: { id: evento.id }, // Establecer relaci?n bidireccional con el evento creado
           },
-          // Desconectar relación de condiciones comerciales (usar snapshots en su lugar)
+          // Desconectar relaci?n de condiciones comerciales (usar snapshots en su lugar)
           condiciones_comerciales: {
             disconnect: true,
           },
@@ -1395,8 +1564,8 @@ export async function autorizarYCrearEvento(
         },
       });
 
-      // 8.5. Registrar pago inicial (si está definido en el registro de cierre)
-      // Para clientes manuales es opcional, pero si está definido debe registrarse
+      // 8.5. Registrar pago inicial (si est? definido en el registro de cierre)
+      // Para clientes manuales es opcional, pero si est? definido debe registrarse
       let pagoRegistrado = false;
       if (
         registroCierre.pago_registrado &&
@@ -1405,7 +1574,7 @@ export async function autorizarYCrearEvento(
       ) {
         // Usar el monto del registro de cierre si no se proporciona en options
         const montoInicial = options?.montoInicial || Number(registroCierre.pago_monto);
-        // Obtener nombre del método de pago dentro de la transacción
+        // Obtener nombre del m?todo de pago dentro de la transacci?n
         let metodoPagoNombre = 'Manual'; // Valor por defecto
         if (registroCierre.pago_metodo_id) {
           const metodoPago = await tx.studio_metodos_pago.findUnique({
@@ -1417,7 +1586,7 @@ export async function autorizarYCrearEvento(
           }
         }
         
-        // Usar la fecha del registro de cierre si está disponible, sino usar fecha actual
+        // Usar la fecha del registro de cierre si est? disponible, sino usar fecha actual
         // Normalizar la fecha para evitar problemas de zona horaria
         const fechaPago = normalizePaymentDate(registroCierre.pago_fecha || new Date());
         const conceptoPago = registroCierre.pago_concepto || 'Pago inicial / Anticipo';
@@ -1532,7 +1701,7 @@ export async function autorizarYCrearEvento(
         where: { cotizacion_id: cotizacionId },
       });
 
-      // 8.11. Crear log de autorización y creación de evento
+      // 8.11. Crear log de autorizaci?n y creaci?n de evento
       const eventoNombre = cotizacion.promise.event_name || cotizacion.promise.name || 'Evento';
       const eventoFecha = cotizacion.promise.event_date 
         ? new Date(cotizacion.promise.event_date).toLocaleDateString('es-MX', { 
@@ -1580,13 +1749,13 @@ export async function autorizarYCrearEvento(
       };
     });
 
-    // 9. Crear notificación de evento creado (fuera de la transacción para no bloquear)
+    // 9. Crear notificaci?n de evento creado (fuera de la transacci?n para no bloquear)
     try {
       const eventoNombre = cotizacion.promise.event_name || cotizacion.promise.name || 'Evento';
       await notifyEventCreated(studio.id, result.evento_id, eventoNombre);
     } catch (notificationError) {
-      // No fallar la operación principal si falla la notificación
-      console.error('[autorizarYCrearEvento] Error al crear notificación:', notificationError);
+      // No fallar la operaci?n principal si falla la notificaci?n
+      console.error('[autorizarYCrearEvento] Error al crear notificaci?n:', notificationError);
     }
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
@@ -1603,7 +1772,7 @@ export async function autorizarYCrearEvento(
       error:
         error instanceof Error
           ? error.message
-          : 'Error al autorizar cotización y crear evento',
+          : 'Error al autorizar cotizaci?n y crear evento',
     };
   }
 }

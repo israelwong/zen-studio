@@ -58,8 +58,8 @@ export function CotizacionCard({
         <ZenCardTitle className="text-sm">Cotización</ZenCardTitle>
       </ZenCardHeader>
       <ZenCardContent className="p-4 space-y-4">
-        {/* Nombre cotización con botones Editar y Preview */}
-        <div className="flex items-start justify-between gap-3">
+        {/* Fila 1: Nombre cotización con botones Editar y Preview */}
+        <div className="flex items-center justify-between gap-3">
           <h4 className="text-base font-semibold text-white flex-1">{cotizacion.name}</h4>
           <div className="flex items-center gap-2 shrink-0">
             <button
@@ -79,6 +79,11 @@ export function CotizacionCard({
             </button>
           </div>
         </div>
+
+        {/* Fila 2: Descripción */}
+        <p className="text-sm text-zinc-400">
+          {cotizacion.description || 'No definida'}
+        </p>
 
         {/* Precio cotización */}
         <div className="pb-3 border-b border-zinc-800">

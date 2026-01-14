@@ -7,7 +7,7 @@ import { formatearMoneda } from '@/lib/actions/studio/catalogo/calcular-precio';
 import { formatDate } from '@/lib/actions/utils/formatting';
 import { getCotizacionById } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { obtenerResumenEventoCreado } from '@/lib/actions/studio/commercial/promises/evento-resumen.actions';
-import { ContractPreviewForPromiseModal } from '@/app/[slug]/studio/commercial/promises/[promiseId]/components/contratos/ContractPreviewForPromiseModal';
+import { ContractPreviewForPromiseModal } from '@/app/[slug]/studio/commercial/promises/[promiseId]/cierre/components/contratos/ContractPreviewForPromiseModal';
 import { ResumenCotizacionAutorizada } from './ResumenCotizacionAutorizada';
 import { getCondicionesComerciales, getContrato } from '@/lib/actions/studio/commercial/promises/cotizaciones-helpers';
 import type { EventoDetalle } from '@/lib/actions/studio/business/events';

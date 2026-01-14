@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { ZenButton, ZenDialog } from '@/components/ui/zen';
-import { FileText, Eye, Edit2, Trash2, Loader2, Settings, GitBranch } from 'lucide-react';
+import { FileText, Eye, Edit2, Trash2, Loader2, Settings, GitBranch, RefreshCw } from 'lucide-react';
 import { ContractTemplateSimpleSelectorModal } from './contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from './contratos/ContractPreviewForPromiseModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { ContractTemplateManagerModal } from '@/components/shared/contracts/ContractTemplateManagerModal';
 import { updateContractTemplate, getContractTemplate } from '@/lib/actions/studio/business/contracts/templates.actions';
-import { actualizarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
+import { actualizarContratoCierre, regenerarContratoCierre } from '@/lib/actions/studio/commercial/promises/cotizaciones-cierre.actions';
 import { ContractCierreVersionsModal } from './ContractCierreVersionsModal';
 import type { ContractTemplate } from '@/types/contracts';
 import { toast } from 'sonner';
@@ -70,6 +70,7 @@ export const ContratoGestionCard = memo(function ContratoGestionCard({
   const [showManagerModal, setShowManagerModal] = useState(false);
   const [showVersionsModal, setShowVersionsModal] = useState(false);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Cargar plantilla si ya está seleccionada
   useEffect(() => {
@@ -233,6 +234,37 @@ export const ContratoGestionCard = memo(function ContratoGestionCard({
     }
   };
 
+  const handleRegenerarContrato = async () => {
+    setIsRegenerating(true);
+    try {
+      const result = await regenerarContratoCierre(studioSlug, cotizacionId, promiseId);
+      
+      if (result.success) {
+        toast.success('Contrato regenerado con los datos actualizados');
+        onCloseOptionsModal?.();
+        
+        // Actualizar estado local y notificar al padre
+        if (onSuccess) {
+          const successResult = onSuccess();
+          if (successResult instanceof Promise) {
+            await successResult;
+          }
+        }
+        
+        // Abrir preview del contrato regenerado
+        setTimeout(() => {
+          setShowContractPreview(true);
+        }, 200);
+      } else {
+        toast.error(result.error || 'Error al regenerar contrato');
+      }
+    } catch (error) {
+      console.error('[handleRegenerarContrato] Error:', error);
+      toast.error('Error al regenerar contrato');
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   if (loadingTemplate) {
     return (
@@ -337,6 +369,22 @@ export const ContratoGestionCard = memo(function ContratoGestionCard({
               <div>
                 <div className="text-sm font-medium text-white">Personalizar para este cliente</div>
                 <div className="text-xs text-zinc-400">Únicamente se actualizará la información para este cliente</div>
+              </div>
+            </button>
+
+            <button
+              onClick={handleRegenerarContrato}
+              disabled={isRegenerating}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRegenerating ? (
+                <Loader2 className="w-4 h-4 text-purple-500 shrink-0 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 text-purple-500 shrink-0" />
+              )}
+              <div>
+                <div className="text-sm font-medium text-white">Regenerar contrato</div>
+                <div className="text-xs text-zinc-400">Volver a generar con los datos actualizados de la cotización y contacto</div>
               </div>
             </button>
 
