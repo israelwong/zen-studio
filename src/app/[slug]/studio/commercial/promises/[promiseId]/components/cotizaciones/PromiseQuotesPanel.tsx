@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Package, Sparkles, Loader2, CheckSquare, Square, Archive, ArchiveRestore, Trash2, Eye, EyeOff, X, MoreVertical, ChevronDown } from 'lucide-react';
+import { Plus, Package, Sparkles, Loader2, CheckSquare, Square, Archive, ArchiveRestore, Trash2, Eye, EyeOff, X, MoreVertical, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   ZenButton,
   ZenCard,
@@ -89,6 +89,8 @@ export function PromiseQuotesPanel({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkActionLoading, setIsBulkActionLoading] = useState(false);
+  // Estado para colapsar/expandir cotizaciones archivadas y canceladas
+  const [isCollapsedArchived, setIsCollapsedArchived] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -972,8 +974,35 @@ export function PromiseQuotesPanel({
                   <div className="h-px bg-zinc-800 my-3" />
                 )}
 
-                {/* Archivadas y canceladas (no ordenables) */}
-                {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
+                {/* Archivadas y canceladas (no ordenables) - Colapsable */}
+                {cotizacionesNoOrdenables.length > 0 && (
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => setIsCollapsedArchived(!isCollapsedArchived)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {cotizacionesArchivadas.length > 0 && cotizacionesCanceladas.length > 0
+                            ? `Archivadas y Canceladas (${cotizacionesArchivadas.length + cotizacionesCanceladas.length})`
+                            : cotizacionesArchivadas.length > 0
+                              ? `Archivadas (${cotizacionesArchivadas.length})`
+                              : `Canceladas (${cotizacionesCanceladas.length})`}
+                        </span>
+                      </div>
+                      {isCollapsedArchived ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                    </button>
+                    {!isCollapsedArchived && (
+                      <div className="space-y-2 pl-2 border-l-2 border-zinc-800">
+                        {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <>
@@ -1006,10 +1035,33 @@ export function PromiseQuotesPanel({
                   <div className="h-px bg-zinc-800 my-3" />
                 )}
 
-                {/* Archivadas y canceladas (no ordenables) */}
+                {/* Archivadas y canceladas (no ordenables) - Colapsable */}
                 {cotizacionesNoOrdenables.length > 0 && (
                   <div className="space-y-2">
-                    {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
+                    <button
+                      onClick={() => setIsCollapsedArchived(!isCollapsedArchived)}
+                      className="w-full flex items-center justify-between px-3 py-2 text-sm text-zinc-400 hover:text-zinc-300 hover:bg-zinc-800/50 rounded-lg transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {cotizacionesArchivadas.length > 0 && cotizacionesCanceladas.length > 0
+                            ? `Archivadas y Canceladas (${cotizacionesArchivadas.length + cotizacionesCanceladas.length})`
+                            : cotizacionesArchivadas.length > 0
+                              ? `Archivadas (${cotizacionesArchivadas.length})`
+                              : `Canceladas (${cotizacionesCanceladas.length})`}
+                        </span>
+                      </div>
+                      {isCollapsedArchived ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                    </button>
+                    {!isCollapsedArchived && (
+                      <div className="space-y-2 pl-2 border-l-2 border-zinc-800">
+                        {cotizacionesNoOrdenables.map((cotizacion) => renderCotizacionCard(cotizacion))}
+                      </div>
+                    )}
                   </div>
                 )}
               </>

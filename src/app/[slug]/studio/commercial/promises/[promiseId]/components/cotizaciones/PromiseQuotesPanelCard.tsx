@@ -775,7 +775,7 @@ export function PromiseQuotesPanelCard({
                       {/* Menú según estado: pendiente, negociacion, archivada, cancelada */}
                       {isPendiente ? (
                         <>
-                          {/* Pendiente: editar nombre, editar cotización, duplicar, archivar, pasar a cierre, eliminar */}
+                          {/* Pendiente: editar nombre, duplicar, archivar, pasar a cierre, negociar, eliminar */}
                           <ZenDropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -786,36 +786,6 @@ export function PromiseQuotesPanelCard({
                             <Edit2 className="h-4 w-4 mr-2" />
                             Editar nombre
                           </ZenDropdownMenuItem>
-                          {promiseId && (
-                            <>
-                              <ZenDropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const params = new URLSearchParams();
-                                  if (contactId) {
-                                    params.set('contactId', contactId);
-                                  }
-                                  const queryString = params.toString();
-                                  router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}${queryString ? `?${queryString}` : ''}`);
-                                }}
-                                disabled={loading || isDuplicating}
-                              >
-                                <Edit2 className="h-4 w-4 mr-2" />
-                                Editar cotización
-                              </ZenDropdownMenuItem>
-                              <ZenDropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/negociacion`);
-                                }}
-                                disabled={loading || isDuplicating}
-                                className="text-amber-400 focus:text-amber-300"
-                              >
-                                <Handshake className="h-4 w-4 mr-2" />
-                                Negociar
-                              </ZenDropdownMenuItem>
-                            </>
-                          )}
                           {!isRevision && (
                             <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
                               <Copy className="h-4 w-4 mr-2" />
@@ -841,6 +811,20 @@ export function PromiseQuotesPanelCard({
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Pasar a Cierre
+                            </ZenDropdownMenuItem>
+                          )}
+                          <ZenDropdownMenuSeparator />
+                          {promiseId && (
+                            <ZenDropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/negociacion`);
+                              }}
+                              disabled={loading || isDuplicating}
+                              className="text-amber-400 focus:text-amber-300"
+                            >
+                              <Handshake className="h-4 w-4 mr-2" />
+                              Negociar
                             </ZenDropdownMenuItem>
                           )}
                           <ZenDropdownMenuSeparator />
@@ -858,7 +842,7 @@ export function PromiseQuotesPanelCard({
                         </>
                       ) : isNegociacion ? (
                         <>
-                          {/* Negociación: editar nombre, editar cotización, cancelar, archivar, pasar a cierre, eliminar */}
+                          {/* Negociación: editar nombre, duplicar, archivar, pasar a cierre, editar negociación, eliminar */}
                           <ZenDropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -869,53 +853,12 @@ export function PromiseQuotesPanelCard({
                             <Edit2 className="h-4 w-4 mr-2" />
                             Editar nombre
                           </ZenDropdownMenuItem>
-                          {promiseId && (
-                            <>
-                              <ZenDropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const params = new URLSearchParams();
-                                  if (contactId) {
-                                    params.set('contactId', contactId);
-                                  }
-                                  const queryString = params.toString();
-                                  router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}${queryString ? `?${queryString}` : ''}`);
-                                }}
-                                disabled={loading || isDuplicating}
-                              >
-                                <Edit2 className="h-4 w-4 mr-2" />
-                                Editar cotización
-                              </ZenDropdownMenuItem>
-                              <ZenDropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/negociacion`);
-                                }}
-                                disabled={loading || isDuplicating}
-                                className="text-amber-400 focus:text-amber-300"
-                              >
-                                <Handshake className="h-4 w-4 mr-2" />
-                                Editar negociación
-                              </ZenDropdownMenuItem>
-                            </>
-                          )}
                           {!isRevision && (
                             <ZenDropdownMenuItem onClick={handleDuplicate} disabled={loading || isDuplicating}>
                               <Copy className="h-4 w-4 mr-2" />
                               Duplicar
                             </ZenDropdownMenuItem>
                           )}
-                          <ZenDropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowCancelModal(true);
-                            }}
-                            disabled={loading || isDuplicating}
-                            className="text-red-400 focus:text-red-300"
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancelar
-                          </ZenDropdownMenuItem>
                           <ZenDropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
@@ -935,6 +878,20 @@ export function PromiseQuotesPanelCard({
                             >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Pasar a Cierre
+                            </ZenDropdownMenuItem>
+                          )}
+                          <ZenDropdownMenuSeparator />
+                          {promiseId && (
+                            <ZenDropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}/cotizacion/${cotizacion.id}/negociacion`);
+                              }}
+                              disabled={loading || isDuplicating}
+                              className="text-amber-400 focus:text-amber-300"
+                            >
+                              <Handshake className="h-4 w-4 mr-2" />
+                              Editar negociación
                             </ZenDropdownMenuItem>
                           )}
                           <ZenDropdownMenuSeparator />
