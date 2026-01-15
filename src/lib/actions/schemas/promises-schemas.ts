@@ -13,7 +13,17 @@ export const createPromiseSchema = z.object({
   event_location: z.string().max(200, 'El lugar del evento es demasiado largo').optional().or(z.literal('')),
   event_name: z.string().max(200, 'El nombre del evento es demasiado largo').optional().or(z.literal('')), // Nombre del evento (opcional)
   duration_hours: z.number().int().positive('La duración debe ser un número positivo').optional().or(z.null()),
-  interested_dates: z.array(z.string().datetime()).optional(),
+  interested_dates: z.array(
+    z.string().refine(
+      (val) => {
+        // Aceptar formato ISO datetime completo o formato fecha simple YYYY-MM-DD
+        const isoDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/;
+        const dateOnlyPattern = /^\d{4}-\d{2}-\d{2}$/;
+        return isoDateTimePattern.test(val) || dateOnlyPattern.test(val);
+      },
+      { message: 'Fecha inválida. Debe ser formato ISO datetime o YYYY-MM-DD' }
+    )
+  ).optional(),
   promise_pipeline_stage_id: z.string().cuid().optional(),
   acquisition_channel_id: z.string().min(1, 'El canal de adquisición es requerido'),
   social_network_id: z.string().optional(),
