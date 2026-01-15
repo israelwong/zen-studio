@@ -446,13 +446,17 @@ export function ContactEventInfoCard({
       if (contact.event_type_id !== undefined ||
         contact.event_location !== undefined ||
         contact.event_name !== undefined ||
-        contact.duration_hours !== undefined) {
+        contact.duration_hours !== undefined ||
+        contact.event_date !== undefined ||
+        contact.interested_dates !== undefined) {
         setEventData((prev) => ({
           ...prev,
           event_type_id: contact.event_type_id !== undefined ? contact.event_type_id : prev.event_type_id,
           event_location: contact.event_location !== undefined ? contact.event_location : prev.event_location,
           event_name: contact.event_name !== undefined ? contact.event_name : prev.event_name,
           duration_hours: contact.duration_hours !== undefined ? contact.duration_hours : prev.duration_hours,
+          event_date: contact.event_date !== undefined ? contact.event_date : prev.event_date,
+          interested_dates: contact.interested_dates !== undefined ? contact.interested_dates : prev.interested_dates,
         }));
       }
 
@@ -593,6 +597,8 @@ export function ContactEventInfoCard({
                 event_name: promiseNew.name || prev.event_name,
                 event_location: promiseNew.event_location !== undefined ? promiseNew.event_location : prev.event_location,
                 duration_hours: promiseNew.duration_hours !== undefined ? promiseNew.duration_hours : prev.duration_hours,
+                event_date: promiseNew.event_date !== undefined ? (promiseNew.event_date ? new Date(promiseNew.event_date) : null) : prev.event_date,
+                interested_dates: promiseNew.tentative_dates !== undefined ? (promiseNew.tentative_dates as string[] | null) : prev.interested_dates,
               }));
             }
           });
@@ -932,8 +938,8 @@ export function ContactEventInfoCard({
               event_location: promiseData.event_location || undefined,
               event_name: promiseData.event_name || undefined,
               duration_hours: eventData.duration_hours ?? promiseData.duration_hours ?? undefined,
-              // Si es evento y hay event_date, convertir a formato YYYY-MM-DD (sin cambios por zona horaria)
-              interested_dates: context === 'event' && eventData.event_date
+              // Si hay event_date (evento o promesa), convertir a formato YYYY-MM-DD (sin cambios por zona horaria)
+              interested_dates: eventData.event_date
                 ? (() => {
                   const date = eventData.event_date;
                   const year = date.getFullYear();
