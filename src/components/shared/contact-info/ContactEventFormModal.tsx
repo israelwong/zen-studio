@@ -6,7 +6,7 @@ import { ZenDialog, ZenInput, ZenTextarea, ZenCard, ZenCardContent, ZenButton } 
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { toast } from 'sonner';
-import { formatDate } from '@/lib/actions/utils/formatting';
+import { formatDisplayDate } from '@/lib/utils/date-formatter';
 import { es } from 'date-fns/locale';
 import { CalendarIcon, AlertCircle, X, Plus } from 'lucide-react';
 import { createPromise, updatePromise, getEventTypes, getPromiseIdByContactId } from '@/lib/actions/studio/commercial/promises';
@@ -35,7 +35,7 @@ interface ContactEventFormModalProps {
         event_location?: string;
         event_name?: string; // Nombre del evento (opcional)
         duration_hours?: number | null;
-        event_date?: Date | null; // Fecha única del evento
+        event_date?: Date | string | null; // Fecha única del evento (puede venir como Date o string YYYY-MM-DD desde server)
         interested_dates?: string[];
         acquisition_channel_id?: string;
         social_network_id?: string;
@@ -85,18 +85,39 @@ export function ContactEventFormModal({
     const [showContactSuggestions, setShowContactSuggestions] = useState(false);
     const [filteredContactSuggestions, setFilteredContactSuggestions] = useState<Array<{ id: string; name: string; phone: string; email: string | null }>>([]);
     const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; email: string | null; status?: string; type?: 'contact' | 'crew' }>>([]);
-    // Helper para parsear fecha de forma segura (sin cambios por zona horaria)
-    const parseDateSafe = (date: Date | string): Date => {
+    // Helper para parsear fecha de forma segura usando métodos UTC
+    // Evita problemas de zona horaria al crear Date objects desde strings YYYY-MM-DD
+    const parseDateSafe = (date: Date | string | null): Date => {
+        if (!date) {
+            return new Date();
+        }
         if (typeof date === "string") {
-            // Si es formato YYYY-MM-DD o ISO, parsear como fecha local
+            // Si es formato YYYY-MM-DD, parsear usando UTC con mediodía como buffer
             const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (dateMatch) {
                 const [, year, month, day] = dateMatch;
-                return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                // Usar Date.UTC con mediodía (12 PM) como buffer para evitar cambios de día
+                return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0));
+            }
+            // Si es string ISO, extraer componentes UTC si es posible
+            const isoDate = new Date(date);
+            if (!Number.isNaN(isoDate.getTime())) {
+                return new Date(Date.UTC(
+                    isoDate.getUTCFullYear(),
+                    isoDate.getUTCMonth(),
+                    isoDate.getUTCDate(),
+                    12, 0, 0
+                ));
             }
             return new Date(date);
         }
-        return date;
+        // Si es Date object, crear nueva fecha usando componentes UTC
+        return new Date(Date.UTC(
+            date.getUTCFullYear(),
+            date.getUTCMonth(),
+            date.getUTCDate(),
+            12, 0, 0
+        ));
     };
 
     const [selectedDates, setSelectedDates] = useState<Date[]>(() => {
@@ -773,7 +794,8 @@ export function ContactEventFormModal({
             return context === 'event' ? 'Seleccionar fecha' : 'Seleccionar fechas';
         }
         if (selectedDates.length === 1) {
-            return formatDate(selectedDates[0]);
+            // Usar formatDisplayDate que usa métodos UTC exclusivamente
+            return formatDisplayDate(selectedDates[0]);
         }
         return `${selectedDates.length} fechas seleccionadas`;
     };
@@ -1433,7 +1455,7 @@ export function ContactEventFormModal({
                                                         })
                                                         .map((date) => (
                                                             <p key={date.toISOString()} className="text-xs text-orange-200/80">
-                                                                • {formatDate(date)}
+                                                                • {formatDisplayDate(date)}
                                                             </p>
                                                         ))}
                                                 </div>
@@ -1464,7 +1486,7 @@ export function ContactEventFormModal({
                                                 : 'bg-emerald-900/20 text-emerald-300 border-emerald-700/50'
                                                 }`}
                                         >
-                                            <span>{formatDate(date)}</span>
+                                            <span>{formatDisplayDate(date)}</span>
                                             <button
                                                 type="button"
                                                 onClick={(e) => {
@@ -1493,7 +1515,7 @@ export function ContactEventFormModal({
                                             <AlertCircle className="h-4 w-4 text-amber-400 mt-0.5 flex-shrink-0" />
                                             <div className="space-y-1.5 flex-1">
                                                 <p className="text-xs font-medium text-amber-300">
-                                                    {formatDate(fecha)} ya está programada:
+                                                    {formatDisplayDate(fecha)} ya está programada:
                                                 </p>
                                                 {conflictos.map((conflicto) => (
                                                     <div key={conflicto.id} className="text-xs text-amber-200/80 space-y-0.5">

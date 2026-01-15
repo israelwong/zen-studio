@@ -938,13 +938,14 @@ export function ContactEventInfoCard({
               event_location: promiseData.event_location || undefined,
               event_name: promiseData.event_name || undefined,
               duration_hours: eventData.duration_hours ?? promiseData.duration_hours ?? undefined,
-              // Si hay event_date (evento o promesa), convertir a formato YYYY-MM-DD (sin cambios por zona horaria)
+              // Si hay event_date (evento o promesa), convertir a formato YYYY-MM-DD usando métodos UTC
               interested_dates: eventData.event_date
                 ? (() => {
                   const date = eventData.event_date;
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
+                  // Usar métodos UTC para evitar problemas de zona horaria
+                  const year = date.getUTCFullYear();
+                  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                  const day = String(date.getUTCDate()).padStart(2, '0');
                   return [`${year}-${month}-${day}`];
                 })()
                 : promiseData.interested_dates || undefined,

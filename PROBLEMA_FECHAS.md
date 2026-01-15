@@ -185,11 +185,13 @@ ALTER TABLE "studio_eventos"
 **`promises.actions.ts`:**
 - `createPromise`: Usa `toUtcDateOnly` antes de guardar `event_date`
 - `updatePromise`: Usa `toUtcDateOnly` antes de guardar `event_date`
+- **Normalización antes de serializar:** Todas las funciones que devuelven promesas (`getPromises`, `getPromiseByIdAsPromiseWithContact`, etc.) normalizan `event_date` y `defined_date` a string `YYYY-MM-DD` usando `dateToDateOnlyString()` antes de enviar al cliente
+- **Razón:** Cuando Next.js serializa objetos `Date` desde server actions, los convierte a strings ISO que pueden causar problemas de zona horaria en el cliente. Al normalizar a `YYYY-MM-DD` en el servidor, el cliente recibe un string puro sin información de hora/zona horaria
 
 **`events.actions.ts`:**
 - `actualizarFechaEvento`: Usa `toUtcDateOnly` antes de guardar `event_date`
 
-**Resultado:** Todas las fechas se procesan a través de `toUtcDateOnly` antes de enviarse a Prisma, garantizando consistencia.
+**Resultado:** Todas las fechas se procesan a través de `toUtcDateOnly` antes de enviarse a Prisma, y se normalizan a strings `YYYY-MM-DD` antes de serializar al cliente, garantizando consistencia en todo el flujo.
 
 ### 4. Capa de Visualización (Frontend) ✅
 
@@ -205,8 +207,13 @@ ALTER TABLE "studio_eventos"
 - `PublicPromiseDataForm.tsx`
 - `ContactModal.tsx`
 - `clientes/[contactId]/page.tsx`
+- `PromiseKanbanCard.tsx` - Actualizado para manejar `event_date` como `Date | string | null` y parsear strings `YYYY-MM-DD` directamente usando componentes UTC
 
 **Resultado:** Todas las fechas se renderizan usando métodos UTC exclusivamente, evitando problemas de zona horaria en la visualización.
+
+**Manejo de tipos en componentes:**
+- `PromiseWithContact` ahora acepta `event_date: Date | string | null` para manejar tanto objetos Date como strings `YYYY-MM-DD` serializados desde el servidor
+- Los componentes que reciben promesas verifican el tipo y parsean strings `YYYY-MM-DD` directamente usando componentes UTC antes de crear objetos Date
 
 ### 5. Validación de Flujo ✅
 
@@ -228,7 +235,7 @@ ALTER TABLE "studio_eventos"
 ## Archivos Modificados
 
 ### Utilidades
-1. `src/lib/utils/date-only.ts` - Actualizado con buffer UTC mediodía
+1. `src/lib/utils/date-only.ts` - Actualizado con buffer UTC mediodía y función `dateToDateOnlyString()`
 2. `src/lib/utils/date-formatter.ts` - Nueva utilidad creada
 
 ### Schema y Migración
@@ -239,19 +246,23 @@ ALTER TABLE "studio_eventos"
 5. `src/lib/actions/studio/commercial/promises/promises.actions.ts` - Ya usa `toUtcDateOnly`
 6. `src/lib/actions/studio/business/events/events.actions.ts` - Ya usa `toUtcDateOnly`
 
-### Componentes UI (12 archivos)
-7. `src/components/shared/contact-info/ContactEventFormModal.tsx` - Métodos UTC en formatDateForServer
-8. `src/components/shared/contact-info/ContactEventInfoCard.tsx`
-9. `src/app/[slug]/studio/business/events/components/EventCardInfo.tsx`
-10. `src/app/[slug]/studio/business/events/components/EventKanbanCard.tsx`
-11. `src/components/client/EventCard.tsx`
-12. `src/app/[slug]/cliente/[clientId]/[eventId]/components/InformacionEventoCard.tsx`
-13. `src/components/promise/Step2EventDetails.tsx`
-14. `src/components/promise/Step3Summary.tsx`
-15. `src/components/shared/promise/PublicPromiseDataForm.tsx`
-16. `src/components/shared/contacts/ContactModal.tsx`
-17. `src/components/shared/payments/PaymentReceipt.tsx`
-18. `src/app/[slug]/studio/business/clientes/[contactId]/page.tsx`
+### Schemas y Tipos
+7. `src/lib/actions/schemas/promises-schemas.ts` - Actualizado `PromiseWithContact` para aceptar `event_date: Date | string | null`
+
+### Componentes UI (13 archivos)
+8. `src/components/shared/contact-info/ContactEventFormModal.tsx` - Métodos UTC en formatDateForServer
+9. `src/components/shared/contact-info/ContactEventInfoCard.tsx`
+10. `src/app/[slug]/studio/business/events/components/EventCardInfo.tsx`
+11. `src/app/[slug]/studio/business/events/components/EventKanbanCard.tsx`
+12. `src/components/client/EventCard.tsx`
+13. `src/app/[slug]/cliente/[clientId]/[eventId]/components/InformacionEventoCard.tsx`
+14. `src/components/promise/Step2EventDetails.tsx`
+15. `src/components/promise/Step3Summary.tsx`
+16. `src/components/shared/promise/PublicPromiseDataForm.tsx`
+17. `src/components/shared/contacts/ContactModal.tsx`
+18. `src/components/shared/payments/PaymentReceipt.tsx`
+19. `src/app/[slug]/studio/business/clientes/[contactId]/page.tsx`
+20. `src/app/[slug]/studio/commercial/promises/components/PromiseKanbanCard.tsx` - Maneja `Date | string | null` y parsea strings `YYYY-MM-DD` directamente
 
 ## Cómo Funciona la Solución
 
@@ -278,6 +289,8 @@ ALTER TABLE "studio_eventos"
 3. ✅ Verificar que se muestre como 31 de enero en la UI
 4. ✅ Probar en diferentes zonas horarias (México UTC-6, UTC, etc.)
 5. ✅ Verificar que las fechas existentes se migraron correctamente a tipo DATE
+6. ✅ Verificar que `PromiseKanbanCard` muestra las fechas correctamente sin desfase de 1 día
+7. ✅ Verificar que las fechas se serializan correctamente desde server actions como strings `YYYY-MM-DD`
 
 ## Archivos Involucrados
 
@@ -286,6 +299,14 @@ ALTER TABLE "studio_eventos"
 3. `src/lib/actions/studio/commercial/promises/promises.actions.ts` (líneas 620-645)
 4. `src/lib/actions/studio/commercial/promises/promises.actions.ts` (líneas 1018-1029 para updatePromise)
 5. `src/lib/actions/studio/business/events/events.actions.ts` (línea 1771 para actualizarFechaEvento)
+6. `prisma/schema.prisma` (línea 1319 - campo event_date)
+
+## Notas Adicionales
+
+- El problema también afecta a `tentative_dates` (JSON array de strings)
+- El problema puede afectar a `updatePromise` y `actualizarFechaEvento`
+- Necesita testing en ambos entornos (local y Vercel) después del fix
+ss/events/events.actions.ts` (línea 1771 para actualizarFechaEvento)
 6. `prisma/schema.prisma` (línea 1319 - campo event_date)
 
 ## Notas Adicionales

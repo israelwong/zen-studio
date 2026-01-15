@@ -32,6 +32,18 @@ export const toUtcDateOnly = (value: string | Date): Date | null => {
 };
 
 /**
+ * Convierte un Date a string YYYY-MM-DD usando métodos UTC
+ * Útil para normalizar fechas antes de serializar desde server actions
+ */
+export const dateToDateOnlyString = (date: Date | null | undefined): string | null => {
+  if (!date) return null;
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
  * Formatea una fecha usando métodos UTC para extraer los componentes de fecha
  * Evita problemas de zona horaria al usar getUTCDate(), getUTCMonth(), getUTCFullYear()
  */

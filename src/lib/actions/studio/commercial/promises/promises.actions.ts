@@ -18,7 +18,7 @@ import {
   type PromiseWithContact,
   type ActionResponse,
 } from '@/lib/actions/schemas/promises-schemas';
-import { toUtcDateOnly } from '@/lib/utils/date-only';
+import { toUtcDateOnly, dateToDateOnlyString } from '@/lib/utils/date-only';
 
 /**
  * Obtener promises con pipeline stages
@@ -231,8 +231,16 @@ export async function getPromises(
         interested_dates: promise.tentative_dates
           ? (promise.tentative_dates as string[])
           : null,
-        event_date: promise.event_date,
-        defined_date: promise.defined_date,
+        // Normalizar event_date: convertir Date a string YYYY-MM-DD antes de serializar
+        // Esto evita problemas cuando Next.js serializa Date objects a ISO strings
+        // El cliente recibirá un string puro que puede parsear directamente
+        event_date: promise.event_date
+          ? dateToDateOnlyString(promise.event_date)
+          : null,
+        // Normalizar defined_date también
+        defined_date: promise.defined_date
+          ? dateToDateOnlyString(promise.defined_date)
+          : null,
         promise_pipeline_stage_id: promise.pipeline_stage_id,
         is_test: promise.is_test || false,
         created_at: promise.contact.created_at,
@@ -475,8 +483,14 @@ export async function getPromiseByIdAsPromiseWithContact(
       interested_dates: promise.tentative_dates
         ? (promise.tentative_dates as string[])
         : null,
-      event_date: promise.event_date,
-      defined_date: promise.defined_date,
+      // Normalizar event_date a string YYYY-MM-DD antes de serializar
+      event_date: promise.event_date
+        ? dateToDateOnlyString(promise.event_date)
+        : null,
+      // Normalizar defined_date también
+      defined_date: promise.defined_date
+        ? dateToDateOnlyString(promise.defined_date)
+        : null,
       promise_pipeline_stage_id: promise.pipeline_stage_id,
       is_test: promise.is_test || false,
       acquisition_channel_id: promise.contact.acquisition_channel_id,
@@ -1082,8 +1096,14 @@ export async function updatePromise(
       interested_dates: promise.tentative_dates
         ? (promise.tentative_dates as string[])
         : null,
-      event_date: promise.event_date,
-      defined_date: promise.defined_date,
+      // Normalizar event_date a string YYYY-MM-DD antes de serializar
+      event_date: promise.event_date
+        ? dateToDateOnlyString(promise.event_date)
+        : null,
+      // Normalizar defined_date también
+      defined_date: promise.defined_date
+        ? dateToDateOnlyString(promise.defined_date)
+        : null,
       promise_pipeline_stage_id: promise.pipeline_stage_id,
       is_test: promise.is_test,
       acquisition_channel_id: contact.acquisition_channel_id,

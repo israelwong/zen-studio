@@ -94,8 +94,8 @@ export interface PromiseWithContact {
   event_location: string | null; // Locación del evento
   duration_hours: number | null; // Duración del evento en horas
   interested_dates: string[] | null;
-  event_date: Date | null; // Fecha del evento (consolidado)
-  defined_date: Date | null; // Fecha definida del evento (legacy)
+  event_date: Date | string | null; // Fecha del evento (consolidado) - puede venir como Date o string YYYY-MM-DD desde server
+  defined_date: Date | string | null; // Fecha definida del evento (legacy) - puede venir como Date o string YYYY-MM-DD desde server
   promise_pipeline_stage_id: string | null;
   is_test: boolean; // Marca si es una promesa de prueba del preview
   // Datos de adquisición

@@ -48,15 +48,34 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
 
     // Obtener fecha de evento (event_date tiene prioridad, luego defined_date, luego interested_dates)
     // Retorna Date object para cálculos, pero siempre usa componentes UTC
+    // IMPORTANTE: Cuando Prisma devuelve un campo DATE, se serializa como string ISO al cliente
+    // Necesitamos extraer directamente los componentes YYYY-MM-DD sin crear Date intermedio
     const getEventDate = (): Date | null => {
         if (promise.event_date) {
-            const date = new Date(promise.event_date);
-            // Extraer componentes UTC y crear nueva fecha para evitar problemas de zona horaria
-            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+            // Si es string ISO (viene serializado desde el servidor), extraer componentes directamente
+            if (typeof promise.event_date === 'string') {
+                const dateMatch = promise.event_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (dateMatch) {
+                    const [, year, month, day] = dateMatch;
+                    // Crear fecha usando UTC con mediodía como buffer
+                    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0));
+                }
+            }
+            // Si es Date object, extraer componentes UTC
+            const date = promise.event_date instanceof Date ? promise.event_date : new Date(promise.event_date);
+            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
         }
         if (promise.defined_date) {
-            const date = new Date(promise.defined_date);
-            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+            // Mismo tratamiento para defined_date
+            if (typeof promise.defined_date === 'string') {
+                const dateMatch = promise.defined_date.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (dateMatch) {
+                    const [, year, month, day] = dateMatch;
+                    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0));
+                }
+            }
+            const date = promise.defined_date instanceof Date ? promise.defined_date : new Date(promise.defined_date);
+            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
         }
         if (promise.interested_dates && promise.interested_dates.length > 0) {
             // Tomar la primera fecha de interés y parsear usando componentes UTC
@@ -64,10 +83,10 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
             const dateMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
             if (dateMatch) {
                 const [, year, month, day] = dateMatch;
-                return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+                return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0));
             }
             const date = new Date(dateStr);
-            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+            return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0));
         }
         return null;
     };
