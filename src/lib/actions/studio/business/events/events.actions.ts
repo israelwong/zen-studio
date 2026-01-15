@@ -15,6 +15,7 @@ import {
   type EventWithContact,
 } from '@/lib/actions/schemas/events-schemas';
 import type { z } from 'zod';
+import { toUtcDateOnly } from '@/lib/utils/date-only';
 
 export interface EventoBasico {
   id: string;
@@ -1768,15 +1769,11 @@ export async function actualizarFechaEvento(
     const validatedData = updateEventDateSchema.parse(data);
     const { event_id, event_date } = validatedData;
 
-    // Normalizar fecha (solo fecha, sin hora ni zona horaria)
-    // Extraer año, mes y día para crear fecha local sin problemas de zona horaria
-    const fechaDate = event_date instanceof Date ? event_date : new Date(event_date);
-    const nuevaFecha = new Date(
-      fechaDate.getFullYear(),
-      fechaDate.getMonth(),
-      fechaDate.getDate()
-    );
-    nuevaFecha.setHours(0, 0, 0, 0);
+    // Normalizar fecha a UTC (solo fecha, sin hora ni zona horaria)
+    const nuevaFecha = toUtcDateOnly(event_date);
+    if (!nuevaFecha) {
+      return { success: false, error: 'Fecha inválida' };
+    }
 
     // Obtener studio
     const studio = await prisma.studios.findUnique({

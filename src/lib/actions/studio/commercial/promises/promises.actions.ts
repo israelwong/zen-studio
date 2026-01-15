@@ -18,6 +18,7 @@ import {
   type PromiseWithContact,
   type ActionResponse,
 } from '@/lib/actions/schemas/promises-schemas';
+import { toUtcDateOnly } from '@/lib/utils/date-only';
 
 /**
  * Obtener promises con pipeline stages
@@ -617,25 +618,12 @@ export async function createPromise(
       ? validatedData.duration_hours
       : null;
 
-    // Parsear fecha de forma segura (sin cambios por zona horaria)
+    // Parsear fecha en UTC (sin cambios por zona horaria)
     // Si hay una sola fecha en interested_dates, guardarla también como event_date
     let eventDate: Date | null = null;
     if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
       const dateString = validatedData.interested_dates[0];
-      // Extraer solo YYYY-MM-DD (ignorar hora y zona horaria si viene en formato ISO)
-      const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (dateMatch) {
-        const [, year, month, day] = dateMatch;
-        // Crear fecha en zona horaria local sin hora (00:00:00)
-        eventDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        // Normalizar a medianoche local para evitar problemas de zona horaria
-        eventDate.setHours(0, 0, 0, 0);
-      } else {
-        // Fallback: parsear y normalizar
-        const parsed = new Date(dateString);
-        eventDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-        eventDate.setHours(0, 0, 0, 0);
-      }
+      eventDate = toUtcDateOnly(dateString);
     }
 
     const promise = await prisma.studio_promises.create({
@@ -961,13 +949,7 @@ export async function updatePromise(
         // Si hay una sola fecha, guardarla también como event_date
         if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
           const dateString = validatedData.interested_dates[0];
-          const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-          if (dateMatch) {
-            const [, year, month, day] = dateMatch;
-            updateData.event_date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          } else {
-            updateData.event_date = new Date(dateString);
-          }
+          updateData.event_date = toUtcDateOnly(dateString);
         } else if (validatedData.interested_dates && validatedData.interested_dates.length === 0) {
           // Si se eliminan todas las fechas, limpiar event_date
           updateData.event_date = null;
@@ -1021,24 +1003,11 @@ export async function updatePromise(
         ? validatedData.event_location.trim() || null
         : null;
 
-      // Parsear fecha de forma segura (sin cambios por zona horaria)
+      // Parsear fecha en UTC (sin cambios por zona horaria)
       let eventDateCreate: Date | null = null;
       if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
         const dateString = validatedData.interested_dates[0];
-        // Extraer solo YYYY-MM-DD (ignorar hora y zona horaria si viene en formato ISO)
-        const dateMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
-        if (dateMatch) {
-          const [, year, month, day] = dateMatch;
-          // Crear fecha en zona horaria local sin hora (00:00:00)
-          eventDateCreate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-          // Normalizar a medianoche local para evitar problemas de zona horaria
-          eventDateCreate.setHours(0, 0, 0, 0);
-        } else {
-          // Fallback: parsear y normalizar
-          const parsed = new Date(dateString);
-          eventDateCreate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
-          eventDateCreate.setHours(0, 0, 0, 0);
-        }
+        eventDateCreate = toUtcDateOnly(dateString);
       }
 
       promise = await prisma.studio_promises.create({
@@ -1053,6 +1022,7 @@ export async function updatePromise(
           duration_hours: durationHoursCreate,
           pipeline_stage_id: stageId,
           status: 'pending',
+          event_date: eventDateCreate,
           tentative_dates: validatedData.interested_dates
             ? (validatedData.interested_dates as unknown)
             : null,
