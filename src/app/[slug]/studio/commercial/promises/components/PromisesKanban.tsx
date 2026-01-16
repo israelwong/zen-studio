@@ -534,6 +534,14 @@ function PromisesKanban({
     router.push(`/${studioSlug}/studio/commercial/promises/${routeId}`);
   };
 
+  // Manejar eliminar promesa con actualización local
+  const handlePromiseDeleted = async (promiseId: string) => {
+    // Remover la promesa del estado local inmediatamente
+    setLocalPromises((prev) => prev.filter((p) => p.promise_id !== promiseId));
+    // Refrescar desde el servidor
+    onPromiseUpdated();
+  };
+
   // Manejar archivar promesa con actualización local
   const handlePromiseArchived = async (promiseId: string) => {
     if (!studioSlug) return;
@@ -719,6 +727,7 @@ function PromisesKanban({
                 promise={activePromise}
                 studioSlug={studioSlug}
                 onArchived={() => activePromise.promise_id && handlePromiseArchived(activePromise.promise_id)}
+                onDeleted={() => activePromise.promise_id && handlePromiseDeleted(activePromise.promise_id)}
                 onTagsUpdated={onPromiseUpdated}
               />
             </div>
@@ -826,6 +835,7 @@ function KanbanColumn({
               onClick={onPromiseClick}
               studioSlug={studioSlug}
               onArchived={() => promise.promise_id && onPromiseArchived?.(promise.promise_id)}
+              onDeleted={() => promise.promise_id && handlePromiseDeleted(promise.promise_id)}
               onTagsUpdated={onPromiseUpdated}
             />
           ))}

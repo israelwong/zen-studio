@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical } from 'lucide-react';
+import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, MoreVertical, Trash2 } from 'lucide-react';
 import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
 import { formatDisplayDateShort, formatDisplayDate } from '@/lib/utils/date-formatter';
-import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback, ZenConfirmModal, ZenBadge, ZenDialog, ZenButton } from '@/components/ui/zen';
+import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback, ZenConfirmModal, ZenBadge, ZenDialog, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { getPromiseTagsByPromiseId, getPromiseTags, addTagToPromise, removeTagFromPromise, type PromiseTag } from '@/lib/actions/studio/commercial/promises';
+import { deletePromise } from '@/lib/actions/studio/commercial/promises';
 import { toast } from 'sonner';
 import { obtenerAgendamientoPorPromise } from '@/lib/actions/shared/agenda-unified.actions';
 import { getCotizacionesByPromiseId, type CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
@@ -19,11 +20,14 @@ interface PromiseKanbanCardProps {
     onClick?: (promise: PromiseWithContact) => void;
     studioSlug?: string;
     onArchived?: () => void;
+    onDeleted?: () => void;
     onTagsUpdated?: () => void;
 }
 
-export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, onTagsUpdated }: PromiseKanbanCardProps) {
+export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, onDeleted, onTagsUpdated }: PromiseKanbanCardProps) {
     const [showArchiveModal, setShowArchiveModal] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [showTagsModal, setShowTagsModal] = useState(false);
     const [availableTags, setAvailableTags] = useState<PromiseTag[]>([]);
     const [isLoadingTags, setIsLoadingTags] = useState(false);
@@ -96,20 +100,20 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
     // Calcular días restantes usando métodos UTC exclusivamente
     const getDaysRemaining = (): number | null => {
         if (!eventDate) return null;
-        
+
         // Obtener fecha actual usando componentes UTC
         const today = new Date();
         const todayYear = today.getUTCFullYear();
         const todayMonth = today.getUTCMonth();
         const todayDay = today.getUTCDate();
         const todayUtc = new Date(Date.UTC(todayYear, todayMonth, todayDay));
-        
+
         // Extraer componentes UTC de la fecha del evento
         const eventYear = eventDate.getUTCFullYear();
         const eventMonth = eventDate.getUTCMonth();
         const eventDay = eventDate.getUTCDate();
         const eventUtc = new Date(Date.UTC(eventYear, eventMonth, eventDay));
-        
+
         const diffTime = eventUtc.getTime() - todayUtc.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
@@ -291,6 +295,9 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
     // Verificar si la promesa está archivada
     const isArchived = promise.promise_pipeline_stage?.slug === 'archived';
 
+    // Verificar si la etapa es aprobado
+    const isApprovedStage = promise.promise_pipeline_stage?.slug === 'approved' || promise.promise_pipeline_stage?.slug === 'aprobado';
+
     // Abrir modal de confirmación
     const handleArchiveClick = (e: React.MouseEvent) => {
         e.stopPropagation(); // Prevenir que active el onClick de la tarjeta
@@ -305,6 +312,29 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
         setTimeout(() => {
             onArchived?.();
         }, 0);
+    };
+
+    // Confirmar eliminar promesa
+    const handleConfirmDelete = async () => {
+        if (!promise.promise_id || !studioSlug) return;
+        setIsDeleting(true);
+        try {
+            const result = await deletePromise(studioSlug, promise.promise_id);
+            if (result.success) {
+                setShowDeleteModal(false);
+                toast.success('Promesa eliminada');
+                setTimeout(() => {
+                    onDeleted?.();
+                }, 0);
+            } else {
+                toast.error(result.error || 'Error al eliminar promesa');
+            }
+        } catch (error) {
+            console.error('Error deleting promise:', error);
+            toast.error('Error al eliminar promesa');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // Agregar etiqueta a la promesa
@@ -372,6 +402,12 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
         }
     };
 
+    // Limitar nombre a las dos primeras palabras
+    const getDisplayName = (name: string): string => {
+        const words = name.trim().split(/\s+/);
+        return words.slice(0, 2).join(' ');
+    };
+
     return (
         <>
             <div
@@ -395,18 +431,56 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                 {/* Botones de Acciones - Esquina superior derecha */}
                 {promise.promise_id && studioSlug && (
                     <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
-                        {/* Botón Archivar */}
                         {!isArchived && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleArchiveClick(e);
-                                }}
-                                className="p-1 rounded-md bg-zinc-800/60 hover:bg-red-500/20 transition-colors text-zinc-400 hover:text-red-400 z-20"
-                                title="Archivar promesa"
-                            >
-                                <Archive className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                                {/* Si es etapa aprobado, mostrar solo botón archivar */}
+                                {isApprovedStage ? (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleArchiveClick(e);
+                                        }}
+                                        className="p-1 rounded-md bg-zinc-800/60 hover:bg-red-500/20 transition-colors text-zinc-400 hover:text-red-400 z-20"
+                                        title="Archivar promesa"
+                                    >
+                                        <Archive className="h-3.5 w-3.5" />
+                                    </button>
+                                ) : (
+                                    <ZenDropdownMenu>
+                                        <ZenDropdownMenuTrigger asChild>
+                                            <button
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="p-1 rounded-md bg-zinc-800/60 hover:bg-zinc-700/60 transition-colors text-zinc-400 hover:text-zinc-300 z-20"
+                                                title="Más opciones"
+                                            >
+                                                <MoreVertical className="h-3.5 w-3.5" />
+                                            </button>
+                                        </ZenDropdownMenuTrigger>
+                                        <ZenDropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                            <ZenDropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleArchiveClick(e);
+                                                }}
+                                            >
+                                                <Archive className="h-4 w-4 mr-2" />
+                                                Archivar
+                                            </ZenDropdownMenuItem>
+                                            <ZenDropdownMenuSeparator />
+                                            <ZenDropdownMenuItem
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowDeleteModal(true);
+                                                }}
+                                                className="text-red-400 focus:text-red-300 focus:bg-red-500/10"
+                                            >
+                                                <Trash2 className="h-4 w-4 mr-2" />
+                                                Eliminar
+                                            </ZenDropdownMenuItem>
+                                        </ZenDropdownMenuContent>
+                                    </ZenDropdownMenu>
+                                )}
+                            </>
                         )}
                     </div>
                 )}
@@ -433,7 +507,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                         <div className="flex-1 min-w-0 space-y-1">
                             {/* Nombre contacto */}
                             <div className="flex items-center gap-2">
-                                <h3 className="font-medium text-white text-sm leading-tight truncate">{promise.name}</h3>
+                                <h3 className="font-medium text-white text-sm leading-tight truncate" title={promise.name}>{getDisplayName(promise.name)}</h3>
                                 {/* Badge de prueba */}
                                 {promise.is_test && (
                                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/20 text-amber-400 border border-amber-400/30 shrink-0">
@@ -571,7 +645,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                 </div>
             </div>
 
-            {/* Modal de confirmación - fuera del contenedor clickeable */}
+            {/* Modal de confirmación archivar - fuera del contenedor clickeable */}
             <ZenConfirmModal
                 isOpen={showArchiveModal}
                 onClose={() => setShowArchiveModal(false)}
@@ -581,6 +655,19 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                 confirmText="Archivar"
                 cancelText="Cancelar"
                 variant="destructive"
+            />
+
+            {/* Modal de confirmación eliminar - fuera del contenedor clickeable */}
+            <ZenConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => !isDeleting && setShowDeleteModal(false)}
+                onConfirm={handleConfirmDelete}
+                title="Eliminar promesa"
+                description={`¿Estás seguro de que deseas eliminar la promesa de "${promise.name}"? Esta acción no se puede deshacer y eliminará todos los datos asociados.`}
+                confirmText={isDeleting ? 'Eliminando...' : 'Eliminar'}
+                cancelText="Cancelar"
+                variant="destructive"
+                disabled={isDeleting}
             />
 
             {/* Modal de etiquetas */}
