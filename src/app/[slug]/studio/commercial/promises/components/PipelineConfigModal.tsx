@@ -81,6 +81,7 @@ export function PipelineConfigModal({
       onClose={onClose}
       title="Configurar Pipeline"
       description="Edita los nombres y orden de las etapas del pipeline"
+      zIndex={10050}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-3 max-h-[400px] overflow-y-auto">

@@ -2,34 +2,18 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { UserSearch, Plus, Receipt, AlertTriangle, Trash2, Eye, EyeOff, MoreVertical, FileText, Shield, CreditCard, Tag } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenConfirmModal, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem } from '@/components/ui/zen';
+import { UserSearch, Plus, AlertTriangle, Trash2 } from 'lucide-react';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
 import { PromisesWrapper } from './components';
-import { PromiseMainToolbar } from './components/PromiseMainToolbar';
-import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
-import { TerminosCondicionesEditor } from '@/components/shared/terminos-condiciones';
-import { AvisoPrivacidadManager } from '@/components/shared/avisos-privacidad/AvisoPrivacidadManager';
-import { PipelineConfigModal } from './components/PipelineConfigModal';
-import { PromiseTagsManageModal } from './components/PromiseTagsManageModal';
-import { PaymentMethodsModal } from '@/components/shared/payments/PaymentMethodsModal';
 import { getTestPromisesCount, deleteTestPromises } from '@/lib/actions/studio/commercial/promises/promises.actions';
-import { getPipelineStages } from '@/lib/actions/studio/commercial/promises';
 import { toast } from 'sonner';
-import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 
-export default function PromisesPage() {
+function PromisesPageContent() {
   const params = useParams();
   const studioSlug = params.slug as string;
   const openPromiseFormRef = useRef<(() => void) | null>(null);
   const reloadKanbanRef = useRef<(() => void) | null>(null);
   const removeTestPromisesRef = useRef<(() => void) | null>(null);
-  const [showCondicionesManager, setShowCondicionesManager] = useState(false);
-  const [showTerminosManager, setShowTerminosManager] = useState(false);
-  const [showAvisoPrivacidad, setShowAvisoPrivacidad] = useState(false);
-  const [showPipelineConfig, setShowPipelineConfig] = useState(false);
-  const [showTagsModal, setShowTagsModal] = useState(false);
-  const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [testPromisesCount, setTestPromisesCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -49,26 +33,6 @@ export default function PromisesPage() {
     loadTestCount();
   }, [studioSlug]);
 
-  // Cargar etapas del pipeline
-  useEffect(() => {
-    const loadPipelineStages = async () => {
-      const result = await getPipelineStages(studioSlug);
-      if (result.success && result.data) {
-        setPipelineStages(result.data);
-      }
-    };
-    loadPipelineStages();
-  }, [studioSlug]);
-
-  const handlePipelineStagesUpdated = () => {
-    const loadPipelineStages = async () => {
-      const result = await getPipelineStages(studioSlug);
-      if (result.success && result.data) {
-        setPipelineStages(result.data);
-      }
-    };
-    loadPipelineStages();
-  };
 
   const handleOpenPromiseForm = () => {
     if (openPromiseFormRef.current) {
@@ -128,48 +92,9 @@ export default function PromisesPage() {
                 <Plus className="h-4 w-4 mr-2" />
                 Registrar Promesa
               </ZenButton>
-              <ZenDropdownMenu>
-                <ZenDropdownMenuTrigger asChild>
-                  <ZenButton variant="ghost" size="sm" className="h-8 w-8 p-0" suppressHydrationWarning>
-                    <MoreVertical className="h-4 w-4" />
-                  </ZenButton>
-                </ZenDropdownMenuTrigger>
-                <ZenDropdownMenuContent align="end">
-                  <ZenDropdownMenuItem onClick={() => setShowTerminosManager(true)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Términos y Condiciones
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuItem onClick={() => setShowAvisoPrivacidad(true)}>
-                    <Shield className="h-4 w-4 mr-2" />
-                    Aviso de Privacidad
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuItem onClick={() => setShowCondicionesManager(true)}>
-                    <Receipt className="h-4 w-4 mr-2" />
-                    Condiciones Comerciales
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuItem onClick={() => setShowPaymentMethods(true)}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Métodos de Pago
-                  </ZenDropdownMenuItem>
-                  <ZenDropdownMenuItem onClick={() => setShowTagsModal(true)}>
-                    <Tag className="h-4 w-4 mr-2" />
-                    Etiquetas
-                  </ZenDropdownMenuItem>
-                </ZenDropdownMenuContent>
-              </ZenDropdownMenu>
             </div>
           </div>
         </ZenCardHeader>
-
-        {/* Toolbar principal */}
-        <PromiseMainToolbar
-          studioSlug={studioSlug}
-          onCondicionesComercialesClick={() => setShowCondicionesManager(true)}
-          onTerminosCondicionesClick={() => setShowTerminosManager(true)}
-          onAvisoPrivacidadClick={() => setShowAvisoPrivacidad(true)}
-          onTagsClick={() => setShowTagsModal(true)}
-          onPaymentMethodsClick={() => setShowPaymentMethods(true)}
-        />
 
         {/* Banner de promesas de prueba */}
         {testPromisesCount > 0 && (
@@ -213,44 +138,6 @@ export default function PromisesPage() {
         </ZenCardContent>
       </ZenCard>
 
-      <CondicionesComercialesManager
-        studioSlug={studioSlug}
-        isOpen={showCondicionesManager}
-        onClose={() => setShowCondicionesManager(false)}
-      />
-
-      <TerminosCondicionesEditor
-        studioSlug={studioSlug}
-        isOpen={showTerminosManager}
-        onClose={() => setShowTerminosManager(false)}
-      />
-
-      <AvisoPrivacidadManager
-        studioSlug={studioSlug}
-        isOpen={showAvisoPrivacidad}
-        onClose={() => setShowAvisoPrivacidad(false)}
-      />
-
-      <PipelineConfigModal
-        isOpen={showPipelineConfig}
-        onClose={() => setShowPipelineConfig(false)}
-        studioSlug={studioSlug}
-        pipelineStages={pipelineStages}
-        onSuccess={handlePipelineStagesUpdated}
-      />
-
-      <PromiseTagsManageModal
-        isOpen={showTagsModal}
-        onClose={() => setShowTagsModal(false)}
-        studioSlug={studioSlug}
-      />
-
-      <PaymentMethodsModal
-        isOpen={showPaymentMethods}
-        onClose={() => setShowPaymentMethods(false)}
-        studioSlug={studioSlug}
-      />
-
       <ZenConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
@@ -266,3 +153,6 @@ export default function PromisesPage() {
   );
 }
 
+export default function PromisesPage() {
+  return <PromisesPageContent />;
+}

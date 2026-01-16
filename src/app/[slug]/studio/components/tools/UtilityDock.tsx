@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, ContactRound, CalendarCheck, FileText, Shield, Receipt, CreditCard } from 'lucide-react';
+import { Calendar, ContactRound, CalendarCheck, FileText, Shield, Receipt, CreditCard, Settings } from 'lucide-react';
 import { ZenButton } from '@/components/ui/zen';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
 import dynamic from 'next/dynamic';
@@ -31,11 +31,17 @@ const PaymentMethodsModal = dynamic(
   { ssr: false }
 );
 
+const ConfigurationCatalogModal = dynamic(
+  () => import('@/components/shared/configuracion/ConfigurationCatalogModal').then(mod => mod.ConfigurationCatalogModal),
+  { ssr: false }
+);
+
 interface UtilityDockProps {
   studioSlug: string;
   onAgendaClick?: () => void;
   onContactsClick?: () => void;
   onTareasOperativasClick?: () => void;
+  onPromisesConfigClick?: () => void;
 }
 
 export function UtilityDock({
@@ -43,6 +49,7 @@ export function UtilityDock({
   onAgendaClick,
   onContactsClick,
   onTareasOperativasClick,
+  onPromisesConfigClick,
 }: UtilityDockProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
@@ -167,93 +174,22 @@ export function UtilityDock({
               <span className="text-xs font-medium">Contactos</span>
               <span className="sr-only">Contactos</span>
             </ZenButton>
+
+            {/* Configurar Promesas */}
+            {onPromisesConfigClick && (
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                onClick={onPromisesConfigClick}
+              >
+                <Settings className="h-5 w-5 shrink-0" />
+                <span className="text-xs font-medium">Configurar</span>
+                <span className="sr-only">Configurar</span>
+              </ZenButton>
+            )}
           </div>
         )}
-
-        {/* Divider entre secciones */}
-        <div className="w-full h-px bg-zinc-800 my-2" />
-
-        {/* SECCIÓN 3: Configuración */}
-        <div className="flex flex-col gap-2 w-full">
-          {/* SUBSECCIÓN: Legales */}
-          <div className="flex flex-col gap-2 w-full">
-            {/* Título de subsección */}
-            <div className="px-3 py-1">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Legales</span>
-            </div>
-
-            {/* Términos y Condiciones */}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-              onClick={() => setTerminosCondicionesOpen(true)}
-            >
-              <FileText className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Términos y Condiciones</span>
-              <span className="sr-only">Términos y Condiciones</span>
-            </ZenButton>
-
-            {/* Aviso de Privacidad */}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-              onClick={() => setAvisoPrivacidadOpen(true)}
-            >
-              <Shield className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Aviso de Privacidad</span>
-              <span className="sr-only">Aviso de Privacidad</span>
-            </ZenButton>
-
-            {/* Contratos */}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-              onClick={() => setContratosOpen(true)}
-            >
-              <FileText className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Plantilla de contratos</span>
-              <span className="sr-only">Plantilla de contratos</span>
-            </ZenButton>
-          </div>
-
-          {/* Divider entre subsecciones */}
-          <div className="w-full h-px bg-zinc-800/50 my-1" />
-
-          {/* SUBSECCIÓN: Comercial */}
-          <div className="flex flex-col gap-2 w-full">
-            {/* Título de subsección */}
-            <div className="px-3 py-1">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Comercial</span>
-            </div>
-
-            {/* Condiciones Comerciales */}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-              onClick={() => setCondicionesComercialesOpen(true)}
-            >
-              <Receipt className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Condiciones Comerciales</span>
-              <span className="sr-only">Condiciones Comerciales</span>
-            </ZenButton>
-
-            {/* Métodos de Pago */}
-            <ZenButton
-              variant="ghost"
-              size="sm"
-              className="h-10 w-full justify-start gap-2 px-3 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-              onClick={() => setMetodosPagoOpen(true)}
-            >
-              <CreditCard className="h-5 w-5 shrink-0" />
-              <span className="text-xs font-medium">Métodos de Pago</span>
-              <span className="sr-only">Métodos de Pago</span>
-            </ZenButton>
-          </div>
-        </div>
       </div>
 
       {/* Botones base - siempre visibles (colapsados) */}
@@ -299,76 +235,22 @@ export function UtilityDock({
             <ContactRound className="h-5 w-5" />
             <span className="sr-only">Contactos</span>
           </ZenButton>
+
+          {/* Configurar Promesas */}
+          {onPromisesConfigClick && (
+            <ZenButton
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+              onClick={onPromisesConfigClick}
+              title="Configurar"
+            >
+              <Settings className="h-5 w-5" />
+              <span className="sr-only">Configurar</span>
+            </ZenButton>
+          )}
         </div>
       )}
-
-      {/* Divider entre secciones */}
-      <div className="w-8 h-px bg-zinc-800 my-2" />
-
-      {/* SECCIÓN 3: Configuración */}
-      {/* Legales */}
-      <div className="flex flex-col gap-2 items-center">
-        <ZenButton
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-          onClick={() => setTerminosCondicionesOpen(true)}
-          title="Términos y Condiciones"
-        >
-          <FileText className="h-5 w-5" />
-          <span className="sr-only">Términos y Condiciones</span>
-        </ZenButton>
-
-        <ZenButton
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-          onClick={() => setAvisoPrivacidadOpen(true)}
-          title="Aviso de Privacidad"
-        >
-          <Shield className="h-5 w-5" />
-          <span className="sr-only">Aviso de Privacidad</span>
-        </ZenButton>
-
-        <ZenButton
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-          onClick={() => setContratosOpen(true)}
-          title="Contratos"
-        >
-          <FileText className="h-5 w-5" />
-          <span className="sr-only">Plantilla de contratos</span>
-        </ZenButton>
-      </div>
-
-      {/* Divider entre subsecciones */}
-      <div className="w-6 h-px bg-zinc-800/50 my-1" />
-
-      {/* Comercial */}
-      <div className="flex flex-col gap-2 items-center">
-        <ZenButton
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-          onClick={() => setCondicionesComercialesOpen(true)}
-          title="Condiciones Comerciales"
-        >
-          <Receipt className="h-5 w-5" />
-          <span className="sr-only">Condiciones Comerciales</span>
-        </ZenButton>
-
-        <ZenButton
-          variant="ghost"
-          size="icon"
-          className="h-10 w-10 rounded-sm text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-          onClick={() => setMetodosPagoOpen(true)}
-          title="Métodos de Pago"
-        >
-          <CreditCard className="h-5 w-5" />
-          <span className="sr-only">Métodos de Pago</span>
-        </ZenButton>
-      </div>
 
       {/* Modales Legales */}
       <TerminosCondicionesEditor

@@ -301,6 +301,7 @@ export function PromiseTagsManageModal({
       title="Gestionar Etiquetas"
       description="Crea, edita y elimina etiquetas globales reutilizables"
       maxWidth="2xl"
+      zIndex={10050}
     >
       <div className="space-y-6">
         {/* Crear nuevas etiquetas */}

@@ -255,6 +255,7 @@ export function AvisoPrivacidadManager({
         title="Aviso de Privacidad"
         description="Gestiona el aviso de privacidad de tu estudio (requerido por LFPDPPP en México)"
         maxWidth="xl"
+        zIndex={10050}
         onSave={handleSubmit}
         onCancel={handleClose}
         saveLabel={editingId ? 'Actualizar' : 'Crear'}

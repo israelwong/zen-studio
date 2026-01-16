@@ -212,6 +212,7 @@ export function TerminosCondicionesEditor({
       title="Gestionar Términos y Condiciones"
       description="Define las condiciones generales de tus productos y servicios. Al editar, la versión anterior se guardará automáticamente como histórico."
       maxWidth="lg"
+      zIndex={10050}
       onSave={!loading && hasUnsavedChanges() && !submitting ? () => handleSubmit() : undefined}
       onCancel={!loading ? handleCancel : undefined}
       saveLabel={!loading ? (editingId ? 'Actualizar' : 'Crear') : undefined}

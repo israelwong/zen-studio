@@ -250,6 +250,7 @@ export function PaymentMethodsModal({
         title="Métodos de pago"
         description="Gestiona los métodos de pago disponibles para tu estudio"
         maxWidth="lg"
+        zIndex={10050}
       >
         {loading ? (
           <div className="space-y-3">
