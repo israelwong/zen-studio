@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { ContactEventInfoCard } from '@/components/shared/contact-info';
+import { EventInfoCard } from '@/components/shared/promises';
 import { CotizacionAutorizadaCard } from './components/CotizacionAutorizadaCard';
-import { ContactEventFormModal } from '@/components/shared/contact-info';
+import { EventFormModal } from '@/components/shared/promises';
 import { getPromiseById } from '@/lib/actions/studio/commercial/promises';
 import { getCotizacionAutorizadaByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { toast } from 'sonner';
@@ -142,7 +142,7 @@ export default function PromiseAutorizadaPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
           {/* Columna 1: Información */}
           <div className="lg:col-span-1 flex flex-col h-full">
-            <ContactEventInfoCard
+            <EventInfoCard
               studioSlug={studioSlug}
               contactId={contactId}
               contactData={{
@@ -204,7 +204,7 @@ export default function PromiseAutorizadaPage() {
 
       {/* Modal de edición */}
       {promiseId && (
-        <ContactEventFormModal
+        <EventFormModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           studioSlug={studioSlug}

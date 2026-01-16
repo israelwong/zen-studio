@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Edit, MapPin, Calendar } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
 import { formatDisplayDate } from '@/lib/utils/date-formatter';
-import { ContactEventFormModal } from '@/components/shared/contact-info';
+import { EventFormModal } from '@/components/shared/promises';
 
 interface EventCardInfoProps {
   studioSlug: string;
@@ -138,7 +138,7 @@ export function EventCardInfo({
 
       {/* Modal de promesa */}
       {initialData.promise_id && initialData.promise_data && (
-        <ContactEventFormModal
+        <EventFormModal
           isOpen={showPromiseModal}
           onClose={() => setShowPromiseModal(false)}
           studioSlug={studioSlug}

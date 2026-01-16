@@ -27,7 +27,7 @@ import {
 import { ZenInput, ZenButton } from '@/components/ui/zen';
 import { PromiseKanbanCard } from './PromiseKanbanCard';
 import { PipelineConfigModal } from './PipelineConfigModal';
-import { ContactEventFormModal } from '@/components/shared/contact-info/ContactEventFormModal';
+import { EventFormModal } from '@/components/shared/promises';
 import { PromiseTagsManageModal } from './PromiseTagsManageModal';
 import { movePromise } from '@/lib/actions/studio/commercial/promises';
 import { toast } from 'sonner';
@@ -48,7 +48,7 @@ interface PromisesKanbanProps {
   setIsPromiseFormModalOpen?: (open: boolean) => void;
 }
 
-export function PromisesKanban({
+function PromisesKanban({
   studioSlug,
   promises,
   pipelineStages,
@@ -738,7 +738,7 @@ export function PromisesKanban({
         onClose={() => setIsTagsModalOpen(false)}
         studioSlug={studioSlug}
       />
-      <ContactEventFormModal
+      <EventFormModal
         isOpen={isPromiseFormModalOpen}
         onClose={() => setIsPromiseFormModalOpen(false)}
         studioSlug={studioSlug}
@@ -750,6 +750,8 @@ export function PromisesKanban({
     </div>
   );
 }
+
+export { PromisesKanban };
 
 // Componente para cada columna del Kanban
 function KanbanColumn({

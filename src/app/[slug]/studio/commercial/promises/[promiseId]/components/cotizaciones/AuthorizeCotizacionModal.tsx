@@ -31,7 +31,7 @@ import { autorizarCotizacionLegacy } from '@/lib/actions/studio/commercial/promi
 import { getPromiseByIdAsPromiseWithContact } from '@/lib/actions/studio/commercial/promises/promises.actions';
 import { CondicionComercialSelectorModal } from '../condiciones-comerciales/CondicionComercialSelectorModal';
 import { ResumenCotizacion } from '@/components/shared/cotizaciones';
-import { ContactEventFormModal } from '@/components/shared/contact-info/ContactEventFormModal';
+import { EventFormModal } from '@/components/shared/promises';
 import { ContractTemplateSimpleSelectorModal } from '../../cierre/components/contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from '../../cierre/components/contratos/ContractPreviewForPromiseModal';
 import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
@@ -1202,7 +1202,7 @@ export function AuthorizeCotizacionModal({
 
       {/* Modal de Edición de Contacto/Evento */}
       {promiseData && (
-        <ContactEventFormModal
+        <EventFormModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           studioSlug={studioSlug}

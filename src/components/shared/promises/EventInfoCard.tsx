@@ -11,7 +11,7 @@ import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { formatDisplayDate } from '@/lib/utils/date-formatter';
 import { getContactById } from '@/lib/actions/studio/commercial/contacts/contacts.actions';
 import { logWhatsAppSent, logCallMade, logEmailSent } from '@/lib/actions/studio/commercial/promises';
-import { ContactEventFormModal } from './ContactEventFormModal';
+import { EventFormModal } from './EventFormModal';
 import { createClient } from '@/lib/supabase/client';
 import { createRealtimeChannel, subscribeToChannel, setupRealtimeAuth } from '@/lib/realtime/core';
 import { useContactUpdateListener } from '@/hooks/useContactRefresh';
@@ -55,7 +55,7 @@ function getDateBadgeColor(date: Date): {
   }
 }
 
-interface ContactEventInfoCardProps {
+interface EventInfoCardProps {
   studioSlug: string;
   // Datos del contacto
   contactId: string | null;
@@ -410,7 +410,7 @@ function ContactHoverCard({
   );
 }
 
-export function ContactEventInfoCard({
+export function EventInfoCard({
   studioSlug,
   contactId,
   contactData: initialContactData,
@@ -422,7 +422,7 @@ export function ContactEventInfoCard({
   onEdit,
   onUpdated,
   context = 'promise',
-}: ContactEventInfoCardProps) {
+}: EventInfoCardProps) {
   const [showPromiseModal, setShowPromiseModal] = useState(false);
   const [contactData, setContactData] = useState(initialContactData);
   const [eventData, setEventData] = useState(initialEventData);
@@ -549,7 +549,7 @@ export function ContactEventInfoCard({
         await subscribeToChannel(contactsChannel);
         contactsChannelRef.current = contactsChannel;
       } catch (error) {
-        console.error('[ContactEventInfoCard] Error configurando realtime para contactos:', error);
+        console.error('[EventInfoCard] Error configurando realtime para contactos:', error);
       }
     };
 
@@ -612,7 +612,7 @@ export function ContactEventInfoCard({
         await subscribeToChannel(promisesChannel);
         promisesChannelRef.current = promisesChannel;
       } catch (error) {
-        console.error('[ContactEventInfoCard] Error configurando realtime para promises:', error);
+        console.error('[EventInfoCard] Error configurando realtime para promises:', error);
       }
     };
 
@@ -924,7 +924,7 @@ export function ContactEventInfoCard({
 
       {/* Modal de promesa/evento */}
       {promiseId && promiseData && (
-        <ContactEventFormModal
+        <EventFormModal
           isOpen={showPromiseModal}
           onClose={() => setShowPromiseModal(false)}
           studioSlug={studioSlug}

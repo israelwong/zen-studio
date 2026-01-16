@@ -19,7 +19,7 @@ import { useContactRefresh } from '@/hooks/useContactRefresh';
 import { TipoEventoQuickAddModal } from '@/components/shared/tipos-evento/TipoEventoQuickAddModal';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
 
-interface ContactEventFormModalProps {
+interface EventFormModalProps {
     isOpen: boolean;
     onClose: () => void;
     studioSlug: string;
@@ -46,7 +46,7 @@ interface ContactEventFormModalProps {
     zIndex?: number; // Z-index para modales anidados
 }
 
-export function ContactEventFormModal({
+export function EventFormModal({
     isOpen,
     onClose,
     studioSlug,
@@ -55,7 +55,7 @@ export function ContactEventFormModal({
     initialData,
     onSuccess,
     zIndex = 10050,
-}: ContactEventFormModalProps) {
+}: EventFormModalProps) {
     const router = useRouter();
     const { triggerContactUpdate } = useContactRefresh();
     const isEditMode = !!initialData?.id;
@@ -449,7 +449,7 @@ export function ContactEventFormModal({
         // SIEMPRE limitar a máximo una fecha - FORZAR solo una fecha
         if (selectedDates.length > 1) {
             // Si hay más de una fecha, mantener solo la primera
-            console.warn('[ContactEventFormModal] Múltiples fechas detectadas, limitando a una sola fecha');
+            console.warn('[EventFormModal] Múltiples fechas detectadas, limitando a una sola fecha');
             setSelectedDates((prev) => [prev[0]]);
             return;
         }
@@ -457,7 +457,7 @@ export function ContactEventFormModal({
         if (selectedDates.length === 1) {
             const date = selectedDates[0];
             if (isNaN(date.getTime())) {
-                console.warn('[ContactEventFormModal] Fecha inválida detectada, limpiando selección');
+                console.warn('[EventFormModal] Fecha inválida detectada, limpiando selección');
                 setSelectedDates([]);
                 setEventDate(undefined);
             }

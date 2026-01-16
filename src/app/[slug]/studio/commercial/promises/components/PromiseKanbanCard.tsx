@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, ChevronRight } from 'lucide-react';
+import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical } from 'lucide-react';
 import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
 import { formatDisplayDateShort, formatDisplayDate } from '@/lib/utils/date-formatter';
@@ -395,18 +395,6 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                 {/* Botones de Acciones - Esquina superior derecha */}
                 {promise.promise_id && studioSlug && (
                     <div className="absolute top-2 right-2 flex items-center gap-1 z-20">
-                        {/* Botón Ver detalles */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewDetails();
-                            }}
-                            className="p-1 rounded-md bg-zinc-800/60 hover:bg-emerald-500/20 border border-zinc-700/50 hover:border-emerald-500/50 transition-colors text-zinc-400 hover:text-emerald-400 z-20"
-                            title="Ver detalles"
-                        >
-                            <ChevronRight className="h-3.5 w-3.5" />
-                        </button>
-
                         {/* Botón Archivar */}
                         {!isArchived && (
                             <button

@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ContactEventInfoCard } from '@/components/shared/contact-info';
+import { EventInfoCard } from '@/components/shared/promises';
 import { PromiseQuotesPanel } from './components/cotizaciones/PromiseQuotesPanel';
 import { PromiseAgendamiento } from './components/eventos/PromiseAgendamiento';
 import { PromiseTags } from './components/PromiseTags';
-import { ContactEventFormModal } from '@/components/shared/contact-info';
+import { EventFormModal } from '@/components/shared/promises';
 import { AuthorizeCotizacionModal } from './components/cotizaciones/AuthorizeCotizacionModal';
 import { PromisePendienteSkeleton } from './components/PromisePendienteSkeleton';
 import { usePromiseContext } from './context/PromiseContext';
@@ -216,7 +216,7 @@ export default function PromisePendientePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
           {/* Columna 1: Información */}
           <div className="lg:col-span-1 flex flex-col h-full">
-            <ContactEventInfoCard
+            <EventInfoCard
               studioSlug={studioSlug}
               contactId={contactId}
               contactData={{
@@ -310,7 +310,7 @@ export default function PromisePendientePage() {
 
       {/* Modal de edición */}
       {promiseId && (
-        <ContactEventFormModal
+        <EventFormModal
           isOpen={showEditModal}
           onClose={() => setShowEditModal(false)}
           studioSlug={studioSlug}

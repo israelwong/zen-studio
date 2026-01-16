@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ContactEventInfoCard } from '@/components/shared/contact-info';
+import { EventInfoCard } from '@/components/shared/promises';
 import { PromiseCierreSkeleton } from './components/PromiseCierreSkeleton';
-import { ContactEventFormModal } from '@/components/shared/contact-info';
+import { EventFormModal } from '@/components/shared/promises';
 import { usePromiseContext } from '../context/PromiseContext';
 import { getCotizacionesByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { toast } from 'sonner';
@@ -179,7 +179,7 @@ export default function PromiseCierrePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
           {/* Columna 1: Información */}
           <div className="lg:col-span-1 flex flex-col h-full">
-            <ContactEventInfoCard
+            <EventInfoCard
               studioSlug={studioSlug}
               contactId={contextPromiseData.contact_id}
               contactData={{
@@ -289,7 +289,7 @@ export default function PromiseCierrePage() {
       {/* Modal de edición */}
       {promiseId && (
         <>
-          <ContactEventFormModal
+          <EventFormModal
             isOpen={showEditModal}
             onClose={() => setShowEditModal(false)}
             studioSlug={studioSlug}
@@ -314,7 +314,7 @@ export default function PromiseCierrePage() {
             onSuccess={handleEditSuccess}
           />
           {cotizacionEnCierre && (
-            <ContactEventFormModal
+            <EventFormModal
               isOpen={cierreLogic.showEditPromiseModal}
               onClose={() => cierreLogic.setShowEditPromiseModal(false)}
               studioSlug={studioSlug}

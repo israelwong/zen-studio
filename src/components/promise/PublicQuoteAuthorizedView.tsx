@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Loader2, CheckCircle2, Building2, Copy, Check } from 'lucide-react';
 import { ZenButton, ZenDialog, ZenCard } from '@/components/ui/zen';
-import { PublicPromiseDataForm } from '@/components/shared/promise/PublicPromiseDataForm';
+import { PublicPromiseDataForm } from './PublicPromiseDataForm';
 import { PublicContractView } from './PublicContractView';
 import { PublicContractCard } from './PublicContractCard';
 import { PublicQuoteFinancialCard } from './PublicQuoteFinancialCard';

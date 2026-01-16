@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/shadcn/dialog';
-import { PublicPromiseDataForm } from '@/components/shared/promise/PublicPromiseDataForm';
+import { PublicPromiseDataForm } from './PublicPromiseDataForm';
 import type { PublicPaquete } from '@/types/public-promise';
 import { toast } from 'sonner';
 import { solicitarPaquetePublico } from '@/lib/actions/public/paquetes.actions';
