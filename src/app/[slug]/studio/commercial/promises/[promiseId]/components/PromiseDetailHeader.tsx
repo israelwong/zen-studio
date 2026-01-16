@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, MoreVertical, Archive, ArchiveRestore, Trash2, Loader2, ChevronDown, Check, Zap, FileText } from 'lucide-react';
 import { ZenCardHeader, ZenCardTitle, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
@@ -54,6 +54,11 @@ export function PromiseDetailHeader({
     isDeleting,
 }: PromiseDetailHeaderProps) {
     const router = useRouter();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     return (
         <ZenCardHeader className="border-b border-zinc-800">
@@ -90,6 +95,15 @@ export function PromiseDetailHeader({
                             const availableStages = isRestricted
                                 ? pipelineStages.filter((s) => s.slug === 'archived' || s.id === currentPipelineStageId)
                                 : pipelineStages;
+
+                            if (!mounted) {
+                                return (
+                                    <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                                        <span>{currentStage?.name}</span>
+                                        <ChevronDown className="h-2.5 w-2.5" />
+                                    </div>
+                                );
+                            }
 
                             return (
                                 <ZenDropdownMenu>
@@ -226,6 +240,19 @@ export function PromiseDetailHeader({
                         }
 
                         // No hay evento: mostrar dropdown
+                        if (!mounted) {
+                            return (
+                                <ZenButton
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                    disabled
+                                >
+                                    <MoreVertical className="h-4 w-4" />
+                                </ZenButton>
+                            );
+                        }
+
                         return (
                             <ZenDropdownMenu>
                                 <ZenDropdownMenuTrigger asChild>

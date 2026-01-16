@@ -42,7 +42,24 @@ interface EventFormModalProps {
         referrer_contact_id?: string;
         referrer_name?: string;
     };
-    onSuccess?: () => void;
+    onSuccess?: (updatedData?: {
+        id: string;
+        name: string;
+        phone: string;
+        email: string | null;
+        address: string | null;
+        acquisition_channel_id?: string | null;
+        social_network_id?: string | null;
+        referrer_contact_id?: string | null;
+        referrer_name?: string | null;
+        event_type_id?: string | null;
+        event_name?: string | null;
+        event_location?: string | null;
+        duration_hours?: number | null;
+        event_type?: string | null;
+        interested_dates?: string[] | null;
+        event_date?: Date | string | null;
+    }) => void;
     zIndex?: number; // Z-index para modales anidados
 }
 
@@ -778,30 +795,34 @@ export function EventFormModal({
                 if (isEditMode) {
                     // En modo edición, cerrar modal y refrescar
                     onClose();
+                    const updatedData = {
+                        id: result.data.id,
+                        name: result.data.name,
+                        phone: result.data.phone,
+                        email: result.data.email,
+                        address: result.data.address,
+                        acquisition_channel_id: result.data.acquisition_channel_id,
+                        social_network_id: result.data.social_network_id,
+                        referrer_contact_id: result.data.referrer_contact_id,
+                        referrer_name: result.data.referrer_name,
+                        // Datos del evento
+                        event_type_id: result.data.event_type_id,
+                        event_name: result.data.event_name,
+                        event_location: result.data.event_location,
+                        duration_hours: result.data.duration_hours,
+                        event_type: typeof result.data.event_type === 'string' 
+                          ? result.data.event_type 
+                          : result.data.event_type?.name || null,
+                        interested_dates: result.data.interested_dates,
+                        event_date: result.data.event_date,
+                    };
+                    
+                    // Siempre disparar evento para otros componentes que escuchan
+                    triggerContactUpdate(result.data.id, updatedData);
+                    
+                    // Si hay onSuccess, pasarle los datos actualizados
                     if (onSuccess) {
-                        // Si hay onSuccess, usarlo (ya maneja la recarga)
-                        onSuccess();
-                    } else {
-                        // Solo disparar evento si no hay onSuccess (para otros componentes que escuchan)
-                        triggerContactUpdate(result.data.id, {
-                            id: result.data.id,
-                            name: result.data.name,
-                            phone: result.data.phone,
-                            email: result.data.email,
-                            address: result.data.address,
-                            acquisition_channel_id: result.data.acquisition_channel_id,
-                            social_network_id: result.data.social_network_id,
-                            referrer_contact_id: result.data.referrer_contact_id,
-                            referrer_name: result.data.referrer_name,
-                            // Datos del evento
-                            event_type_id: result.data.event_type_id,
-                            event_name: result.data.event_name,
-                            event_location: result.data.event_location,
-                            duration_hours: result.data.duration_hours,
-                            event_type: result.data.event_type,
-                            interested_dates: result.data.interested_dates,
-                            event_date: result.data.event_date,
-                        });
+                        onSuccess(updatedData);
                     }
                 } else {
                     // En modo creación, obtener promiseId y redirigir

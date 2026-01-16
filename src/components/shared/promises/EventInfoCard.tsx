@@ -789,7 +789,9 @@ export function EventInfoCard({
                   variant="outline"
                   className="bg-blue-500/20 text-blue-400 border-blue-400/50 font-medium px-2 py-0.5 text-xs"
                 >
-                  {eventData.event_type_name}
+                  {typeof eventData.event_type_name === 'string' 
+                    ? eventData.event_type_name 
+                    : eventData.event_type_name?.name || 'Sin tipo'}
                 </ZenBadge>
               </div>
             ) : (
@@ -947,7 +949,18 @@ export function EventInfoCard({
               // Si hay event_date (evento o promesa), convertir a formato YYYY-MM-DD usando métodos UTC
               interested_dates: eventData.event_date
                 ? (() => {
-                  const date = eventData.event_date;
+                  const dateValue = eventData.event_date;
+                  // Convertir a Date si es string
+                  const date = dateValue instanceof Date 
+                    ? dateValue 
+                    : typeof dateValue === 'string' 
+                      ? new Date(dateValue) 
+                      : null;
+                  
+                  if (!date || isNaN(date.getTime())) {
+                    return promiseData.interested_dates || undefined;
+                  }
+                  
                   // Usar métodos UTC para evitar problemas de zona horaria
                   const year = date.getUTCFullYear();
                   const month = String(date.getUTCMonth() + 1).padStart(2, '0');

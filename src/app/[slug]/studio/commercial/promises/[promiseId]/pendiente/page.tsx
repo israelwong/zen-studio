@@ -146,9 +146,45 @@ export default function PromisePendientePage() {
     }
   }, [showAuthorizeModal, loadAuthorizationData]);
 
-  const handleEditSuccess = useCallback(() => {
-    // Los datos se actualizarán automáticamente a través del contexto cuando el layout recargue
-    window.location.reload();
+  const handleEditSuccess = useCallback((updatedData?: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    address: string | null;
+    acquisition_channel_id?: string | null;
+    social_network_id?: string | null;
+    referrer_contact_id?: string | null;
+    referrer_name?: string | null;
+    event_type_id?: string | null;
+    event_name?: string | null;
+    event_location?: string | null;
+    duration_hours?: number | null;
+    event_type?: string | null;
+    interested_dates?: string[] | null;
+    event_date?: Date | string | null;
+  }) => {
+    if (updatedData) {
+      // Actualizar estado local con los datos recibidos
+      setPromiseData((prev) => prev ? {
+        ...prev,
+        name: updatedData.name,
+        phone: updatedData.phone,
+        email: updatedData.email,
+        address: updatedData.address,
+        event_type_id: updatedData.event_type_id || null,
+        event_type_name: updatedData.event_type || null,
+        event_location: updatedData.event_location || null,
+        event_name: updatedData.event_name || null,
+        duration_hours: updatedData.duration_hours ?? null,
+        event_date: updatedData.event_date ? (typeof updatedData.event_date === 'string' ? new Date(updatedData.event_date) : updatedData.event_date) : null,
+        interested_dates: updatedData.interested_dates || null,
+        acquisition_channel_id: updatedData.acquisition_channel_id || null,
+        social_network_id: updatedData.social_network_id || null,
+        referrer_contact_id: updatedData.referrer_contact_id || null,
+        referrer_name: updatedData.referrer_name || null,
+      } : null);
+    }
   }, []);
 
   // Usar datos del contexto directamente
