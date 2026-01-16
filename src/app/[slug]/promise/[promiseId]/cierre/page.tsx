@@ -1,17 +1,11 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
 import { PublicQuoteAuthorizedView } from '@/components/promise/PublicQuoteAuthorizedView';
 import { PromisePageSkeleton } from '@/components/promise/PromisePageSkeleton';
-
-// Importar con dynamic para evitar SSR (usa Supabase realtime)
-const PromiseRedirectOnAuthorized = dynamic(
-  () => import('@/components/promise/PromiseRedirectOnAuthorized').then(mod => ({ default: mod.PromiseRedirectOnAuthorized })),
-  { ssr: false }
-);
+import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
 
 interface CierrePageProps {
   params: Promise<{
@@ -58,7 +52,7 @@ export default async function CierrePage({ params }: CierrePageProps) {
 
   return (
     <>
-      <PromiseRedirectOnAuthorized studioSlug={slug} promiseId={promiseId} />
+      <PromiseRedirectWrapper studioSlug={slug} promiseId={promiseId} />
       <Suspense fallback={<PromisePageSkeleton />}>
         <CierrePageClient
           promise={promise}

@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import dynamic from 'next/dynamic';
 import { Calendar } from 'lucide-react';
 import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
@@ -12,13 +11,8 @@ import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
 import { PromisePageSkeleton } from '@/components/promise/PromisePageSkeleton';
 import { PromisePageProvider } from '@/components/promise/PromisePageContext';
 import { PendientesPageClient } from './PendientesPageClient';
+import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
 import type { PublicCotizacion } from '@/types/public-promise';
-
-// Importar con dynamic para evitar SSR (usa Supabase realtime)
-const PromiseRedirectOnAuthorized = dynamic(
-  () => import('@/components/promise/PromiseRedirectOnAuthorized').then(mod => ({ default: mod.PromiseRedirectOnAuthorized })),
-  { ssr: false }
-);
 
 interface PendientesPageProps {
   params: Promise<{
@@ -83,7 +77,7 @@ export default async function PendientesPage({ params }: PendientesPageProps) {
 
   return (
     <PromisePageProvider>
-      <PromiseRedirectOnAuthorized studioSlug={slug} promiseId={promiseId} />
+      <PromiseRedirectWrapper studioSlug={slug} promiseId={promiseId} />
       <Suspense fallback={<PromisePageSkeleton />}>
         <PendientesPageClient
           promise={promise}
