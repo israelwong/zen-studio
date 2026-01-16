@@ -1,0 +1,201 @@
+'use server';
+
+import { prisma } from '@/lib/prisma';
+import type { ActionResponse } from '@/lib/actions/types';
+
+export type PromiseState = 'pendiente' | 'cierre' | 'autorizada';
+
+export interface PromiseStateData {
+  state: PromiseState;
+  promiseData: {
+    id: string;
+    contact_id: string;
+    contact_name: string;
+    contact_phone: string;
+    contact_email: string | null;
+    contact_address: string | null;
+    event_type_id: string | null;
+    event_type_name: string | null;
+    event_location: string | null;
+    event_name: string | null;
+    duration_hours: number | null;
+    event_date: Date | null;
+    interested_dates: string[] | null;
+    acquisition_channel_id: string | null;
+    acquisition_channel_name: string | null;
+    social_network_id: string | null;
+    social_network_name: string | null;
+    referrer_contact_id: string | null;
+    referrer_name: string | null;
+    referrer_contact_name: string | null;
+    referrer_contact_email: string | null;
+    pipeline_stage_slug: string | null;
+    pipeline_stage_id: string | null;
+    has_event: boolean;
+    evento_id: string | null;
+  };
+  cotizacionEnCierreId?: string | null;
+  cotizacionAutorizadaId?: string | null;
+}
+
+/**
+ * Determina el estado de una promesa y carga datos básicos en una sola query optimizada
+ */
+export async function determinePromiseState(
+  promiseId: string
+): Promise<ActionResponse<PromiseStateData>> {
+  try {
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      include: {
+        contact: {
+          select: {
+            id: true,
+            name: true,
+            phone: true,
+            email: true,
+            address: true,
+            acquisition_channel_id: true,
+            social_network_id: true,
+            referrer_contact_id: true,
+            referrer_name: true,
+            acquisition_channel: {
+              select: {
+                name: true,
+              },
+            },
+            social_network: {
+              select: {
+                name: true,
+              },
+            },
+            referrer_contact: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        event_type: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        pipeline_stage: {
+          select: {
+            id: true,
+            slug: true,
+          },
+        },
+        event: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        quotes: {
+          select: {
+            id: true,
+            status: true,
+            evento_id: true,
+            archived: true,
+          },
+        },
+      },
+    });
+
+    if (!promise) {
+      return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    // Determinar estado según cotizaciones
+    // Prioridad 1: Cotización autorizada con evento
+    const cotizacionAutorizada = promise.quotes.find((q) => {
+      if (q.archived || q.status === 'cancelada' || q.status === 'archivada') {
+        return false;
+      }
+      const isAuthorizedStatus =
+        q.status === 'aprobada' ||
+        q.status === 'autorizada' ||
+        q.status === 'approved' ||
+        q.status === 'contract_generated' ||
+        q.status === 'contract_signed';
+      return isAuthorizedStatus && !!q.evento_id;
+    });
+
+    let state: PromiseState = 'pendiente';
+    let cotizacionEnCierreId: string | null = null;
+    let cotizacionAutorizadaId: string | null = null;
+
+    if (cotizacionAutorizada) {
+      state = 'autorizada';
+      cotizacionAutorizadaId = cotizacionAutorizada.id;
+    } else {
+      // Prioridad 2: Cotización en cierre o aprobada sin evento
+      const cotizacionEnCierre = promise.quotes.find(
+        (q) => q.status === 'en_cierre' && !q.archived
+      );
+      const cotizacionAprobada = promise.quotes.find(
+        (q) =>
+          (q.status === 'aprobada' || q.status === 'approved') &&
+          !q.evento_id &&
+          !q.archived
+      );
+
+      if (cotizacionEnCierre || cotizacionAprobada) {
+        state = 'cierre';
+        cotizacionEnCierreId = cotizacionEnCierre?.id || cotizacionAprobada?.id || null;
+      }
+    }
+
+    // Obtener evento_id de la cotización autorizada (no de promise.event directamente)
+    const eventoIdFinal = cotizacionAutorizada?.evento_id || null;
+
+    return {
+      success: true,
+      data: {
+        state,
+        promiseData: {
+          id: promise.id,
+          contact_id: promise.contact.id,
+          contact_name: promise.contact.name,
+          contact_phone: promise.contact.phone,
+          contact_email: promise.contact.email,
+          contact_address: promise.contact.address,
+          event_type_id: promise.event_type_id,
+          event_type_name: promise.event_type?.name || null,
+          event_location: promise.event_location || null,
+          event_name: promise.name || null,
+          duration_hours: promise.duration_hours || null,
+          interested_dates: promise.tentative_dates
+            ? (promise.tentative_dates as string[])
+            : null,
+          event_date: promise.event_date,
+          acquisition_channel_id: promise.contact.acquisition_channel_id,
+          acquisition_channel_name: promise.contact.acquisition_channel?.name || null,
+          social_network_id: promise.contact.social_network_id,
+          social_network_name: promise.contact.social_network?.name || null,
+          referrer_contact_id: promise.contact.referrer_contact_id,
+          referrer_name: promise.contact.referrer_name,
+          referrer_contact_name: promise.contact.referrer_contact?.name || null,
+          referrer_contact_email: promise.contact.referrer_contact?.email || null,
+          pipeline_stage_slug: promise.pipeline_stage?.slug || null,
+          pipeline_stage_id: promise.pipeline_stage_id || null,
+          has_event: !!promise.event,
+          evento_id: eventoIdFinal,
+        },
+        cotizacionEnCierreId,
+        cotizacionAutorizadaId,
+      },
+    };
+  } catch (error) {
+    console.error('[PROMISE_STATE] Error determinando estado:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido',
+    };
+  }
+}

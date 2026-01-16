@@ -5,78 +5,28 @@ import { useParams } from 'next/navigation';
 import { EventInfoCard } from '@/components/shared/promises';
 import { CotizacionAutorizadaCard } from './components/CotizacionAutorizadaCard';
 import { EventFormModal } from '@/components/shared/promises';
-import { getPromiseById } from '@/lib/actions/studio/commercial/promises';
 import { getCotizacionAutorizadaByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { toast } from 'sonner';
 import type { CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { usePromiseContext } from '../context/PromiseContext';
 
 export default function PromiseAutorizadaPage() {
   const params = useParams();
   const studioSlug = params.slug as string;
   const promiseId = params.promiseId as string;
+  const { promiseData: contextPromiseData, isLoading: contextLoading } = usePromiseContext();
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [promiseData, setPromiseData] = useState<{
-    name: string;
-    phone: string;
-    email: string | null;
-    address: string | null;
-    event_type_id: string | null;
-    event_type_name: string | null;
-    event_location: string | null;
-    event_name: string | null;
-    duration_hours: number | null;
-    event_date: Date | null;
-    interested_dates: string[] | null;
-    acquisition_channel_id?: string | null;
-    acquisition_channel_name?: string | null;
-    social_network_id?: string | null;
-    social_network_name?: string | null;
-    referrer_contact_id?: string | null;
-    referrer_name?: string | null;
-    referrer_contact_name?: string | null;
-    referrer_contact_email?: string | null;
-  } | null>(null);
-  const [contactId, setContactId] = useState<string | null>(null);
   const [cotizacionAutorizada, setCotizacionAutorizada] = useState<CotizacionListItem | null>(null);
   const [loadingCotizacion, setLoadingCotizacion] = useState(true);
 
-  // Cargar datos de la promesa y cotización autorizada
+  // Cargar solo la cotización autorizada (los datos de la promesa vienen del contexto)
   useEffect(() => {
-    const loadData = async () => {
+    const loadCotizacion = async () => {
       if (!promiseId) return;
 
       try {
-        const [promiseResult, autorizadaResult] = await Promise.all([
-          getPromiseById(promiseId),
-          getCotizacionAutorizadaByPromiseId(promiseId),
-        ]);
-
-        if (promiseResult.success && promiseResult.data) {
-          const data = promiseResult.data;
-          setPromiseData({
-            name: data.contact_name,
-            phone: data.contact_phone,
-            email: data.contact_email,
-            address: data.contact_address,
-            event_type_id: data.event_type_id || null,
-            event_type_name: data.event_type_name || null,
-            event_location: data.event_location || null,
-            event_name: data.event_name || null,
-            duration_hours: data.duration_hours ?? null,
-            event_date: data.event_date || null,
-            interested_dates: data.interested_dates,
-            acquisition_channel_id: data.acquisition_channel_id ?? null,
-            acquisition_channel_name: data.acquisition_channel_name ?? null,
-            social_network_id: data.social_network_id ?? null,
-            social_network_name: data.social_network_name ?? null,
-            referrer_contact_id: data.referrer_contact_id ?? null,
-            referrer_name: data.referrer_name || null,
-            referrer_contact_name: data.referrer_contact_name || null,
-            referrer_contact_email: data.referrer_contact_email || null,
-          });
-          setContactId(data.contact_id);
-        }
+        const autorizadaResult = await getCotizacionAutorizadaByPromiseId(promiseId);
 
         if (autorizadaResult.success && autorizadaResult.data) {
           setCotizacionAutorizada(autorizadaResult.data);
@@ -84,56 +34,52 @@ export default function PromiseAutorizadaPage() {
 
         setLoadingCotizacion(false);
       } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error('Error al cargar los datos');
+        console.error('Error loading cotizacion:', error);
+        toast.error('Error al cargar la cotización');
         setLoadingCotizacion(false);
       }
     };
 
-    loadData();
+    loadCotizacion();
   }, [promiseId]);
 
-  const handleEditSuccess = useCallback(async () => {
-    // Recargar datos después de editar
-    try {
-      const result = await getPromiseById(promiseId);
-      if (result.success && result.data) {
-        const data = result.data;
-        setPromiseData({
-          name: data.contact_name,
-          phone: data.contact_phone,
-          email: data.contact_email,
-          address: data.contact_address,
-          event_type_id: data.event_type_id || null,
-          event_type_name: data.event_type_name || null,
-          event_location: data.event_location || null,
-          event_name: data.event_name || null,
-          duration_hours: data.duration_hours ?? null,
-          event_date: data.event_date || null,
-          interested_dates: data.interested_dates,
-          acquisition_channel_id: data.acquisition_channel_id ?? null,
-          acquisition_channel_name: data.acquisition_channel_name ?? null,
-          social_network_id: data.social_network_id ?? null,
-          social_network_name: data.social_network_name ?? null,
-          referrer_contact_id: data.referrer_contact_id ?? null,
-          referrer_name: data.referrer_name || null,
-          referrer_contact_name: data.referrer_contact_name || null,
-          referrer_contact_email: data.referrer_contact_email || null,
-        });
-        setContactId(data.contact_id);
-      }
-    } catch (error) {
-      console.error('Error reloading promise:', error);
-    }
-  }, [promiseId]);
+  const handleEditSuccess = useCallback(() => {
+    // Los datos se actualizarán automáticamente desde el contexto
+    window.location.reload();
+  }, []);
 
-  if (!promiseData || !contactId || loadingCotizacion) {
+  // Usar datos del contexto directamente
+  const contactId = contextPromiseData?.contact_id || null;
+
+  if (contextLoading || !contextPromiseData || !contactId || loadingCotizacion) {
     return null;
   }
 
   if (!cotizacionAutorizada || !cotizacionAutorizada.evento_id) {
     return null;
   }
+
+  const promiseData = {
+    name: contextPromiseData.name,
+    phone: contextPromiseData.phone,
+    email: contextPromiseData.email,
+    address: contextPromiseData.address,
+    event_type_id: contextPromiseData.event_type_id,
+    event_type_name: contextPromiseData.event_type_name,
+    event_location: contextPromiseData.event_location,
+    event_name: contextPromiseData.event_name,
+    duration_hours: contextPromiseData.duration_hours,
+    event_date: contextPromiseData.event_date,
+    interested_dates: contextPromiseData.interested_dates,
+    acquisition_channel_id: contextPromiseData.acquisition_channel_id,
+    acquisition_channel_name: contextPromiseData.acquisition_channel_name,
+    social_network_id: contextPromiseData.social_network_id,
+    social_network_name: contextPromiseData.social_network_name,
+    referrer_contact_id: contextPromiseData.referrer_contact_id,
+    referrer_name: contextPromiseData.referrer_name,
+    referrer_contact_name: contextPromiseData.referrer_contact_name,
+    referrer_contact_email: contextPromiseData.referrer_contact_email,
+  };
 
   return (
     <>

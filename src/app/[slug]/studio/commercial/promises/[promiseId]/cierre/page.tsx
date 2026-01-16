@@ -34,7 +34,8 @@ export default function PromiseCierrePage() {
   const [cotizacionEnCierre, setCotizacionEnCierre] = useState<CotizacionListItem | null>(null);
   const [loadingCotizacion, setLoadingCotizacion] = useState(true);
 
-  // Cargar solo la cotización en cierre (los datos de la promesa vienen del contexto)
+  // Cargar solo la cotización en cierre usando getCotizacionesByPromiseId
+  // (optimizado: solo trae cotizaciones activas, no todas)
   useEffect(() => {
     const loadCotizacion = async () => {
       if (!promiseId) return;
