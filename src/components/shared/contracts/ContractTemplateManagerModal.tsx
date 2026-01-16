@@ -284,7 +284,7 @@ export function ContractTemplateManagerModal({
         onCancel={onClose}
         cancelLabel="Cerrar"
         closeOnClickOutside={false}
-        zIndex={10060}
+        zIndex={10050}
       >
         <div className="space-y-4">
           {/* Mensaje cuando faltan datos del estudio */}

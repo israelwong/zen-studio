@@ -14,15 +14,14 @@ import { CrewMembersManager } from '@/components/shared/crew-members';
 import { TareasOperativasSheet } from '@/components/shared/tareas-operativas/TareasOperativasSheet';
 import { PromisesConfigProvider, usePromisesConfig } from '../../commercial/promises/context/PromisesConfigContext';
 import { ConfigurationCatalogModal, type ConfigurationSection } from '@/components/shared/configuracion';
-import { FileText, Shield, Receipt, CreditCard, Tag, Settings } from 'lucide-react';
+import { FileText, Shield, Receipt, CreditCard, FileCheck, Building2, Package } from 'lucide-react';
 import { CondicionesComercialesManager } from '@/components/shared/condiciones-comerciales';
 import { TerminosCondicionesEditor } from '@/components/shared/terminos-condiciones';
 import { AvisoPrivacidadManager } from '@/components/shared/avisos-privacidad/AvisoPrivacidadManager';
 import { PaymentMethodsModal } from '@/components/shared/payments/PaymentMethodsModal';
-import { PipelineConfigModal } from '../../commercial/promises/components/PipelineConfigModal';
-import { PromiseTagsManageModal } from '../../commercial/promises/components/PromiseTagsManageModal';
-import { getPipelineStages } from '@/lib/actions/studio/commercial/promises';
-import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
+import { ContractTemplateManagerModal } from '@/components/shared/contracts/ContractTemplateManagerModal';
+import { StudioContractDataModal } from '@/components/shared/contracts/StudioContractDataModal';
+import { TipoEventoManagementModal } from '@/components/shared/tipos-evento/TipoEventoManagementModal';
 
 interface StudioLayoutWrapperProps {
   studioSlug: string;
@@ -45,31 +44,10 @@ function StudioLayoutContent({
   const [showCondicionesManager, setShowCondicionesManager] = useState(false);
   const [showTerminosManager, setShowTerminosManager] = useState(false);
   const [showAvisoPrivacidad, setShowAvisoPrivacidad] = useState(false);
-  const [showPipelineConfig, setShowPipelineConfig] = useState(false);
-  const [showTagsModal, setShowTagsModal] = useState(false);
   const [showPaymentMethods, setShowPaymentMethods] = useState(false);
-  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
-
-  // Cargar etapas del pipeline
-  useEffect(() => {
-    const loadPipelineStages = async () => {
-      const result = await getPipelineStages(studioSlug);
-      if (result.success && result.data) {
-        setPipelineStages(result.data);
-      }
-    };
-    loadPipelineStages();
-  }, [studioSlug]);
-
-  const handlePipelineStagesUpdated = () => {
-    const loadPipelineStages = async () => {
-      const result = await getPipelineStages(studioSlug);
-      if (result.success && result.data) {
-        setPipelineStages(result.data);
-      }
-    };
-    loadPipelineStages();
-  };
+  const [showContractsModal, setShowContractsModal] = useState(false);
+  const [showStudioDataModal, setShowStudioDataModal] = useState(false);
+  const [showEventTypesModal, setShowEventTypesModal] = useState(false);
 
   // Escuchar eventos del catálogo de configuración
   useEffect(() => {
@@ -77,23 +55,26 @@ function StudioLayoutContent({
     const handleOpenAviso = () => setShowAvisoPrivacidad(true);
     const handleOpenCondiciones = () => setShowCondicionesManager(true);
     const handleOpenPaymentMethods = () => setShowPaymentMethods(true);
-    const handleOpenTags = () => setShowTagsModal(true);
-    const handleOpenPipeline = () => setShowPipelineConfig(true);
+    const handleOpenContracts = () => setShowContractsModal(true);
+    const handleOpenStudioData = () => setShowStudioDataModal(true);
+    const handleOpenEventTypes = () => setShowEventTypesModal(true);
 
     window.addEventListener('open-terminos-modal', handleOpenTerminos);
     window.addEventListener('open-aviso-modal', handleOpenAviso);
     window.addEventListener('open-condiciones-modal', handleOpenCondiciones);
     window.addEventListener('open-payment-methods-modal', handleOpenPaymentMethods);
-    window.addEventListener('open-tags-modal', handleOpenTags);
-    window.addEventListener('open-pipeline-modal', handleOpenPipeline);
+    window.addEventListener('open-contracts-modal', handleOpenContracts);
+    window.addEventListener('open-studio-data-modal', handleOpenStudioData);
+    window.addEventListener('open-event-types-modal', handleOpenEventTypes);
 
     return () => {
       window.removeEventListener('open-terminos-modal', handleOpenTerminos);
       window.removeEventListener('open-aviso-modal', handleOpenAviso);
       window.removeEventListener('open-condiciones-modal', handleOpenCondiciones);
       window.removeEventListener('open-payment-methods-modal', handleOpenPaymentMethods);
-      window.removeEventListener('open-tags-modal', handleOpenTags);
-      window.removeEventListener('open-pipeline-modal', handleOpenPipeline);
+      window.removeEventListener('open-contracts-modal', handleOpenContracts);
+      window.removeEventListener('open-studio-data-modal', handleOpenStudioData);
+      window.removeEventListener('open-event-types-modal', handleOpenEventTypes);
     };
   }, []);
 
@@ -155,6 +136,18 @@ function StudioLayoutContent({
           },
           category: 'legal',
         },
+        {
+          id: 'datos-legales',
+          title: 'Datos Legales del Estudio',
+          description: 'Edita la información legal del estudio para contratos y documentos',
+          icon: Building2,
+          onClick: () => {
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('open-studio-data-modal'));
+            }, 100);
+          },
+          category: 'legal',
+        },
       ],
     },
     {
@@ -185,35 +178,29 @@ function StudioLayoutContent({
           },
           category: 'comercial',
         },
-      ],
-    },
-    {
-      id: 'promesas',
-      title: 'Gestión de Promesas',
-      items: [
         {
-          id: 'etiquetas',
-          title: 'Etiquetas',
-          description: 'Gestiona las etiquetas para organizar y categorizar promesas',
-          icon: Tag,
+          id: 'contratos',
+          title: 'Plantilla de Contratos',
+          description: 'Gestiona las plantillas de contratos reutilizables para tus eventos',
+          icon: FileCheck,
           onClick: () => {
             setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('open-tags-modal'));
+              window.dispatchEvent(new CustomEvent('open-contracts-modal'));
             }, 100);
           },
-          category: 'promesas',
+          category: 'comercial',
         },
         {
-          id: 'pipeline',
-          title: 'Configuración del Pipeline',
-          description: 'Personaliza las etapas del pipeline de promesas',
-          icon: Settings,
+          id: 'tipos-evento',
+          title: 'Tipos de Evento',
+          description: 'Gestiona los tipos de eventos disponibles para tus promesas',
+          icon: Package,
           onClick: () => {
             setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('open-pipeline-modal'));
+              window.dispatchEvent(new CustomEvent('open-event-types-modal'));
             }, 100);
           },
-          category: 'promesas',
+          category: 'comercial',
         },
       ],
     },
@@ -305,8 +292,8 @@ function StudioLayoutContent({
           isOpen={promisesConfig.isConfigCatalogOpen}
           onClose={promisesConfig.closeConfigCatalog}
           sections={configurationSections}
-          title="Configuración de Promesas"
-          description="Gestiona todas las configuraciones relacionadas con promesas y contratación"
+          title="Opciones de Configuración"
+          description="Gestiona las configuraciones generales de tu estudio"
         />
       )}
 
@@ -329,23 +316,30 @@ function StudioLayoutContent({
         onClose={() => setShowAvisoPrivacidad(false)}
       />
 
-      <PipelineConfigModal
-        isOpen={showPipelineConfig}
-        onClose={() => setShowPipelineConfig(false)}
-        studioSlug={studioSlug}
-        pipelineStages={pipelineStages}
-        onSuccess={handlePipelineStagesUpdated}
-      />
-
-      <PromiseTagsManageModal
-        isOpen={showTagsModal}
-        onClose={() => setShowTagsModal(false)}
-        studioSlug={studioSlug}
-      />
-
       <PaymentMethodsModal
         isOpen={showPaymentMethods}
         onClose={() => setShowPaymentMethods(false)}
+        studioSlug={studioSlug}
+      />
+
+      <ContractTemplateManagerModal
+        isOpen={showContractsModal}
+        onClose={() => setShowContractsModal(false)}
+        studioSlug={studioSlug}
+      />
+
+      <StudioContractDataModal
+        isOpen={showStudioDataModal}
+        onClose={() => setShowStudioDataModal(false)}
+        studioSlug={studioSlug}
+        onSave={async () => {
+          // Recargar datos si es necesario
+        }}
+      />
+
+      <TipoEventoManagementModal
+        isOpen={showEventTypesModal}
+        onClose={() => setShowEventTypesModal(false)}
         studioSlug={studioSlug}
       />
     </div>

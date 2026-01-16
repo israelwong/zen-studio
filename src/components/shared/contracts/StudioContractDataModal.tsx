@@ -204,7 +204,7 @@ export function StudioContractDataModal({
       cancelLabel="Cancelar"
       isLoading={loading}
       closeOnClickOutside={false}
-      zIndex={10070}
+      zIndex={10050}
     >
       <div className="space-y-6">
         {/* Alerta informativa */}
