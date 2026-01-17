@@ -48,10 +48,10 @@ export function CalculoConCondiciones({
 
   // Precio base para el desglose:
   // - Si hay precio negociado guardado: usar precio original de negociación como precio base
-  // - Si no hay precio negociado: usar precio calculado con condiciones comerciales como precio base
+  // - Si no hay precio negociado: usar el precio original de la cotización (antes de aplicar condiciones comerciales)
   const precioBaseParaDesglose = tienePrecioNegociado && precioOriginalNegociacion !== null
     ? precioOriginalNegociacion
-    : (calculoConCondicion?.precioFinal ?? (cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price));
+    : (cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price);
 
   // Convertir condición comercial a formato compatible con CondicionesComercialesDesglose
   const condicionParaResumen = condicionComercial ? {
