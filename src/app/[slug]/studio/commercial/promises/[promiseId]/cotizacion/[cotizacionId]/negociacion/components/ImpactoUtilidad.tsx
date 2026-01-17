@@ -13,6 +13,7 @@ import type { CalculoNegociacionResult, ValidacionMargen } from '@/lib/utils/neg
 import {
   getColorIndicadorMargen,
   getBgColorIndicadorMargen,
+  calculateFinancialHealth,
 } from '@/lib/utils/negociacion-calc';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
@@ -40,6 +41,13 @@ export function ImpactoUtilidad({
     original.precioFinal > 0
       ? ((original.utilidadNeta / original.precioFinal) * 100).toFixed(1)
       : '0.0';
+
+  // Calcular salud financiera (incluye costos de items de cortesía en costoTotal)
+  const financialHealth = calculateFinancialHealth(
+    negociada.costoTotal,
+    negociada.gastoTotal,
+    negociada.precioFinal
+  );
 
   return (
     <ZenCard>
@@ -112,25 +120,18 @@ export function ImpactoUtilidad({
           <div className="space-y-1">
             <div className="text-xs text-zinc-400">Margen</div>
             <div className="flex items-baseline gap-1.5 flex-wrap">
-              {validacionMargen && (
-                <ZenBadge
-                  variant={
-                    validacionMargen.nivel === 'aceptable'
-                      ? 'success'
-                      : validacionMargen.nivel === 'bajo'
-                      ? 'warning'
-                      : 'destructive'
-                  }
-                  className="text-[10px] px-1.5 py-0.5"
-                >
-                  {negociada.margenPorcentaje.toFixed(1)}%
-                </ZenBadge>
-              )}
-              {!validacionMargen && (
-                <span className="text-sm font-semibold text-zinc-200">
-                  {negociada.margenPorcentaje.toFixed(1)}%
-                </span>
-              )}
+              <ZenBadge
+                variant={
+                  financialHealth.estado === 'saludable'
+                    ? 'success'
+                    : financialHealth.estado === 'advertencia'
+                    ? 'warning'
+                    : 'destructive'
+                }
+                className="text-[10px] px-1.5 py-0.5"
+              >
+                {negociada.margenPorcentaje.toFixed(1)}%
+              </ZenBadge>
               {diferenciaMargen !== 0 && (
                 <span
                   className={`text-xs flex items-center gap-0.5 ${
@@ -155,21 +156,19 @@ export function ImpactoUtilidad({
           </div>
         </div>
 
-        {validacionMargen && (
-          <div
-            className={`mt-3 p-2 rounded-lg border ${getBgColorIndicadorMargen(
-              validacionMargen.nivel
-            )}`}
-          >
-            <p
-              className={`text-xs ${getColorIndicadorMargen(
-                validacionMargen.nivel
-              )}`}
-            >
-              {validacionMargen.mensaje}
-            </p>
-          </div>
-        )}
+        {/* Alerta de salud financiera */}
+        <div className={`mt-3 p-3 rounded-lg border ${financialHealth.bgColor}`}>
+          <p className={`text-sm font-medium ${financialHealth.color}`}>
+            {financialHealth.mensaje}
+          </p>
+          {financialHealth.estado !== 'saludable' && financialHealth.diferenciaFaltante > 0 && (
+            <div className="mt-2 pt-2 border-t border-current/20">
+              <p className={`text-xs ${financialHealth.color} opacity-80`}>
+                Precio de rescate sugerido: <span className="font-semibold">{formatearMoneda(financialHealth.precioRescate)}</span>
+              </p>
+            </div>
+          )}
+        </div>
       </ZenCardContent>
     </ZenCard>
   );

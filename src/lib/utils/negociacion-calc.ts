@@ -260,6 +260,81 @@ export function validarMargenNegociado(
   };
 }
 
+export interface FinancialHealthResult {
+  estado: 'saludable' | 'advertencia' | 'critico' | 'peligro';
+  margenActual: number;
+  precioRescate: number;
+  diferenciaFaltante: number;
+  mensaje: string;
+  color: string;
+  bgColor: string;
+}
+
+/**
+ * Calcula la salud financiera basada en el margen de utilidad
+ * 
+ * @param costos - Costo total (incluyendo costos de items de cortesía)
+ * @param gastos - Gasto total
+ * @param precioNegociado - Precio negociado actual
+ * @returns Resultado con estado, precio de rescate y mensaje
+ */
+export function calculateFinancialHealth(
+  costos: number,
+  gastos: number,
+  precioNegociado: number
+): FinancialHealthResult {
+  const costosTotales = costos + gastos;
+  
+  // Calcular margen actual
+  const utilidadNeta = precioNegociado - costosTotales;
+  const margenActual = precioNegociado > 0 
+    ? (utilidadNeta / precioNegociado) * 100 
+    : 0;
+
+  // Calcular precio de rescate para alcanzar 20% de margen
+  // Precio de Rescate = Costos / (1 - 0.20) = Costos / 0.80
+  const precioRescate = costosTotales / 0.80;
+  const diferenciaFaltante = precioRescate - precioNegociado;
+
+  // Determinar estado según el margen
+  let estado: 'saludable' | 'advertencia' | 'critico' | 'peligro';
+  let mensaje: string;
+  let color: string;
+  let bgColor: string;
+
+  if (margenActual >= 20) {
+    estado = 'saludable';
+    mensaje = 'Margen sólido para la operación.';
+    color = 'text-emerald-400';
+    bgColor = 'bg-emerald-950/40 border-emerald-800/30';
+  } else if (margenActual >= 15) {
+    estado = 'advertencia';
+    mensaje = `Margen bajo: ${margenActual.toFixed(1)}%. Te faltan ${formatearMoneda(diferenciaFaltante)} para alcanzar el 20%. Se recomienda ajustar a ${formatearMoneda(precioRescate)}.`;
+    color = 'text-amber-400';
+    bgColor = 'bg-amber-950/40 border-amber-800/30';
+  } else if (margenActual >= 10) {
+    estado = 'critico';
+    mensaje = `Atención: Rentabilidad comprometida. Precio mínimo recomendado: ${formatearMoneda(precioRescate)}.`;
+    color = 'text-red-400';
+    bgColor = 'bg-red-950/40 border-red-800/30';
+  } else {
+    estado = 'peligro';
+    mensaje = '❌ RIESGO OPERATIVO. El precio está por debajo del límite de seguridad.';
+    color = 'text-red-500';
+    bgColor = 'bg-red-950/60 border-red-600/50';
+  }
+
+  return {
+    estado,
+    margenActual,
+    precioRescate,
+    diferenciaFaltante,
+    mensaje,
+    color,
+    bgColor,
+  };
+}
+
 /**
  * Calcula el impacto total de items marcados como cortesía
  * 
