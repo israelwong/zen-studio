@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Gift } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronDown, ChevronRight, Gift, Search, X } from 'lucide-react';
 import {
   ZenCard,
   ZenCardContent,
@@ -9,6 +9,7 @@ import {
   ZenCardTitle,
   ZenCardDescription,
   ZenBadge,
+  ZenInput,
 } from '@/components/ui/zen';
 import { formatearMoneda } from '@/lib/actions/studio/catalogo/calcular-precio';
 import type { CotizacionItem } from '@/lib/utils/negociacion-calc';
@@ -29,9 +30,10 @@ export function NegociacionItemsTree({
 }: NegociacionItemsTreeProps) {
   const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
   const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
+  const [filtroTexto, setFiltroTexto] = useState('');
 
   // Construir estructura jerárquica
-  const estructura = useMemo(() => {
+  const estructuraCompleta = useMemo(() => {
     const itemsConSnapshots = items.map((item) => ({
       id: item.id,
       item_id: item.item_id,
@@ -58,8 +60,69 @@ export function NegociacionItemsTree({
     });
   }, [items]);
 
-  // Expandir todas las secciones y categorías por defecto
-  React.useEffect(() => {
+  // Crear mapa de items por ID para acceso rápido
+  const itemsMap = useMemo(() => {
+    const map = new Map<string, CotizacionItem>();
+    items.forEach((item) => {
+      map.set(item.id, item);
+    });
+    return map;
+  }, [items]);
+
+  // Filtrar estructura basándose en el texto de búsqueda
+  const estructura = useMemo(() => {
+    if (!filtroTexto.trim()) {
+      return estructuraCompleta;
+    }
+
+    const textoBusqueda = filtroTexto.toLowerCase().trim();
+    const seccionesFiltradas = estructuraCompleta.secciones
+      .map((seccion) => {
+        const categoriasFiltradas = seccion.categorias
+          .map((categoria) => {
+            const itemsFiltrados = categoria.items.filter((itemData) => {
+              const item = itemsMap.get(itemData.id || '');
+              if (!item) return false;
+
+              const nombre = (item.name || '').toLowerCase();
+              const descripcion = (item.description || '').toLowerCase();
+              const categoriaNombre = (categoria.nombre || '').toLowerCase();
+              const seccionNombre = (seccion.nombre || '').toLowerCase();
+
+              return (
+                nombre.includes(textoBusqueda) ||
+                descripcion.includes(textoBusqueda) ||
+                categoriaNombre.includes(textoBusqueda) ||
+                seccionNombre.includes(textoBusqueda)
+              );
+            });
+
+            if (itemsFiltrados.length === 0) return null;
+
+            return {
+              ...categoria,
+              items: itemsFiltrados,
+            };
+          })
+          .filter((cat): cat is typeof seccion.categorias[0] => cat !== null);
+
+        if (categoriasFiltradas.length === 0) return null;
+
+        return {
+          ...seccion,
+          categorias: categoriasFiltradas,
+        };
+      })
+      .filter((sec): sec is typeof estructuraCompleta.secciones[0] => sec !== null);
+
+    return {
+      ...estructuraCompleta,
+      secciones: seccionesFiltradas,
+    };
+  }, [estructuraCompleta, filtroTexto, itemsMap]);
+
+  // Expandir todas las secciones y categorías por defecto o cuando hay filtro activo
+  useEffect(() => {
     const todasLasSecciones = new Set(estructura.secciones.map((s) => s.nombre));
     setSeccionesExpandidas(todasLasSecciones);
 
@@ -103,15 +166,6 @@ export function NegociacionItemsTree({
     onItemsChange(newSet);
   };
 
-  // Crear mapa de items por ID para acceso rápido
-  const itemsMap = useMemo(() => {
-    const map = new Map<string, CotizacionItem>();
-    items.forEach((item) => {
-      map.set(item.id, item);
-    });
-    return map;
-  }, [items]);
-
   const impacto = calcularImpactoCortesias(items, itemsCortesia);
 
   return (
@@ -121,6 +175,27 @@ export function NegociacionItemsTree({
         <ZenCardDescription>
           Revisa los servicios y marca como cortesía los que se incluyen sin cargo
         </ZenCardDescription>
+        <div className="mt-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <ZenInput
+              type="text"
+              placeholder="Buscar servicio, categoría o sección..."
+              value={filtroTexto}
+              onChange={(e) => setFiltroTexto(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {filtroTexto && (
+              <button
+                onClick={() => setFiltroTexto('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors"
+                aria-label="Limpiar búsqueda"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
       </ZenCardHeader>
       <ZenCardContent className="space-y-4">
         <div className="space-y-2">

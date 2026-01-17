@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ZenCard,
   ZenCardContent,
@@ -36,6 +36,16 @@ export function PrecioSimulador({
   const [inputValue, setInputValue] = useState(
     precioPersonalizado?.toString() || ''
   );
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Sincronizar inputValue con precioPersonalizado cuando cambia externamente (solo si no está editando)
+  useEffect(() => {
+    if (!isEditing && precioPersonalizado !== null) {
+      setInputValue(precioPersonalizado.toString());
+    } else if (!isEditing && precioPersonalizado === null) {
+      setInputValue('');
+    }
+  }, [precioPersonalizado, isEditing]);
 
   // Calcular precio mínimo (costo + gasto)
   const precioMinimo = cotizacion.items.reduce(
@@ -44,10 +54,12 @@ export function PrecioSimulador({
     0
   );
 
-  // Precio de referencia: si hay condiciones comerciales, usar ese; sino el precio original
-  const precioRef = precioReferencia ?? cotizacion.price;
+  // Precio de referencia: si hay condiciones comerciales, usar el "Total a pagar" del desglose; sino el precio original
+  // Este precio ya incluye descuentos de condiciones comerciales
+  const precioRef = precioReferencia ?? (cotizacion.precioOriginal ?? cotizacion.price);
 
   // Calcular monto de items de cortesía (los que están marcados como cortesía)
+  // Se calcula sobre el precio unitario original de cada item
   const montoItemsCortesia = cotizacion.items.reduce((sum, item) => {
     const isCortesia = itemsCortesia.has(item.id);
     if (isCortesia) {
@@ -56,16 +68,30 @@ export function PrecioSimulador({
     return sum;
   }, 0);
 
-  // Cálculo: Precio de referencia (Total a pagar) - Monto de items de cortesía
+  // Cálculo: Precio de referencia (Total a pagar del desglose de condiciones comerciales) - Monto de items de cortesía
+  // Este cálculo parte del precio con condiciones comerciales aplicadas y resta las cortesías
   const calculoItemsSeleccionados = precioRef - montoItemsCortesia;
 
-  const handleInputChange = (value: string) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
     setInputValue(value);
+    setIsEditing(true);
+    
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue >= 0) {
       onPrecioChange(numValue);
-    } else if (value === '') {
+    } else if (value === '' || value === '.') {
       onPrecioChange(null);
+    }
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    // Asegurar que el valor final esté sincronizado
+    if (precioPersonalizado !== null) {
+      setInputValue(precioPersonalizado.toString());
+    } else {
+      setInputValue('');
     }
   };
 
@@ -100,7 +126,8 @@ export function PrecioSimulador({
             <ZenInput
               type="number"
               value={inputValue}
-              onChange={(e) => handleInputChange(e.target.value)}
+              onChange={handleInputChange}
+              onBlur={handleBlur}
               placeholder={precioRef.toString()}
               min={precioMinimo}
               step="0.01"
@@ -129,10 +156,19 @@ export function PrecioSimulador({
             return sum + (item.expense || 0) * item.quantity;
           }, 0);
 
+          // Calcular costo de items de cortesía (se incurre en el costo pero no se recupera)
+          const costoItemsCortesia = cotizacion.items.reduce((sum, item) => {
+            if (itemsCortesia.has(item.id)) {
+              return sum + (item.cost || 0) * item.quantity;
+            }
+            return sum;
+          }, 0);
+
           // Usar precio personalizado si existe, sino el precio base (precio referencia - cortesías)
           const precioParaCalcular = precioPersonalizado ?? calculoItemsSeleccionados;
 
-          // Calcular utilidad y margen
+          // Calcular utilidad: precio - costos - gastos - costo de items cortesía
+          // Los costos de cortesías se restan adicionalmente porque se incurren pero no se recuperan
           const utilidadNeta = precioParaCalcular - costoTotal - gastoTotal;
           const margenPorcentaje =
             precioParaCalcular > 0 ? (utilidadNeta / precioParaCalcular) * 100 : 0;

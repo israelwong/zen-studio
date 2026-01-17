@@ -33,9 +33,14 @@ export function ComparacionView({
   return (
     <ZenCard>
       <ZenCardHeader className="pb-2">
-        <ZenCardTitle className="text-sm">
-          Precio Original {formatearMoneda(original.precioFinal)}
-        </ZenCardTitle>
+        <div className="flex items-baseline gap-2">
+          <ZenCardTitle className="text-lg text-zinc-400">
+            Precio Original
+          </ZenCardTitle>
+          <span className="text-2xl font-bold text-emerald-400">
+            {formatearMoneda(original.precioFinal)}
+          </span>
+        </div>
       </ZenCardHeader>
       <ZenCardContent className="pt-0">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

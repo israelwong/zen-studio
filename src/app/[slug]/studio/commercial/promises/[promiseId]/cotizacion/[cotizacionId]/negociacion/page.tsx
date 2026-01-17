@@ -71,6 +71,7 @@ export default function NegociacionPage() {
     itemsCortesia: new Set(),
     notas: '',
   });
+  const [totalAPagarCondiciones, setTotalAPagarCondiciones] = useState<number | null>(null);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -209,7 +210,29 @@ export default function NegociacionPage() {
         condicionComercial = negociacionState.condicionComercialTemporal;
       }
 
-      if (negociacionState.precioPersonalizado !== null) {
+      // Calcular "Cálculo de items seleccionados" (Total a pagar - cortesías)
+      const montoItemsCortesia = cotizacionOriginal.items.reduce((sum, item) => {
+        if (negociacionState.itemsCortesia.has(item.id)) {
+          return sum + (item.unit_price || 0) * item.quantity;
+        }
+        return sum;
+      }, 0);
+      
+      const precioReferencia = totalAPagarCondiciones ?? (cotizacionOriginal.precioOriginal ?? cotizacionOriginal.price);
+      const calculoItemsSeleccionados = precioReferencia - montoItemsCortesia;
+
+      // PRIORIDAD: Si hay precio personalizado, usar ese precio directamente
+      // Si no hay precio personalizado, usar el "Cálculo de items seleccionados"
+      const precioPersonalizadoNum = typeof negociacionState.precioPersonalizado === 'number' 
+        ? negociacionState.precioPersonalizado 
+        : parseFloat(String(negociacionState.precioPersonalizado || 0));
+      
+      // Usar precio personalizado si existe, sino usar calculoItemsSeleccionados
+      const precioParaCalcular = (!isNaN(precioPersonalizadoNum) && precioPersonalizadoNum > 0) 
+        ? precioPersonalizadoNum 
+        : calculoItemsSeleccionados;
+      
+      if (precioParaCalcular > 0) {
         const costoTotal = cotizacionOriginal.items.reduce(
           (sum, item) => sum + (item.cost || 0) * item.quantity,
           0
@@ -218,10 +241,10 @@ export default function NegociacionPage() {
           (sum, item) => sum + (item.expense || 0) * item.quantity,
           0
         );
-        const utilidadNeta = negociacionState.precioPersonalizado - costoTotal - gastoTotal;
+        const utilidadNeta = precioParaCalcular - costoTotal - gastoTotal;
         const margenPorcentaje =
-          negociacionState.precioPersonalizado > 0
-            ? (utilidadNeta / negociacionState.precioPersonalizado) * 100
+          precioParaCalcular > 0
+            ? (utilidadNeta / precioParaCalcular) * 100
             : 0;
 
         const costoTotalOriginal = cotizacionOriginal.items.reduce(
@@ -237,14 +260,14 @@ export default function NegociacionPage() {
         const impactoUtilidad = utilidadNeta - utilidadNetaOriginal;
 
         return {
-          precioFinal: negociacionState.precioPersonalizado,
-          precioBase: negociacionState.precioPersonalizado,
+          precioFinal: Number(precioParaCalcular.toFixed(2)),
+          precioBase: Number(precioParaCalcular.toFixed(2)),
           descuentoTotal: 0,
-          costoTotal,
-          gastoTotal,
-          utilidadNeta,
-          margenPorcentaje,
-          impactoUtilidad,
+          costoTotal: Number(costoTotal.toFixed(2)),
+          gastoTotal: Number(gastoTotal.toFixed(2)),
+          utilidadNeta: Number(utilidadNeta.toFixed(2)),
+          margenPorcentaje: Number(margenPorcentaje.toFixed(2)),
+          impactoUtilidad: Number(impactoUtilidad.toFixed(2)),
           items: cotizacionOriginal.items.map((item) => ({
             id: item.id,
             precioOriginal: (item.unit_price || 0) * item.quantity,
@@ -273,6 +296,7 @@ export default function NegociacionPage() {
     configPrecios,
     negociacionState,
     condicionesComerciales,
+    totalAPagarCondiciones,
   ]);
 
   // Validaciรณn de margen
@@ -387,25 +411,13 @@ export default function NegociacionPage() {
 
           {/* 3. Desglose de precio con condiciones comerciales aplicadas */}
           {(() => {
-            let precioConCondiciones: number | null = null;
-            if (condicionComercialCompleta && configPrecios) {
-              const calculoConCondicion = calcularPrecioNegociado({
-                cotizacionOriginal,
-                precioPersonalizado: null,
-                descuentoAdicional: null,
-                condicionComercial: condicionComercialCompleta,
-                itemsCortesia: new Set(),
-                configPrecios,
-              });
-              precioConCondiciones = calculoConCondicion?.precioFinal ?? null;
-            }
-
             return (
               <>
                 <CalculoConCondiciones
                   cotizacionOriginal={cotizacionOriginal}
                   condicionComercial={condicionComercialCompleta}
                   configuracionPrecios={configPrecios}
+                  onTotalAPagarCalculado={setTotalAPagarCondiciones}
                 />
 
                 {/* 4. Precio de Negociación con Desglose integrado */}
@@ -419,7 +431,7 @@ export default function NegociacionPage() {
                     }))
                   }
                   validacionMargen={validacionMargen}
-                  precioReferencia={precioConCondiciones}
+                  precioReferencia={totalAPagarCondiciones}
                   itemsCortesia={negociacionState.itemsCortesia}
                   showDesglose={true}
                 />

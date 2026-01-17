@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { CondicionesComercialesDesglose } from '@/components/shared/condiciones-comerciales';
 import type { ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 import type {
@@ -14,12 +14,14 @@ interface CalculoConCondicionesProps {
   cotizacionOriginal: CotizacionCompleta;
   condicionComercial: CondicionComercial | CondicionComercialTemporal | null;
   configuracionPrecios: ConfiguracionPrecios | null;
+  onTotalAPagarCalculado?: (totalAPagar: number | null) => void;
 }
 
 export function CalculoConCondiciones({
   cotizacionOriginal,
   condicionComercial,
   configuracionPrecios,
+  onTotalAPagarCalculado,
 }: CalculoConCondicionesProps) {
 
   // Calcular precio con condición comercial (sin cortesías ni precio personalizado)
@@ -61,6 +63,32 @@ export function CalculoConCondiciones({
     advance_percentage: condicionComercial.advance_percentage ?? null,
     advance_amount: condicionComercial.advance_amount ?? null,
   } : null;
+
+  // Calcular "Total a pagar" del desglose (igual que se muestra en CondicionesComercialesDesglose)
+  const totalAPagar = useMemo(() => {
+    if (!condicionComercial || !condicionParaResumen) {
+      return null;
+    }
+
+    // Si hay precio negociado guardado, el total a pagar es el precio negociado
+    if (tienePrecioNegociado && precioNegociadoGuardado !== null) {
+      return precioNegociadoGuardado;
+    }
+
+    // Calcular igual que el desglose: precioBase - descuento
+    const descuentoMonto = condicionParaResumen.discount_percentage
+      ? precioBaseParaDesglose * (condicionParaResumen.discount_percentage / 100)
+      : 0;
+    const subtotal = precioBaseParaDesglose - descuentoMonto;
+    return subtotal;
+  }, [condicionComercial, condicionParaResumen, precioBaseParaDesglose, tienePrecioNegociado, precioNegociadoGuardado]);
+
+  // Notificar al padre el total a pagar calculado
+  useEffect(() => {
+    if (onTotalAPagarCalculado) {
+      onTotalAPagarCalculado(totalAPagar);
+    }
+  }, [totalAPagar, onTotalAPagarCalculado]);
 
   if (!condicionComercial || !condicionParaResumen) {
     return null;

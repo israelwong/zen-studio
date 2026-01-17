@@ -91,8 +91,26 @@ export function SelectorCondicionesComerciales({
             metodo_pago_name: mp.metodos_pago.payment_method_name,
           })),
         }));
-        setCondicionesComerciales(condicionesMapeadas);
-        onCondicionesLoaded?.(condicionesMapeadas);
+
+        // Ordenar: condiciones de tipo "offer" al final
+        const condicionesOrdenadas = [...condicionesMapeadas].sort((a, b) => {
+          const aType = a.type || 'standard';
+          const bType = b.type || 'standard';
+          
+          // Si ambos son del mismo tipo, mantener orden original
+          if (aType === bType) {
+            return 0;
+          }
+          
+          // Standard primero, luego offer
+          if (aType === 'standard' && bType === 'offer') return -1;
+          if (aType === 'offer' && bType === 'standard') return 1;
+          
+          return 0;
+        });
+
+        setCondicionesComerciales(condicionesOrdenadas);
+        onCondicionesLoaded?.(condicionesOrdenadas);
       }
     } catch (error) {
       console.error('Error loading condiciones:', error);
@@ -137,13 +155,21 @@ export function SelectorCondicionesComerciales({
     }
   }, [condicionesComerciales.length, condicionSeleccionada, condicionTemporal === null]);
 
-  const handleSelectCondicion = (condicionId: string) => {
+  const handleSelectCondicion = (condicionId: string, metodoPagoId?: string) => {
     if (condicionId === '') {
       onCondicionChange(null, null, null);
       setCrearTemporal(false);
     } else {
       const condicion = condicionesComerciales.find((c) => c.id === condicionId);
-      const condicionCompleta: CondicionComercial | null = condicion ? {
+      if (!condicion) return;
+
+      // Si se especificó un método de pago, buscar ese método específico
+      let metodoPagoSeleccionado = null;
+      if (metodoPagoId) {
+        metodoPagoSeleccionado = condicion.metodos_pago.find((mp) => mp.id === metodoPagoId);
+      }
+
+      const condicionCompleta: CondicionComercial | null = {
         id: condicion.id,
         name: condicion.name,
         description: condicion.description,
@@ -151,8 +177,8 @@ export function SelectorCondicionesComerciales({
         advance_percentage: condicion.advance_percentage,
         advance_type: condicion.advance_type,
         advance_amount: condicion.advance_amount,
-        metodo_pago_id: condicion.metodo_pago_id,
-      } : null;
+        metodo_pago_id: metodoPagoSeleccionado?.metodo_pago_id || condicion.metodo_pago_id || null,
+      };
       onCondicionChange(condicionId, null, condicionCompleta);
       setCrearTemporal(false);
     }
