@@ -2,10 +2,11 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { getStudioProfileBySlug } from '@/lib/actions/public/profile.actions';
 import { getConversionMetrics } from '@/lib/actions/studio/analytics/analytics-dashboard.actions';
-import { getPromiseStats } from '@/lib/actions/studio/analytics/promise-stats.actions';
+import { getPromiseStats, getPromiseAcquisitionStats } from '@/lib/actions/studio/analytics/promise-stats.actions';
 import { AnalyticsSkeleton } from '../components';
 import { ConversionMetricsClient } from './components/ConversionMetricsClient';
 import { PromiseStatsClient } from './components/PromiseStatsClient';
+import { AcquisitionStatsClient } from './components/AcquisitionStatsClient';
 import { Target } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -37,9 +38,10 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
     const studio = result.data.studio;
 
     // Obtener datos iniciales (mes actual)
-    const [conversionResult, promiseStatsResult] = await Promise.all([
+    const [conversionResult, promiseStatsResult, acquisitionStatsResult] = await Promise.all([
         getConversionMetrics(studio.id),
         getPromiseStats(studio.id),
+        getPromiseAcquisitionStats(studio.id),
     ]);
 
     if (!conversionResult.success) {
@@ -74,6 +76,17 @@ async function MarketingAnalyticsContent({ studioSlug }: { studioSlug: string })
                     <PromiseStatsClient 
                         studioId={studio.id} 
                         initialData={promiseStatsResult.data} 
+                    />
+                </div>
+            )}
+
+            {/* Acquisition Stats */}
+            {acquisitionStatsResult.success && acquisitionStatsResult.data && (
+                <div>
+                    <AcquisitionStatsClient 
+                        studioId={studio.id}
+                        studioSlug={studioSlug}
+                        initialData={acquisitionStatsResult.data} 
                     />
                 </div>
             )}
