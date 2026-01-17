@@ -41,6 +41,7 @@ export interface CotizacionCompleta {
   precioOriginal?: number; // Precio original antes de negociar (para cálculos y presentación)
   status: string;
   items: CotizacionItem[];
+  visible_to_client?: boolean | null;
   // Datos de negociación guardados (opcionales, solo si la cotización ya está en negociación)
   negociacion_precio_original?: number | null;
   negociacion_precio_personalizado?: number | null;

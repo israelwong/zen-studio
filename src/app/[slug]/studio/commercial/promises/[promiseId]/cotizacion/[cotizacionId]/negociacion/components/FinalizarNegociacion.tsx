@@ -10,6 +10,7 @@ import {
   ZenButton,
   ZenInput,
   ZenTextarea,
+  ZenSwitch,
 } from '@/components/ui/zen';
 import {
   crearVersionNegociada,
@@ -55,6 +56,9 @@ export function FinalizarNegociacion({
     isUpdating ? cotizacionOriginal.name : `${cotizacionOriginal.name} - Negociada`
   );
   const [loading, setLoading] = useState(false);
+  const [visibleToClient, setVisibleToClient] = useState(
+    isUpdating ? (cotizacionOriginal.visible_to_client ?? false) : false
+  );
 
   const tieneCambios =
     negociacionState.precioPersonalizado !== null ||
@@ -115,6 +119,7 @@ export function FinalizarNegociacion({
               negociacionState.condicionComercialTemporal ?? undefined,
             items_cortesia: Array.from(negociacionState.itemsCortesia),
             notas: negociacionState.notas || undefined,
+            visible_to_client: visibleToClient,
           })
         : await crearVersionNegociada({
             studio_slug: studioSlug,
@@ -128,6 +133,7 @@ export function FinalizarNegociacion({
               negociacionState.condicionComercialTemporal ?? undefined,
             items_cortesia: Array.from(negociacionState.itemsCortesia),
             notas: negociacionState.notas || undefined,
+            visible_to_client: visibleToClient,
           });
 
       if (result.success && result.data) {
@@ -246,6 +252,22 @@ export function FinalizarNegociacion({
             </ul>
           </div>
         )}
+
+        {/* Switch visible para el cliente */}
+        <div className="flex items-center justify-between p-3 bg-zinc-900/50 border border-zinc-800 rounded-lg">
+          <div className="flex-1">
+            <label className="text-sm font-medium text-zinc-300 cursor-pointer">
+              Visible para el cliente
+            </label>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              La cotización será visible para el prospecto en su portal
+            </p>
+          </div>
+          <ZenSwitch
+            checked={visibleToClient}
+            onCheckedChange={setVisibleToClient}
+          />
+        </div>
 
         {/* Botones */}
         <div className="space-y-3">

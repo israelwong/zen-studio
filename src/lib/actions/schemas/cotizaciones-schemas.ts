@@ -137,6 +137,7 @@ export const crearVersionNegociadaSchema = z.object({
   condicion_comercial_temporal: condicionComercialTemporalSchema.optional().nullable(),
   items_cortesia: z.array(z.string().cuid()).default([]),
   notas: z.string().optional(),
+  visible_to_client: z.boolean().default(false),
 });
 
 export type CrearVersionNegociadaData = z.infer<typeof crearVersionNegociadaSchema>;
@@ -151,6 +152,7 @@ export const aplicarCambiosNegociacionSchema = z.object({
   condicion_comercial_temporal: condicionComercialTemporalSchema.optional().nullable(),
   items_cortesia: z.array(z.string().cuid()).default([]),
   notas: z.string().optional(),
+  visible_to_client: z.boolean().optional(),
 });
 
 export type AplicarCambiosNegociacionData = z.infer<typeof aplicarCambiosNegociacionSchema>;

@@ -48,6 +48,7 @@ export async function loadCotizacionParaNegociacion(
         price: true,
         status: true,
         promise_id: true,
+        visible_to_client: true,
         condiciones_comerciales_id: true,
         negociacion_precio_original: true,
         negociacion_precio_personalizado: true,
@@ -129,6 +130,7 @@ export async function loadCotizacionParaNegociacion(
         price: cotizacion.price, // Precio actual (negociado si está en negociación)
         precioOriginal, // Precio original antes de negociar
         status: cotizacion.status,
+        visible_to_client: cotizacion.visible_to_client ?? false,
         items,
         // Datos de negociación guardados (si la cotización ya está en negociación)
         negociacion_precio_original: precioOriginal,
@@ -262,7 +264,7 @@ export async function crearVersionNegociada(
           price: precioFinal,
           status: 'negociacion', // Nueva cotizaci?n con status negociacion
           order: newOrder,
-          visible_to_client: cotizacionOriginal.visible_to_client ?? false, // Copiar visibilidad de la original
+          visible_to_client: validatedData.visible_to_client ?? false,
           selected_by_prospect: false, // IMPORTANTE: Cotizaciones en negociaci?n NO est?n autorizadas por el prospecto
           // NO es revisi?n - no incluir revision_of_id, revision_number, revision_status
           // Campos de negociaci?n
@@ -461,6 +463,11 @@ export async function aplicarCambiosNegociacion(
         condiciones_comerciales_id:
           validatedData.condicion_comercial_id || undefined,
       };
+
+      // Actualizar visible_to_client si se proporciona
+      if (validatedData.visible_to_client !== undefined) {
+        updateData.visible_to_client = validatedData.visible_to_client;
+      }
 
       // Solo establecer negociacion_created_at si no existe (primera vez que se guarda como negociación)
       if (!cotizacion.negociacion_created_at) {
