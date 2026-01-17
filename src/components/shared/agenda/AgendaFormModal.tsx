@@ -69,6 +69,7 @@ export function AgendaFormModal({
         if (result.success) {
           toast.success('Agendamiento actualizado');
           onSuccess?.(result.data);
+          window.dispatchEvent(new CustomEvent('agenda-updated'));
           onClose();
         } else {
           toast.error(result.error || 'Error al actualizar agendamiento');
@@ -92,6 +93,7 @@ export function AgendaFormModal({
         if (result.success) {
           toast.success('Agendamiento creado');
           onSuccess?.(result.data);
+          window.dispatchEvent(new CustomEvent('agenda-updated'));
           onClose();
         } else {
           toast.error(result.error || 'Error al crear agendamiento');
@@ -114,6 +116,7 @@ export function AgendaFormModal({
       if (result.success) {
         toast.success('Agendamiento eliminado correctamente');
         onSuccess?.(undefined);
+        window.dispatchEvent(new CustomEvent('agenda-updated'));
         onClose();
       } else {
         toast.error(result.error || 'Error al eliminar agendamiento');

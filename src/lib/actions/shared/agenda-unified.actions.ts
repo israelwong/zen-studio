@@ -1719,3 +1719,40 @@ export async function eliminarAgendamiento(
     }
 }
 
+/**
+ * Obtener conteo de agendamientos futuros
+ */
+export async function getAgendaCount(studioSlug: string): Promise<{
+    success: boolean;
+    count?: number;
+    error?: string;
+}> {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return { success: false, error: 'Studio no encontrado' };
+        }
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+
+        const count = await prisma.studio_agenda.count({
+            where: {
+                studio_id: studio.id,
+                date: {
+                    gte: now,
+                },
+            },
+        });
+
+        return { success: true, count };
+    } catch (error) {
+        console.error('[AGENDA] Error obteniendo conteo:', error);
+        return { success: false, error: 'Error interno del servidor' };
+    }
+}
+

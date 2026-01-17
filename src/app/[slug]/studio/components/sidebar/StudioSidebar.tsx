@@ -25,6 +25,7 @@ import {
     Search,
     Globe,
     Target,
+    Package,
 } from 'lucide-react';
 
 interface StudioSidebarProps {
@@ -103,6 +104,7 @@ export function StudioSidebar({ className, studioSlug, onCommandOpen }: StudioSi
             icon: ShoppingBagIcon,
             items: [
                 { id: 'catalogo', name: 'Catálogo', href: `/commercial/catalogo`, icon: ShoppingBagIcon },
+                { id: 'paquetes', name: 'Paquetes', href: `/commercial/paquetes`, icon: Package },
                 { id: 'portafolios', name: 'Portafolios', href: `/commercial/portafolios`, icon: FolderOpen },
                 { id: 'ofertas', name: 'Ofertas', href: `/commercial/ofertas`, icon: Megaphone },
                 { id: 'promises', name: 'Promesas', href: `/commercial/promises`, icon: File },

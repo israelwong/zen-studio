@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { StudioSidebar } from '../sidebar/StudioSidebar';
 import { AppHeader } from '../header/AppHeader';
 import { ZenMagicChatWrapper } from '../ZenMagic';
-import { UtilityDock } from '../tools/UtilityDock';
 import { CommandMenu } from '../tools/CommandMenu';
 import { useZenMagicChat } from '../ZenMagic';
 import { useContactsSheet } from '@/components/shared/contacts/ContactsSheetContext';
@@ -214,6 +213,10 @@ function StudioLayoutContent({
         <AppHeader
           studioSlug={studioSlug}
           onCommandOpen={() => setCommandOpen(true)}
+          onAgendaClick={handleAgendaClick}
+          onTareasOperativasClick={handleTareasOperativasClick}
+          onContactsClick={handleContactsClick}
+          onPromisesConfigClick={handlePromisesConfigClick}
         />
 
         {/* Container: Sidebar + Main Content */}
@@ -239,15 +242,6 @@ function StudioLayoutContent({
           onOpenChange={setCommandOpen}
         />
       </div>
-
-      {/* COLUMNA 2: Utility Dock (Full height) */}
-      <UtilityDock
-        studioSlug={studioSlug}
-        onAgendaClick={handleAgendaClick}
-        onContactsClick={handleContactsClick}
-        onTareasOperativasClick={handleTareasOperativasClick}
-        onPromisesConfigClick={handlePromisesConfigClick}
-      />
 
       {/* ZEN Magic Chat (siempre al final) */}
       <ZenMagicChatWrapper studioSlug={studioSlug} />

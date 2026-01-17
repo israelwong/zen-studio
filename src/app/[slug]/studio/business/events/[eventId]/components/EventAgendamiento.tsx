@@ -85,6 +85,7 @@ export function EventAgendamiento({
       loadAgendamientos();
     }
     setEditingAgendamiento(null);
+    window.dispatchEvent(new CustomEvent('agenda-updated'));
     onAgendaUpdated?.();
   };
 
@@ -118,6 +119,7 @@ export function EventAgendamiento({
       const result = await eliminarAgendamiento(studioSlug, deletingAgendamientoId);
       if (result.success) {
         toast.success('Agendamiento eliminado correctamente');
+        window.dispatchEvent(new CustomEvent('agenda-updated'));
         onAgendaUpdated?.();
       } else {
         // Revertir si falló

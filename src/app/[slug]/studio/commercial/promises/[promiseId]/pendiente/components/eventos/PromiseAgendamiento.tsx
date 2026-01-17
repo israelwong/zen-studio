@@ -74,6 +74,7 @@ export function PromiseAgendamiento({
       const result = await eliminarAgendamiento(studioSlug, agendamiento.id);
       if (result.success) {
         toast.success('Agendamiento eliminado correctamente');
+        window.dispatchEvent(new CustomEvent('agenda-updated'));
 
         // Marcar que acabamos de eliminar para prevenir re-fetch
         setJustDeleted(true);

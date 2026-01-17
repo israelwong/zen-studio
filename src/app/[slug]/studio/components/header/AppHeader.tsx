@@ -12,21 +12,82 @@ import { SubscriptionPopover } from '../ui/SubscriptionPopover';
 import { SubscriptionBadge } from '@/components/shared/subscription/SubscriptionBadge';
 import { GoogleStatusPopover } from '@/components/shared/integrations/GoogleStatusPopover';
 import { useCommercialNameShort } from '@/hooks/usePlatformConfig';
+import { Calendar, CalendarCheck, ContactRound, Settings } from 'lucide-react';
+import { useAgendaCount } from '@/hooks/useAgendaCount';
+import { obtenerEstadoConexion } from '@/lib/integrations/google';
+import { ZenBadge } from '@/components/ui/zen';
 
 interface AppHeaderProps {
     studioSlug: string;
     onCommandOpen?: () => void;
+    onAgendaClick?: () => void;
+    onTareasOperativasClick?: () => void;
+    onContactsClick?: () => void;
+    onPromisesConfigClick?: () => void;
 }
 
-export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
+export function AppHeader({
+    studioSlug,
+    onCommandOpen,
+    onAgendaClick,
+    onTareasOperativasClick,
+    onContactsClick,
+    onPromisesConfigClick,
+}: AppHeaderProps) {
     const [isMounted, setIsMounted] = useState(false);
+    const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
     const { toggleSidebar } = useZenSidebar();
     const { identidadData } = useStudioData({ studioSlug });
     const commercialNameShort = useCommercialNameShort();
+    const { count: agendaCount } = useAgendaCount({ studioSlug });
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (!isMounted) return;
+
+        let isMountedRef = true;
+
+        const checkConnection = () => {
+            if (!isMountedRef) return;
+
+            obtenerEstadoConexion(studioSlug)
+                .then((result) => {
+                    if (!isMountedRef) return;
+
+                    if (result.success && result.isConnected) {
+                        const hasCalendarScope =
+                            result.scopes?.some(
+                                (scope) =>
+                                    scope.includes('calendar') || scope.includes('calendar.events')
+                            ) || false;
+                        setHasGoogleCalendar(hasCalendarScope);
+                    } else {
+                        setHasGoogleCalendar(false);
+                    }
+                })
+                .catch(() => {
+                    if (!isMountedRef) return;
+                    setHasGoogleCalendar(false);
+                });
+        };
+
+        checkConnection();
+
+        const handleConnectionChange = () => {
+            if (isMountedRef) {
+                checkConnection();
+            }
+        };
+        window.addEventListener('google-calendar-connection-changed', handleConnectionChange);
+
+        return () => {
+            isMountedRef = false;
+            window.removeEventListener('google-calendar-connection-changed', handleConnectionChange);
+        };
+    }, [isMounted, studioSlug]);
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur-sm">
@@ -98,6 +159,9 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                     <StorageBadge studioSlug={studioSlug} />
                 </div>
 
+                {/* Divider */}
+                {/* <div className="h-6 w-px bg-zinc-700 hidden md:block" /> */}
+
                 {/* Google Suite Status */}
                 <GoogleStatusPopover studioSlug={studioSlug}>
                     <ZenButton
@@ -119,6 +183,84 @@ export function AppHeader({ studioSlug, onCommandOpen }: AppHeaderProps) {
                         <span className="sr-only">Google Suite</span>
                     </ZenButton>
                 </GoogleStatusPopover>
+
+                {/* Grupo de Agenda */}
+                {(onAgendaClick || onTareasOperativasClick) && (
+                    <div className="flex items-center gap-1 rounded-lg bg-zinc-950/30 px-1 ">
+                        {/* Agenda */}
+                        {onAgendaClick && (
+                            <ZenButton
+                                variant="ghost"
+                                size="icon"
+                                className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                                onClick={onAgendaClick}
+                                title="Agenda"
+                            >
+                                <Calendar className="h-5 w-5" />
+                                {agendaCount > 0 && (
+                                    <ZenBadge
+                                        variant="destructive"
+                                        size="sm"
+                                        className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
+                                    >
+                                        {agendaCount > 9 ? '9+' : agendaCount}
+                                    </ZenBadge>
+                                )}
+                                <span className="sr-only">Agenda</span>
+                            </ZenButton>
+                        )}
+
+                        {/* Tareas Operativas */}
+                        {onTareasOperativasClick && (
+                            <ZenButton
+                                variant="ghost"
+                                size="icon"
+                                className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                                onClick={onTareasOperativasClick}
+                                title="Tareas Operativas"
+                            >
+                                <CalendarCheck className="h-5 w-5" />
+                                <span className="sr-only">Tareas Operativas</span>
+                            </ZenButton>
+                        )}
+                    </div>
+                )}
+
+                {/* Divider */}
+                {/* {onTareasOperativasClick && onContactsClick && (
+                    <div className="h-6 w-px bg-zinc-700" />
+                )} */}
+
+                {/* Contactos */}
+                {onContactsClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onContactsClick}
+                        title="Contactos"
+                    >
+                        <ContactRound className="h-5 w-5" />
+                        <span className="sr-only">Contactos</span>
+                    </ZenButton>
+                )}
+
+                {/* Configurar */}
+                {onPromisesConfigClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onPromisesConfigClick}
+                        title="Configurar"
+                    >
+                        <Settings className="h-5 w-5" />
+                        <span className="sr-only">Configurar</span>
+                    </ZenButton>
+                )}
+
+                {/* Divider */}
+                {/* <div className="h-6 w-px bg-zinc-700" /> */}
 
                 {/* Notificaciones */}
                 <NotificationsDropdown studioSlug={studioSlug} />

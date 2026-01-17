@@ -766,6 +766,7 @@ export function EventFormModal({
 
                     if (result.success) {
                         toast.success('Fecha del evento actualizada exitosamente');
+                        window.dispatchEvent(new CustomEvent('agenda-updated'));
                         onClose();
                         if (onSuccess) {
                             onSuccess();
