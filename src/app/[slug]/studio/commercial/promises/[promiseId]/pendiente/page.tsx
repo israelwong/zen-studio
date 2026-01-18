@@ -7,6 +7,7 @@ import { PromiseQuotesPanel } from './components/cotizaciones/PromiseQuotesPanel
 import { PromiseAgendamiento } from './components/eventos/PromiseAgendamiento';
 import { PromiseTags } from './components/PromiseTags';
 import { PromiseStatsCard } from './components/PromiseStatsCard';
+import { PromiseReminderCard } from './components/PromiseReminderCard';
 import { EventFormModal } from '@/components/shared/promises';
 import { AuthorizeCotizacionModal } from './components/cotizaciones/AuthorizeCotizacionModal';
 import { PromisePendienteSkeleton } from './components/PromisePendienteSkeleton';
@@ -284,8 +285,14 @@ export default function PromisePendientePage() {
             />
           </div>
 
-          {/* Columna 3: Agendamiento + Estadísticas */}
+          {/* Columna 3: Seguimiento + Agendamiento + Estadísticas */}
           <div className="lg:col-span-1 flex flex-col h-full space-y-6">
+            {/* Seguimiento (Reminder) */}
+            <PromiseReminderCard
+              studioSlug={studioSlug}
+              promiseId={promiseId}
+            />
+
             {/* Agendamiento */}
             <PromiseAgendamiento
               studioSlug={studioSlug}

@@ -12,8 +12,9 @@ import { SubscriptionPopover } from '../ui/SubscriptionPopover';
 import { SubscriptionBadge } from '@/components/shared/subscription/SubscriptionBadge';
 import { GoogleStatusPopover } from '@/components/shared/integrations/GoogleStatusPopover';
 import { useCommercialNameShort } from '@/hooks/usePlatformConfig';
-import { Calendar, CalendarCheck, ContactRound, Settings } from 'lucide-react';
+import { Calendar, CalendarCheck, ContactRound, Settings, BellRing } from 'lucide-react';
 import { useAgendaCount } from '@/hooks/useAgendaCount';
+import { useRemindersCount } from '@/hooks/useRemindersCount';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
 import { ZenBadge } from '@/components/ui/zen';
 
@@ -24,6 +25,7 @@ interface AppHeaderProps {
     onTareasOperativasClick?: () => void;
     onContactsClick?: () => void;
     onPromisesConfigClick?: () => void;
+    onRemindersClick?: () => void;
 }
 
 export function AppHeader({
@@ -33,6 +35,7 @@ export function AppHeader({
     onTareasOperativasClick,
     onContactsClick,
     onPromisesConfigClick,
+    onRemindersClick,
 }: AppHeaderProps) {
     const [isMounted, setIsMounted] = useState(false);
     const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
@@ -40,6 +43,7 @@ export function AppHeader({
     const { identidadData } = useStudioData({ studioSlug });
     const commercialNameShort = useCommercialNameShort();
     const { count: agendaCount } = useAgendaCount({ studioSlug });
+    const { count: remindersCount } = useRemindersCount({ studioSlug });
 
     useEffect(() => {
         setIsMounted(true);
@@ -242,6 +246,29 @@ export function AppHeader({
                     >
                         <ContactRound className="h-5 w-5" />
                         <span className="sr-only">Contactos</span>
+                    </ZenButton>
+                )}
+
+                {/* Seguimientos */}
+                {onRemindersClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onRemindersClick}
+                        title="Seguimientos"
+                    >
+                        <BellRing className="h-5 w-5" />
+                        {remindersCount > 0 && (
+                            <ZenBadge
+                                variant="destructive"
+                                size="sm"
+                                className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
+                            >
+                                {remindersCount > 9 ? '9+' : remindersCount}
+                            </ZenBadge>
+                        )}
+                        <span className="sr-only">Seguimientos</span>
                     </ZenButton>
                 )}
 

@@ -58,3 +58,22 @@ export {
 
 export type { PromiseTag } from './promise-tags.actions';
 
+export {
+  upsertReminder,
+  getReminderByPromise,
+  completeReminder,
+  deleteReminder,
+  getRemindersDue,
+} from './reminders.actions';
+
+export type { Reminder, ReminderWithPromise } from './reminders.actions';
+
+export {
+  getReminderSubjects,
+  createReminderSubject,
+  updateReminderSubject,
+  deleteReminderSubject,
+} from './reminder-subjects.actions';
+
+export type { ReminderSubject } from './reminder-subjects.actions';
+

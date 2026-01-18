@@ -290,22 +290,14 @@ function PromisesKanban({
     }
   };
 
-  // Ordenar promesas: por fecha del evento (del más próximo al más lejano)
+  // Ordenar promesas: por event_date (del más próximo al más lejano)
   const sortedPromises = useMemo(() => {
     return [...filteredPromises].sort((a, b) => {
-      // Función helper para obtener la fecha del evento más próxima
+      // Función helper para obtener event_date
       const getEventDate = (promise: PromiseWithContact): number => {
-        // Prioridad 1: event_date (fecha del evento confirmado)
+        // Solo usar event_date (fecha del evento confirmado)
         if (promise.event_date) {
           return new Date(promise.event_date).getTime();
-        }
-        // Prioridad 2: interested_dates (fecha de interés)
-        if (promise.interested_dates && promise.interested_dates.length > 0) {
-          return new Date(promise.interested_dates[0]).getTime();
-        }
-        // Prioridad 3: defined_date (fecha definida legacy)
-        if (promise.defined_date) {
-          return new Date(promise.defined_date).getTime();
         }
         return 0; // Sin fecha
       };
@@ -315,7 +307,7 @@ function PromisesKanban({
 
       // Si ambas tienen fecha, ordenar del más próximo al más lejano
       if (dateA !== 0 && dateB !== 0) {
-        return dateA - dateB; // Más cercana primero
+        return dateA - dateB; // Más cercana primero (ascendente)
       }
       // Si solo una tiene fecha, ponerla primero
       if (dateA !== 0) return -1; // A tiene fecha, B no
@@ -370,7 +362,6 @@ function PromisesKanban({
     const { active, over } = event;
     setActiveId(null);
     setActivePromiseStageId(null);
-    // NO resetear isDraggingRef aquí - se reseteará después de completar la actualización
 
     if (!over || active.id === over.id) {
       isDraggingRef.current = false;
@@ -382,7 +373,10 @@ function PromisesKanban({
 
     // Verificar que es un stage válido
     const stage = pipelineStages.find((s: PipelineStage) => s.id === newStageId);
-    if (!stage) return;
+    if (!stage) {
+      isDraggingRef.current = false;
+      return;
+    }
 
     // ✅ FIX: Buscar por promise_id (no por contact id)
     const promise = localPromises.find((p: PromiseWithContact) => p.promise_id === draggedPromiseId);

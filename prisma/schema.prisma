@@ -824,6 +824,8 @@ model studios {
   promise_pipeline_stages                         studio_promise_pipeline_stages[]
   promise_tags                                    studio_promise_tags[]
   promises                                        studio_promises[]
+  reminders                                       studio_reminders[]
+  reminder_subjects                               studio_reminder_subjects[]
   short_urls                                      studio_short_urls[]
   recurring_expenses                              studio_recurring_expenses[]
   revenue_transactions                            studio_revenue_transactions[]
@@ -1320,6 +1322,7 @@ model studio_promises {
   duration_hours                  Int?
   pipeline_stage_id               String?
   // ⚠️ REMOVED: Campo status eliminado - usar pipeline_stage_id en su lugar
+  // ⚠️ REMOVED: Campo order eliminado - el Kanban ordena por fecha, no por orden manual
   defined_date                    DateTime?
   tentative_dates                 Json?
   created_at                      DateTime                        @default(now())
@@ -1351,6 +1354,7 @@ model studio_promises {
   studio                          studios                         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
   tags                            studio_promises_tags[]
   short_urls                      studio_short_urls[]
+  reminder                        studio_reminders?
 
   @@index([studio_id, contact_id])
   // ⚠️ DEPRECATED: Índice [studio_id, status] removido - usar pipeline_stage_id en su lugar
@@ -1413,6 +1417,49 @@ model studio_promise_status_history {
   @@index([promise_id, created_at])
   @@index([to_stage_id, created_at])
   @@index([user_id])
+}
+
+model studio_reminders {
+  id                  String                    @id @default(cuid())
+  studio_id           String
+  promise_id          String                    @unique
+  subject_id          String?
+  subject_text        String
+  description         String?
+  reminder_date       DateTime
+  is_completed        Boolean                   @default(false)
+  completed_at        DateTime?
+  completed_by_user_id String?
+  metadata            Json?
+  created_at          DateTime                  @default(now())
+  updated_at          DateTime                  @updatedAt
+
+  studio              studios                   @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  promise             studio_promises           @relation(fields: [promise_id], references: [id], onDelete: Cascade)
+  subject             studio_reminder_subjects? @relation(fields: [subject_id], references: [id], onDelete: SetNull)
+  completed_by        studio_users?             @relation("ReminderCompletedBy", fields: [completed_by_user_id], references: [id])
+
+  @@index([studio_id, reminder_date])
+  @@index([studio_id, is_completed, reminder_date])
+  @@index([promise_id])
+  @@index([reminder_date])
+}
+
+model studio_reminder_subjects {
+  id          String            @id @default(cuid())
+  studio_id   String
+  text        String
+  order       Int               @default(0)
+  is_active   Boolean           @default(true)
+  usage_count Int               @default(0)
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @updatedAt
+
+  studio      studios           @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  reminders   studio_reminders[]
+
+  @@unique([studio_id, text])
+  @@index([studio_id, is_active, order])
 }
 
 model studio_promise_tags {
@@ -2892,6 +2939,7 @@ model studio_users {
   pagos                                        studio_pagos[]
   promise_logs                                 studio_promise_logs[]
   promise_status_history                       studio_promise_status_history[] @relation("PromiseStatusHistoryUser")
+  completed_reminders                          studio_reminders[]         @relation("ReminderCompletedBy")
   platform_user_profiles                       platform_user_profiles?     @relation(fields: [platform_user_id], references: [id])
   studio                                       studios                     @relation(fields: [studio_id], references: [id])
 

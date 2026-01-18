@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, MoreVertical, Trash2 } from 'lucide-react';
+import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, MoreVertical, Trash2, Clock } from 'lucide-react';
 import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
 import { formatDisplayDateShort, formatDisplayDate } from '@/lib/utils/date-formatter';
@@ -11,6 +11,7 @@ import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback, ZenConfirmModal, ZenBadge
 import { PromiseDeleteModal } from '@/components/shared/promises';
 import { getPromiseTagsByPromiseId, getPromiseTags, addTagToPromise, removeTagFromPromise, type PromiseTag } from '@/lib/actions/studio/commercial/promises';
 import { deletePromise } from '@/lib/actions/studio/commercial/promises';
+import { getReminderByPromise } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 import { toast } from 'sonner';
 import { obtenerAgendamientoPorPromise } from '@/lib/actions/shared/agenda-unified.actions';
 import { getCotizacionesByPromiseId, type CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
@@ -34,6 +35,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
     const [isLoadingTags, setIsLoadingTags] = useState(false);
     const [isAddingTag, setIsAddingTag] = useState<string | null>(null);
     const [isRemovingTag, setIsRemovingTag] = useState<string | null>(null);
+    const [reminderDate, setReminderDate] = useState<Date | null>(null);
     const {
         attributes,
         listeners,
@@ -193,10 +195,47 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                     console.error('Error loading cotizaciones:', error);
                 }
             }
+
+            // Cargar recordatorio (reminder) si existe
+            if (studioSlug) {
+                try {
+                    const reminderResult = await getReminderByPromise(studioSlug, promiseId);
+                    if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
+                        setReminderDate(reminderResult.data.reminder_date);
+                    }
+                } catch (error) {
+                    console.error('Error loading reminder:', error);
+                }
+            }
         };
 
         loadData();
     }, [promise.promise_id, studioSlug, promise.tags, promise.agenda, promise.cotizaciones_count]);
+
+    // Cargar recordatorio cuando cambia la promesa
+    useEffect(() => {
+        const promiseId = promise.promise_id;
+        if (!promiseId || !studioSlug) {
+            setReminderDate(null);
+            return;
+        }
+
+        const loadReminder = async () => {
+            try {
+                const reminderResult = await getReminderByPromise(studioSlug, promiseId);
+                if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
+                    setReminderDate(reminderResult.data.reminder_date);
+                } else {
+                    setReminderDate(null);
+                }
+            } catch (error) {
+                console.error('Error loading reminder:', error);
+                setReminderDate(null);
+            }
+        };
+
+        loadReminder();
+    }, [promise.promise_id, studioSlug]);
 
     // Cargar tags disponibles cuando se abre el modal
     useEffect(() => {
@@ -534,6 +573,29 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                             {promise.event_type && (
                                 <div className="text-xs text-zinc-400">
                                     <span className="truncate">{promise.event_type.name}</span>
+                                </div>
+                            )}
+
+                            {/* Badge de recordatorio */}
+                            {reminderDate && (
+                                <div className="mt-1">
+                                    <ZenBadge
+                                        variant={
+                                            new Date(reminderDate) < new Date()
+                                                ? 'destructive'
+                                                : new Date(reminderDate).toDateString() === new Date().toDateString()
+                                                ? 'warning'
+                                                : 'default'
+                                        }
+                                        className="text-[10px] px-1.5 py-0.5 gap-1"
+                                    >
+                                        <Clock className="h-2.5 w-2.5" />
+                                        {new Date(reminderDate) < new Date()
+                                            ? 'Vencido'
+                                            : new Date(reminderDate).toDateString() === new Date().toDateString()
+                                            ? 'Hoy'
+                                            : formatDisplayDateShort(reminderDate)}
+                                    </ZenBadge>
                                 </div>
                             )}
                         </div>

@@ -11,6 +11,7 @@ import { AgendaUnifiedSheet } from '@/components/shared/agenda';
 import { ContactsSheet } from '@/components/shared/contacts';
 import { CrewMembersManager } from '@/components/shared/crew-members';
 import { TareasOperativasSheet } from '@/components/shared/tareas-operativas/TareasOperativasSheet';
+import { RemindersSideSheet } from '@/components/shared/reminders/RemindersSideSheet';
 import { PromisesConfigProvider, usePromisesConfig } from '../../commercial/promises/context/PromisesConfigContext';
 import { ConfigurationCatalogModal, type ConfigurationSection } from '@/components/shared/configuracion';
 import { FileText, Shield, Receipt, CreditCard, FileCheck, Building2, Package } from 'lucide-react';
@@ -38,6 +39,7 @@ function StudioLayoutContent({
   const [commandOpen, setCommandOpen] = useState(false);
   const [crewSheetOpen, setCrewSheetOpen] = useState(false);
   const [tareasOperativasOpen, setTareasOperativasOpen] = useState(false);
+  const [remindersSheetOpen, setRemindersSheetOpen] = useState(false);
   
   // Estados para modales de configuración
   const [showCondicionesManager, setShowCondicionesManager] = useState(false);
@@ -103,6 +105,10 @@ function StudioLayoutContent({
 
   const handleTareasOperativasClick = () => {
     setTareasOperativasOpen(true);
+  };
+
+  const handleRemindersClick = () => {
+    setRemindersSheetOpen(true);
   };
 
   // Configuraciones disponibles para el catálogo
@@ -216,6 +222,7 @@ function StudioLayoutContent({
           onAgendaClick={handleAgendaClick}
           onTareasOperativasClick={handleTareasOperativasClick}
           onContactsClick={handleContactsClick}
+          onRemindersClick={handleRemindersClick}
           onPromisesConfigClick={handlePromisesConfigClick}
         />
 
@@ -277,6 +284,13 @@ function StudioLayoutContent({
       <TareasOperativasSheet
         open={tareasOperativasOpen}
         onOpenChange={setTareasOperativasOpen}
+        studioSlug={studioSlug}
+      />
+
+      {/* Sheet de Seguimientos */}
+      <RemindersSideSheet
+        open={remindersSheetOpen}
+        onOpenChange={setRemindersSheetOpen}
         studioSlug={studioSlug}
       />
 

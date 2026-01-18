@@ -34,7 +34,11 @@ export type PromiseLogAction =
   | 'agenda_created'
   | 'agenda_updated'
   | 'agenda_cancelled'
-  | 'event_cancelled';
+  | 'event_cancelled'
+  | 'reminder_created'
+  | 'reminder_updated'
+  | 'reminder_completed'
+  | 'reminder_deleted';
 
 /**
  * Diccionario de acciones con sus descripciones
@@ -142,6 +146,38 @@ const LOG_ACTIONS: Record<
     const eventName = (meta?.eventName as string) || 'evento';
     const quotationName = meta?.quotationName as string;
     return `Evento cancelado: ${eventName}${quotationName ? ` (Cotizaci?n: ${quotationName})` : ''}`;
+  },
+  reminder_created: (meta) => {
+    const subjectText = (meta?.subject_text as string) || 'seguimiento';
+    const reminderDate = meta?.reminder_date as string;
+    const dateFormatted = reminderDate 
+      ? new Date(reminderDate).toLocaleDateString('es-MX', { 
+          day: 'numeric', 
+          month: 'short', 
+          year: 'numeric' 
+        })
+      : '';
+    return `Seguimiento creado: ${subjectText}${dateFormatted ? ` (${dateFormatted})` : ''}`;
+  },
+  reminder_updated: (meta) => {
+    const subjectText = (meta?.subject_text as string) || 'seguimiento';
+    const reminderDate = meta?.reminder_date as string;
+    const dateFormatted = reminderDate 
+      ? new Date(reminderDate).toLocaleDateString('es-MX', { 
+          day: 'numeric', 
+          month: 'short', 
+          year: 'numeric' 
+        })
+      : '';
+    return `Seguimiento actualizado: ${subjectText}${dateFormatted ? ` (${dateFormatted})` : ''}`;
+  },
+  reminder_completed: (meta) => {
+    const subjectText = (meta?.subject_text as string) || 'seguimiento';
+    return `Seguimiento completado: ${subjectText}`;
+  },
+  reminder_deleted: (meta) => {
+    const subjectText = (meta?.subject_text as string) || 'seguimiento';
+    return `Seguimiento eliminado: ${subjectText}`;
   },
 };
 

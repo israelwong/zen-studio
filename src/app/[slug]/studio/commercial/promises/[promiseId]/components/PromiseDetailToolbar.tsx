@@ -37,7 +37,7 @@ export function PromiseDetailToolbar({
 
   const handleWhatsApp = async () => {
     if (!contactData.phone) return;
-    
+
     const cleanPhone = contactData.phone.replace(/\D/g, '');
     const message = encodeURIComponent(`Hola ${contactData.contactName}`);
     const whatsappUrl = `https://wa.me/${cleanPhone}?text=${message}`;
@@ -63,23 +63,23 @@ export function PromiseDetailToolbar({
             size="sm"
             onClick={async () => {
               if (!promiseId) return;
-              
+
               try {
                 // Obtener o crear URL corta
                 const result = await getOrCreateShortUrl(studioSlug, promiseId);
-                
+
                 if (!result.success || !result.data) {
                   toast.error('Error al generar URL corta');
                   return;
                 }
 
                 const shortUrl = `${window.location.origin}/s/${result.data.shortCode}`;
-                
+
                 // Copiar al portapapeles
                 await navigator.clipboard.writeText(shortUrl);
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2000);
-                
+
                 // Registrar log
                 if (contactData) {
                   logProfileShared(studioSlug, promiseId, contactData.contactName, shortUrl).catch((error) => {
@@ -112,7 +112,7 @@ export function PromiseDetailToolbar({
             size="sm"
             onClick={() => {
               onPreview();
-              
+
               // Registrar log
               if (promiseId && contactData) {
                 const previewUrl = `${window.location.origin}/${studioSlug}/promise/${promiseId}?preview=true`;
@@ -149,6 +149,7 @@ export function PromiseDetailToolbar({
             </ZenButton>
           </div>
         )}
+
 
       </div>
 
