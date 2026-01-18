@@ -114,7 +114,7 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
     } else {
       // Expandir y cargar detalles
       setExpandedReferrers((prev) => new Set(prev).add(key));
-      
+
       // Si no hay datos cargados, cargarlos
       if (!referrerDetails[key]) {
         setReferrerDetails((prev) => ({
@@ -123,7 +123,7 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
         }));
 
         const result = await getReferrerDetails(studioId, referrer.referrerId, referrer.referrerName);
-        
+
         setReferrerDetails((prev) => ({
           ...prev,
           [key]: {
@@ -151,7 +151,7 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
         setShowReferrerModal(false);
         setSelectedReferrer(null);
         setSearchTerm('');
-        
+
         // Recargar estadísticas
         const statsResult = await getPromiseAcquisitionStats(studioId);
         if (statsResult.success && statsResult.data) {
@@ -223,7 +223,7 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
 
       // Asociar el nuevo contacto/empleado como referido
       const assignResult = await updateReferrerAssociation(studioId, selectedReferrer.name, createdId);
-      
+
       if (assignResult.success) {
         const typeLabel = newContactType === 'empleado' ? 'Empleado' : newContactType === 'cliente' ? 'Cliente' : 'Prospecto';
         toast.success(`${typeLabel} creado y asociado. ${assignResult.updatedCount || 0} contacto(s) actualizado(s)`);
@@ -234,7 +234,7 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
         setNewContactName('');
         setNewContactPhone('');
         setNewContactType('prospecto');
-        
+
         // Recargar estadísticas
         const statsResult = await getPromiseAcquisitionStats(studioId);
         if (statsResult.success && statsResult.data) {
@@ -326,9 +326,8 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
                     >
                       <div
                         onClick={(e) => handleReferrerClick(referrer, e)}
-                        className={`flex items-center justify-between p-3 ${
-                          !referrer.referrerId ? 'cursor-pointer hover:bg-zinc-800/50 transition-colors' : ''
-                        }`}
+                        className={`flex items-center justify-between p-3 ${!referrer.referrerId ? 'cursor-pointer hover:bg-zinc-800/50 transition-colors' : ''
+                          }`}
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
                           <button
@@ -349,7 +348,9 @@ export function AcquisitionStatsClient({ studioId, studioSlug, initialData }: Ac
                           </div>
                           <span className="text-sm font-medium text-zinc-200 truncate">@{referrer.referrerName}</span>
                           {!referrer.referrerId && (
-                            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" title="Sin contacto asociado" />
+                            <span title="Sin contacto asociado" aria-label="Sin contacto asociado">
+                              <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                            </span>
                           )}
                         </div>
                         <span className="text-sm font-semibold text-blue-400 shrink-0 ml-2">{referrer.count}</span>

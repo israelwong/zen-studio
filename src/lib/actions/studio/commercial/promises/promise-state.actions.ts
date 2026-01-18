@@ -31,7 +31,7 @@ export interface PromiseStateData {
     referrer_contact_email: string | null;
     pipeline_stage_slug: string | null;
     pipeline_stage_id: string | null;
-    status: string; // Status de la promesa (pending, aprobada, etc.)
+    // ⚠️ DEPRECATED: status removido - usar pipeline_stage_slug en su lugar
     has_event: boolean;
     evento_id: string | null;
   };
@@ -112,14 +112,17 @@ export async function determinePromiseState(
       return { success: false, error: 'Promesa no encontrada' };
     }
 
-    // Determinar estado según el status de la promesa y cotizaciones
-    // Prioridad 1: Si la promesa tiene status 'aprobada', siempre es autorizada
+    // Determinar estado según el pipeline_stage y cotizaciones
+    // Prioridad 1: Si la promesa tiene pipeline_stage 'approved', siempre es autorizada
     let state: PromiseState = 'pendiente';
     let cotizacionEnCierreId: string | null = null;
     let cotizacionAutorizadaId: string | null = null;
     let cotizacionAutorizada: { id: string; evento_id: string | null } | undefined = undefined;
 
-    if (promise.status === 'aprobada' || promise.status === 'approved' || promise.status === 'autorizada') {
+    // ⚠️ DEPRECATED: Usar pipeline_stage.slug en lugar de promise.status
+    const isApproved = promise.pipeline_stage?.slug === 'approved';
+    
+    if (isApproved) {
       // Si la promesa está aprobada, buscar cotización autorizada con evento
       cotizacionAutorizada = promise.quotes.find((q) => {
         if (q.archived || q.status === 'cancelada' || q.status === 'archivada') {
@@ -222,7 +225,7 @@ export async function determinePromiseState(
           referrer_contact_email: promise.contact.referrer_contact?.email || null,
           pipeline_stage_slug: promise.pipeline_stage?.slug || null,
           pipeline_stage_id: promise.pipeline_stage_id || null,
-          status: promise.status,
+          // ⚠️ DEPRECATED: status removido - usar pipeline_stage_slug en su lugar
           has_event: !!promise.event,
           evento_id: eventoIdFinal,
         },

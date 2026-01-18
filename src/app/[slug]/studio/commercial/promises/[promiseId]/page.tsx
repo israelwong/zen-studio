@@ -19,9 +19,8 @@ export default async function PromisePage({ params }: PromisePageProps) {
   }
 
   const state = stateResult.data.state;
-  const promiseStatus = stateResult.data.promiseData.status;
 
-  // Pasar el estado determinado (que ya considera el status de la promesa) al cliente
+  // Pasar el estado determinado (que ya considera el pipeline_stage de la promesa) al cliente
   // Esto permite mostrar el skeleton mientras se procesa
-  return <PromiseRedirectClient studioSlug={studioSlug} promiseId={promiseId} state={state} promiseStatus={promiseStatus} />;
+  return <PromiseRedirectClient studioSlug={studioSlug} promiseId={promiseId} state={state} promiseStatus={null} />;
 }

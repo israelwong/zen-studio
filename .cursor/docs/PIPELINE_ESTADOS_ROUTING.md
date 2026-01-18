@@ -115,10 +115,12 @@ La sincronización se ejecuta automáticamente cuando:
    - Archivo: `src/lib/actions/studio/commercial/promises/negociacion.actions.ts:542`
 
 4. **Pasar a cierre:**
-   - `pasarACierre()` → Debe sincronizar a `closing` (verificar implementación)
+   - `pasarACierre()` → ✅ Sincroniza a `closing` automáticamente
+   - Archivo: `src/lib/actions/studio/commercial/promises/cotizaciones.actions.ts:2072-2078`
 
 5. **Cancelar cierre:**
-   - `cancelarCierre()` → Debe sincronizar según estado resultante (verificar implementación)
+   - `cancelarCierre()` → ✅ Sincroniza según estado resultante automáticamente
+   - Archivo: `src/lib/actions/studio/commercial/promises/cotizaciones.actions.ts:2182-2189`
 
 ---
 
@@ -237,6 +239,71 @@ El kanban valida transiciones para evitar movimientos inválidos:
 
 ---
 
+## 🗑️ Deprecación del Campo `status`
+
+### Estado Actual
+
+El campo `status` en `studio_promises` ha sido **completamente deprecado** y ya no se usa en el código.
+
+### Cambios Realizados
+
+1. **Eliminadas escrituras:**
+   - `createPromise()` - Removido `status: 'pending'`
+   - `createPromiseFromContact()` - Removido `status: 'pending'`
+
+2. **Reemplazada lectura:**
+   - `determinePromiseState()` - Ahora usa `pipeline_stage.slug === 'approved'` en lugar de `promise.status`
+
+3. **Schema actualizado:**
+   - Campo `status` marcado como deprecated con comentario
+   - Índice `[studio_id, status]` removido del schema Prisma
+
+4. **Migración SQL:**
+   - `20260126000003_deprecate_promise_status.sql`
+   - Elimina el índice `studio_promises_studio_id_status_idx`
+   - Agrega comentario de deprecación en la columna
+
+### Eliminación Física del Campo
+
+✅ **Migración creada:** `20260126000004_remove_promise_status_field.sql`
+
+**Antes de ejecutar la migración en producción, verificar:**
+
+1. **Todas las promesas tienen `pipeline_stage_id`:**
+   ```sql
+   SELECT 
+     COUNT(*) as total_promises,
+     COUNT(pipeline_stage_id) as promises_with_stage,
+     COUNT(*) - COUNT(pipeline_stage_id) as promises_without_stage
+   FROM studio_promises;
+   ```
+   Si `promises_without_stage > 0`, ejecutar primero `20260126000002_migrate_promise_status_to_pipeline.sql`
+
+2. **No hay queries que usen el campo `status`** (ya verificado ✅)
+
+3. **El código no hace referencia al campo** (ya verificado ✅)
+
+4. **Probar en desarrollo/staging primero**
+
+**Para ejecutar la migración:**
+```bash
+# Ejecutar en Supabase o directamente en PostgreSQL
+psql -f supabase/migrations/20260126000004_remove_promise_status_field.sql
+```
+
+**Después de ejecutar:**
+- El campo `status` será eliminado físicamente de la base de datos
+- El schema de Prisma ya no incluye el campo (removido)
+- El sistema usará exclusivamente `pipeline_stage_id`
+
+### ⚠️ Importante
+
+- **NO escribir** nuevos valores en el campo `status`
+- **NO leer** el campo `status` en el código
+- **Usar siempre** `pipeline_stage_id` y `pipeline_stage.slug` como fuente única de verdad
+
+---
+
 ## 📊 Schema de Base de Datos
 
 ### `studio_promises`
@@ -244,11 +311,15 @@ El kanban valida transiciones para evitar movimientos inválidos:
 model studio_promises {
   id                String
   pipeline_stage_id String?  // ⭐ Fuente de verdad principal
-  status            String   @default("pending") // ⚠️ Legacy, en proceso de deprecación
+  // ⚠️ REMOVED: Campo status eliminado - usar pipeline_stage_id en su lugar
   // ...
   pipeline_stage    studio_promise_pipeline_stages? @relation(...)
 }
 ```
+
+**Nota:** El campo `status` ha sido completamente eliminado del schema. El índice `[studio_id, status]` fue removido previamente. Ver migraciones:
+- `20260126000003_deprecate_promise_status.sql` - Deprecación y eliminación de índice
+- `20260126000004_remove_promise_status_field.sql` - Eliminación física del campo
 
 ### `studio_promise_pipeline_stages`
 ```prisma
@@ -300,29 +371,49 @@ model studio_promise_status_history {
 - [x] Promise público desacoplado (usa estados de cotizaciones)
 - [x] `determinePromiseState()` para routing
 - [x] `movePromise()` con registro de historial
+- [x] **Deprecación completa del campo `status` en `studio_promises`** ✅
+  - [x] Eliminadas escrituras de `status` en `createPromise()` y `createPromiseFromContact()`
+  - [x] Reemplazada lectura de `status` por `pipeline_stage.slug` en `determinePromiseState()`
+  - [x] Removido índice `[studio_id, status]` del schema
+  - [x] Campo marcado como deprecated en schema con comentario
+  - [x] Migración SQL creada (`20260126000003_deprecate_promise_status.sql`)
 
-### ⚠️ En Proceso
+### ⚠️ Pendiente (Futuro)
 
-- [ ] Deprecación completa del campo `status` en `studio_promises`
-- [ ] Verificar sincronización en `pasarACierre()` y `cancelarCierre()`
-- [ ] Migración completa de datos existentes a usar solo `pipeline_stage_id`
+- [x] Verificar sincronización en `pasarACierre()` y `cancelarCierre()` ✅
+  - Ambas funciones ya sincronizan correctamente usando `syncPromisePipelineStageFromQuotes()`
+  - `pasarACierre()` sincroniza a `closing` después de pasar cotización a cierre
+  - `cancelarCierre()` sincroniza según estado resultante (pending/negotiation) después de cancelar
+- [x] Eliminación física del campo `status` de la base de datos ✅
+  - Migración SQL creada: `20260126000004_remove_promise_status_field.sql`
+  - Campo removido del schema de Prisma
+  - **⚠️ IMPORTANTE:** Ejecutar la migración solo después de verificar en producción que:
+    1. Todas las promesas tienen `pipeline_stage_id` válido
+    2. No hay queries que usen el campo `status`
+    3. El sistema funciona correctamente sin el campo
 
 ### 📝 Notas
 
-- El campo `status` todavía existe pero se está migrando a usar solo `pipeline_stage_id`
-- La función `determinePromiseState()` todavía usa `status` como fallback, pero prioriza cotizaciones
+- ✅ **El campo `status` está completamente deprecado** - Ya no se escribe ni se lee en el código
+- ✅ **El sistema usa exclusivamente `pipeline_stage_id`** como fuente única de verdad
+- ✅ **La función `determinePromiseState()` usa `pipeline_stage.slug`** en lugar de `status`
 - El promise público puede seguir usando estados de cotizaciones directamente (no requiere cambios)
+- El campo `status` permanece en la base de datos por compatibilidad pero será eliminado en una futura migración
 
 ---
 
 ## 🔗 Archivos Relacionados
 
-- `src/lib/actions/studio/commercial/promises/promise-state.actions.ts` - Determina estado para routing
+- `src/lib/actions/studio/commercial/promises/promise-state.actions.ts` - Determina estado para routing (usa `pipeline_stage.slug`)
 - `src/lib/actions/studio/commercial/promises/promise-pipeline-sync.actions.ts` - Sincronización automática
 - `src/lib/actions/studio/commercial/promises/promise-status-history.actions.ts` - Historial de cambios
-- `src/lib/actions/studio/commercial/promises/promises.actions.ts` - `movePromise()`
+- `src/lib/actions/studio/commercial/promises/promises.actions.ts` - `movePromise()`, `createPromise()` (sin `status`)
+- `src/lib/actions/studio/commercial/promises/cotizaciones.actions.ts` - `pasarACierre()`, `cancelarCierre()` (con sincronización)
 - `src/app/[slug]/studio/commercial/promises/components/PromisesKanban.tsx` - Validaciones de transición
 - `src/app/[slug]/studio/commercial/promises/[promiseId]/components/PromiseRedirectClient.tsx` - Redirección según estado
 - `src/app/[slug]/promise/[promiseId]/page.tsx` - Router del promise público
 - `prisma/04-seed-promise-pipeline.ts` - Seed de pipeline stages
-- `prisma/schema.prisma` - Schema de base de datos
+- `prisma/schema.prisma` - Schema de base de datos (campo `status` removido)
+- `supabase/migrations/20260126000002_migrate_promise_status_to_pipeline.sql` - Migración de datos de status a pipeline_stage_id
+- `supabase/migrations/20260126000003_deprecate_promise_status.sql` - Deprecación y eliminación de índice
+- `supabase/migrations/20260126000004_remove_promise_status_field.sql` - Eliminación física del campo `status`

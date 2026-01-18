@@ -51,7 +51,7 @@ const LOG_ACTIONS: Record<
   stage_change: (meta) => {
     const from = (meta?.from as string) || 'desconocida';
     const to = (meta?.to as string) || 'desconocida';
-    return `Cambio de etapa: ${from} ? ${to}`;
+    return `Cambio de etapa: ${from} → ${to}`;
   },
   whatsapp_sent: (meta) => {
     const contactName = (meta?.contactName as string) || 'contacto';

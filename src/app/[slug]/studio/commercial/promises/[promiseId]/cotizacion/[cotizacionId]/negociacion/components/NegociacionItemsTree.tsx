@@ -50,8 +50,8 @@ export function NegociacionItemsTree({
       category_name: item.category_name || null,
       name: item.name || null,
       description: item.description || null,
-      cost: item.cost || null,
-      expense: item.expense || null,
+      cost: item.cost ?? undefined,
+      expense: item.expense ?? undefined,
     }));
 
     return construirEstructuraJerarquicaCotizacion(itemsConSnapshots, {
@@ -283,7 +283,7 @@ export function NegociacionItemsTree({
                                       'border-t border-b border-zinc-700/30',
                                       itemIndex === 0 && 'border-t-0',
                                       isCortesia &&
-                                        'bg-emerald-950/20 border-l-2 border-l-emerald-500/50'
+                                      'bg-emerald-950/20 border-l-2 border-l-emerald-500/50'
                                     )}
                                   >
                                     {/* Nivel 3: Item */}

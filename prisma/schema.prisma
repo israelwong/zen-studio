@@ -1319,7 +1319,7 @@ model studio_promises {
   event_date                      DateTime? @db.Date
   duration_hours                  Int?
   pipeline_stage_id               String?
-  status                          String                          @default("pending")
+  // ⚠️ REMOVED: Campo status eliminado - usar pipeline_stage_id en su lugar
   defined_date                    DateTime?
   tentative_dates                 Json?
   created_at                      DateTime                        @default(now())
@@ -1353,7 +1353,7 @@ model studio_promises {
   short_urls                      studio_short_urls[]
 
   @@index([studio_id, contact_id])
-  @@index([studio_id, status])
+  // ⚠️ DEPRECATED: Índice [studio_id, status] removido - usar pipeline_stage_id en su lugar
   @@index([studio_id, is_test])
   @@index([studio_id, offer_id])
   @@index([offer_id])

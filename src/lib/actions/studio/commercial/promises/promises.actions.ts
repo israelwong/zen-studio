@@ -68,8 +68,13 @@ export async function getPromises(
             name: true,
             phone: true,
             email: true,
+            address: true,
             avatar_url: true,
             status: true,
+            acquisition_channel_id: true,
+            social_network_id: true,
+            referrer_contact_id: true,
+            referrer_name: true,
             created_at: true,
             updated_at: true,
           },
@@ -174,7 +179,7 @@ export async function getPromises(
     });
 
     // Mapear promesas a PromiseWithContact
-    const mappedPromises: PromiseWithContact[] = promises.map((promise) => {
+    const mappedPromises = promises.map((promise): PromiseWithContact => {
       // Mapear tags activos
       const tags = promise.tags
         ?.filter((pt) => pt.tag.is_active)
@@ -196,13 +201,13 @@ export async function getPromises(
       if (promise.event) {
         // Validación 1: el evento debe tener el promise_id correcto
         const hasCorrectPromiseId = promise.event.promise_id === promise.id;
-        
+
         // Validación 2: el evento debe tener cotización autorizada/aprobada
         const cotizacionStatus = promise.event.cotizacion?.status;
-        const hasAuthorizedCotizacion = promise.event.cotizacion_id && 
-          cotizacionStatus && 
+        const hasAuthorizedCotizacion = promise.event.cotizacion_id &&
+          cotizacionStatus &&
           ['autorizada', 'aprobada', 'approved'].includes(cotizacionStatus.toLowerCase());
-        
+
         if (hasCorrectPromiseId && hasAuthorizedCotizacion) {
           validEvent = {
             id: promise.event.id,
@@ -221,6 +226,7 @@ export async function getPromises(
         name: promise.contact.name,
         phone: promise.contact.phone,
         email: promise.contact.email,
+        address: promise.contact.address || null,
         avatar_url: promise.contact.avatar_url,
         status: promise.contact.status,
         event_type_id: promise.event_type_id,
@@ -242,6 +248,10 @@ export async function getPromises(
           : null,
         promise_pipeline_stage_id: promise.pipeline_stage_id,
         is_test: promise.is_test || false,
+        acquisition_channel_id: promise.contact.acquisition_channel_id,
+        social_network_id: promise.contact.social_network_id,
+        referrer_contact_id: promise.contact.referrer_contact_id,
+        referrer_name: promise.contact.referrer_name,
         created_at: promise.contact.created_at,
         updated_at: promise.updated_at,
         event_type: promise.event_type || null,
@@ -453,10 +463,10 @@ export async function getPromiseByIdAsPromiseWithContact(
     if (promise.event) {
       const hasCorrectPromiseId = promise.event.promise_id === promise.id;
       const cotizacionStatus = promise.event.cotizacion?.status;
-      const hasAuthorizedCotizacion = promise.event.cotizacion_id && 
-        cotizacionStatus && 
+      const hasAuthorizedCotizacion = promise.event.cotizacion_id &&
+        cotizacionStatus &&
         ['autorizada', 'aprobada', 'approved'].includes(cotizacionStatus.toLowerCase());
-      
+
       if (hasCorrectPromiseId && hasAuthorizedCotizacion) {
         validEvent = {
           id: promise.event.id,
@@ -585,7 +595,7 @@ export async function createPromise(
         },
         select: { id: true },
       });
-      stageId = nuevoStage?.id || null;
+      stageId = nuevoStage?.id || undefined;
     }
 
     // Crear o encontrar contacto
@@ -635,17 +645,17 @@ export async function createPromise(
     // VALIDACIÓN ESTRICTA: Solo aceptar una fecha y guardarla en event_date
     // El schema ya normaliza a array de máximo 1 elemento
     let eventDate: Date | null = null;
-    const interestedDatesArray = Array.isArray(validatedData.interested_dates) 
-      ? validatedData.interested_dates 
-      : validatedData.interested_dates 
-        ? [validatedData.interested_dates] 
+    const interestedDatesArray = Array.isArray(validatedData.interested_dates)
+      ? validatedData.interested_dates
+      : validatedData.interested_dates
+        ? [validatedData.interested_dates]
         : [];
-    
+
     // Validar que solo haya una fecha (el schema ya lo garantiza, pero doble validación)
     if (interestedDatesArray.length > 1) {
       console.warn('[createPromise] Múltiples fechas detectadas, usando solo la primera');
     }
-    
+
     if (interestedDatesArray.length >= 1) {
       const dateString = interestedDatesArray[0];
       eventDate = toUtcDateOnly(dateString);
@@ -660,9 +670,9 @@ export async function createPromise(
         name: validatedData.event_name?.trim() || null,
         duration_hours: durationHours,
         pipeline_stage_id: stageId,
-        status: 'pending',
+        // ⚠️ DEPRECATED: status removido - usar pipeline_stage_id en su lugar
         event_date: eventDate, // ✅ Guardar directamente en event_date (solo una fecha permitida)
-        tentative_dates: null, // ✅ Ya no usar tentative_dates, solo event_date
+        tentative_dates: Prisma.JsonNull, // ✅ Ya no usar tentative_dates, solo event_date
       },
       include: {
         event_type: {
@@ -700,12 +710,22 @@ export async function createPromise(
       interested_dates: promise.tentative_dates
         ? (promise.tentative_dates as string[])
         : null,
+      event_date: promise.event_date
+        ? dateToDateOnlyString(promise.event_date)
+        : null,
+      defined_date: promise.defined_date
+        ? dateToDateOnlyString(promise.defined_date)
+        : null,
       promise_pipeline_stage_id: promise.pipeline_stage_id,
       is_test: promise.is_test, // ✅ Incluir flag de prueba
+      acquisition_channel_id: contact.acquisition_channel_id,
+      social_network_id: contact.social_network_id,
+      referrer_contact_id: contact.referrer_contact_id,
+      referrer_name: contact.referrer_name,
       created_at: contact.created_at,
-      updated_at: contact.updated_at,
-      event_type: promise.event_type,
-      promise_pipeline_stage: promise.pipeline_stage,
+      updated_at: promise.updated_at,
+      event_type: promise.event_type || null,
+      promise_pipeline_stage: promise.pipeline_stage || null,
       last_log: null,
     };
 
@@ -716,7 +736,7 @@ export async function createPromise(
     // Crear log automático de creación de promesa
     try {
       const { logPromiseAction } = await import('./promise-logs.actions');
-      
+
       // Obtener nombre del canal de adquisición
       let channelName = 'canal desconocido';
       if (validatedData.acquisition_channel_id) {
@@ -862,7 +882,7 @@ export async function updatePromise(
 
     // Actualizar contacto
     const addressToSave = validatedData.address && validatedData.address.trim() !== '' ? validatedData.address.trim() : null;
-    
+
     const contact = await prisma.studio_contacts.update({
       where: { id: validatedData.id },
       data: {
@@ -946,8 +966,8 @@ export async function updatePromise(
 
       if (validatedData.interested_dates !== undefined) {
         updateData.tentative_dates = validatedData.interested_dates
-          ? (validatedData.interested_dates as unknown)
-          : null;
+          ? (validatedData.interested_dates as Prisma.InputJsonValue)
+          : Prisma.DbNull;
 
         // Si hay una sola fecha, guardarla también como event_date
         if (validatedData.interested_dates && validatedData.interested_dates.length === 1) {
@@ -1013,6 +1033,11 @@ export async function updatePromise(
         eventDateCreate = toUtcDateOnly(dateString);
       }
 
+      // duration_hours solo se guarda si hay event_type_id (igual que event_location)
+      const durationHoursCreate = validatedData.event_type_id && validatedData.duration_hours
+        ? validatedData.duration_hours
+        : null;
+
       promise = await prisma.studio_promises.create({
         data: {
           studio_id: contact.studio_id,
@@ -1021,14 +1046,12 @@ export async function updatePromise(
           event_location: eventLocationCreate,
           name: validatedData.event_name?.trim() || null,
           duration_hours: durationHoursCreate,
-          name: validatedData.event_name?.trim() || null,
-          duration_hours: durationHoursCreate,
           pipeline_stage_id: stageId,
-          status: 'pending',
+          // ⚠️ DEPRECATED: status removido - usar pipeline_stage_id en su lugar
           event_date: eventDateCreate,
           tentative_dates: validatedData.interested_dates
-            ? (validatedData.interested_dates as unknown)
-            : null,
+            ? (validatedData.interested_dates as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
         },
         include: {
           event_type: {
@@ -1100,9 +1123,9 @@ export async function updatePromise(
       referrer_contact_id: contact.referrer_contact_id,
       referrer_name: contact.referrer_name,
       created_at: contact.created_at,
-      updated_at: contact.updated_at,
-      event_type: promise.event_type,
-      promise_pipeline_stage: promise.pipeline_stage,
+      updated_at: promise.updated_at,
+      event_type: promise.event_type || null,
+      promise_pipeline_stage: promise.pipeline_stage || null,
       last_log: null,
     };
 
@@ -1217,7 +1240,7 @@ export async function movePromise(
       typeof eventId === 'string' &&
       eventId.trim() !== ''
     );
-    
+
     // Validar que el evento tenga cotización autorizada
     const cotizacionStatus = promise.event?.cotizacion?.status;
     const hasAuthorizedCotizacion = Boolean(
@@ -1225,9 +1248,9 @@ export async function movePromise(
       cotizacionStatus &&
       ['autorizada', 'aprobada', 'approved'].includes(cotizacionStatus.toLowerCase())
     );
-    
+
     const hasValidEvent = hasEventId && hasAuthorizedCotizacion;
-    
+
     if (
       promise.pipeline_stage?.slug === 'approved' &&
       hasValidEvent &&
@@ -1240,7 +1263,7 @@ export async function movePromise(
     }
 
     // Actualizar promesa
-    promise = await prisma.studio_promises.update({
+    const updatedPromise = await prisma.studio_promises.update({
       where: { id: promise.id },
       data: {
         pipeline_stage_id: validatedData.new_stage_id,
@@ -1261,8 +1284,23 @@ export async function movePromise(
             order: true,
           },
         },
+        event: {
+          select: {
+            id: true,
+            status: true,
+            promise_id: true,
+            cotizacion_id: true,
+            cotizacion: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        },
       },
     });
+    promise = updatedPromise;
 
     // Obtener contacto asociado
     const contact = await prisma.studio_contacts.findUnique({
@@ -1271,6 +1309,23 @@ export async function movePromise(
 
     if (!contact) {
       return { success: false, error: 'Contacto no encontrado' };
+    }
+
+    // Validar que el evento tenga cotización autorizada (misma lógica que en getPromises)
+    let validEvent = null;
+    if (promise.event) {
+      const hasCorrectPromiseId = promise.event.promise_id === promise.id;
+      const cotizacionStatus = promise.event.cotizacion?.status;
+      const hasAuthorizedCotizacion = promise.event.cotizacion_id &&
+        cotizacionStatus &&
+        ['autorizada', 'aprobada', 'approved'].includes(cotizacionStatus.toLowerCase());
+
+      if (hasCorrectPromiseId && hasAuthorizedCotizacion) {
+        validEvent = {
+          id: promise.event.id,
+          status: promise.event.status,
+        };
+      }
     }
 
     // Registrar cambio de etapa en el historial
@@ -1316,6 +1371,7 @@ export async function movePromise(
       name: contact.name,
       phone: contact.phone,
       email: contact.email,
+      address: contact.address || null,
       avatar_url: contact.avatar_url,
       status: contact.status,
       event_type_id: promise.event_type_id,
@@ -1325,12 +1381,23 @@ export async function movePromise(
       interested_dates: promise.tentative_dates
         ? (promise.tentative_dates as string[])
         : null,
+      event_date: promise.event_date
+        ? dateToDateOnlyString(promise.event_date)
+        : null,
+      defined_date: promise.defined_date
+        ? dateToDateOnlyString(promise.defined_date)
+        : null,
       promise_pipeline_stage_id: promise.pipeline_stage_id,
       is_test: promise.is_test, // ✅ Incluir flag de prueba
+      acquisition_channel_id: contact.acquisition_channel_id,
+      social_network_id: contact.social_network_id,
+      referrer_contact_id: contact.referrer_contact_id,
+      referrer_name: contact.referrer_name,
       created_at: contact.created_at,
-      updated_at: contact.updated_at,
-      event_type: promise.event_type,
-      promise_pipeline_stage: promise.pipeline_stage,
+      updated_at: promise.updated_at,
+      event_type: promise.event_type || null,
+      promise_pipeline_stage: promise.pipeline_stage || null,
+      event: validEvent,
       last_log: null,
     };
 
@@ -1456,19 +1523,32 @@ export async function archivePromise(
       name: contact.name,
       phone: contact.phone,
       email: contact.email,
+      address: contact.address || null,
       avatar_url: contact.avatar_url,
       status: contact.status,
       event_type_id: updatedPromise.event_type_id,
       event_name: updatedPromise.name || null,
+      event_location: updatedPromise.event_location || null,
+      duration_hours: updatedPromise.duration_hours || null,
       interested_dates: updatedPromise.tentative_dates
         ? (updatedPromise.tentative_dates as string[])
         : null,
-      defined_date: updatedPromise.defined_date,
+      event_date: updatedPromise.event_date
+        ? dateToDateOnlyString(updatedPromise.event_date)
+        : null,
+      defined_date: updatedPromise.defined_date
+        ? dateToDateOnlyString(updatedPromise.defined_date)
+        : null,
       promise_pipeline_stage_id: updatedPromise.pipeline_stage_id,
+      is_test: updatedPromise.is_test || false,
+      acquisition_channel_id: contact.acquisition_channel_id,
+      social_network_id: contact.social_network_id,
+      referrer_contact_id: contact.referrer_contact_id,
+      referrer_name: contact.referrer_name,
       created_at: contact.created_at,
       updated_at: updatedPromise.updated_at,
-      event_type: updatedPromise.event_type,
-      promise_pipeline_stage: updatedPromise.pipeline_stage,
+      event_type: updatedPromise.event_type || null,
+      promise_pipeline_stage: updatedPromise.pipeline_stage || null,
       last_log: null,
     };
 
@@ -1588,19 +1668,32 @@ export async function unarchivePromise(
       name: contact.name,
       phone: contact.phone,
       email: contact.email,
+      address: contact.address || null,
       avatar_url: contact.avatar_url,
       status: contact.status,
       event_type_id: updatedPromise.event_type_id,
       event_name: updatedPromise.name || null,
+      event_location: updatedPromise.event_location || null,
+      duration_hours: updatedPromise.duration_hours || null,
       interested_dates: updatedPromise.tentative_dates
         ? (updatedPromise.tentative_dates as string[])
         : null,
-      defined_date: updatedPromise.defined_date,
+      event_date: updatedPromise.event_date
+        ? dateToDateOnlyString(updatedPromise.event_date)
+        : null,
+      defined_date: updatedPromise.defined_date
+        ? dateToDateOnlyString(updatedPromise.defined_date)
+        : null,
       promise_pipeline_stage_id: updatedPromise.pipeline_stage_id,
+      is_test: updatedPromise.is_test || false,
+      acquisition_channel_id: contact.acquisition_channel_id,
+      social_network_id: contact.social_network_id,
+      referrer_contact_id: contact.referrer_contact_id,
+      referrer_name: contact.referrer_name,
       created_at: contact.created_at,
       updated_at: updatedPromise.updated_at,
-      event_type: updatedPromise.event_type,
-      promise_pipeline_stage: updatedPromise.pipeline_stage,
+      event_type: updatedPromise.event_type || null,
+      promise_pipeline_stage: updatedPromise.pipeline_stage || null,
       last_log: null,
     };
 
@@ -1713,7 +1806,7 @@ export async function deletePromise(
 
     const promise = await prisma.studio_promises.findUnique({
       where: { id: promiseId },
-      select: { 
+      select: {
         studio_id: true,
         event: {
           select: {
