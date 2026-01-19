@@ -209,8 +209,8 @@ export function PromiseReminderCard({
 
               {/* Fecha y check en la misma línea */}
               <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-                <span className="text-xs text-zinc-400 flex-1">
+                <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                <span className="text-xs text-amber-400 flex-1">
                   {formatDate(reminder.reminder_date)}
                 </span>
                 <ZenButton

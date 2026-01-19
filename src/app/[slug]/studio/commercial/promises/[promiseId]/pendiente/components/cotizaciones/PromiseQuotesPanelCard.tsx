@@ -36,6 +36,7 @@ import {
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { ClosingProcessInfoModal } from '../../../components/ClosingProcessInfoModal';
 import { getCotizacionClicks } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
+import { getReminderByPromise, deleteReminder } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 
 interface PromiseQuotesPanelCardProps {
   cotizacion: CotizacionListItem;
@@ -511,18 +512,38 @@ export function PromiseQuotesPanelCard({
     }
   };
 
-  const handlePasarACierreClick = (e: React.MouseEvent) => {
+  const handlePasarACierreClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!promiseId) {
       toast.error('No se puede pasar a cierre sin una promesa asociada');
       return;
     }
 
-    // Mostrar modal informativo
-    setShowClosingProcessInfoModal(true);
+    // Cargar recordatorio asociado a la promesa
+    setLoadingReminder(true);
+    try {
+      const reminderResult = await getReminderByPromise(studioSlug, promiseId);
+      if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
+        setReminder({
+          id: reminderResult.data.id,
+          subject_text: reminderResult.data.subject_text,
+          reminder_date: reminderResult.data.reminder_date,
+          description: reminderResult.data.description,
+        });
+      } else {
+        setReminder(null);
+      }
+    } catch (error) {
+      console.error('[handlePasarACierreClick] Error cargando recordatorio:', error);
+      setReminder(null);
+    } finally {
+      setLoadingReminder(false);
+      // Mostrar modal informativo después de cargar el recordatorio
+      setShowClosingProcessInfoModal(true);
+    }
   };
 
-  const handlePasarACierre = async () => {
+  const handlePasarACierre = async (deleteReminder: boolean = false) => {
     if (!promiseId) {
       toast.error('No se puede pasar a cierre sin una promesa asociada');
       return;
@@ -530,6 +551,22 @@ export function PromiseQuotesPanelCard({
 
     setLoading(true);
     try {
+      // Eliminar recordatorio si el usuario lo solicitó
+      if (deleteReminder && reminder) {
+        try {
+          const deleteResult = await deleteReminder(studioSlug, reminder.id);
+          if (deleteResult.success) {
+            toast.success('Recordatorio eliminado');
+          } else {
+            console.warn('[handlePasarACierre] Error eliminando recordatorio:', deleteResult.error);
+            // Continuar con el proceso aunque falle la eliminación del recordatorio
+          }
+        } catch (error) {
+          console.error('[handlePasarACierre] Error eliminando recordatorio:', error);
+          // Continuar con el proceso aunque falle la eliminación del recordatorio
+        }
+      }
+
       const result = await pasarACierre(studioSlug, cotizacion.id);
       if (result.success) {
         toast.success('Cotización pasada a proceso de cierre');
@@ -541,6 +578,7 @@ export function PromiseQuotesPanelCard({
         }
         // Cerrar modal y navegar usando metodología ZEN
         setShowClosingProcessInfoModal(false);
+        setReminder(null); // Limpiar recordatorio
         window.dispatchEvent(new CustomEvent('close-overlays'));
         // Forzar refresh del router para asegurar que determinePromiseState obtenga datos actualizados
         router.refresh();
@@ -1134,18 +1172,21 @@ export function PromiseQuotesPanelCard({
         isOpen={showClosingProcessInfoModal}
         onClose={() => {
           // No permitir cerrar mientras está procesando
-          if (loading) return;
+          if (loading || loadingReminder) return;
           setShowClosingProcessInfoModal(false);
+          setReminder(null);
         }}
         onConfirm={handlePasarACierre}
         onCancel={() => {
           // No permitir cancelar mientras está procesando
-          if (loading) return;
+          if (loading || loadingReminder) return;
           setShowClosingProcessInfoModal(false);
+          setReminder(null);
           onCierreCancelado?.(cotizacion.id);
         }}
         cotizacionName={cotizacion.name}
-        isLoading={loading}
+        reminder={reminder}
+        isLoading={loading || loadingReminder}
       />
 
     </>
