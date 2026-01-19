@@ -11,6 +11,7 @@ import { CatalogoServiciosTree } from '@/components/shared/catalogo';
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/paquetes/paquetes.actions';
+import { calcularCantidadEfectiva } from '@/lib/utils/dynamic-billing-calc';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
 import { useMediaUpload } from '@/hooks/useMediaUpload';
@@ -47,6 +48,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     // Estado del formulario
     const [nombre, setNombre] = useState(paquete?.name || '');
     const [descripcion, setDescripcion] = useState('');
+    const [baseHours, setBaseHours] = useState<number | ''>((paquete as { base_hours?: number | null })?.base_hours || '');
     const [isFeaturedInternal, setIsFeaturedInternal] = useState((paquete as { is_featured?: boolean })?.is_featured || false);
     const [precioPersonalizado, setPrecioPersonalizado] = useState<string | number>('');
     const [isPublishedInternal, setIsPublishedInternal] = useState(paquete?.status === 'active' || false);
@@ -74,6 +76,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const isFeatured = isFeaturedProp !== undefined ? isFeaturedProp : isFeaturedInternal;
     const setIsFeatured = onFeaturedChange || setIsFeaturedInternal;
     const [items, setItems] = useState<{ [servicioId: string]: number }>({});
+    const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
     const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
     const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
     const [loading, setLoading] = useState(false);
@@ -119,6 +122,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         console.log('🔍 Cargando datos del paquete para editar:', paquete);
                         setNombre(paquete.name || '');
                         setDescripcion((paquete as { description?: string }).description || '');
+                        setBaseHours((paquete as { base_hours?: number | null })?.base_hours || '');
                         if (onFeaturedChange) {
                             onFeaturedChange((paquete as { is_featured?: boolean }).is_featured || false);
                         } else {
@@ -153,16 +157,20 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                         if (paquete.paquete_items && paquete.paquete_items.length > 0) {
                             console.log('✅ Cargando items del paquete:', paquete.paquete_items);
                             const paqueteItems: { [id: string]: number } = {};
+                            const serviciosSeleccionados = new Set<string>();
                             paquete.paquete_items.forEach(item => {
                                 if (item.item_id) {
                                     paqueteItems[item.item_id] = item.quantity;
+                                    serviciosSeleccionados.add(item.item_id);
                                 }
                             });
                             console.log('✅ Items procesados:', paqueteItems);
                             setItems(paqueteItems);
+                            setSelectedServices(serviciosSeleccionados);
                         } else {
                             console.log('⚠️ No hay paquete_items o está vacío');
                             setItems(initialItems);
+                            setSelectedServices(new Set());
                         }
                     } else {
                         // Si no hay paquete, usar items vacíos
@@ -372,6 +380,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         gasto: number;
         tipo_utilidad: 'service' | 'product';
         cantidad: number;
+        billing_type?: 'HOUR' | 'SERVICE' | 'UNIT';
     }>>([]);
 
     // Cálculo dinámico del precio usando useEffect
@@ -390,11 +399,20 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             return;
         }
 
-        const serviciosSeleccionados = Object.entries(items)
-            .filter(([, cantidad]) => cantidad > 0)
-            .map(([id, cantidad]) => {
+        // Obtener base_hours para cálculo dinámico
+        const durationHours = baseHours !== '' && baseHours !== null ? Number(baseHours) : null;
+
+        // Solo considerar servicios seleccionados
+        const serviciosSeleccionados = Array.from(selectedServices)
+            .map(id => {
                 const servicio = servicioMap.get(id);
                 if (!servicio) return null;
+
+                const cantidad = items[id] || 0;
+                if (cantidad <= 0) return null;
+
+                // Obtener billing_type del servicio (default: SERVICE para compatibilidad)
+                const billingType = (servicio.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
 
                 // Calcular precio en tiempo real
                 // Mapear tipo_utilidad de la BD a formato esperado por calcularPrecio
@@ -410,6 +428,7 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     ...servicio,
                     precioUnitario: precios.precio_final,
                     cantidad,
+                    billingType,
                     resultadoPrecio: precios, // Guardar el resultado completo para el desglose
                     tipoUtilidad
                 };
@@ -435,9 +454,19 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
         let totalGasto = 0;
 
         serviciosSeleccionados.forEach(s => {
-            subtotal += (s.precioUnitario || 0) * s.cantidad;
-            totalCosto += (s.costo || 0) * s.cantidad;
-            totalGasto += (s.gasto || 0) * s.cantidad;
+            // Para HOUR: precio_hora × base_hours (sin multiplicar por cantidad)
+            // Para SERVICE/UNIT: cantidad × precio_unitario
+            if (s.billingType === 'HOUR' && durationHours !== null && durationHours > 0) {
+                // Precio por hora × horas base
+                subtotal += (s.precioUnitario || 0) * durationHours;
+                totalCosto += (s.costo || 0) * durationHours;
+                totalGasto += (s.gasto || 0) * durationHours;
+            } else {
+                // Precio fijo × cantidad
+                subtotal += (s.precioUnitario || 0) * s.cantidad;
+                totalCosto += (s.costo || 0) * s.cantidad;
+                totalGasto += (s.gasto || 0) * s.cantidad;
+            }
         });
 
         const precioPersonalizadoNum = precioPersonalizado === '' ? 0 : Number(precioPersonalizado) || 0;
@@ -471,13 +500,16 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             .filter((s): s is NonNullable<typeof s> => s !== null)
             .map(s => {
                 const tipoUtilidad: 'service' | 'product' = s.tipo_utilidad === 'service' ? 'service' : 'product';
+                // Para el desglose, usar cantidad base (no efectiva)
+                // El componente PrecioDesglosePaquete calculará correctamente según billing_type
                 return {
                     id: s.id,
                     nombre: s.nombre,
                     costo: s.costo || 0,
                     gasto: s.gasto || 0,
                     tipo_utilidad: tipoUtilidad,
-                    cantidad: s.cantidad,
+                    cantidad: s.cantidad, // Cantidad base
+                    billing_type: s.billingType,
                 };
             });
 
@@ -488,9 +520,10 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             gasto: number;
             tipo_utilidad: 'service' | 'product';
             cantidad: number;
+            billing_type?: 'HOUR' | 'SERVICE' | 'UNIT';
         }>);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [items, precioPersonalizado, configKey]); // servicioMap depende de configKey, evitar dependencias anidadas
+    }, [items, precioPersonalizado, baseHours, configKey]); // servicioMap depende de configKey, evitar dependencias anidadas
 
     // Handlers para toggles (accordion behavior)
     const toggleSeccion = (seccionId: string) => {
@@ -526,25 +559,71 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     };
 
     // Handlers
+    const toggleServiceSelection = (servicioId: string) => {
+        const servicio = servicioMap.get(servicioId);
+        setSelectedServices(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(servicioId)) {
+                newSet.delete(servicioId);
+                // Si se deselecciona, remover del items también
+                setItems(prevItems => {
+                    const newItems = { ...prevItems };
+                    delete newItems[servicioId];
+                    return newItems;
+                });
+                if (servicio) {
+                    toast.info(`${servicio.nombre} removido del paquete`);
+                }
+            } else {
+                newSet.add(servicioId);
+                // Si se selecciona, inicializar cantidad según tipo
+                const billingType = (servicio?.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
+                setItems(prevItems => {
+                    const newItems = { ...prevItems };
+                    // Para HOUR, cantidad siempre es 1 (representa "incluido")
+                    // Para otros, cantidad inicial es 1
+                    newItems[servicioId] = 1;
+                    return newItems;
+                });
+                if (servicio) {
+                    toast.success(`${servicio.nombre} agregado al paquete`);
+                }
+            }
+            return newSet;
+        });
+    };
+
     const updateQuantity = (servicioId: string, cantidad: number) => {
         const servicio = servicioMap.get(servicioId);
         const prevCantidad = items[servicioId] || 0;
+
+        // Solo permitir actualizar cantidad si el servicio está seleccionado
+        if (!selectedServices.has(servicioId)) {
+            return;
+        }
 
         setItems(prev => {
             const newItems = { ...prev };
             if (cantidad > 0) {
                 newItems[servicioId] = cantidad;
             } else {
+                // Si cantidad llega a 0, deseleccionar el servicio
                 delete newItems[servicioId];
+                setSelectedServices(prevSet => {
+                    const newSet = new Set(prevSet);
+                    newSet.delete(servicioId);
+                    return newSet;
+                });
+                if (servicio) {
+                    toast.info(`${servicio.nombre} removido del paquete`);
+                }
             }
             return newItems;
         });
 
-        // Mostrar toast al agregar/quitar items
-        if (cantidad > prevCantidad && servicio) {
-            toast.success(`${servicio.nombre} agregado al paquete`);
-        } else if (cantidad === 0 && prevCantidad > 0 && servicio) {
-            toast.info(`${servicio.nombre} removido del paquete`);
+        // Mostrar toast solo si cambió la cantidad (no al seleccionar)
+        if (cantidad !== prevCantidad && prevCantidad > 0 && servicio) {
+            toast.success(`Cantidad de ${servicio.nombre} actualizada`);
         }
     };
 
@@ -556,10 +635,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
             return;
         }
 
-        // Validar que haya items con cantidad > 0
-        const hasItems = Object.values(items).some(cantidad => cantidad > 0);
-        if (!hasItems) {
-            toast.error('Debes agregar al menos un servicio al paquete');
+        // Validar que haya servicios seleccionados
+        if (selectedServices.size === 0) {
+            toast.error('Debes seleccionar al menos un servicio al paquete');
             return;
         }
 
@@ -585,26 +663,41 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const savePaquete = async (shouldPublish: boolean) => {
         setLoading(true);
         try {
-            const serviciosData = Object.entries(items)
-                .filter(([, cantidad]) => cantidad > 0)
-                .map(([servicioId, cantidad]) => {
+            // Solo guardar servicios seleccionados
+            const serviciosData = Array.from(selectedServices)
+                .map(servicioId => {
                     const servicio = servicioMap.get(servicioId);
+                    const cantidad = items[servicioId] || 0;
+                    const billingType = (servicio?.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
 
                     if (!servicio?.servicioCategoriaId) {
                         console.error('❌ Servicio sin servicioCategoriaId:', servicio);
                         throw new Error(`Servicio ${servicioId} no tiene categoría asociada`);
                     }
 
+                    // Para servicios HOUR, cantidad siempre es 1 (representa "incluido")
+                    // Para servicios SERVICE/UNIT, usar la cantidad del estado
+                    const cantidadAGuardar = billingType === 'HOUR'
+                        ? 1
+                        : (cantidad > 0 ? cantidad : 1);
+
                     return {
                         servicioId,
-                        cantidad,
+                        cantidad: cantidadAGuardar,
                         servicioCategoriaId: servicio.servicioCategoriaId
                     };
-                });
+                })
+                .filter(item => item.cantidad > 0);
+
+            // Validar que base_hours sea un número válido si se proporciona
+            const baseHoursValue = baseHours !== '' && baseHours !== null && !isNaN(Number(baseHours))
+                ? Number(baseHours)
+                : null;
 
             const data = {
                 name: nombre,
                 description: descripcion,
+                base_hours: baseHoursValue,
                 cover_url: coverMedia[0]?.file_url || null,
                 cover_storage_bytes: coverMedia[0]?.file_size ? BigInt(coverMedia[0].file_size) : null,
                 event_type_id: initialEventTypeId || paquete?.event_type_id || 'temp',
@@ -613,6 +706,15 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                 is_featured: isFeatured,
                 servicios: serviciosData
             };
+
+            console.log('💾 Guardando paquete con datos:', {
+                base_hours: data.base_hours,
+                servicios: serviciosData.map(s => ({
+                    servicioId: s.servicioId,
+                    cantidad: s.cantidad,
+                    billingType: servicioMap.get(s.servicioId)?.billing_type
+                }))
+            });
 
             const newCoverUrl = coverMedia[0]?.file_url || null;
             const coverChanged = originalCoverUrl !== newCoverUrl;
@@ -854,11 +956,14 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                     seccionesExpandidas={seccionesExpandidas}
                     categoriasExpandidas={categoriasExpandidas}
                     items={items}
+                    selectedServices={selectedServices}
                     onToggleSeccion={toggleSeccion}
                     onToggleCategoria={toggleCategoria}
+                    onToggleSelection={toggleServiceSelection}
                     onUpdateQuantity={updateQuantity}
                     serviciosSeleccionados={serviciosSeleccionados}
                     configuracionPrecios={configuracionPrecios}
+                    baseHours={baseHours !== '' && baseHours !== null ? Number(baseHours) : null}
                 />
             </div>
 
@@ -883,6 +988,17 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
                             onChange={(e) => setDescripcion(e.target.value)}
                             placeholder="Describe los servicios incluidos..."
                             className="min-h-[80px]"
+                        />
+
+                        <ZenInput
+                            label="Horas Base"
+                            type="number"
+                            value={baseHours}
+                            onChange={(e) => setBaseHours(e.target.value === '' ? '' : Number(e.target.value))}
+                            placeholder="Ej: 8"
+                            min="0"
+                            step="0.5"
+                            hint="Duración base del paquete en horas. Los servicios tipo 'Por Hora' se multiplicarán por este valor."
                         />
 
                         {/* Cover */}

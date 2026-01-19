@@ -25,10 +25,12 @@ interface CatalogoServiciosTreeProps {
     seccionesExpandidas: Set<string>;
     categoriasExpandidas: Set<string>;
     items: { [servicioId: string]: number };
+    selectedServices: Set<string>;
 
     // Callbacks
     onToggleSeccion: (seccionId: string) => void;
     onToggleCategoria: (categoriaId: string) => void;
+    onToggleSelection: (servicioId: string) => void;
     onUpdateQuantity: (servicioId: string, cantidad: number) => void;
 
     // Datos calculados
@@ -36,6 +38,9 @@ interface CatalogoServiciosTreeProps {
 
     // Para cálculos de precio
     configuracionPrecios: ConfiguracionPrecios | null;
+    
+    // Para cálculo dinámico
+    baseHours?: number | null;
 }
 
 export function CatalogoServiciosTree({
@@ -44,11 +49,14 @@ export function CatalogoServiciosTree({
     seccionesExpandidas,
     categoriasExpandidas,
     items,
+    selectedServices,
     onToggleSeccion,
     onToggleCategoria,
+    onToggleSelection,
     onUpdateQuantity,
     serviciosSeleccionados,
     configuracionPrecios,
+    baseHours,
 }: CatalogoServiciosTreeProps) {
     return (
         <div className="space-y-2">
@@ -145,17 +153,34 @@ export function CatalogoServiciosTree({
                                                                             ? calcularPrecio(servicio.costo, servicio.gasto, tipoUtilidad, configuracionPrecios)
                                                                             : { precio_final: 0 };
                                                                         const cantidad = items[servicio.id] || 0;
-                                                                        const subtotal = precios.precio_final * cantidad;
+                                                                        const isSelected = selectedServices.has(servicio.id);
+                                                                        
+                                                                        const billingType = (servicio.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
+                                                                        const durationHours = baseHours !== null && baseHours !== undefined ? Number(baseHours) : null;
+                                                                        
+                                                                        // Calcular subtotal según billing_type (solo si está seleccionado)
+                                                                        let subtotal: number = 0;
+                                                                        if (isSelected) {
+                                                                            if (billingType === 'HOUR' && durationHours !== null && durationHours > 0) {
+                                                                                // Para HOUR: precio_hora × horas_base
+                                                                                subtotal = precios.precio_final * durationHours;
+                                                                            } else {
+                                                                                // Para SERVICE/UNIT: precio_unitario × cantidad
+                                                                                subtotal = precios.precio_final * cantidad;
+                                                                            }
+                                                                        }
 
                                                                         return (
                                                                             <div
                                                                                 key={servicio.id}
+                                                                                onClick={() => onToggleSelection(servicio.id)}
                                                                                 className={cn(
-                                                                                    'flex items-center justify-between py-3 px-2 pl-6 hover:bg-zinc-700/20 transition-colors',
+                                                                                    'flex items-center justify-between py-3 px-2 pl-6 hover:bg-zinc-700/20 transition-colors cursor-pointer',
                                                                                     'border-t border-b border-zinc-700/30',
                                                                                     servicioIndex === 0 && 'border-t-0',
-                                                                                    cantidad > 0 && 'bg-emerald-900/10 border-l-2 border-l-emerald-500/50',
-                                                                                    cantidad === 0 && 'border-l-2 border-l-transparent'
+                                                                                    isSelected
+                                                                                        ? 'bg-emerald-900/10 border-l-2 border-l-emerald-500/50'
+                                                                                        : 'border-l-2 border-l-transparent'
                                                                                 )}
                                                                             >
                                                                                 {/* Nivel 3: Servicio */}
@@ -164,52 +189,66 @@ export function CatalogoServiciosTree({
                                                                                         <span className="break-words">{servicio.nombre}</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-2 mt-1">
-                                                                                        <ZenBadge
-                                                                                            variant="outline"
-                                                                                            size="sm"
-                                                                                            className={`px-1 py-0 text-[10px] font-light rounded-sm ${servicio.tipo_utilidad === 'service'
-                                                                                                ? 'border-blue-600 text-blue-400'
-                                                                                                : 'border-purple-600 text-purple-400'
-                                                                                                }`}
-                                                                                        >
-                                                                                            {servicio.tipo_utilidad === 'service' ? 'Servicio' : 'Producto'}
-                                                                                        </ZenBadge>
-                                                                                        <span className="text-xs text-green-400">{formatearMoneda(precios.precio_final)}</span>
+                                                                                        <span className="text-xs text-green-400">
+                                                                                            {billingType === 'HOUR' 
+                                                                                                ? formatearMoneda(precios.precio_final) + '/h'
+                                                                                                : formatearMoneda(precios.precio_final)
+                                                                                            }
+                                                                                        </span>
                                                                                     </div>
                                                                                 </div>
 
-                                                                                <div className="flex items-center gap-3">
-                                                                                    <div className="flex items-center gap-1 w-16 justify-center">
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => onUpdateQuantity(servicio.id, Math.max(0, cantidad - 1))}
-                                                                                            className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
-                                                                                        >
-                                                                                            -
-                                                                                        </button>
-                                                                                        <span
-                                                                                            className={`w-6 text-center text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-white'
-                                                                                                }`}
-                                                                                        >
-                                                                                            {cantidad}
-                                                                                        </span>
-                                                                                        <button
-                                                                                            type="button"
-                                                                                            onClick={() => onUpdateQuantity(servicio.id, cantidad + 1)}
-                                                                                            className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
-                                                                                        >
-                                                                                            +
-                                                                                        </button>
-                                                                                    </div>
+                                                                                {/* Selector de cantidad/horas (solo si está seleccionado) */}
+                                                                                {isSelected && (
+                                                                                    <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                                                                                        <div className="flex items-center gap-1 w-16 justify-center">
+                                                                                            {billingType === 'HOUR' && durationHours !== null && durationHours > 0 ? (
+                                                                                                // Para servicios HOUR, mostrar horas base (no editable)
+                                                                                                <span
+                                                                                                    className="w-6 text-center text-sm font-medium text-emerald-400"
+                                                                                                    title="Horas base del paquete (configuradas en 'Horas Base')"
+                                                                                                >
+                                                                                                    {durationHours}
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                // Para servicios SERVICE/UNIT, mostrar selector de cantidad
+                                                                                                <>
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            onUpdateQuantity(servicio.id, Math.max(1, cantidad - 1));
+                                                                                                        }}
+                                                                                                        className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                                    >
+                                                                                                        -
+                                                                                                    </button>
+                                                                                                    <span
+                                                                                                        className="w-6 text-center text-sm font-medium text-emerald-400"
+                                                                                                    >
+                                                                                                        {cantidad}
+                                                                                                    </span>
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            onUpdateQuantity(servicio.id, cantidad + 1);
+                                                                                                        }}
+                                                                                                        className="w-5 h-5 flex items-center justify-center rounded bg-zinc-600 hover:bg-zinc-500 text-zinc-300 hover:text-white transition-colors text-xs"
+                                                                                                    >
+                                                                                                        +
+                                                                                                    </button>
+                                                                                                </>
+                                                                                            )}
+                                                                                        </div>
 
-                                                                                    <div className="text-right w-20">
-                                                                                        <div
-                                                                                            className={`text-sm font-medium ${cantidad > 0 ? 'text-emerald-400' : 'text-zinc-500'}`}
-                                                                                        >
-                                                                                            {formatearMoneda(subtotal)}
+                                                                                        <div className="text-right w-20">
+                                                                                            <div className="text-sm font-medium text-emerald-400">
+                                                                                                {formatearMoneda(subtotal)}
+                                                                                            </div>
                                                                                         </div>
                                                                                     </div>
-                                                                                </div>
+                                                                                )}
                                                                             </div>
                                                                         );
                                                                     })}

@@ -88,6 +88,7 @@ export async function crearPaquete(
             event_type_id: string;
             name: string;
             description?: string;
+            base_hours?: number | null;
             cover_url?: string | null;
             cover_storage_bytes?: bigint | null;
             cost?: number;
@@ -137,7 +138,7 @@ export async function crearPaquete(
             }
         }
 
-        // Obtener la posición máxima actual
+        // Obtener la posiciรณn mรกxima actual
         const maxPosition = await prisma.studio_paquetes.findFirst({
             where: { studio_id: studio.id },
             orderBy: { order: "desc" },
@@ -160,12 +161,18 @@ export async function crearPaquete(
             });
         }
 
+        // Validar base_hours: debe ser null o un número positivo
+        const baseHoursValue = paqueteData.base_hours !== undefined && paqueteData.base_hours !== null
+            ? (typeof paqueteData.base_hours === 'number' && paqueteData.base_hours > 0 ? paqueteData.base_hours : null)
+            : null;
+
         const paquete = await prisma.studio_paquetes.create({
             data: {
                 studio_id: studio.id,
                 event_type_id: eventTypeId,
                 name: paqueteData.name,
                 description: paqueteData.description,
+                base_hours: baseHoursValue,
                 cover_url: paqueteData.cover_url || null,
                 cover_storage_bytes: paqueteData.cover_storage_bytes || null,
                 cost: paqueteData.cost,
@@ -180,7 +187,7 @@ export async function crearPaquete(
                     create: paqueteData.servicios.map((servicio, index) => ({
                         item_id: servicio.servicioId,
                         service_category_id: servicio.servicioCategoriaId,
-                        quantity: servicio.cantidad,
+                        quantity: servicio.cantidad > 0 ? servicio.cantidad : 1, // Asegurar mínimo 1
                         order: index,
                         visible_to_client: true,
                         status: "active"
@@ -191,6 +198,12 @@ export async function crearPaquete(
                 event_types: true,
                 paquete_items: true,
             },
+        });
+
+        console.log('[crearPaquete] Paquete creado:', {
+            id: paquete.id,
+            base_hours: paquete.base_hours,
+            items_count: paquete.paquete_items.length
         });
 
         // No revalidar - el estado local se actualiza en el componente
@@ -254,6 +267,7 @@ export async function actualizarPaquete(
             event_type_id?: string;
             name?: string;
             description?: string;
+            base_hours?: number | null;
             cover_url?: string | null;
             cover_storage_bytes?: bigint | null;
             cost?: number;
@@ -324,7 +338,7 @@ export async function actualizarPaquete(
             // Ejecutar operaciones en paralelo
             const operaciones = [];
 
-            // Eliminar items que ya no están
+            // Eliminar items que ya no estรกn
             if (itemsAEliminar.length > 0) {
                 operaciones.push(
                     prisma.studio_paquete_items.deleteMany({
@@ -343,7 +357,7 @@ export async function actualizarPaquete(
                             paquete_id: paqueteId,
                             item_id: servicio.servicioId,
                             service_category_id: servicio.servicioCategoriaId,
-                            quantity: servicio.cantidad,
+                            quantity: servicio.cantidad > 0 ? servicio.cantidad : 1, // Asegurar mínimo 1
                             order: paqueteData.servicios?.indexOf(servicio) ?? 0,
                             visible_to_client: true,
                             status: "active"
@@ -392,10 +406,11 @@ export async function actualizarPaquete(
             }
         }
 
-        // Preparar datos de actualización (sin event_type_id, se actualiza por separado si es necesario)
+        // Preparar datos de actualizaciรณn (sin event_type_id, se actualiza por separado si es necesario)
         const updateData: {
             name?: string;
             description?: string | null;
+            base_hours?: number | null;
             cover_url?: string | null;
             cover_storage_bytes?: bigint | null;
             cost?: number | null;
@@ -406,7 +421,7 @@ export async function actualizarPaquete(
             is_featured?: boolean;
         } = {};
 
-        // Actualizar event_type_id en una operación separada si es necesario
+        // Actualizar event_type_id en una operaciรณn separada si es necesario
         if (eventTypeIdToUpdate) {
             await prisma.studio_paquetes.update({
                 where: { id: paqueteId },
@@ -415,6 +430,12 @@ export async function actualizarPaquete(
         }
         if (paqueteData.name) updateData.name = paqueteData.name;
         if (paqueteData.description !== undefined) updateData.description = paqueteData.description;
+        // Validar base_hours: debe ser null o un número positivo
+        if (paqueteData.base_hours !== undefined) {
+            updateData.base_hours = paqueteData.base_hours !== null && typeof paqueteData.base_hours === 'number' && paqueteData.base_hours > 0
+                ? paqueteData.base_hours
+                : null;
+        }
         if (paqueteData.cover_url !== undefined) updateData.cover_url = paqueteData.cover_url;
         if (paqueteData.cover_storage_bytes !== undefined) updateData.cover_storage_bytes = paqueteData.cover_storage_bytes;
         if (typeof paqueteData.cost === "number") updateData.cost = paqueteData.cost;
@@ -456,6 +477,12 @@ export async function actualizarPaquete(
                 event_types: true,
                 paquete_items: true,
             },
+        });
+
+        console.log('[actualizarPaquete] Paquete actualizado:', {
+            id: updatedPaquete.id,
+            base_hours: updatedPaquete.base_hours,
+            items_count: updatedPaquete.paquete_items.length
         });
 
         // No revalidar - el estado local se actualiza en el componente
@@ -530,7 +557,7 @@ export async function eliminarPaquete(
 }
 
 /**
- * Obtiene un paquete por ID con retry y optimización de query
+ * Obtiene un paquete por ID con retry y optimizaciรณn de query
  */
 export async function obtenerPaquetePorId(
     paqueteId: string
@@ -588,14 +615,14 @@ export async function obtenerPaquetePorId(
     } catch (error: unknown) {
         console.error("[obtenerPaquetePorId] Error:", error);
 
-        // Manejar específicamente errores de pool de conexiones
+        // Manejar especรญficamente errores de pool de conexiones
         if (error && typeof error === 'object' && 'code' in error) {
             const errorCode = error.code as string;
             if (errorCode === 'P1001' || errorCode === 'P1017' || errorCode === 'P1008') {
-                // Pool timeout, conexión cerrada o timeout de conexión
+                // Pool timeout, conexiรณn cerrada o timeout de conexiรณn
                 return {
                     success: false,
-                    error: "Error de conexión con la base de datos. Por favor, intenta nuevamente en unos momentos.",
+                    error: "Error de conexiรณn con la base de datos. Por favor, intenta nuevamente en unos momentos.",
                 };
             }
         }
@@ -651,9 +678,9 @@ export async function duplicarPaquete(
 
         // IMPORTANTE: El paquete original NO se modifica ni se archiva
         // Solo se crea una copia nueva con status "inactive"
-        // El paquete original mantiene su status y configuración original
+        // El paquete original mantiene su status y configuraciรณn original
 
-        // Obtener la posición máxima
+        // Obtener la posiciรณn mรกxima
         const maxPosition = await prisma.studio_paquetes.findFirst({
             where: { studio_id: studio.id },
             orderBy: { order: "desc" },
