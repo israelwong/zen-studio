@@ -12,10 +12,9 @@ interface PaqueteEditorProps {
     mode: 'create' | 'edit';
     paquete?: PaqueteFromDB | null;
     initialEventTypeId?: string;
-    returnTab?: string;
 }
 
-export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId, returnTab }: PaqueteEditorProps) {
+export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }: PaqueteEditorProps) {
     const router = useRouter();
     const [isPublished, setIsPublished] = useState(paquete?.status === 'active' || false);
     const [isFeatured, setIsFeatured] = useState((paquete as { is_featured?: boolean })?.is_featured || false);
@@ -28,8 +27,7 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId, r
     }, [paquete?.status, paquete]);
 
     const getReturnUrl = () => {
-        const baseUrl = `/${studioSlug}/studio/commercial/catalogo`;
-        return returnTab ? `${baseUrl}?tab=${returnTab}` : `${baseUrl}/paquetes`;
+        return `/${studioSlug}/studio/commercial/paquetes`;
     };
 
     const handleBack = () => {

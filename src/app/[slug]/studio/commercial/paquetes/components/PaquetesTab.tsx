@@ -4,7 +4,7 @@ import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { PaquetesTipoEventoList } from './PaquetesTipoEventoList';
-import { PaquetesTabSkeleton } from '../PaquetesTabSkeleton';
+import { PaquetesSkeleton } from '../PaquetesSkeleton';
 import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import { obtenerPaquetes } from '@/lib/actions/studio/paquetes/paquetes.actions';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
@@ -75,7 +75,7 @@ export default function PaquetesTab() {
     };
 
     if (loading) {
-        return <PaquetesTabSkeleton />;
+        return <PaquetesSkeleton />;
     }
 
     return (

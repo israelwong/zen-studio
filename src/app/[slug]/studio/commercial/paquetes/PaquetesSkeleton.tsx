@@ -1,8 +1,8 @@
 /**
- * Skeleton para el tab de Paquetes
+ * Skeleton para la página de Paquetes
  * Consistente con CatalogoTabSkeleton
  */
-export function PaquetesTabSkeleton() {
+export function PaquetesSkeleton() {
     return (
         <div className="space-y-4">
             {/* Header con loading */}

@@ -1,20 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { ShoppingBag, Percent } from 'lucide-react';
+import React from 'react';
+import { Package, Percent } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDialog } from '@/components/ui/zen';
-import { CatalogoTab } from './components';
+import PaquetesTab from './components/PaquetesTab';
 import { UtilidadForm } from '@/components/shared/configuracion/UtilidadForm';
+import { useParams } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
-export default function CatalogoPage() {
+export default function PaquetesPage() {
     const params = useParams();
     const studioSlug = params.slug as string;
     const [isUtilidadModalOpen, setIsUtilidadModalOpen] = useState(false);
 
     // Actualizar título de la pestaña
     useEffect(() => {
-        document.title = 'Zenly Studio - Catálogo';
+        document.title = 'Zenly Studio - Paquetes';
     }, []);
 
     return (
@@ -25,12 +26,12 @@ export default function CatalogoPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="p-2 bg-purple-600/20 rounded-lg">
-                                <ShoppingBag className="h-5 w-5 text-purple-400" />
+                                <Package className="h-5 w-5 text-purple-400" />
                             </div>
                             <div>
-                                <ZenCardTitle>Catálogo</ZenCardTitle>
+                                <ZenCardTitle>Paquetes</ZenCardTitle>
                                 <ZenCardDescription>
-                                    Gestiona tu catálogo de servicios y productos
+                                    Crea y gestiona paquetes de servicios
                                 </ZenCardDescription>
                             </div>
                         </div>
@@ -49,7 +50,7 @@ export default function CatalogoPage() {
                 </ZenCardHeader>
 
                 <ZenCardContent className="p-6">
-                    <CatalogoTab />
+                    <PaquetesTab />
                 </ZenCardContent>
             </ZenCard>
 

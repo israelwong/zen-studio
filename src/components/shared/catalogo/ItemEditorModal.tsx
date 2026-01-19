@@ -87,7 +87,7 @@ export function ItemEditorModal({
     // Estados de UI
     const [isSaving, setIsSaving] = useState(false);
 
-    // Cargar configuraci?n de precios del estudio
+    // Cargar configuración de precios del estudio
     useEffect(() => {
         const cargarConfiguracion = async () => {
             if (!configuracion && !preciosConfig) {
@@ -107,7 +107,7 @@ export function ItemEditorModal({
                             sobreprecio: parseValue(config.sobreprecio, 0.05),
                         });
                     } else {
-                        // Configuraci?n por defecto si no existe
+                        // Configuración por defecto si no existe
                         setConfiguracion({
                             utilidad_servicio: 0.30,
                             utilidad_producto: 0.40,
@@ -116,8 +116,8 @@ export function ItemEditorModal({
                         });
                     }
                 } catch (error) {
-                    console.error("Error cargando configuraci?n de precios:", error);
-                    // Usar configuraci?n por defecto en caso de error
+                    console.error("Error cargando configuración de precios:", error);
+                    // Usar configuración por defecto en caso de error
                     setConfiguracion({
                         utilidad_servicio: 0.30,
                         utilidad_producto: 0.40,
@@ -131,14 +131,14 @@ export function ItemEditorModal({
         cargarConfiguracion();
     }, [studioSlug, preciosConfig, configuracion]);
 
-    // Funci?n helper para parsear valores de configuraci?n
+    // Función helper para parsear valores de configuración
     const parseConfigValue = (val: string | undefined, def: number): number => {
         if (val === undefined || val === '') return def;
         const parsed = parseFloat(val);
         return isNaN(parsed) ? def : parsed;
     };
 
-    // Funci?n helper para convertir configuraci?n de string a n?mero
+    // Función helper para convertir configuración de string a número
     const convertirConfiguracion = (config: {
         utilidad_servicio?: string;
         utilidad_producto?: string;
@@ -153,17 +153,17 @@ export function ItemEditorModal({
         };
     };
 
-    // Actualizar configuraci?n cuando cambia la prop preciosConfig
+    // Actualizar configuración cuando cambia la prop preciosConfig
     useEffect(() => {
         if (preciosConfig) {
             setConfiguracion(preciosConfig);
         }
     }, [preciosConfig]);
 
-    // Escuchar actualizaciones de configuraci?n de precios desde otros componentes
+    // Escuchar actualizaciones de configuración de precios desde otros componentes
     useConfiguracionPreciosUpdateListener(studioSlug, useCallback(async (eventDetail) => {
         if (eventDetail) {
-            // Si viene la configuraci?n completa en el evento, usarla directamente
+            // Si viene la configuración completa en el evento, usarla directamente
             if (eventDetail.utilidad_servicio !== undefined || eventDetail.utilidad_producto !== undefined) {
                 setConfiguracion(prev => ({
                     utilidad_servicio: eventDetail.utilidad_servicio ?? prev?.utilidad_servicio ?? 0.30,
@@ -179,13 +179,13 @@ export function ItemEditorModal({
                         setConfiguracion(convertirConfiguracion(config));
                     }
                 } catch (error) {
-                    console.error("Error recargando configuraci?n de precios:", error);
+                    console.error("Error recargando configuración de precios:", error);
                 }
             }
         }
     }, [studioSlug]));
 
-    // C?lculo din?mico de precios
+    // Cálculo dinámico de precios
     const resultadoPrecio: ResultadoPrecio = useMemo(() => {
         if (!configuracion) {
             return {
@@ -300,7 +300,7 @@ export function ItemEditorModal({
         if (input.includes(',')) {
             const partes = input.split(',').map(p => p.trim()).filter(p => p);
             for (const parte of partes) {
-                // Buscar el ?ltimo n?mero en la parte
+                // Buscar el último número en la parte
                 const match = parte.match(/^(.+?)\s+(\d+(?:\.\d+)?)$/);
                 if (match) {
                     gastosParseados.push({
@@ -369,14 +369,14 @@ export function ItemEditorModal({
         try {
             setIsSaving(true);
 
-            // Asegurar que los gastos est?n sincronizados con el estado actual
+            // Asegurar que los gastos están sincronizados con el estado actual
             const formDataConGastos = {
                 ...formData,
                 gastos: gastos.length > 0 ? gastos : (formData.gastos || [])
             };
 
             if (onSave) {
-                // Usar callback del padre para mantener sincronizaci?n
+                // Usar callback del padre para mantener sincronización
                 await onSave(formDataConGastos);
             } else {
                 // Fallback: llamar directamente a las acciones (comportamiento anterior)
@@ -418,7 +418,7 @@ export function ItemEditorModal({
                 }
             }
 
-            // Actualizar estado inicial despu?s de guardar
+            // Actualizar estado inicial después de guardar
             setInitialFormData({ ...formDataConGastos });
             setInitialGastos([...gastos]);
 
@@ -558,7 +558,7 @@ export function ItemEditorModal({
                                         label=""
                                         value={formData.name}
                                         onChange={(e) => handleInputChange("name", e.target.value)}
-                                        placeholder="Ej: Sesi?n de fotos de 1 hora"
+                                        placeholder="Ej: Sesión de fotos de 1 hora"
                                         disabled={isSaving}
                                         rows={2}
                                         maxLength={100}
@@ -721,7 +721,7 @@ export function ItemEditorModal({
                                         </div>
                                     )}
 
-                                    {/* Input ?nico para agregar gastos */}
+                                    {/* Input único para agregar gastos */}
                                     <ZenInput
                                         placeholder="Ej: comida 300 (Enter) o comida 500, agua 200 (Enter)"
                                         value={nuevoGasto}
@@ -774,7 +774,7 @@ export function ItemEditorModal({
                                 )}
 
 
-                                {/* Botones de acci?n */}
+                                {/* Botones de acción */}
                                 <div className="space-y-4 pt-4 border-t border-zinc-800">
                                     {/* Switch Activo */}
                                     {formData.id && (
@@ -819,13 +819,13 @@ export function ItemEditorModal({
                 </SheetContent>
             </Sheet>
 
-            {/* Modal de confirmaci?n para cambios sin guardar */}
+            {/* Modal de confirmación para cambios sin guardar */}
             <ZenConfirmModal
                 isOpen={showConfirmClose}
                 onClose={handleCancelClose}
                 onConfirm={handleConfirmClose}
-                title="?Descartar cambios?"
-                description="Tienes cambios sin guardar. ?Est?s seguro de que deseas cerrar y descartar los cambios?"
+                title="¿Descartar cambios?"
+                description="Tienes cambios sin guardar. ¿Estás seguro de que deseas cerrar y descartar los cambios?"
                 confirmText="Descartar"
                 cancelText="Cancelar"
                 variant="destructive"

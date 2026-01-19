@@ -11,8 +11,8 @@ export type { CategoriaFormData } from "./CategoriaEditorModal";
 
 // Items
 export { ItemCard } from "./ItemCard";
-export { ItemEditorModal } from "./ItemEditorModal";
-export type { ItemFormData } from "./ItemEditorModal";
+export { ItemEditorModal } from "@/components/shared/catalogo/ItemEditorModal";
+export type { ItemFormData } from "@/components/shared/catalogo/ItemEditorModal";
 
 // Tabs
 export { default as CatalogoTab } from "./CatalogoTab";

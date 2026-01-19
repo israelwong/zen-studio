@@ -5,8 +5,8 @@ export {
     CategoriaCard,
     CategoriaEditorModal,
     ItemCard,
-    ItemEditorModal,
 } from "./components";
+export { ItemEditorModal } from "@/components/shared/catalogo/ItemEditorModal";
 
 // Types
 export type {
@@ -14,5 +14,5 @@ export type {
     CategoriaCardProps,
     CategoriaFormData,
     ItemCardProps,
-    ItemFormData,
 } from "./components";
+export type { ItemFormData } from "@/components/shared/catalogo/ItemEditorModal";

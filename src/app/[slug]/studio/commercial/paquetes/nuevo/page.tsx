@@ -12,20 +12,18 @@ interface NuevoPaquetePageProps {
     }>;
     searchParams: Promise<{
         eventTypeId?: string;
-        returnTab?: string;
     }>;
 }
 
 export default async function NuevoPaquetePage({ params, searchParams }: NuevoPaquetePageProps) {
     const { slug } = await params;
-    const { eventTypeId, returnTab } = await searchParams;
+    const { eventTypeId } = await searchParams;
 
     return (
         <PaqueteEditor
             studioSlug={slug}
             mode="create"
             initialEventTypeId={eventTypeId}
-            returnTab={returnTab}
         />
     );
 }
