@@ -251,7 +251,7 @@ export function CatalogoServiciosTree({
                                                                                                 // Para servicios HOUR, mostrar horas base (no editable)
                                                                                                 <span
                                                                                                     className="w-6 text-center text-sm font-medium text-emerald-400"
-                                                                                                    title="Horas base del paquete (configuradas en 'Horas Base')"
+                                                                                                    title={`${cantidad} × ${durationHours}h = ${formatearMoneda(subtotal)}`}
                                                                                                 >
                                                                                                     {durationHours}
                                                                                                 </span>
@@ -268,11 +268,15 @@ export function CatalogoServiciosTree({
                                                                                                     >
                                                                                                         -
                                                                                                     </button>
-                                                                                                    <span
-                                                                                                        className="w-6 text-center text-sm font-medium text-emerald-400"
-                                                                                                    >
-                                                                                                        {cantidad}
-                                                                                                    </span>
+                                                                                        <span
+                                                                                            className="w-6 text-center text-sm font-medium text-emerald-400"
+                                                                                            title={billingType === 'HOUR' && durationHours !== null && durationHours > 0 
+                                                                                                ? `${cantidad} × ${durationHours}h = ${formatearMoneda(subtotal)}`
+                                                                                                : `${cantidad} × ${formatearMoneda(precios.precio_final)} = ${formatearMoneda(subtotal)}`
+                                                                                            }
+                                                                                        >
+                                                                                            {cantidad}
+                                                                                        </span>
                                                                                                     <button
                                                                                                         type="button"
                                                                                                         onClick={(e) => {

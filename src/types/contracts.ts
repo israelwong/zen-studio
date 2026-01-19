@@ -113,6 +113,7 @@ export interface ContractService {
   nombre: string;
   descripcion?: string;
   precio: number;
+  horas?: number; // Horas de duración para servicios tipo HOUR
 }
 
 export interface CreateTemplateInput {

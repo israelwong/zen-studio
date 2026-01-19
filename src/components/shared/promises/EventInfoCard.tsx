@@ -157,6 +157,7 @@ function PhoneActionsPopover({
         <button
           type="button"
           className="text-sm text-zinc-200 hover:text-emerald-400 transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
+          suppressHydrationWarning
         >
           {phone}
         </button>
@@ -215,6 +216,7 @@ function EmailActionsPopover({
         <button
           type="button"
           className="text-sm text-zinc-200 hover:text-purple-400 transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
+          suppressHydrationWarning
         >
           {email}
         </button>

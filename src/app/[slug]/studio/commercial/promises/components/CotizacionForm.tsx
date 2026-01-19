@@ -10,7 +10,8 @@ import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/li
 import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
 import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 import { obtenerPaquetePorId } from '@/lib/actions/studio/paquetes/paquetes.actions';
-import { createCotizacion, updateCotizacion, getCotizacionById } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { createCotizacion, updateCotizacion, getCotizacionById, getPromiseDurationHours } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { calcularCantidadEfectiva } from '@/lib/utils/dynamic-billing-calc';
 import { PrecioDesglosePaquete } from '@/components/shared/precio';
 import { CatalogoServiciosTree } from '@/components/shared/catalogo';
 import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
@@ -95,6 +96,7 @@ export function CotizacionForm({
   const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
   const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [durationHours, setDurationHours] = useState<number | null>(null);
 
   // Cargar catálogo, configuración y datos iniciales
   useEffect(() => {
@@ -197,6 +199,22 @@ export function CotizacionForm({
           setPrecioPersonalizado(cotizacionData.price);
           setVisibleToClient((cotizacionData as { visible_to_client?: boolean }).visible_to_client ?? false);
 
+          // Cargar event_duration de la cotización si existe
+          const cotizacionEventDuration = (cotizacionData as { event_duration?: number | null }).event_duration;
+          if (cotizacionEventDuration) {
+            setDurationHours(cotizacionEventDuration);
+          } else if (promiseId) {
+            // Si no hay event_duration en la cotización, intentar cargar desde promise como fallback
+            try {
+              const durationResult = await getPromiseDurationHours(promiseId);
+              if (durationResult.success && durationResult.duration_hours) {
+                setDurationHours(durationResult.duration_hours);
+              }
+            } catch (error) {
+              console.error('[CotizacionForm] Error cargando duration_hours desde promise:', error);
+            }
+          }
+
           // Cargar items de la cotización (filtrar items sin item_id válido)
           const cotizacionItems: { [id: string]: number } = {};
           if (cotizacionData.items && Array.isArray(cotizacionData.items)) {
@@ -210,6 +228,41 @@ export function CotizacionForm({
           // Combinar con initialItems para asegurar que todos los servicios estén inicializados
           const combinedItems = { ...initialItems, ...cotizacionItems };
           setItems(combinedItems);
+
+          // Expandir secciones y categorías que contienen items incluidos
+          const seccionesConItems = new Set<string>();
+          const categoriasConItems = new Set<string>();
+          
+          catalogoResult.data.forEach(seccion => {
+            let seccionTieneItems = false;
+            seccion.categorias.forEach(categoria => {
+              let categoriaTieneItems = false;
+              categoria.servicios.forEach(servicio => {
+                if (cotizacionItems[servicio.id] && cotizacionItems[servicio.id] > 0) {
+                  categoriaTieneItems = true;
+                  seccionTieneItems = true;
+                }
+              });
+              if (categoriaTieneItems) {
+                categoriasConItems.add(categoria.id);
+              }
+            });
+            if (seccionTieneItems) {
+              seccionesConItems.add(seccion.id);
+            }
+          });
+
+          // Expandir secciones y categorías con items
+          setSeccionesExpandidas(prev => {
+            const newSet = new Set(prev);
+            seccionesConItems.forEach(seccionId => newSet.add(seccionId));
+            return newSet;
+          });
+          setCategoriasExpandidas(prev => {
+            const newSet = new Set(prev);
+            categoriasConItems.forEach(categoriaId => newSet.add(categoriaId));
+            return newSet;
+          });
         } else if (revisionOriginalId && originalResult.success && originalResult.data) {
           // Si estamos creando una revisión, pre-poblar con datos de la original
           const originalData = originalResult.data;
@@ -232,7 +285,7 @@ export function CotizacionForm({
         } else {
           // Nueva cotización personalizada - campos vacíos
           setItems(initialItems);
-          setNombre('');
+          setNombre('Personalizada');
           setDescripcion('');
           setPrecioPersonalizado('');
         }
@@ -244,6 +297,18 @@ export function CotizacionForm({
             comision_venta: Number(configResult.comision_venta),
             sobreprecio: Number(configResult.sobreprecio)
           });
+        }
+
+        // Cargar duration_hours desde promise si no se cargó desde cotización
+        if (promiseId && !cotizacionData) {
+          try {
+            const durationResult = await getPromiseDurationHours(promiseId);
+            if (durationResult.success && durationResult.duration_hours) {
+              setDurationHours(durationResult.duration_hours);
+            }
+          } catch (error) {
+            console.error('[CotizacionForm] Error cargando duration_hours:', error);
+          }
         }
       } catch (error) {
         console.error('[CotizacionForm] Error cargando datos:', error);
@@ -334,6 +399,17 @@ export function CotizacionForm({
       };
     }).filter(seccion => seccion.categorias.length > 0);
   }, [catalogo, filtroServicio, servicioMap]);
+
+  // Derivar selectedServices desde items (servicios con cantidad > 0)
+  const selectedServices = useMemo(() => {
+    const selected = new Set<string>();
+    Object.entries(items).forEach(([servicioId, cantidad]) => {
+      if (cantidad > 0) {
+        selected.add(servicioId);
+      }
+    });
+    return selected;
+  }, [items]);
 
   // Calcular servicios seleccionados por sección y categoría
   const serviciosSeleccionados = useMemo(() => {
@@ -449,9 +525,21 @@ export function CotizacionForm({
     let totalGasto = 0;
 
     serviciosSeleccionados.forEach(s => {
-      subtotal += (s.precioUnitario || 0) * s.cantidad;
-      totalCosto += (s.costo || 0) * s.cantidad;
-      totalGasto += (s.gasto || 0) * s.cantidad;
+      // Obtener billing_type del servicio (default: SERVICE para compatibilidad)
+      const billingType = (s.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
+
+      // Calcular cantidad efectiva usando calcularCantidadEfectiva
+      // Usar mínimo 1 hora si durationHours es null o 0 para evitar precios en cero
+      const safeDurationHours = durationHours && durationHours > 0 ? durationHours : 1;
+      const cantidadEfectiva = calcularCantidadEfectiva(
+        billingType,
+        s.cantidad,
+        safeDurationHours
+      );
+
+      subtotal += (s.precioUnitario || 0) * cantidadEfectiva;
+      totalCosto += (s.costo || 0) * cantidadEfectiva;
+      totalGasto += (s.gasto || 0) * cantidadEfectiva;
     });
 
     const precioPersonalizadoNum = precioPersonalizado === '' ? 0 : Number(precioPersonalizado) || 0;
@@ -493,7 +581,7 @@ export function CotizacionForm({
       tipo_utilidad: 'service' | 'product';
       cantidad: number;
     }>);
-  }, [items, precioPersonalizado, configKey, servicioMap, configuracionPrecios]);
+  }, [items, precioPersonalizado, configKey, servicioMap, configuracionPrecios, durationHours]);
 
   // Handlers para toggles (accordion behavior)
   const toggleSeccion = (seccionId: string) => {
@@ -525,6 +613,32 @@ export function CotizacionForm({
       }
       return newSet;
     });
+  };
+
+  // Handler para toggle de selección (click en el servicio)
+  const onToggleSelection = (servicioId: string) => {
+    const servicio = servicioMap.get(servicioId);
+    if (!servicio) return;
+
+    const currentQuantity = items[servicioId] || 0;
+
+    // Si está seleccionado (cantidad > 0), deseleccionar (cantidad = 0)
+    // Si no está seleccionado, seleccionar con cantidad inicial según billing_type
+    if (currentQuantity > 0) {
+      setItems(prev => {
+        const newItems = { ...prev };
+        delete newItems[servicioId];
+        return newItems;
+      });
+    } else {
+      // Para HOUR, cantidad inicial es 1 (las horas se manejan con durationHours)
+      // Para SERVICE/UNIT, cantidad inicial es 1
+      const initialQuantity = 1;
+      setItems(prev => ({
+        ...prev,
+        [servicioId]: initialQuantity
+      }));
+    }
   };
 
   // Handlers
@@ -612,6 +726,7 @@ export function CotizacionForm({
           items: Object.fromEntries(
             itemsSeleccionados.map(([itemId, cantidad]) => [itemId, cantidad])
           ),
+          event_duration: durationHours && durationHours > 0 ? durationHours : null,
         });
 
         if (!result.success) {
@@ -689,6 +804,7 @@ export function CotizacionForm({
         items: Object.fromEntries(
           itemsSeleccionados.map(([itemId, cantidad]) => [itemId, cantidad])
         ),
+        event_duration: durationHours && durationHours > 0 ? durationHours : null,
       });
 
       if (!result.success) {
@@ -910,11 +1026,14 @@ export function CotizacionForm({
           seccionesExpandidas={seccionesExpandidas}
           categoriasExpandidas={categoriasExpandidas}
           items={items}
+          selectedServices={selectedServices}
           onToggleSeccion={toggleSeccion}
           onToggleCategoria={toggleCategoria}
+          onToggleSelection={onToggleSelection}
           onUpdateQuantity={updateQuantity}
           serviciosSeleccionados={serviciosSeleccionados}
           configuracionPrecios={configuracionPrecios}
+          baseHours={durationHours}
         />
       </div>
 
@@ -939,6 +1058,25 @@ export function CotizacionForm({
               onChange={(e) => setDescripcion(e.target.value)}
               placeholder="Describe los servicios incluidos..."
               className="min-h-[80px]"
+            />
+
+            <ZenInput
+              label="Duración del Evento (Horas)"
+              type="number"
+              min="0"
+              step="0.5"
+              value={durationHours !== null ? durationHours.toString() : ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') {
+                  setDurationHours(null);
+                } else {
+                  const numValue = Number(value);
+                  setDurationHours(numValue > 0 ? numValue : null);
+                }
+              }}
+              placeholder="Ej: 8"
+              hint="Estas horas corresponden a la duración definida en la promesa. Puedes modificarlas para esta cotización sin afectar la duración original del evento."
             />
           </div>
 

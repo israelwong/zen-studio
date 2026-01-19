@@ -113,9 +113,12 @@ export async function guardarEstructuraCotizacionAutorizada(
         configPrecios
       );
 
+      // Obtener billing_type: prioridad: item.billing_type > datosCatalogo.billingType > 'SERVICE'
+      const billingType = (item.billing_type || datosCatalogo.billingType || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
+      
       // Calcular cantidad efectiva según billing_type
       const cantidadEfectiva = calcularCantidadEfectiva(
-        datosCatalogo.billingType,
+        billingType,
         item.quantity,
         durationHours
       );
@@ -134,6 +137,7 @@ export async function guardarEstructuraCotizacionAutorizada(
           profit: precios.utilidad_base,
           public_price: precios.precio_final,
           profit_type: tipoUtilidadFinal,
+          billing_type: billingType, // Persistir billing_type
 
           // SNAPSHOTS (congelado al momento de autorización - inmutable para auditoría)
           name_snapshot: datosCatalogo.nombre,
@@ -261,9 +265,12 @@ export async function calcularYGuardarPreciosCotizacion(
         configPrecios
       );
 
+      // Obtener billing_type: prioridad: item.billing_type > datosCatalogo.billingType > 'SERVICE'
+      const billingType = (item.billing_type || datosCatalogo.billingType || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
+      
       // Calcular cantidad efectiva según billing_type
       const cantidadEfectiva = calcularCantidadEfectiva(
-        datosCatalogo.billingType,
+        billingType,
         item.quantity,
         durationHours
       );
@@ -272,6 +279,7 @@ export async function calcularYGuardarPreciosCotizacion(
       await prisma.studio_cotizacion_items.update({
         where: { id: item.id },
         data: {
+          billing_type: billingType, // Persistir billing_type
           // Campos operacionales (mutables)
           name: datosCatalogo.nombre,
           description: datosCatalogo.descripcion,

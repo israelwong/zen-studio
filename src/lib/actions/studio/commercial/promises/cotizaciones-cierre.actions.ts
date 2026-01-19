@@ -8,6 +8,8 @@ import { getContractTemplate } from '@/lib/actions/studio/business/contracts/tem
 import { getPromiseContractData } from '@/lib/actions/studio/business/contracts/renderer.actions';
 import { renderContractContent } from '@/lib/actions/studio/business/contracts/renderer.actions';
 import { normalizePaymentDate } from '@/lib/actions/utils/payment-date';
+import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
+import type { ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 
 interface CierreResponse {
   success: boolean;
@@ -1527,6 +1529,26 @@ export async function autorizarYCrearEvento(
             updated_at: new Date(),
           },
         });
+      }
+
+      // 7.4.5. Guardar estructura y snapshots de items antes de autorizar
+      // Esto asegura que los snapshots estén actualizados con datos del catálogo y billing_type correcto
+      const configForm = await obtenerConfiguracionPrecios(studioSlug);
+      if (configForm) {
+        const configPrecios: ConfiguracionPrecios = {
+          utilidad_servicio: parseFloat(configForm.utilidad_servicio || '0.30'),
+          utilidad_producto: parseFloat(configForm.utilidad_producto || '0.20'),
+          comision_venta: parseFloat(configForm.comision_venta || '0.10'),
+          sobreprecio: parseFloat(configForm.sobreprecio || '0.05'),
+        };
+        
+        const { guardarEstructuraCotizacionAutorizada } = await import('./cotizacion-pricing');
+        await guardarEstructuraCotizacionAutorizada(
+          tx,
+          cotizacionId,
+          configPrecios,
+          studioSlug
+        );
       }
 
       // 7.5. Actualizar cotizaci?n con snapshots (inmutables) y establecer relaci?n con evento

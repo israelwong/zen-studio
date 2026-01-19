@@ -36,7 +36,12 @@ export function renderCotizacionBlock(
       categoria.items.forEach((item) => {
         html += `<li class="mb-1">`;
         html += `<span class="font-medium">${item.nombre}</span>`;
-        html += ` <span class="text-zinc-500">x${item.cantidad}</span>`;
+        // Mostrar cantidad con horas si es servicio tipo HOUR
+        if (item.horas && item.horas > 0) {
+          html += ` <span class="text-zinc-500">x${item.cantidad} ${item.horas === 1 ? 'hora' : 'horas'}</span>`;
+        } else {
+          html += ` <span class="text-zinc-500">x${item.cantidad}</span>`;
+        }
         html += `</li>`;
 
         if (item.descripcion) {

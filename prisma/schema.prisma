@@ -2306,6 +2306,7 @@ model studio_cotizacion_items {
   seccion_name               String?
   is_custom                  Boolean                       @default(false)
   original_service_id        String?
+  billing_type               BillingType?
   created_at                 DateTime                      @default(now())
   updated_at                 DateTime                      @updatedAt
   order                      Int                           @default(0)

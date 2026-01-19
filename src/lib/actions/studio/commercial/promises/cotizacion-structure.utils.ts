@@ -267,6 +267,7 @@ export const COTIZACION_ITEMS_SELECT_STANDARD = {
   unit_price: true,
   subtotal: true,
   order: true,
+  billing_type: true,
   // Snapshots (prioridad - inmutables)
   name_snapshot: true,
   description_snapshot: true,

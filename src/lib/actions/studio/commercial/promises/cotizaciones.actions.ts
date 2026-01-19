@@ -82,14 +82,18 @@ export async function createCotizacion(
       // Si hay promise_id, obtener el promise
       const promise = await prisma.studio_promises.findUnique({
         where: { id: validatedData.promise_id },
-        include: {
-          contact: true,
-        },
         select: {
           contact_id: true,
           event_type_id: true,
           duration_hours: true,
-          contact: true,
+          contact: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+            },
+          },
         },
       });
 
@@ -126,9 +130,25 @@ export async function createCotizacion(
         price: validatedData.precio,
         status: 'pendiente',
         visible_to_client: validatedData.visible_to_client ?? false,
-        event_duration: durationHours, // Snapshot de la duración del evento
+        event_duration: validatedData.event_duration ?? durationHours, // Prioridad: input manual > promise.duration_hours
       },
     });
+
+    // Obtener catálogo para obtener billing_type de cada item
+    const { obtenerCatalogo } = await import('@/lib/actions/studio/config/catalogo.actions');
+    const catalogoResult = await obtenerCatalogo(validatedData.studio_slug);
+    
+    // Crear mapa de item_id -> billing_type
+    const billingTypeMap = new Map<string, 'HOUR' | 'SERVICE' | 'UNIT'>();
+    if (catalogoResult.success && catalogoResult.data) {
+      catalogoResult.data.forEach(seccion => {
+        seccion.categorias.forEach(categoria => {
+          categoria.servicios.forEach(servicio => {
+            billingTypeMap.set(servicio.id, (servicio.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT');
+          });
+        });
+      });
+    }
 
     // Crear items de la cotizaciรณn
     const itemsToCreate = Object.entries(validatedData.items)
@@ -138,6 +158,7 @@ export async function createCotizacion(
         item_id: itemId,
         quantity,
         order: index,
+        billing_type: billingTypeMap.get(itemId) || 'SERVICE', // Default SERVICE para compatibilidad legacy
       }));
 
     if (itemsToCreate.length > 0) {
@@ -275,6 +296,35 @@ export async function getCotizacionesByPromiseId(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al obtener cotizaciones',
+    };
+  }
+}
+
+/**
+ * Obtener duration_hours de una promise
+ */
+export async function getPromiseDurationHours(
+  promiseId: string
+): Promise<{ success: boolean; duration_hours?: number | null; error?: string }> {
+  try {
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      select: { duration_hours: true },
+    });
+
+    if (!promise) {
+      return { success: false, error: 'Promise no encontrada' };
+    }
+
+    return {
+      success: true,
+      duration_hours: promise.duration_hours,
+    };
+  } catch (error) {
+    console.error('[COTIZACIONES] Error obteniendo duration_hours:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener duration_hours',
     };
   }
 }
@@ -818,6 +868,7 @@ export async function duplicateCotizacion(
         status: 'pendiente',
         visible_to_client: false, // Duplicadas siempre ocultas inicialmente (studio las editarรก)
         condiciones_comerciales_id: original.condiciones_comerciales_id,
+        event_duration: original.event_duration, // Copiar duración del evento
         archived: false,
         order: newOrder,
         // Snapshots de condiciones comerciales (copiar de original)
@@ -859,6 +910,7 @@ export async function duplicateCotizacion(
           category_name: item.category_name,
           seccion_name: item.seccion_name,
           is_custom: item.is_custom,
+          billing_type: item.billing_type, // Copiar billing_type del item
           // Snapshots (inmutables - copiar de original)
           name_snapshot: item.name_snapshot,
           description_snapshot: item.description_snapshot,
@@ -1363,6 +1415,22 @@ export async function updateCotizacion(
       return { success: false, error: 'No se puede actualizar una cotizaciรณn autorizada o aprobada' };
     }
 
+    // Obtener catálogo para obtener billing_type de cada item
+    const { obtenerCatalogo } = await import('@/lib/actions/studio/config/catalogo.actions');
+    const catalogoResult = await obtenerCatalogo(validatedData.studio_slug);
+    
+    // Crear mapa de item_id -> billing_type
+    const billingTypeMap = new Map<string, 'HOUR' | 'SERVICE' | 'UNIT'>();
+    if (catalogoResult.success && catalogoResult.data) {
+      catalogoResult.data.forEach(seccion => {
+        seccion.categorias.forEach(categoria => {
+          categoria.servicios.forEach(servicio => {
+            billingTypeMap.set(servicio.id, (servicio.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT');
+          });
+        });
+      });
+    }
+
     // Preparar items antes de la transacciรณn
     const itemsToCreate = Object.entries(validatedData.items)
       .filter(([, quantity]) => quantity > 0)
@@ -1371,6 +1439,7 @@ export async function updateCotizacion(
         item_id: itemId,
         quantity,
         order: index,
+        billing_type: billingTypeMap.get(itemId) || 'SERVICE', // Default SERVICE para compatibilidad legacy
       }));
 
     // Transacciรณn para garantizar consistencia
@@ -1383,6 +1452,7 @@ export async function updateCotizacion(
           description: validatedData.descripcion || null,
           price: validatedData.precio,
           visible_to_client: validatedData.visible_to_client !== undefined ? validatedData.visible_to_client : undefined,
+          event_duration: validatedData.event_duration !== undefined ? validatedData.event_duration : undefined,
           updated_at: new Date(),
         },
       });

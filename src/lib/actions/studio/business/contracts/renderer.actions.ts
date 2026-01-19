@@ -155,6 +155,7 @@ export async function getPromiseContractData(
         tyc_accepted: true,
         negociacion_precio_personalizado: true,
         negociacion_precio_original: true,
+        event_duration: true,
         cotizacion_items: {
           select: COTIZACION_ITEMS_SELECT_STANDARD,
           orderBy: {
@@ -181,7 +182,7 @@ export async function getPromiseContractData(
     });
 
     if (!cotizacion) {
-      return { success: false, error: "Cotización no encontrada" };
+      return { success: false, error: "Cotizaci?n no encontrada" };
     }
 
     // Formatear fecha
@@ -195,7 +196,7 @@ export async function getPromiseContractData(
       })
       : "Fecha por definir";
 
-    // Construir estructura jerárquica usando función centralizada
+    // Construir estructura jer?rquica usando funci?n centralizada
     const estructura = construirEstructuraJerarquicaCotizacion(
       cotizacion.cotizacion_items,
       {
@@ -205,19 +206,57 @@ export async function getPromiseContractData(
     );
 
     // Calcular totales
-    // El precio base es el precio de la cotización (puede incluir descuentos previos)
-    // Para el cálculo correcto, necesitamos el precio base antes de descuentos
+    // El precio base es el precio de la cotizaci?n (puede incluir descuentos previos)
+    // Para el c?lculo correcto, necesitamos el precio base antes de descuentos
     const precioBase = cotizacion.price;
     const descuentoExistente = cotizacion.discount || 0;
-    // Si hay descuento en la cotización, el precio base real es precio + descuento
+    // Si hay descuento en la cotizaci?n, el precio base real es precio + descuento
     const precioBaseReal = descuentoExistente > 0 ? precioBase + descuentoExistente : precioBase;
     
     const secciones = estructura.secciones;
 
-    // Usar condiciones comerciales pasadas como parámetro, o obtenerlas desde cotizacion_cierre
+    // Obtener event_duration de la cotizaci?n (prioridad: cotizacion.event_duration > promise.duration_hours)
+    const eventDuration = cotizacion.event_duration ?? promise.duration_hours ?? null;
+    
+    // Crear mapa de item_id -> billing_type desde items originales
+    const billingTypeMap = new Map<string, 'HOUR' | 'SERVICE' | 'UNIT'>();
+    cotizacion.cotizacion_items.forEach(item => {
+      if (item.item_id && item.billing_type) {
+        billingTypeMap.set(item.item_id, item.billing_type as 'HOUR' | 'SERVICE' | 'UNIT');
+      }
+    });
+    
+    // Si billingTypeMap est? vac?o o incompleto, obtener billing_type desde el cat?logo usando obtenerCatalogo
+    const itemsSinBillingType = cotizacion.cotizacion_items.filter(
+      item => item.item_id && !billingTypeMap.has(item.item_id!)
+    );
+    
+    if (itemsSinBillingType.length > 0) {
+      try {
+        // Usar obtenerCatalogo como lo hace createCotizacion para mantener consistencia
+        const { obtenerCatalogo } = await import('@/lib/actions/studio/config/catalogo.actions');
+        const catalogoResult = await obtenerCatalogo(studioSlug);
+        
+        if (catalogoResult.success && catalogoResult.data) {
+          catalogoResult.data.forEach(seccion => {
+            seccion.categorias.forEach(categoria => {
+              categoria.servicios.forEach(servicio => {
+                if (servicio.billing_type) {
+                  billingTypeMap.set(servicio.id, servicio.billing_type as 'HOUR' | 'SERVICE' | 'UNIT');
+                }
+              });
+            });
+          });
+        }
+      } catch (error) {
+        console.error('[getPromiseContractData] Error obteniendo billing_type desde cat?logo:', error);
+      }
+    }
+
+    // Usar condiciones comerciales pasadas como par?metro, o obtenerlas desde cotizacion_cierre
     let condiciones = condicionesComerciales;
     
-    // Si no se pasaron condiciones comerciales como parámetro, obtenerlas desde cotizacion_cierre
+    // Si no se pasaron condiciones comerciales como par?metro, obtenerlas desde cotizacion_cierre
     if (!condiciones && cotizacion.cotizacion_cierre?.condiciones_comerciales) {
       const condicionCierre = cotizacion.cotizacion_cierre.condiciones_comerciales;
       condiciones = {
@@ -258,7 +297,7 @@ export async function getPromiseContractData(
       }
     }
 
-    // Verificar si hay precio negociado (modo negociación)
+    // Verificar si hay precio negociado (modo negociaci?n)
     const precioNegociado = cotizacion.negociacion_precio_personalizado 
       ? Number(cotizacion.negociacion_precio_personalizado) 
       : null;
@@ -275,11 +314,11 @@ export async function getPromiseContractData(
     let ahorroTotal: number | undefined;
 
     if (esNegociacion && precioNegociado !== null) {
-      // MODO NEGOCIACIÓN: usar precio negociado como total final
+      // MODO NEGOCIACI?N: usar precio negociado como total final
       totalFinal = precioNegociado;
       precioOriginalParaContrato = precioOriginalNegociacion ?? precioBaseReal;
       ahorroTotal = precioOriginalParaContrato - precioNegociado;
-      descuentoAplicado = 0; // No mostrar descuento en modo negociación
+      descuentoAplicado = 0; // No mostrar descuento en modo negociaci?n
     } else if (condiciones) {
       // MODO NORMAL: calcular descuento si hay porcentaje de descuento en condiciones comerciales
       if (condiciones.discount_percentage) {
@@ -287,7 +326,7 @@ export async function getPromiseContractData(
         descuentoAplicado = (precioBaseReal * condiciones.discount_percentage) / 100;
         totalFinal = precioBaseReal - descuentoAplicado;
       } else if (descuentoExistente > 0) {
-        // Si ya hay descuento calculado desde la cotización, usarlo
+        // Si ya hay descuento calculado desde la cotizaci?n, usarlo
         totalFinal = precioBase;
         descuentoAplicado = descuentoExistente;
       } else {
@@ -312,25 +351,37 @@ export async function getPromiseContractData(
       seccion.categorias.forEach(categoria => {
         serviciosLegacy.push({
           categoria: categoria.nombre,
-          servicios: categoria.items.map(item => ({
-            nombre: item.nombre,
-            descripcion: item.descripcion,
-            precio: item.subtotal,
-          })),
+          servicios: categoria.items.map(item => {
+            const servicio: any = {
+              nombre: item.nombre,
+              descripcion: item.descripcion,
+              precio: item.subtotal,
+            };
+            
+            // Si el item tiene billing_type HOUR y hay event_duration, agregar horas
+            if (item.item_id) {
+              const billingType = billingTypeMap.get(item.item_id);
+              if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+                servicio.horas = eventDuration;
+              }
+            }
+            
+            return servicio;
+          }),
         });
       });
     });
 
     // Formatear fecha de firma
     // Si selected_by_prospect es true:
-    //   - Si ya está firmado (contract_signed_at existe), usar esa fecha
-    //   - Si no está firmado, mostrar fecha de hoy (para el preview)
-    // Si selected_by_prospect es false: usar fecha de hoy (generación manual del estudio)
+    //   - Si ya est? firmado (contract_signed_at existe), usar esa fecha
+    //   - Si no est? firmado, mostrar fecha de hoy (para el preview)
+    // Si selected_by_prospect es false: usar fecha de hoy (generaci?n manual del estudio)
     let fechaFirmaCliente: string | undefined;
     
     if (cotizacion.selected_by_prospect) {
       if (cotizacion.cotizacion_cierre?.contract_signed_at) {
-        // Ya está firmado: usar la fecha guardada
+        // Ya est? firmado: usar la fecha guardada
         fechaFirmaCliente = new Date(cotizacion.cotizacion_cierre.contract_signed_at).toLocaleDateString("es-ES", {
           weekday: "long",
           year: "numeric",
@@ -338,7 +389,7 @@ export async function getPromiseContractData(
           day: "numeric",
         });
       } else {
-        // No está firmado: mostrar fecha de hoy para el preview
+        // No est? firmado: mostrar fecha de hoy para el preview
         fechaFirmaCliente = new Date().toLocaleDateString("es-ES", {
           weekday: "long",
           year: "numeric",
@@ -356,7 +407,7 @@ export async function getPromiseContractData(
       });
     }
 
-    // Obtener información bancaria del estudio
+    // Obtener informaci?n bancaria del estudio
     let banco: string | undefined;
     let titular: string | undefined;
     let clabe: string | undefined;
@@ -368,8 +419,8 @@ export async function getPromiseContractData(
         clabe = bankInfoResult.data.clabe;
       }
     } catch (error) {
-      console.error('[getPromiseContractData] Error obteniendo información bancaria:', error);
-      // Continuar sin información bancaria si hay error
+      console.error('[getPromiseContractData] Error obteniendo informaci?n bancaria:', error);
+      // Continuar sin informaci?n bancaria si hay error
     }
 
     const eventData: EventContractDataWithConditions = {
@@ -396,7 +447,32 @@ export async function getPromiseContractData(
       descuento: descuentoAplicado,
       total: totalFinal,
       cotizacionData: {
-        secciones: secciones,
+        secciones: secciones.map(seccion => ({
+          ...seccion,
+          categorias: seccion.categorias.map(categoria => ({
+            ...categoria,
+            items: categoria.items.map(item => {
+              const itemData: any = {
+                nombre: item.nombre,
+                descripcion: item.descripcion,
+                cantidad: item.cantidad,
+                subtotal: item.subtotal,
+              };
+              
+              // Si el item tiene billing_type HOUR y hay event_duration, agregar horas
+              // item.item_id puede estar en item.item_id o en item['item_id'] debido a la estructura
+              const itemId = item.item_id || (item as any)['item_id'];
+              if (itemId) {
+                const billingType = billingTypeMap.get(itemId);
+                if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+                  itemData.horas = eventDuration;
+                }
+              }
+              
+              return itemData;
+            }),
+          })),
+        })),
         total: totalFinal,
       },
       condicionesData: condiciones ? {
@@ -406,10 +482,10 @@ export async function getPromiseContractData(
         porcentaje_anticipo: condiciones.advance_percentage || undefined,
         tipo_anticipo: (condiciones.advance_type as "percentage" | "fixed_amount") || undefined,
         monto_anticipo: montoAnticipo,
-        total_contrato: esNegociacion ? precioOriginalParaContrato : precioBaseReal, // Precio original en negociación, precio base antes de descuentos en normal
-        total_final: totalFinal, // Precio negociado en negociación, precio después de descuentos en normal
-        descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado (0 en negociación)
-        // Campos para modo negociación
+        total_contrato: esNegociacion ? precioOriginalParaContrato : precioBaseReal, // Precio original en negociaci?n, precio base antes de descuentos en normal
+        total_final: totalFinal, // Precio negociado en negociaci?n, precio despu?s de descuentos en normal
+        descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado (0 en negociaci?n)
+        // Campos para modo negociaci?n
         es_negociacion: esNegociacion,
         precio_negociado: precioNegociado ?? undefined,
         precio_original: esNegociacion ? precioOriginalParaContrato : undefined,
@@ -519,7 +595,7 @@ export async function getEventContractData(
             condiciones_comerciales_advance_type_snapshot: true,
             condiciones_comerciales_advance_amount_snapshot: true,
             condiciones_comerciales_discount_percentage_snapshot: true,
-            // Relación legacy (fallback si no hay snapshots)
+            // Relaci?n legacy (fallback si no hay snapshots)
             condiciones_comerciales: {
               select: {
                 id: true,
@@ -557,10 +633,10 @@ export async function getEventContractData(
       return { success: false, error: "El evento no tiene una promesa asociada" };
     }
 
-    // Buscar cotización aprobada del evento (puede estar en la relación directa o por evento_id)
+    // Buscar cotizaci?n aprobada del evento (puede estar en la relaci?n directa o por evento_id)
     let cotizacionAprobada = event.cotizacion;
 
-    // Si no hay en la relación directa, buscar por evento_id
+    // Si no hay en la relaci?n directa, buscar por evento_id
     if (!cotizacionAprobada) {
       const cotizacionPorEvento = await prisma.studio_cotizaciones.findFirst({
         where: {
@@ -584,7 +660,8 @@ export async function getEventContractData(
             condiciones_comerciales_advance_type_snapshot: true,
             condiciones_comerciales_advance_amount_snapshot: true,
             condiciones_comerciales_discount_percentage_snapshot: true,
-            // Relación legacy (fallback si no hay snapshots)
+            event_duration: true,
+            // Relaci?n legacy (fallback si no hay snapshots)
             condiciones_comerciales: {
               select: {
                 id: true,
@@ -597,7 +674,8 @@ export async function getEventContractData(
               },
             },
             cotizacion_items: {
-              include: {
+              select: {
+                ...COTIZACION_ITEMS_SELECT_STANDARD,
                 items: {
                   include: {
                     service_categories: true,
@@ -611,7 +689,7 @@ export async function getEventContractData(
             },
           },
         orderBy: {
-          created_at: 'desc', // Tomar la más reciente si hay múltiples
+          created_at: 'desc', // Tomar la m?s reciente si hay m?ltiples
         },
       });
 
@@ -619,8 +697,19 @@ export async function getEventContractData(
     }
 
     if (!cotizacionAprobada) {
-      return { success: false, error: "El evento no tiene una cotización autorizada" };
+      return { success: false, error: "El evento no tiene una cotizaci?n autorizada" };
     }
+
+    // Obtener event_duration de la cotizaci?n (prioridad: cotizacion.event_duration > promise.duration_hours)
+    const eventDuration = cotizacionAprobada.event_duration ?? event.promise?.duration_hours ?? null;
+    
+    // Crear mapa de item_id -> billing_type desde items originales
+    const billingTypeMap = new Map<string, 'HOUR' | 'SERVICE' | 'UNIT'>();
+    cotizacionAprobada.cotizacion_items.forEach(item => {
+      if (item.item_id && item.billing_type) {
+        billingTypeMap.set(item.item_id, item.billing_type as 'HOUR' | 'SERVICE' | 'UNIT');
+      }
+    });
 
     // Formatear fecha - leer de promise.event_date primero, luego event.event_date
     const eventDate = event.promise?.event_date || event.event_date;
@@ -633,16 +722,16 @@ export async function getEventContractData(
       })
       : "Fecha por definir";
 
-    // Ordenar items por categoría (usando snapshots o relaciones)
+    // Ordenar items por categor?a (usando snapshots o relaciones)
     const itemsOrdenados = cotizacionAprobada.cotizacion_items
       .map((item) => {
-        // Obtener nombre de categoría desde snapshot o relación
+        // Obtener nombre de categor?a desde snapshot o relaci?n
         const categoryName = item.category_name_snapshot ||
           item.items?.service_categories?.name ||
           item.service_categories?.name ||
-          "Sin categoría";
+          "Sin categor?a";
 
-        // Obtener orden de categoría para ordenar
+        // Obtener orden de categor?a para ordenar
         const categoryOrder = item.items?.service_categories?.order ??
           item.service_categories?.order ??
           999;
@@ -654,35 +743,45 @@ export async function getEventContractData(
         };
       })
       .sort((a, b) => {
-        // Primero por orden de categoría
+        // Primero por orden de categor?a
         if (a.categoryOrder !== b.categoryOrder) {
           return a.categoryOrder - b.categoryOrder;
         }
-        // Luego por nombre de categoría
+        // Luego por nombre de categor?a
         return a.categoryName.localeCompare(b.categoryName);
       });
 
-    // Agrupar servicios por categoría
+    // Agrupar servicios por categor?a
     const serviciosPorCategoria = itemsOrdenados.reduce(
       (acc, { item, categoryName }) => {
         if (!acc[categoryName]) {
           acc[categoryName] = [];
         }
 
-        // Calcular precio: usar subtotal si está disponible, sino calcular desde unit_price
+        // Calcular precio: usar subtotal si est? disponible, sino calcular desde unit_price
         const precioUnitario = Number(item.unit_price_snapshot || item.unit_price || 0);
         const subtotal = Number(item.subtotal || 0);
         const precio = subtotal > 0 ? subtotal : precioUnitario * item.quantity;
 
-        acc[categoryName].push({
+        const servicio: any = {
           nombre: item.name_snapshot || item.name || "Servicio sin nombre",
           descripcion: item.description_snapshot || item.description || undefined,
           precio: precio,
-        });
+        };
+        
+        // Si el item tiene billing_type HOUR y hay event_duration, agregar horas
+        if (item.item_id) {
+          const billingType = billingTypeMap.get(item.item_id);
+          if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+            servicio.horas = eventDuration;
+          }
+        }
+
+        acc[categoryName].push(servicio);
 
         return acc;
       },
-      {} as Record<string, Array<{ nombre: string; descripcion?: string; precio: number }>>
+      {} as Record<string, Array<{ nombre: string; descripcion?: string; precio: number; horas?: number }>>
     );
 
     const serviciosIncluidos: ServiceCategory[] = Object.entries(serviciosPorCategoria).map(
@@ -692,7 +791,7 @@ export async function getEventContractData(
       })
     );
 
-    // Verificar si hay precio negociado (modo negociación)
+    // Verificar si hay precio negociado (modo negociaci?n)
     const precioNegociado = cotizacionAprobada.negociacion_precio_personalizado 
       ? Number(cotizacionAprobada.negociacion_precio_personalizado) 
       : null;
@@ -706,7 +805,7 @@ export async function getEventContractData(
     const descuentoExistente = cotizacionAprobada.discount ? Number(cotizacionAprobada.discount) : 0;
     const precioBaseReal = descuentoExistente > 0 ? precioBase + descuentoExistente : precioBase;
     
-    // Priorizar snapshots inmutables de condiciones comerciales sobre la relación
+    // Priorizar snapshots inmutables de condiciones comerciales sobre la relaci?n
     const tieneSnapshots = !!cotizacionAprobada.condiciones_comerciales_name_snapshot;
     const condiciones = tieneSnapshots ? {
       name: cotizacionAprobada.condiciones_comerciales_name_snapshot || '',
@@ -719,18 +818,18 @@ export async function getEventContractData(
         : null,
     } : cotizacionAprobada.condiciones_comerciales;
     
-    // Calcular total final y descuento según modo
+    // Calcular total final y descuento seg?n modo
     let totalFinal: number;
     let descuentoAplicado: number;
     let precioOriginalParaContrato: number;
     let ahorroTotal: number | undefined;
 
     if (esNegociacion && precioNegociado !== null) {
-      // MODO NEGOCIACIÓN: usar precio negociado como total final
+      // MODO NEGOCIACI?N: usar precio negociado como total final
       totalFinal = precioNegociado;
       precioOriginalParaContrato = precioOriginalNegociacion ?? precioBaseReal;
       ahorroTotal = precioOriginalParaContrato - precioNegociado;
-      descuentoAplicado = 0; // No mostrar descuento en modo negociación
+      descuentoAplicado = 0; // No mostrar descuento en modo negociaci?n
     } else if (condiciones) {
       // MODO NORMAL: calcular descuento si hay porcentaje de descuento en condiciones comerciales
       if (condiciones.discount_percentage) {
@@ -772,22 +871,22 @@ export async function getEventContractData(
         total_contrato: esNegociacion ? precioOriginalParaContrato : precioBaseReal,
         total_final: totalFinal,
         descuento_aplicado: descuentoAplicado,
-        // Campos para modo negociación
+        // Campos para modo negociaci?n
         es_negociacion: esNegociacion,
         precio_negociado: precioNegociado ?? undefined,
         precio_original: esNegociacion ? precioOriginalParaContrato : undefined,
         ahorro_total: ahorroTotal,
-        // TODO: Agregar condiciones_metodo_pago si están disponibles en la relación
+        // TODO: Agregar condiciones_metodo_pago si est?n disponibles en la relaci?n
         condiciones_metodo_pago: undefined,
       };
     }
 
     // Formatear fecha de firma
     // Si selected_by_prospect es true: usar fecha de firma del contrato (si existe)
-    // Si selected_by_prospect es false: usar fecha de hoy (generación manual del estudio)
+    // Si selected_by_prospect es false: usar fecha de hoy (generaci?n manual del estudio)
     let fechaFirmaCliente: string | undefined;
     if (cotizacionAprobada.selected_by_prospect) {
-      // Prospecto seleccionó: usar fecha de firma real si existe
+      // Prospecto seleccion?: usar fecha de firma real si existe
       fechaFirmaCliente = event.contracts?.[0]?.signed_at
         ? new Date(event.contracts[0].signed_at).toLocaleDateString("es-ES", {
             weekday: "long",
@@ -806,7 +905,7 @@ export async function getEventContractData(
       });
     }
 
-    // Obtener información bancaria del estudio
+    // Obtener informaci?n bancaria del estudio
     let banco: string | undefined;
     let titular: string | undefined;
     let clabe: string | undefined;
@@ -818,8 +917,8 @@ export async function getEventContractData(
         clabe = bankInfoResult.data.clabe;
       }
     } catch (error) {
-      console.error('[getEventContractData] Error obteniendo información bancaria:', error);
-      // Continuar sin información bancaria si hay error
+      console.error('[getEventContractData] Error obteniendo informaci?n bancaria:', error);
+      // Continuar sin informaci?n bancaria si hay error
     }
 
     const contractData: EventContractDataWithConditions = {
@@ -865,7 +964,7 @@ export async function renderContractContent(
   try {
     let rendered = content;
 
-    // Variables de cliente (se convertirán a mayúsculas)
+    // Variables de cliente (se convertir?n a may?sculas)
     const clienteVars: Record<string, string> = {
       "@nombre_cliente": eventData.nombre_cliente.toUpperCase(),
       "@email_cliente": (eventData.email_cliente || "").toUpperCase(),
@@ -873,7 +972,7 @@ export async function renderContractContent(
       "@direccion_cliente": (eventData.direccion_cliente || "").toUpperCase(),
     };
 
-    // Variables de estudio (se convertirán a mayúsculas)
+    // Variables de estudio (se convertir?n a may?sculas)
     const studioVars: Record<string, string> = {
       "@nombre_studio": eventData.nombre_studio.toUpperCase(),
       "@nombre_representante": (eventData.nombre_representante || "").toUpperCase(),
@@ -885,13 +984,13 @@ export async function renderContractContent(
       "@clabe": eventData.clabe || "",
     };
 
-    // Variables de negocio/comerciales (sin mayúsculas)
+    // Variables de negocio/comerciales (sin may?sculas)
     const comercialesVars: Record<string, string> = {
       "@total_contrato": eventData.total_contrato,
       "@condiciones_pago": eventData.condiciones_pago,
     };
 
-    // Variables de evento (sin mayúsculas)
+    // Variables de evento (sin may?sculas)
     const eventoVars: Record<string, string> = {
       "@fecha_evento": eventData.fecha_evento,
       "@tipo_evento": eventData.tipo_evento,
@@ -907,7 +1006,7 @@ export async function renderContractContent(
       ...eventoVars,
     };
 
-    // También soportar sintaxis {variable} con las mismas conversiones
+    // Tambi?n soportar sintaxis {variable} con las mismas conversiones
     const braceVariables: Record<string, string> = {
       "{nombre_cliente}": eventData.nombre_cliente.toUpperCase(),
       "{email_cliente}": (eventData.email_cliente || "").toUpperCase(),
@@ -956,7 +1055,7 @@ export async function renderContractContent(
     if (rendered.includes("[SERVICIOS_INCLUIDOS]")) {
       const servicios = eventData.servicios_incluidos || [];
       let serviciosHtml = renderServiciosBlock(servicios);
-      // Agregar divisor antes y después del bloque de servicios
+      // Agregar divisor antes y despu?s del bloque de servicios
       serviciosHtml = '<div class="mb-6 pb-4 border-b border-zinc-800"></div>' + serviciosHtml + '<div class="mt-6 pt-4 border-t border-zinc-800"></div>';
       rendered = rendered.replace("[SERVICIOS_INCLUIDOS]", serviciosHtml);
     }
@@ -984,7 +1083,12 @@ function renderServiciosBlock(servicios: ServiceCategory[] | undefined | null): 
     `;
 
     categoria.servicios.forEach((servicio) => {
-      html += `<li>${servicio.nombre}</li>`;
+      // Mostrar nombre y horas si es servicio tipo HOUR
+      if (servicio.horas && servicio.horas > 0) {
+        html += `<li>${servicio.nombre} (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})</li>`;
+      } else {
+        html += `<li>${servicio.nombre}</li>`;
+      }
 
       if (servicio.descripcion) {
         html += `<p class="text-sm text-zinc-500 ml-6">${servicio.descripcion}</p>`;

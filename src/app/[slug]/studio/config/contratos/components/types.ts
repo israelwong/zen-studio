@@ -20,6 +20,7 @@ export interface CotizacionRenderData {
         descripcion?: string;
         cantidad: number;
         subtotal: number; // NO mostrar precio unitario
+        horas?: number; // Horas de duración para servicios tipo HOUR
       }>;
     }>;
   }>;

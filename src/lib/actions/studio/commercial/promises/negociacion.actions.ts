@@ -207,6 +207,7 @@ export async function crearVersionNegociada(
             item_id: true,
             quantity: true,
             order: true,
+            billing_type: true,
           },
         },
       },
@@ -288,6 +289,7 @@ export async function crearVersionNegociada(
             item_id: item.item_id,
             quantity: item.quantity,
             order: item.order,
+            billing_type: item.billing_type, // Copiar billing_type del item
             // Marcar items como cortes?a si est?n en la lista
             is_courtesy: validatedData.items_cortesia.includes(item.id),
           })),
