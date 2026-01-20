@@ -17,6 +17,7 @@ interface PortfolioSectionProps {
     studioId?: string;
     ownerUserId?: string | null;
     currentUserId?: string | null;
+    isDesktop?: boolean;
 }
 
 /**
@@ -25,7 +26,7 @@ interface PortfolioSectionProps {
  * Con tracking si studioId está disponible
  * Incluye filtros horizontales por tipo de evento
  */
-export function PortfolioSection({ portfolios, onPortfolioClick, studioId, ownerUserId, currentUserId }: PortfolioSectionProps) {
+export function PortfolioSection({ portfolios, onPortfolioClick, studioId, ownerUserId, currentUserId, isDesktop = false }: PortfolioSectionProps) {
     const router = useRouter();
     const params = useParams();
     const studioSlug = params?.slug as string;
@@ -157,72 +158,32 @@ export function PortfolioSection({ portfolios, onPortfolioClick, studioId, owner
     // Solo mostrar filtros si hay más de un tipo de evento
     const showFilters = eventTypes.length > 0;
 
+    if (filteredPortfolios.length === 0 && selectedEventType) {
+        return (
+            <div className="p-8 text-center">
+                <p className="text-sm text-zinc-500">
+                    No hay portfolios en esta categoría
+                </p>
+            </div>
+        );
+    }
+
     return (
-        <div>
-            {/* Filtros horizontales scrolleables */}
-            {showFilters && (
-                <div className="px-4 pt-4 pb-2">
-                    <div className="flex gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        {/* Botón "Todos" */}
-                        <button
-                            onClick={() => setSelectedEventType(null)}
-                            className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${selectedEventType === null
-                                ? 'bg-zinc-700 text-zinc-100'
-                                : 'text-zinc-500 hover:text-zinc-300'
-                                }`}
-                        >
-                            Todos ({portfolios.length})
-                        </button>
-
-                        {/* Botones por tipo de evento */}
-                        {eventTypes.map(type => (
-                            <button
-                                key={type.id}
-                                onClick={() => setSelectedEventType(type.id)}
-                                className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${selectedEventType === type.id
-                                    ? 'bg-zinc-700 text-zinc-100'
-                                    : 'text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                            >
-                                {type.nombre} ({type.count})
-                            </button>
-                        ))}
-
-                        {/* Botón "Sin categoría" - solo si hay portfolios sin categoría */}
-                        {uncategorizedCount > 0 && (
-                            <button
-                                onClick={() => setSelectedEventType('uncategorized')}
-                                className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${selectedEventType === 'uncategorized'
-                                    ? 'bg-zinc-700 text-zinc-100'
-                                    : 'text-zinc-500 hover:text-zinc-300'
-                                    }`}
-                            >
-                                Sin categoría ({uncategorizedCount})
-                            </button>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Portfolios Compactos - Virtual Scrolling */}
-            <PortfolioVirtualList
-                portfolios={filteredPortfolios}
-                onPortfolioClick={onPortfolioClick}
-                isOwner={isOwner}
-                isReordering={isReordering}
-                onMoveUp={handleMoveUp}
-                onMoveDown={handleMoveDown}
-            />
-
-            {/* Mensaje si no hay resultados filtrados */}
-            {filteredPortfolios.length === 0 && selectedEventType && (
-                <div className="p-8 text-center">
-                    <p className="text-sm text-zinc-500">
-                        No hay portfolios en esta categoría
-                    </p>
-                </div>
-            )}
-        </div>
+        <PortfolioVirtualList
+            portfolios={filteredPortfolios}
+            onPortfolioClick={onPortfolioClick}
+            isOwner={isOwner}
+            isReordering={isReordering}
+            onMoveUp={handleMoveUp}
+            onMoveDown={handleMoveDown}
+            showFilters={showFilters}
+            eventTypes={eventTypes}
+            selectedEventType={selectedEventType}
+            onEventTypeChange={setSelectedEventType}
+            uncategorizedCount={uncategorizedCount}
+            totalCount={portfolios.length}
+            isDesktop={isDesktop}
+        />
     );
 }
 
@@ -236,6 +197,13 @@ function PortfolioVirtualList({
     isReordering,
     onMoveUp,
     onMoveDown,
+    showFilters,
+    eventTypes,
+    selectedEventType,
+    onEventTypeChange,
+    uncategorizedCount,
+    totalCount,
+    isDesktop = false,
 }: {
     portfolios: PublicPortfolio[];
     onPortfolioClick?: (portfolioSlug: string) => void;
@@ -243,17 +211,62 @@ function PortfolioVirtualList({
     isReordering: boolean;
     onMoveUp: (index: number) => void;
     onMoveDown: (index: number) => void;
+    showFilters: boolean;
+    eventTypes: Array<{ id: string; nombre: string; count: number }>;
+    selectedEventType: string | null;
+    onEventTypeChange: (type: string | null) => void;
+    uncategorizedCount: number;
+    totalCount: number;
+    isDesktop?: boolean;
 }) {
     return (
-        <div className="px-4 pb-4">
-            <VList
-                data={portfolios}
-                overscan={3}
-                itemSize={120}
-            >
-                {(portfolio, index) => (
-                    <div className="mb-3" key={portfolio.id}>
+        <div className={`w-full ${isDesktop ? 'flex flex-col' : 'h-full overflow-hidden flex flex-col'}`}>
+            {/* Filtros integrados dentro del scroll - Sticky en la parte superior */}
+            {showFilters && (
+                <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-800/20 px-4 py-3 mb-4 shrink-0">
+                    <div className="flex gap-2 overflow-x-auto [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        <button
+                            onClick={() => onEventTypeChange(null)}
+                            className={`px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${selectedEventType === null
+                                ? 'bg-zinc-700 text-zinc-100'
+                                : 'text-zinc-500 hover:text-zinc-300'
+                                }`}
+                        >
+                            Todos ({totalCount})
+                        </button>
+                        {eventTypes.map(type => (
+                            <button
+                                key={type.id}
+                                onClick={() => onEventTypeChange(type.id)}
+                                className={`px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${selectedEventType === type.id
+                                    ? 'bg-zinc-700 text-zinc-100'
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                                    }`}
+                            >
+                                {type.nombre} ({type.count})
+                            </button>
+                        ))}
+                        {uncategorizedCount > 0 && (
+                            <button
+                                onClick={() => onEventTypeChange('uncategorized')}
+                                className={`px-3.5 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${selectedEventType === 'uncategorized'
+                                    ? 'bg-zinc-700 text-zinc-100'
+                                    : 'text-zinc-500 hover:text-zinc-300'
+                                    }`}
+                            >
+                                Sin categoría ({uncategorizedCount})
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* VList - Ocupa el espacio restante (Native Shell) */}
+            {isDesktop ? (
+                <div className="w-full pb-4 space-y-3">
+                    {portfolios.map((portfolio, index) => (
                         <PortfolioFeedCard
+                            key={portfolio.id}
                             portfolio={portfolio}
                             onPortfolioClick={onPortfolioClick}
                             isOwner={isOwner}
@@ -262,9 +275,31 @@ function PortfolioVirtualList({
                             canMoveUp={index > 0 && !isReordering}
                             canMoveDown={index < portfolios.length - 1 && !isReordering}
                         />
-                    </div>
-                )}
-            </VList>
+                    ))}
+                </div>
+            ) : (
+                <div className="flex-1 min-h-0 w-full relative overflow-hidden px-4 pb-24 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                    <VList
+                        data={portfolios}
+                        itemSize={120}
+                        style={{ height: '100%', width: '100%' }}
+                    >
+                        {(portfolio, index) => (
+                            <div className="mb-3" key={portfolio.id}>
+                                <PortfolioFeedCard
+                                    portfolio={portfolio}
+                                    onPortfolioClick={onPortfolioClick}
+                                    isOwner={isOwner}
+                                    onMoveUp={isOwner ? () => onMoveUp(index) : undefined}
+                                    onMoveDown={isOwner ? () => onMoveDown(index) : undefined}
+                                    canMoveUp={index > 0 && !isReordering}
+                                    canMoveDown={index < portfolios.length - 1 && !isReordering}
+                                />
+                            </div>
+                        )}
+                    </VList>
+                </div>
+            )}
         </div>
     );
 }

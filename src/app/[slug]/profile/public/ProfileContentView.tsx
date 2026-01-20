@@ -27,6 +27,7 @@ interface ProfileContentViewProps {
     studioId?: string;
     ownerUserId?: string | null;
     studioSlug?: string;
+    isDesktop?: boolean; // Para ajustar scroll en desktop
 }
 
 /**
@@ -34,7 +35,7 @@ interface ProfileContentViewProps {
  * Renders the appropriate view based on active tab
  * Handles tab switching logic and post/portfolio modals
  */
-export function ProfileContentView({ activeTab, profileData, onPostClick, onPortfolioClick, onEditPost, studioId, ownerUserId, studioSlug }: ProfileContentViewProps) {
+export function ProfileContentView({ activeTab, profileData, onPostClick, onPortfolioClick, onEditPost, studioId, ownerUserId, studioSlug, isDesktop = false }: ProfileContentViewProps) {
     const { studio, contactInfo, socialNetworks, portfolios, posts, paquetes } = profileData;
 
     switch (activeTab) {
@@ -45,26 +46,32 @@ export function ProfileContentView({ activeTab, profileData, onPostClick, onPort
             const filter = activeTab === 'inicio-fotos' ? 'photos' :
                 activeTab === 'inicio-videos' ? 'videos' : 'all';
             return (
-                <ProfileContent
-                    variant="inicio"
-                    data={{ posts: posts || [] }}
-                    filter={filter}
-                    onPostClick={onPostClick}
-                    onEditPost={onEditPost}
-                    studioId={studioId}
-                    ownerUserId={ownerUserId}
-                />
+                <div className={isDesktop ? "w-full" : "h-full overflow-hidden"}>
+                    <ProfileContent
+                        variant="inicio"
+                        data={{ posts: posts || [] }}
+                        filter={filter}
+                        onPostClick={onPostClick}
+                        onEditPost={onEditPost}
+                        studioId={studioId}
+                        ownerUserId={ownerUserId}
+                        isDesktop={isDesktop}
+                    />
+                </div>
             );
 
         case 'portafolio':
             return (
-                <ProfileContent
-                    variant="portfolio"
-                    data={{ portfolios }}
-                    onPortfolioClick={onPortfolioClick}
-                    studioId={studioId}
-                    ownerUserId={ownerUserId}
-                />
+                <div className={isDesktop ? "w-full" : "h-full overflow-hidden"}>
+                    <ProfileContent
+                        variant="portfolio"
+                        data={{ portfolios: portfolios || [] }}
+                        onPortfolioClick={onPortfolioClick}
+                        studioId={studioId}
+                        ownerUserId={ownerUserId}
+                        isDesktop={isDesktop}
+                    />
+                </div>
             );
 
         case 'paquetes':

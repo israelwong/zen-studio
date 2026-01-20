@@ -17,6 +17,7 @@ interface ProfileContentProps {
     studioId?: string;
     ownerUserId?: string | null;
     studioSlug?: string; // Para FAQs editables
+    isDesktop?: boolean; // Para ajustar scroll en desktop
 }
 
 /**
@@ -38,7 +39,8 @@ export function ProfileContent({
     onEditPost,
     studioId,
     ownerUserId,
-    studioSlug
+    studioSlug,
+    isDesktop = false
 }: ProfileContentProps) {
     const { user } = useAuth();
     // Skeleton loading state
@@ -81,7 +83,11 @@ export function ProfileContent({
     if (variant === 'inicio' || variant === 'posts') {
         const posts = Array.isArray(data?.posts) ? (data.posts as unknown[]) : [];
         if (variant === 'inicio' || (variant === 'posts' && !data?.portfolios)) {
-            return <MainSection posts={posts as Parameters<typeof MainSection>[0]['posts']} filter={filter} onPostClick={onPostClick} onEditPost={onEditPost} studioId={studioId} ownerUserId={ownerUserId} />;
+            return (
+                <div className="h-full overflow-hidden">
+                    <MainSection posts={posts as Parameters<typeof MainSection>[0]['posts']} filter={filter} onPostClick={onPostClick} onEditPost={onEditPost} studioId={studioId} ownerUserId={ownerUserId} isDesktop={isDesktop} />
+                </div>
+            );
         }
         // Fallback a PostSection si no hay posts pero hay variant posts
         return <PostSection posts={posts as Parameters<typeof PostSection>[0]['posts']} />;
@@ -127,7 +133,11 @@ export function ProfileContent({
     // Portfolio content
     if (variant === 'portfolio') {
         const portfolios = data?.portfolios as PublicPortfolio[] || [];
-        return <PortfolioSection portfolios={portfolios} onPortfolioClick={onPortfolioClick} studioId={studioId} ownerUserId={ownerUserId} currentUserId={user?.id || null} />;
+        return (
+            <div className="h-full overflow-hidden">
+                <PortfolioSection portfolios={portfolios} onPortfolioClick={onPortfolioClick} studioId={studioId} ownerUserId={ownerUserId} currentUserId={user?.id || null} isDesktop={isDesktop} />
+            </div>
+        );
     }
 
     // Portfolio detail content (para editor)

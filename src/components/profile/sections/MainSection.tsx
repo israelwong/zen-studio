@@ -35,19 +35,20 @@ interface MainSectionProps {
     onEditPost?: (postId: string) => void;
     studioId?: string;
     ownerUserId?: string | null;
+    isDesktop?: boolean;
 }
 
 /**
  * MainSection - Feed de inicio con posts (Virtual Scrolling)
  * Renderiza solo posts visibles en viewport + overscan para mejor performance
  */
-export function MainSection({ posts, filter = 'all', onPostClick, onEditPost, studioId, ownerUserId }: MainSectionProps) {
+export function MainSection({ posts, filter = 'all', onPostClick, onEditPost, studioId, ownerUserId, isDesktop = false }: MainSectionProps) {
     const publishedPosts = posts.filter(post => post.is_published);
 
     const getPostType = (post: PublicPost): 'photo' | 'video' | 'mixed' => {
         const hasImages = post.media.some(m => m.file_type === 'image');
         const hasVideos = post.media.some(m => m.file_type === 'video');
-        
+
         if (hasImages && hasVideos) return 'mixed';
         if (hasVideos && !hasImages) return 'video';
         return 'photo';
@@ -70,18 +71,18 @@ export function MainSection({ posts, filter = 'all', onPostClick, onEditPost, st
 
     const filteredPosts = useMemo(() => {
         if (filter === 'all') return sortedPosts;
-        
+
         return sortedPosts.filter(post => {
             const postType = getPostType(post);
-            
+
             if (filter === 'photos') {
                 return postType === 'photo' || postType === 'mixed';
             }
-            
+
             if (filter === 'videos') {
                 return postType === 'video' || postType === 'mixed';
             }
-            
+
             return true;
         });
     }, [sortedPosts, filter]);
@@ -112,16 +113,23 @@ export function MainSection({ posts, filter = 'all', onPostClick, onEditPost, st
         );
     }
 
-    return (
-        <VList
-            data={filteredPosts}
-            overscan={2}
-            itemSize={400}
-        >
-            {(post, index) => (
-                <React.Fragment key={post.id}>
-                    {index > 0 && <div className="border-t border-zinc-700" />}
-                    <div className="py-6 px-4">
+    // Estimar altura de cada post (variable según contenido)
+    const estimatedItemSize = useMemo(() => {
+        const avgMediaCount = filteredPosts.reduce((sum, p) => sum + (p.media?.length || 0), 0) / filteredPosts.length;
+        if (avgMediaCount <= 1) return 500;
+        if (avgMediaCount <= 3) return 700;
+        return 900;
+    }, [filteredPosts]);
+
+    // En desktop, renderizar sin VList (scroll natural del viewport)
+    if (isDesktop) {
+        return (
+            <div className="w-full space-y-0">
+                {filteredPosts.map((post, index) => (
+                    <React.Fragment key={post.id}>
+                        {index > 0 && (
+                            <div className="h-px bg-linear-to-r from-transparent via-zinc-800 to-transparent" />
+                        )}
                         <PostFeedCardWithTracking
                             post={post}
                             studioId={studioId || ''}
@@ -129,9 +137,34 @@ export function MainSection({ posts, filter = 'all', onPostClick, onEditPost, st
                             onPostClick={onPostClick}
                             onEditPost={onEditPost}
                         />
-                    </div>
-                </React.Fragment>
-            )}
-        </VList>
+                    </React.Fragment>
+                ))}
+            </div>
+        );
+    }
+
+    return (
+        <div className="w-full h-full flex-1 relative overflow-hidden pb-20 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <VList
+                data={filteredPosts}
+                itemSize={estimatedItemSize}
+                style={{ height: '100%', width: '100%' }}
+            >
+                {(post, index) => (
+                    <React.Fragment key={post.id}>
+                        {index > 0 && (
+                            <div className="h-px bg-linear-to-r from-transparent via-zinc-800 to-transparent" />
+                        )}
+                        <PostFeedCardWithTracking
+                            post={post}
+                            studioId={studioId || ''}
+                            ownerUserId={ownerUserId}
+                            onPostClick={onPostClick}
+                            onEditPost={onEditPost}
+                        />
+                    </React.Fragment>
+                )}
+            </VList>
+        </div>
     );
 }
