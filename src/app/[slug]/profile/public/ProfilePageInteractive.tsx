@@ -37,18 +37,18 @@ interface PublicOffer {
     banner_destination?: "LEADFORM_ONLY" | "LANDING_THEN_LEADFORM" | "LEADFORM_WITH_LANDING";
 }
 
-interface ProfilePageClientProps {
+interface ProfilePageInteractiveProps {
     profileData: PublicProfileData;
     studioSlug: string;
     offers?: PublicOffer[];
 }
 
 /**
- * ProfilePageClient - Main client component for public profile
+ * ProfilePageInteractive - Componente interactivo del perfil público
+ * Maneja toda la lógica de interactividad: tabs, modals, search, tracking
  * Nueva estructura unificada responsive: mobile-first con 2 columnas en desktop
- * Maneja modals de post y portfolio con query params
  */
-export function ProfilePageClient({ profileData, studioSlug, offers = [] }: ProfilePageClientProps) {
+export function ProfilePageInteractive({ profileData, studioSlug, offers = [] }: ProfilePageInteractiveProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
@@ -143,6 +143,13 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
 
         // Sincronizar tab desde URL
         if (sectionParam && ['inicio', 'inicio-fotos', 'inicio-videos', 'portafolio', 'contacto', 'faq', 'archivados'].includes(sectionParam)) {
+            // ⚠️ HIGIENE UI: Si cambia el tab, cerrar overlays
+            if (sectionParam !== activeTab) {
+                setSelectedPostSlug(null);
+                setSelectedPortfolioSlug(null);
+                setIsSearchOpen(false);
+                setIsPostEditorOpen(false);
+            }
             setActiveTab(sectionParam);
         }
 
@@ -153,10 +160,13 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
             setSelectedPortfolioSlug(portfolioParam);
             setSelectedPostSlug(null);
         } else {
-            setSelectedPostSlug(null);
-            setSelectedPortfolioSlug(null);
+            // ⚠️ HIGIENE UI: Si no hay params de modal, asegurar que estén cerrados
+            if (!postParam && !portfolioParam) {
+                setSelectedPostSlug(null);
+                setSelectedPortfolioSlug(null);
+            }
         }
-    }, [searchParams]);
+    }, [searchParams, activeTab]);
 
     // Detectar parámetro createPost para abrir sheet
     useEffect(() => {
@@ -169,6 +179,21 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
             window.history.replaceState({}, '', newUrl);
         }
     }, [searchParams, isOwner, studioSlug]);
+
+    // Exponer callbacks para ProfilePageHeader
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            (window as any).__profilePageCallbacks = {
+                onCreatePost: () => {
+                    setEditingPostId(undefined);
+                    setIsPostEditorOpen(true);
+                },
+                onCreateOffer: () => {
+                    window.open(`/${studioSlug}/studio/commercial/ofertas/nuevo`, '_blank');
+                },
+            };
+        }
+    }, [studioSlug]);
 
     // Helper para construir URL con section
     const buildUrl = (params: { post?: string; portfolio?: string; tab?: string }) => {
@@ -191,6 +216,13 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
 
     // Handler para cambio de tab
     const handleTabChange = (tab: string) => {
+        // ⚠️ HIGIENE UI: Cerrar overlays al cambiar tabs
+        setSelectedPostSlug(null);
+        setSelectedPortfolioSlug(null);
+        setIsSearchOpen(false);
+        setIsPostEditorOpen(false);
+        setEditingPostId(undefined);
+        
         setActiveTab(tab);
         router.push(buildUrl({ tab }), { scroll: false });
     };
@@ -298,26 +330,8 @@ export function ProfilePageClient({ profileData, studioSlug, offers = [] }: Prof
 
     return (
         <div className="min-h-screen bg-zinc-950">
-            {/* Header - Compartido sticky */}
-            <header className="sticky top-0 z-50">
-                <ProfileHeader
-                    data={{
-                        studio_name: studio.studio_name,
-                        slogan: studio.slogan,
-                        logo_url: studio.logo_url
-                    }}
-                    studioSlug={studioSlug}
-                    onCreatePost={() => {
-                        setEditingPostId(undefined);
-                        setIsPostEditorOpen(true);
-                    }}
-                    onCreateOffer={() => {
-                        window.open(`/${studioSlug}/studio/commercial/ofertas/nuevo`, '_blank');
-                    }}
-                    isEditMode={isOwner}
-                />
-            </header>
-
+            {/* ⚠️ STREAMING: Header se renderiza en ProfilePageHeader, no aquí */}
+            
             {/* Main Content - Responsive Grid con max-width centrado en desktop */}
             {/* Columnas con ancho mobile-friendly: ~430px cada una */}
             <main className="w-full mx-auto max-w-[920px]">
