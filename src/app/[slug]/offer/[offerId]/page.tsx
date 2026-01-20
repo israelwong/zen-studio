@@ -1,15 +1,15 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
-import { getPublicOffer } from "@/lib/actions/studio/offers/offers.actions";
-import { OfferLandingPage } from "@/components/offers/OfferLandingPage";
-import { TrackingScripts } from "@/components/offers/TrackingScripts";
-import { OfferBackgroundWrapper } from "@/components/offers/OfferBackgroundWrapper";
-import { OfferHeader } from "@/components/offers/OfferHeader";
-import { PublicPageFooter } from "@/components/shared/PublicPageFooter";
+import { Suspense } from "react";
+import {
+    getPublicOfferBasicData,
+    getPublicOfferDeferredContentBlocks,
+} from "@/lib/actions/studio/offers/offers.actions";
+import { OfferPageHeader } from "./OfferPageHeader";
+import { OfferPageStreaming } from "./OfferPageStreaming";
+import { OfferPageSkeleton } from "./OfferPageSkeleton";
 import { prisma } from "@/lib/prisma";
 import { Metadata } from "next";
-import { ContentBlock } from "@/types/content-blocks";
 import { PackageX } from "lucide-react";
 
 interface PublicOfferPageProps {
@@ -18,7 +18,8 @@ interface PublicOfferPageProps {
 }
 
 /**
- * Landing page pública de oferta comercial
+ * ⚠️ STREAMING: Landing page pública de oferta comercial
+ * Fragmentación: Basic (instantáneo) + Deferred (content blocks)
  */
 export default async function PublicOfferPage({
   params,
@@ -29,10 +30,10 @@ export default async function PublicOfferPage({
   const isPreview = preview === "true";
 
   try {
-    // Obtener oferta pública (solo activas)
-    const offerResult = await getPublicOffer(offerId, slug);
+    // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
+    const basicResult = await getPublicOfferBasicData(offerId, slug);
 
-    if (!offerResult.success || !offerResult.data) {
+    if (!basicResult.success || !basicResult.data) {
       // Verificar si la oferta existe pero está inactiva
       const studio = await prisma.studios.findUnique({
         where: { slug },
@@ -52,7 +53,6 @@ export default async function PublicOfferPage({
         });
 
         if (inactiveOffer) {
-          // Mostrar mensaje de oferta no disponible
           return (
             <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
               <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8 max-w-md w-full text-center">
@@ -77,28 +77,15 @@ export default async function PublicOfferPage({
         }
       }
 
-      // Si no existe en absoluto, mostrar 404
       notFound();
     }
 
-    const offer = offerResult.data;
+    const { offer, studio } = basicResult.data;
 
     // Si el banner redirige directamente al leadform, redirigir
     if (offer.banner_destination === "LEADFORM_ONLY" || offer.banner_destination === "LEADFORM_WITH_LANDING") {
       redirect(`/${slug}/offer/${offerId}/leadform${isPreview ? "?preview=true" : ""}`);
     }
-
-    // Obtener datos del estudio para tracking y header
-    const studio = await prisma.studios.findUnique({
-      where: { slug },
-      select: {
-        gtm_id: true,
-        facebook_pixel_id: true,
-        studio_name: true,
-        slogan: true,
-        logo_url: true,
-      },
-    });
 
     // Verificar que tenga landing page
     if (!offer.landing_page) {
@@ -106,82 +93,34 @@ export default async function PublicOfferPage({
       notFound();
     }
 
+    // ⚠️ STREAMING: Crear promesa para content blocks pesados (NO await - deferred)
+    const contentBlocksPromise = getPublicOfferDeferredContentBlocks(offer.id);
+
     return (
       <>
-        {/* Scripts de tracking */}
-        <TrackingScripts
-          gtmId={studio?.gtm_id || undefined}
-          facebookPixelId={studio?.facebook_pixel_id || undefined}
-          customEvents={[
-            {
-              eventName: "offer_landing_view",
-              eventData: {
-                offer_id: offer.id,
-                offer_slug: offer.slug,
-                offer_name: offer.name,
-              },
-            },
-            {
-              eventName: "ViewContent",
-              eventData: {
-                content_name: offer.slug,
-                content_category: "offer",
-              },
-            },
-          ]}
+        {/* ⚠️ STREAMING: Parte A - Instantánea (header + tracking + background) */}
+        <OfferPageHeader
+          offer={offer}
+          studio={studio}
+          studioSlug={slug}
         />
 
-        {/* Wrapper con fondo glassmorphism */}
-        <OfferBackgroundWrapper coverUrl={offer.cover_media_url}>
-          {/* Contenido principal */}
-          <div className="min-h-screen">
-            {/* Header sticky fixed en top */}
-            <OfferHeader
-              studioSlug={slug}
-              studioName={studio?.studio_name}
-              studioSlogan={studio?.slogan}
-              logoUrl={studio?.logo_url}
-            />
-
-            {/* Container mobile centrado con padding-top para header */}
-            <div className="max-w-md mx-auto min-h-screen md:py-24 pt-[81px] px-4 md:px-0">
-              {/* Wrapper con scroll y glassmorphism - opacidad reducida para ver fondo dinámico */}
-              <div className="min-h-[calc(100vh-81px)] bg-zinc-950/60 backdrop-blur-sm rounded-xl overflow-hidden border border-zinc-800/50">
-                {/* Content */}
-                <OfferLandingPage
-                  studioSlug={slug}
-                  offerId={offer.id}
-                  offerSlug={offer.slug}
-                  contentBlocks={
-                    (offer.landing_page.content_blocks as ContentBlock[]) || []
-                  }
-                  ctaConfig={offer.landing_page.cta_config}
-                  leadformData={
-                    offer.leadform
-                      ? {
-                        studioId: offer.studio_id,
-                        title: offer.leadform.title,
-                        description: offer.leadform.description,
-                        successMessage: offer.leadform.success_message,
-                        successRedirectUrl: offer.leadform.success_redirect_url,
-                        fieldsConfig: offer.leadform.fields_config,
-                        eventTypeId: offer.leadform.event_type_id,
-                        enableInterestDate: offer.leadform.enable_interest_date,
-                        validateWithCalendar: offer.leadform.validate_with_calendar,
-                        emailRequired: offer.leadform.email_required,
-                        coverUrl: null,
-                        coverType: null,
-                      }
-                      : undefined
-                  }
-                />
-
-                {/* Footer */}
-                <PublicPageFooter />
-              </div>
-            </div>
-          </div>
-        </OfferBackgroundWrapper>
+        {/* ⚠️ STREAMING: Parte B - Streaming (content blocks con Suspense) */}
+        <Suspense fallback={<OfferPageSkeleton />}>
+          <OfferPageStreaming
+            basicData={{
+              offer: {
+                id: offer.id,
+                studio_id: offer.studio_id,
+                slug: offer.slug,
+                landing_page: offer.landing_page,
+                leadform: offer.leadform,
+              },
+              studioSlug: slug,
+            }}
+            contentBlocksPromise={contentBlocksPromise}
+          />
+        </Suspense>
       </>
     );
   } catch (error) {
@@ -190,8 +129,11 @@ export default async function PublicOfferPage({
   }
 }
 
+import { getPublicOfferMetadata } from "@/lib/actions/studio/offers/offers.actions";
+
 /**
- * Generar metadata para SEO
+ * ⚠️ METADATA LIGERA: Solo campos esenciales para SEO
+ * Elimina la doble carga en generateMetadata
  */
 export async function generateMetadata({
   params,
@@ -199,43 +141,31 @@ export async function generateMetadata({
   const { slug, offerId } = await params;
 
   try {
-    const offerResult = await getPublicOffer(offerId, slug);
+    const result = await getPublicOfferMetadata(offerId, slug);
 
-    if (!offerResult.success || !offerResult.data) {
+    if (!result.success || !result.data) {
       return {
         title: "Oferta no encontrada",
         description: "La oferta solicitada no está disponible",
       };
     }
 
-    const offer = offerResult.data;
+    const { offer_name, offer_description, studio_name, logo_url } = result.data;
 
-    // Obtener información completa del estudio
-    const studio = await prisma.studios.findUnique({
-      where: { slug },
-      select: { studio_name: true, logo_url: true },
-    });
-
-    const title = studio?.studio_name
-      ? `${offer.name} - ${studio.studio_name}`
-      : offer.name;
-    const description =
-      offer.description ||
-      (studio?.studio_name
-        ? `Oferta especial de ${studio.studio_name}`
-        : `Oferta especial`);
+    const title = `${offer_name} - ${studio_name}`;
+    const description = offer_description || `Oferta especial de ${studio_name}`;
 
     // Configurar favicon dinámico usando el logo del studio
-    const icons = studio?.logo_url ? {
+    const icons = logo_url ? {
       icon: [
-        { url: studio.logo_url, type: 'image/png' },
-        { url: studio.logo_url, sizes: '32x32', type: 'image/png' },
-        { url: studio.logo_url, sizes: '16x16', type: 'image/png' },
+        { url: logo_url, type: 'image/png' },
+        { url: logo_url, sizes: '32x32', type: 'image/png' },
+        { url: logo_url, sizes: '16x16', type: 'image/png' },
       ],
       apple: [
-        { url: studio.logo_url, sizes: '180x180', type: 'image/png' },
+        { url: logo_url, sizes: '180x180', type: 'image/png' },
       ],
-      shortcut: studio.logo_url,
+      shortcut: logo_url,
     } : undefined;
 
     return {

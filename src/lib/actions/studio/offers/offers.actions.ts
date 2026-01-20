@@ -17,6 +17,7 @@ import type {
   StudioOffer,
 } from "@/types/offers";
 import { getOfferContentBlocks, batchUpdateOfferContentBlocks } from "./offer-content-blocks.actions";
+import type { ContentBlock } from "@/types/content-blocks";
 
 /**
  * Validar si un slug existe en el studio (excluyendo una oferta específica si se proporciona)
@@ -708,7 +709,484 @@ export async function getOffer(
 }
 
 /**
+ * ⚠️ STREAMING: Get basic public offer data (instantáneo)
+ * Solo datos básicos: oferta + studio + landing_page básico (sin content blocks)
+ */
+export async function getPublicOfferBasicData(
+  offerIdentifier: string,
+  studioSlug: string
+): Promise<{
+  success: boolean;
+  data?: {
+    offer: {
+      id: string;
+      studio_id: string;
+      name: string;
+      description: string | null;
+      slug: string;
+      cover_media_url: string | null;
+      cover_media_type: string | null;
+      banner_destination: "LEADFORM_ONLY" | "LANDING_THEN_LEADFORM" | "LEADFORM_WITH_LANDING";
+      landing_page: {
+        id: string;
+        offer_id: string;
+        cta_config: {
+          buttons: Array<{
+            id: string;
+            text: string;
+            variant: "primary" | "secondary" | "outline";
+            position: "top" | "middle" | "bottom" | "floating";
+            href?: string;
+          }>;
+        };
+      } | null;
+      leadform: {
+        id: string;
+        offer_id: string;
+        title: string | null;
+        description: string | null;
+        success_message: string;
+        success_redirect_url: string | null;
+        fields_config: {
+          fields: Array<{
+            id: string;
+            type: string;
+            label: string;
+            required: boolean;
+            placeholder?: string;
+            options?: string[];
+          }>;
+        };
+        event_type_id: string | null;
+        enable_interest_date: boolean;
+        validate_with_calendar: boolean;
+        email_required: boolean | null;
+      } | null;
+      business_term: {
+        id: string;
+        name: string;
+        description: string | null;
+        discount_percentage: number | null;
+        advance_percentage: number | null;
+        advance_type: string | null;
+        advance_amount: number | null;
+      } | null;
+    };
+    studio: {
+      id: string;
+      studio_name: string;
+      slogan: string | null;
+      logo_url: string | null;
+      gtm_id: string | null;
+      facebook_pixel_id: string | null;
+    };
+  };
+  error?: string;
+}> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: {
+          id: true,
+          studio_name: true,
+          slogan: true,
+          logo_url: true,
+          gtm_id: true,
+          facebook_pixel_id: true,
+        },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      // Buscar oferta por ID o slug
+      let offer = await prisma.studio_offers.findFirst({
+        where: {
+          id: offerIdentifier,
+          studio_id: studio.id,
+          is_active: true,
+        },
+        select: {
+          id: true,
+          studio_id: true,
+          name: true,
+          description: true,
+          slug: true,
+          cover_media_url: true,
+          cover_media_type: true,
+          banner_destination: true,
+          landing_page: {
+            select: {
+              id: true,
+              offer_id: true,
+              cta_config: true,
+            },
+          },
+          leadform: {
+            select: {
+              id: true,
+              offer_id: true,
+              title: true,
+              description: true,
+              success_message: true,
+              success_redirect_url: true,
+              fields_config: true,
+              event_type_id: true,
+              enable_interest_date: true,
+              validate_with_calendar: true,
+              email_required: true,
+            },
+          },
+          business_term: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              discount_percentage: true,
+              advance_percentage: true,
+              advance_type: true,
+              advance_amount: true,
+            },
+          },
+        },
+      });
+
+      // Si no se encuentra por ID, buscar por slug
+      if (!offer) {
+        offer = await prisma.studio_offers.findFirst({
+          where: {
+            slug: offerIdentifier,
+            studio_id: studio.id,
+            is_active: true,
+          },
+          select: {
+            id: true,
+            studio_id: true,
+            name: true,
+            description: true,
+            slug: true,
+            cover_media_url: true,
+            cover_media_type: true,
+            banner_destination: true,
+            landing_page: {
+              select: {
+                id: true,
+                offer_id: true,
+                cta_config: true,
+              },
+            },
+            leadform: {
+              select: {
+                id: true,
+                offer_id: true,
+                title: true,
+                description: true,
+                success_message: true,
+                success_redirect_url: true,
+                fields_config: true,
+                event_type_id: true,
+                enable_interest_date: true,
+                validate_with_calendar: true,
+                email_required: true,
+              },
+            },
+            business_term: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                discount_percentage: true,
+                advance_percentage: true,
+                advance_type: true,
+                advance_amount: true,
+              },
+            },
+          },
+        });
+      }
+
+      if (!offer) {
+        return { success: false, error: "Oferta no encontrada" };
+      }
+
+      return {
+        success: true,
+        data: {
+          offer: {
+            id: offer.id,
+            studio_id: offer.studio_id,
+            name: offer.name,
+            description: offer.description,
+            slug: offer.slug,
+            cover_media_url: offer.cover_media_url,
+            cover_media_type: offer.cover_media_type,
+            banner_destination: (offer.banner_destination as "LEADFORM_ONLY" | "LANDING_THEN_LEADFORM" | "LEADFORM_WITH_LANDING") || "LANDING_THEN_LEADFORM",
+            landing_page: offer.landing_page ? {
+              id: offer.landing_page.id,
+              offer_id: offer.landing_page.offer_id,
+              cta_config: offer.landing_page.cta_config as {
+                buttons: Array<{
+                  id: string;
+                  text: string;
+                  variant: "primary" | "secondary" | "outline";
+                  position: "top" | "middle" | "bottom" | "floating";
+                  href?: string;
+                }>;
+              },
+            } : null,
+            leadform: offer.leadform ? {
+              id: offer.leadform.id,
+              offer_id: offer.leadform.offer_id,
+              title: offer.leadform.title,
+              description: offer.leadform.description,
+              success_message: offer.leadform.success_message,
+              success_redirect_url: offer.leadform.success_redirect_url,
+              fields_config: offer.leadform.fields_config as {
+                fields: Array<{
+                  id: string;
+                  type: string;
+                  label: string;
+                  required: boolean;
+                  placeholder?: string;
+                  options?: string[];
+                }>;
+              },
+              event_type_id: offer.leadform.event_type_id,
+              enable_interest_date: offer.leadform.enable_interest_date,
+              validate_with_calendar: offer.leadform.validate_with_calendar,
+              email_required: offer.leadform.email_required,
+            } : null,
+            business_term: offer.business_term ? {
+              id: offer.business_term.id,
+              name: offer.business_term.name,
+              description: offer.business_term.description,
+              discount_percentage: offer.business_term.discount_percentage,
+              advance_percentage: offer.business_term.advance_percentage,
+              advance_type: offer.business_term.advance_type,
+              advance_amount: offer.business_term.advance_amount,
+            } : null,
+          },
+          studio: {
+            id: studio.id,
+            studio_name: studio.studio_name,
+            slogan: studio.slogan,
+            logo_url: studio.logo_url,
+            gtm_id: studio.gtm_id,
+            facebook_pixel_id: studio.facebook_pixel_id,
+          },
+        },
+      };
+    });
+  } catch (error) {
+    console.error("[getPublicOfferBasicData] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener la oferta",
+    };
+  }
+}
+
+/**
+ * ⚠️ METADATA LIGERA: Solo campos esenciales para SEO
+ * Elimina la doble carga en generateMetadata
+ */
+export async function getPublicOfferMetadata(
+  offerIdentifier: string,
+  studioSlug: string
+): Promise<{
+  success: boolean;
+  data?: {
+    offer_name: string;
+    offer_description: string | null;
+    studio_name: string;
+    logo_url: string | null;
+  };
+  error?: string;
+}> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: {
+          id: true,
+          studio_name: true,
+          logo_url: true,
+        },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      // Buscar oferta por ID o slug
+      let offer = await prisma.studio_offers.findFirst({
+        where: {
+          id: offerIdentifier,
+          studio_id: studio.id,
+          is_active: true,
+        },
+        select: {
+          name: true,
+          description: true,
+        },
+      });
+
+      if (!offer) {
+        offer = await prisma.studio_offers.findFirst({
+          where: {
+            slug: offerIdentifier,
+            studio_id: studio.id,
+            is_active: true,
+          },
+          select: {
+            name: true,
+            description: true,
+          },
+        });
+      }
+
+      if (!offer) {
+        return { success: false, error: "Oferta no encontrada" };
+      }
+
+      return {
+        success: true,
+        data: {
+          offer_name: offer.name,
+          offer_description: offer.description,
+          studio_name: studio.studio_name,
+          logo_url: studio.logo_url,
+        },
+      };
+    });
+  } catch (error) {
+    console.error("[getPublicOfferMetadata] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener metadata",
+    };
+  }
+}
+
+/**
+ * ⚠️ STREAMING: Get deferred content blocks (pesados, optimizado)
+ * Rompe el JOIN profundo en queries planas paralelas
+ */
+export async function getPublicOfferDeferredContentBlocks(
+  offerId: string
+): Promise<{
+  success: boolean;
+  data?: ContentBlock[];
+  error?: string;
+}> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      // Query 1: Content blocks básicos (sin media)
+      const blocks = await prisma.studio_offer_content_blocks.findMany({
+        where: { offer_id: offerId },
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          description: true,
+          presentation: true,
+          config: true,
+          order: true,
+        },
+        orderBy: { order: 'asc' },
+      });
+
+      if (blocks.length === 0) {
+        return { success: true, data: [] };
+      }
+
+      // Query 2: Block media (paralela)
+      const blockIds = blocks.map(b => b.id);
+      const blockMedia = await prisma.studio_offer_content_block_media.findMany({
+        where: { content_block_id: { in: blockIds } },
+        select: {
+          id: true,
+          content_block_id: true,
+          order: true,
+          media_id: true,
+        },
+        orderBy: { order: 'asc' },
+      });
+
+      // Query 3: Media files (paralela)
+      const mediaIds = blockMedia.map(bm => bm.media_id).filter((id): id is string => Boolean(id));
+      const mediaFiles = mediaIds.length > 0
+        ? await prisma.studio_offer_media.findMany({
+            where: { id: { in: mediaIds } },
+            select: {
+              id: true,
+              file_url: true,
+              file_type: true,
+              filename: true,
+              storage_path: true,
+              storage_bytes: true,
+              thumbnail_url: true,
+              display_order: true,
+            },
+          })
+        : [];
+
+      // Mapear media por ID
+      const mediaMap = new Map(mediaFiles.map(m => [m.id, m]));
+
+      // Construir block media por content block
+      const blockMediaByBlock = new Map<string, typeof blockMedia>();
+      blockMedia.forEach(bm => {
+        if (!blockMediaByBlock.has(bm.content_block_id)) {
+          blockMediaByBlock.set(bm.content_block_id, []);
+        }
+        blockMediaByBlock.get(bm.content_block_id)!.push(bm);
+      });
+
+      // Mapear content blocks con media
+      return {
+        success: true,
+        data: blocks.map(block => {
+          const blockMediaList = blockMediaByBlock.get(block.id) || [];
+          return {
+            id: block.id,
+            type: block.type as ContentBlock['type'],
+            title: block.title || undefined,
+            description: block.description || undefined,
+            presentation: block.presentation as ContentBlock['presentation'],
+            order: block.order,
+            config: (block.config as Record<string, unknown>) || undefined,
+            media: blockMediaList.map(bm => {
+              const media = mediaMap.get(bm.media_id);
+              return media ? {
+                id: media.id,
+                file_url: media.file_url,
+                file_type: media.file_type as 'image' | 'video',
+                filename: media.filename,
+                storage_path: media.storage_path,
+                storage_bytes: Number(media.storage_bytes),
+                thumbnail_url: media.thumbnail_url || undefined,
+                display_order: bm.order,
+              } : null;
+            }).filter((m): m is NonNullable<typeof m> => m !== null),
+          };
+        }),
+      };
+    });
+  } catch (error) {
+    console.error("[getPublicOfferDeferredContentBlocks] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Error al obtener content blocks",
+    };
+  }
+}
+
+/**
  * Obtener oferta pública por slug o ID (para landing page pública)
+ * @deprecated Use getPublicOfferBasicData + getPublicOfferDeferredContentBlocks instead
  */
 export async function getPublicOffer(
   offerIdentifier: string,
