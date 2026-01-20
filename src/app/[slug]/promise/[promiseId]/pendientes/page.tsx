@@ -1,20 +1,13 @@
 import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Calendar } from 'lucide-react';
 import { unstable_cache } from 'next/cache';
-import { getPublicPromisePendientes, getPublicPromiseRouteState, getPublicPromiseMetadata } from '@/lib/actions/public/promesas.actions';
+import { getPublicPromisePendientes, getPublicPromiseRouteState, getPublicPromiseMetadata, getPublicPromiseBasicData } from '@/lib/actions/public/promesas.actions';
 import { isRouteValid } from '@/lib/utils/public-promise-routing';
-import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
-import { CotizacionesSectionRealtime } from '@/components/promise/CotizacionesSectionRealtime';
-import { PaquetesSection } from '@/components/promise/PaquetesSection';
-import { ComparadorButton } from '@/components/promise/ComparadorButton';
-import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
 import { PromisePageSkeleton } from '@/components/promise/PromisePageSkeleton';
 import { PromisePageProvider } from '@/components/promise/PromisePageContext';
-import { PendientesPageClient } from './PendientesPageClient';
-import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
-import type { PublicCotizacion } from '@/types/public-promise';
+import { PendientesPageBasic } from './PendientesPageBasic';
+import { PendientesPageDeferred } from './PendientesPageDeferred';
 
 interface PendientesPageProps {
   params: Promise<{
@@ -42,38 +35,33 @@ export default async function PendientesPage({ params }: PendientesPageProps) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
-  // ✅ 3. Solo ahora cargar datos específicos para /pendientes
-  const result = await getPublicPromisePendientes(slug, promiseId);
+  // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
+  const basicData = await getPublicPromiseBasicData(slug, promiseId);
 
-  // Si no hay datos, redirigir a la ruta raíz que manejará el error
-  if (!result.success || !result.data) {
+  if (!basicData.success || !basicData.data) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
-  const {
-    promise,
-    studio: studioData,
-    cotizaciones: cotizacionesPendientes,
-    paquetes,
-    condiciones_comerciales,
-    terminos_condiciones,
-    share_settings,
-    portafolios,
-  } = result.data;
+  const { promise: promiseBasic, studio: studioBasic } = basicData.data;
+
+  // ⚠️ STREAMING: Crear promesa para datos pesados (NO await - deferred)
+  const deferredDataPromise = getPublicPromisePendientes(slug, promiseId);
 
   return (
     <PromisePageProvider>
-      <PromiseRedirectWrapper studioSlug={slug} promiseId={promiseId} />
+      {/* ⚠️ STREAMING: Parte A - Instantánea (datos básicos) */}
+      <PendientesPageBasic
+        promise={promiseBasic}
+        studio={studioBasic}
+        studioSlug={slug}
+        promiseId={promiseId}
+      />
+      
+      {/* ⚠️ STREAMING: Parte B - Deferred (datos pesados con Suspense) */}
       <Suspense fallback={<PromisePageSkeleton />}>
-        <PendientesPageClient
-          promise={promise}
-          studio={studioData}
-          cotizaciones={cotizacionesPendientes}
-          paquetes={paquetes}
-          condiciones_comerciales={condiciones_comerciales}
-          terminos_condiciones={terminos_condiciones}
-          share_settings={share_settings}
-          portafolios={portafolios}
+        <PendientesPageDeferred
+          dataPromise={deferredDataPromise}
+          basicPromise={{ promise: promiseBasic, studio: studioBasic }}
           studioSlug={slug}
           promiseId={promiseId}
         />

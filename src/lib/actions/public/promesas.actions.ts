@@ -520,7 +520,7 @@ async function obtenerItemsPorIds(
           billing_type: string | null;
           orden: number;
           status: string;
-          gastos: Array<{ id: string; nombre: string; costo: number | null }>;
+          gastos: Array<{ id: string; nombre: string; costo: number }>;
         }>;
       }>;
     }>();
@@ -603,7 +603,11 @@ async function obtenerItemsPorIds(
                 status: servicio.status,
                 createdAt: new Date(),
                 updatedAt: new Date(),
-                gastos: servicio.gastos,
+                gastos: servicio.gastos.map((g) => ({
+                  id: g.id,
+                  nombre: g.nombre,
+                  costo: g.costo ?? 0, // ⚠️ Asegurar que costo sea number, no null
+                })),
               }))
               .sort((a, b) => a.orden - b.orden),
           }))
@@ -769,7 +773,10 @@ export async function getPublicPromisePendientes(
     // 1. Obtener datos básicos
     const basicDataStart = Date.now();
     const basicData = await getPublicPromiseBasicData(studioSlug, promiseId);
-    console.log(`[${uniqueId}] getPublicPromisePendientes:basicData: ${Date.now() - basicDataStart}ms`);
+    // ⚠️ PRODUCCIÓN: Logs deshabilitados para reducir overhead
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${uniqueId}] getPublicPromisePendientes:basicData: ${Date.now() - basicDataStart}ms`);
+    }
 
     if (!basicData.success || !basicData.data) {
       console.log(`[${uniqueId}] getPublicPromisePendientes:total: ${Date.now() - startTime}ms (early return)`);
@@ -967,7 +974,9 @@ export async function getPublicPromisePendientes(
     ]);
     const paquetes = paquetesResult;
     const portafoliosData = portafoliosResult;
-    console.log(`[${uniqueId}] getPublicPromisePendientes:paquetes+portafolios+config: ${Date.now() - paquetesPortafoliosStart}ms`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${uniqueId}] getPublicPromisePendientes:paquetes+portafolios+config: ${Date.now() - paquetesPortafoliosStart}ms`);
+    }
 
     // Extraer item_ids de paquetes
     const itemIdsFromPaquetes = new Set<string>();
@@ -983,7 +992,9 @@ export async function getPublicPromisePendientes(
     // ⚠️ OPTIMIZACIÓN: Obtener solo items necesarios (en lugar de catálogo completo)
     const catalogoStart = Date.now();
     const catalogo = await obtenerItemsPorIds(studio.id, allItemIds);
-    console.log(`[${uniqueId}] getPublicPromisePendientes:catalogo-optimizado: ${Date.now() - catalogoStart}ms (${allItemIds.length} items)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${uniqueId}] getPublicPromisePendientes:catalogo-optimizado: ${Date.now() - catalogoStart}ms (${allItemIds.length} items)`);
+    }
     const configPrecios = configForm ? {
       utilidad_servicio: parseFloat(configForm.utilidad_servicio || '0.30') / 100,
       utilidad_producto: parseFloat(configForm.utilidad_producto || '0.20') / 100,
@@ -995,13 +1006,14 @@ export async function getPublicPromisePendientes(
     const multimediaStart = Date.now();
     const itemsMediaMap = new Map<string, Array<{ id: string; file_url: string; file_type: 'IMAGE' | 'VIDEO'; thumbnail_url?: string | null }>>();
 
-    if (allItemIds && allItemIds.length > 0) {
+    // ⚠️ CRÍTICO: Solo items de cotizaciones, NO de paquetes
+    const itemIdsFromQuotesArray = Array.from(itemIdsFromQuotes);
+    if (itemIdsFromQuotesArray.length > 0) {
       const fetchMediaStart = Date.now();
       // ⚠️ OPTIMIZACIÓN: Solo campos esenciales (url, type, item_id) - sin metadatos pesados
-      // ⚠️ CRÍTICO: Solo items de cotizaciones, NO de paquetes
       const itemsMediaData = await prisma.studio_item_media.findMany({
         where: {
-          item_id: { in: Array.from(itemIdsFromQuotes) },
+          item_id: { in: itemIdsFromQuotesArray },
           studio_id: studio.id,
         },
         select: {
@@ -1292,7 +1304,9 @@ export async function getPublicPromisePendientes(
 
     console.log(`[${uniqueId}] getPublicPromisePendientes:total: ${Date.now() - startTime}ms`);
   } catch (error) {
-    console.log(`[${uniqueId}] getPublicPromisePendientes:total: ${Date.now() - startTime}ms (error)`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[${uniqueId}] getPublicPromisePendientes:total: ${Date.now() - startTime}ms (error)`);
+    }
     console.error("[getPublicPromisePendientes] Error:", error);
     return {
       success: false,
@@ -3819,10 +3833,11 @@ export async function getPublicPromiseUpdate(
 }
 
 /**
+ * ⚠️ STREAMING: Exportar para uso con Suspense
  * Helper compartido: Obtener datos básicos de promise + studio (sin cotizaciones pesadas)
  * Usado por todas las funciones fragmentadas
  */
-async function getPublicPromiseBasicData(
+export async function getPublicPromiseBasicData(
   studioSlug: string,
   promiseId: string
 ): Promise<{

@@ -87,7 +87,7 @@ if (process.env.NODE_ENV !== 'production') {
 const poolMax = isPgbouncer 
   ? 1 // Serverless: 1 conexión (pgbouncer)
   : process.env.NODE_ENV === 'production' 
-    ? 1 // Producción: 1 conexión (conservador)
+    ? 20 // ⚠️ OPTIMIZACIÓN: Producción: 20 conexiones para paralelismo
     : 10; // Desarrollo: 10 conexiones para paralelismo
 
 const pgPool = globalThis.__pgPool || new Pool({
