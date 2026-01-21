@@ -12,8 +12,7 @@ import {
   DialogDescription,
 } from '@/components/ui/shadcn/dialog';
 import type { PublicCotizacion } from '@/types/public-promise';
-import { autorizarCotizacionPublica } from '@/lib/actions/public/cotizaciones.actions';
-import { updatePublicPromiseData, getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
+import { getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { usePromisePageContext } from './PromisePageContext';
 import { cn } from '@/lib/utils';
 import { Step1Identity } from './Step1Identity';
@@ -110,6 +109,7 @@ interface WizardFooterProps {
   canGoBack: boolean;
   canGoNext: boolean;
   isSubmitting: boolean;
+  isLoadingData?: boolean;
 }
 
 function WizardFooter({
@@ -118,25 +118,26 @@ function WizardFooter({
   onNext,
   canGoBack,
   canGoNext,
-  isSubmitting
+  isSubmitting,
+  isLoadingData = false
 }: WizardFooterProps) {
   return (
     <div className="flex items-center justify-between gap-3 pt-6 border-t border-zinc-800">
       <ZenButton
         variant="outline"
         onClick={onBack}
-        disabled={!canGoBack || isSubmitting}
+        disabled={!canGoBack || isSubmitting || isLoadingData}
       >
         Atrás
       </ZenButton>
 
       <ZenButton
         onClick={onNext}
-        disabled={!canGoNext || isSubmitting}
-        loading={isSubmitting && currentStep === 3}
+        disabled={!canGoNext || isSubmitting || isLoadingData}
+        loading={(isSubmitting && currentStep === 3) || isLoadingData}
       >
-        {currentStep === 3 ? "Confirmar Reserva" : "Siguiente"}
-        {currentStep < 3 && <ChevronRight className="h-4 w-4 ml-2" />}
+        {isLoadingData ? "Cargando..." : currentStep === 3 ? "Confirmar Reserva" : "Siguiente"}
+        {currentStep < 3 && !isLoadingData && <ChevronRight className="h-4 w-4 ml-2" />}
       </ZenButton>
     </div>
   );
@@ -170,11 +171,10 @@ export function AutorizarCotizacionModal({
   const {
     onPreparing: onPreparingContext,
     onSuccess: onSuccessContext,
-    showProgressOverlay,
-    setShowProgressOverlay,
-    setProgressStep,
-    setProgressError,
-    setAutoGenerateContract
+    autoGenerateContract: autoGenerateContractContext,
+    setAutoGenerateContract,
+    setIsAuthorizationInProgress,
+    setAuthorizationData
   } = usePromisePageContext();
 
   // Usar prop si está disponible, sino usar contexto
@@ -220,6 +220,7 @@ export function AutorizarCotizacionModal({
       }
     }
   }, [isOpen, initialPromiseData]);
+
 
   // Validación por paso
   const validateCurrentStep = (): boolean => {
@@ -281,8 +282,9 @@ export function AutorizarCotizacionModal({
     }
   };
 
-  // Submit final (reemplaza handleSubmitForm)
-  const handleFinalSubmit = async () => {
+  // Submit final - solo activa el estado y cierra el modal
+  // La lógica de procesamiento se mueve a PendientesPageClient
+  const handleFinalSubmit = () => {
     // Validar que tenemos todos los datos necesarios
     if (!formData.contact_name || !formData.contact_phone || !formData.contact_email ||
       !formData.contact_address || !formData.event_name || !formData.event_location) {
@@ -296,159 +298,52 @@ export function AutorizarCotizacionModal({
       return;
     }
 
-    // Establecer estado de submitting (el botón mostrará spinner)
     setIsSubmitting(true);
-
-    // Consolidar datos del formulario
-    // Asegurar que event_name esté en el formato correcto (especialmente para bodas)
-    const eventName = formData.event_name.trim();
-
-    const submitData = {
-      contact_name: formData.contact_name.trim(),
-      contact_phone: formData.contact_phone.trim(),
-      contact_email: formData.contact_email.trim(),
-      contact_address: formData.contact_address.trim(),
-      event_name: eventName,
-      event_location: formData.event_location.trim(),
-    };
-
-    // NO cerrar el modal aquí - se cerrará después de que el overlay se monte
-    await handleSubmitForm(submitData);
-  };
-
-  // Función original de submit (mantiene toda la lógica existente)
-  const handleSubmitForm = async (data: {
-    contact_name: string;
-    contact_phone: string;
-    contact_email: string;
-    contact_address: string;
-    event_name: string;
-    event_location: string;
-  }) => {
-    // ⚠️ TAREA 3: Cerrar overlays antes de autorizar
-    window.dispatchEvent(new CustomEvent('close-overlays'));
     
-    setProgressError(null);
-    setProgressStep('validating');
-    setAutoGenerateContract(autoGenerateContract);
-
-    // PASO 1: Mostrar overlay PRIMERO (antes de cerrar el modal)
-    // Esto evita el "flash" visual
+    // 🔒 LOCK SÍNCRONO GLOBAL: Establecer antes de cualquier otra operación
+    // Esto previene race conditions con actualizaciones de Realtime
+    (window as any).__IS_AUTHORIZING = true;
+    
+    // Guardar datos de autorización en el contexto
+    const authData = {
+      promiseId,
+      cotizacionId: cotizacion.id,
+      studioSlug,
+      formData: {
+        contact_name: formData.contact_name.trim(),
+        contact_phone: formData.contact_phone.trim(),
+        contact_email: formData.contact_email.trim(),
+        contact_address: formData.contact_address.trim(),
+        event_name: formData.event_name.trim(),
+        event_location: formData.event_location.trim(),
+      },
+      condicionesComercialesId,
+      condicionesComercialesMetodoPagoId,
+      autoGenerateContract: autoGenerateContract || autoGenerateContractContext,
+    };
+    
+    // Establecer bloqueo síncronamente ANTES de cerrar el modal
+    // Esto garantiza que el overlay se monte en el DOM antes de que el modal comience su proceso de cierre
     flushSync(() => {
-      setShowProgressOverlay(true);
-      // Cerrar DetailSheet si está abierto
+      setAuthorizationData(authData);
+      setIsAuthorizationInProgress(true);
+      if (setAutoGenerateContract) setAutoGenerateContract(autoGenerateContract);
+    });
+    
+    // Disparar evento para bloquear redirecciones automáticas (mantener por compatibilidad)
+    window.dispatchEvent(new CustomEvent('authorization-started', {
+      detail: { promiseId, cotizacionId: cotizacion.id }
+    }));
+    
+    // Cerrar DetailSheet y ocultar UI inmediatamente después de establecer el estado
+    flushSync(() => {
       onCloseDetailSheet?.();
-      // Ocultar UI de cotización/paquete
       (onSuccessContext || onSuccess)?.();
-      // Activar skeleton
       (onPreparingContext || onPreparing)?.();
+      onClose(); // Cerrar el modal
     });
 
-    // PASO 2: Pequeño delay para asegurar que el overlay se haya montado completamente
-    // Esto permite que el overlay "cubra" el modal antes de cerrarlo
-    await new Promise(resolve => setTimeout(resolve, 200));
-
-    // PASO 3: Cerrar el modal después de que el overlay esté visible
-    // El overlay tiene z-index más alto (10070) que el modal (120), así que lo cubrirá
-    onClose();
-
-    try {
-      // Paso 1: Validando datos (~600ms)
-      await new Promise(resolve => setTimeout(resolve, 600));
-
-      // Paso 2: Enviando solicitud (updatePublicPromiseData)
-      setProgressStep('sending');
-      const updateResult = await updatePublicPromiseData(studioSlug, promiseId, {
-        contact_name: data.contact_name,
-        contact_phone: data.contact_phone,
-        contact_email: data.contact_email,
-        contact_address: data.contact_address,
-        event_name: data.event_name,
-        event_location: data.event_location,
-      });
-
-      if (!updateResult.success) {
-        setProgressError(updateResult.error || 'Error al actualizar datos');
-        setProgressStep('error');
-        setIsSubmitting(false);
-        // En caso de error, permitir que el usuario cierre el modal
-        // El overlay mostrará el error y opciones de reintentar/cerrar
-        return;
-      }
-
-      // Paso 3: Registrando solicitud (autorizarCotizacionPublica)
-      setProgressStep('registering');
-      const result = await autorizarCotizacionPublica(
-        promiseId,
-        cotizacion.id,
-        studioSlug,
-        condicionesComercialesId,
-        condicionesComercialesMetodoPagoId
-      );
-
-      if (!result.success) {
-        setProgressError(result.error || 'Error al enviar solicitud');
-        setProgressStep('error');
-        setIsSubmitting(false);
-        // En caso de error, permitir que el usuario cierre el modal
-        // El overlay mostrará el error y opciones de reintentar/cerrar
-        return;
-      }
-
-      // Los callbacks ya se ejecutaron cuando se abrió el overlay (step "validating")
-      // No es necesario ejecutarlos nuevamente aquí
-
-      // Paso 4: Recopilando datos de cotización y recargando estado (~800ms)
-      setProgressStep('collecting');
-      // Recargar cotizaciones en paralelo (no bloquear el flujo)
-      (async () => {
-        try {
-          const { getPublicPromiseData } = await import('@/lib/actions/public/promesas.actions');
-          const reloadResult = await getPublicPromiseData(studioSlug, promiseId);
-          if (reloadResult.success && reloadResult.data?.cotizaciones) {
-            // Disparar evento personalizado para que PromisePageClient recargue
-            window.dispatchEvent(new CustomEvent('reloadCotizaciones', {
-              detail: { cotizaciones: reloadResult.data.cotizaciones }
-            }));
-          }
-        } catch (error) {
-          console.error('[AutorizarCotizacionModal] Error al recargar cotizaciones:', error);
-        }
-      })();
-
-      // Esperar 800ms antes de continuar
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Paso 5: Generando contrato (condicional, ~1200ms)
-      if (autoGenerateContract) {
-        setProgressStep('generating_contract');
-        await new Promise(resolve => setTimeout(resolve, 1200));
-      }
-
-      // Paso 6: Preparando flujo de contratación (~1000ms)
-      setProgressStep('preparing');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Paso 7: Completado (~800ms)
-      setProgressStep('completed');
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      setIsSubmitting(false);
-      // Esperar un poco más para asegurar que las cotizaciones se hayan recargado
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // NO cerrar el overlay aquí - se mantendrá abierto hasta la redirección
-      // La redirección ocurrirá desde PendientesPageClient cuando detecte progressStep === 'completed'
-      // El overlay se cerrará automáticamente cuando ocurra la redirección
-    } catch (error) {
-      console.error('Error en handleAutorizar:', error);
-      setProgressError('Error al enviar solicitud. Por favor, intenta de nuevo o contacta al estudio.');
-      setProgressStep('error');
-      setIsSubmitting(false);
-
-      // En caso de error, mantener el overlay abierto para mostrar el error
-      // El usuario puede cerrarlo manualmente o reintentar
-    }
+    setIsSubmitting(false);
   };
 
 
@@ -467,8 +362,9 @@ export function AutorizarCotizacionModal({
 
   // Handler para cambios en el Dialog
   const handleDialogChange = (open: boolean) => {
-    // No permitir cerrar el modal si está procesando o si el overlay está activo
-    if (!open && !isSubmitting && !showProgressOverlay) {
+    // No permitir cerrar el modal si está procesando
+    // El modal debe mantenerse abierto mientras se procesa la autorización
+    if (!open && !isSubmitting) {
       onClose();
     }
   };
@@ -547,11 +443,13 @@ export function AutorizarCotizacionModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-      <DialogContent
-        className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
-        overlayZIndex={120}
-      >
+    <>
+      <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+        <DialogContent
+          className="sm:max-w-2xl max-h-[90vh] overflow-y-auto"
+          overlayZIndex={120}
+          style={{ zIndex: 120 }}
+        >
         {/* Header con barra de progreso */}
         <div className="pt-6 mb-0">
           <WizardProgressBar currentStep={currentStep} totalSteps={3} />
@@ -590,8 +488,10 @@ export function AutorizarCotizacionModal({
           canGoBack={currentStep > 1}
           canGoNext={true}
           isSubmitting={isSubmitting}
+          isLoadingData={isLoadingData}
         />
       </DialogContent>
     </Dialog>
+    </>
   );
 }

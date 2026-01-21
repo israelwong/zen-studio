@@ -8,6 +8,7 @@ import { PendientesPageSkeleton } from '@/components/promise/PendientesPageSkele
 import { PromisePageProvider } from '@/components/promise/PromisePageContext';
 import { PendientesPageBasic } from './PendientesPageBasic';
 import { PendientesPageDeferred } from './PendientesPageDeferred';
+import { ProgressOverlayWrapper } from './ProgressOverlayWrapper';
 
 interface PendientesPageProps {
   params: Promise<{
@@ -63,6 +64,9 @@ export default async function PendientesPage({ params }: PendientesPageProps) {
 
   return (
     <PromisePageProvider>
+      {/* Overlay de progreso - renderizado a nivel root para máxima visibilidad */}
+      <ProgressOverlayWrapper studioSlug={slug} promiseId={promiseId} />
+      
       {/* ⚠️ STREAMING: Parte A - Instantánea (datos básicos) */}
       <PendientesPageBasic
         promise={promiseBasic}

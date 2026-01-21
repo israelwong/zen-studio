@@ -19,19 +19,19 @@ interface ProgressOverlayProps {
 const getStepLabel = (step: ProgressStep): string => {
   switch (step) {
     case 'validating':
-      return 'Validando datos';
+      return 'Encriptando datos';
     case 'sending':
-      return 'Enviando solicitud';
+      return 'Enviando solicitud a estudio';
     case 'registering':
       return 'Registrando solicitud';
     case 'collecting':
-      return 'Recopilando datos de cotización';
+      return 'Recopilando información';
     case 'generating_contract':
       return 'Generando contrato';
     case 'preparing':
       return 'Preparando flujo de contratación';
     case 'completed':
-      return '¡Completado!';
+      return 'Listo';
     case 'error':
       return 'Error';
     default:
@@ -51,10 +51,20 @@ export function ProgressOverlay({
     return null;
   }
 
+  // 💎 DEBUG: Log para verificar que el componente se está renderizando
+  console.log('💎 ProgressOverlay render - show:', show, 'step:', currentStep, 'error:', error);
+
   return createPortal(
     <div
-      className="fixed inset-0 bg-zinc-950/95 backdrop-blur-sm flex items-center justify-center p-4"
-      style={{ zIndex: 10070 }}
+      className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ 
+        zIndex: 99999,
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
       onClick={(e) => {
         // Prevenir que clicks en el overlay lo cierren
         e.stopPropagation();
@@ -106,62 +116,52 @@ export function ProgressOverlay({
             {autoGenerateContract ? (
               <>
                 <ProgressStepItem
+                  label={getStepLabel('collecting')}
+                  completed={['validating', 'sending', 'registering', 'generating_contract', 'completed'].includes(currentStep)}
+                  active={currentStep === 'collecting'}
+                />
+                <ProgressStepItem
                   label={getStepLabel('validating')}
-                  completed={['sending', 'registering', 'collecting', 'generating_contract', 'preparing', 'completed'].includes(currentStep)}
+                  completed={['sending', 'registering', 'generating_contract', 'completed'].includes(currentStep)}
                   active={currentStep === 'validating'}
                 />
                 <ProgressStepItem
                   label={getStepLabel('sending')}
-                  completed={['registering', 'collecting', 'generating_contract', 'preparing', 'completed'].includes(currentStep)}
+                  completed={['registering', 'generating_contract', 'completed'].includes(currentStep)}
                   active={currentStep === 'sending'}
                 />
                 <ProgressStepItem
                   label={getStepLabel('registering')}
-                  completed={['collecting', 'generating_contract', 'preparing', 'completed'].includes(currentStep)}
+                  completed={['generating_contract', 'completed'].includes(currentStep)}
                   active={currentStep === 'registering'}
                 />
                 <ProgressStepItem
-                  label={getStepLabel('collecting')}
-                  completed={['generating_contract', 'preparing', 'completed'].includes(currentStep)}
-                  active={currentStep === 'collecting'}
-                />
-                <ProgressStepItem
                   label={getStepLabel('generating_contract')}
-                  completed={['preparing', 'completed'].includes(currentStep)}
-                  active={currentStep === 'generating_contract'}
-                />
-                <ProgressStepItem
-                  label={getStepLabel('preparing')}
                   completed={currentStep === 'completed'}
-                  active={currentStep === 'preparing'}
+                  active={currentStep === 'generating_contract'}
                 />
               </>
             ) : (
               <>
                 <ProgressStepItem
+                  label={getStepLabel('collecting')}
+                  completed={['validating', 'sending', 'registering', 'completed'].includes(currentStep)}
+                  active={currentStep === 'collecting'}
+                />
+                <ProgressStepItem
                   label={getStepLabel('validating')}
-                  completed={['sending', 'registering', 'collecting', 'preparing', 'completed'].includes(currentStep)}
+                  completed={['sending', 'registering', 'completed'].includes(currentStep)}
                   active={currentStep === 'validating'}
                 />
                 <ProgressStepItem
                   label={getStepLabel('sending')}
-                  completed={['registering', 'collecting', 'preparing', 'completed'].includes(currentStep)}
+                  completed={['registering', 'completed'].includes(currentStep)}
                   active={currentStep === 'sending'}
                 />
                 <ProgressStepItem
                   label={getStepLabel('registering')}
-                  completed={['collecting', 'preparing', 'completed'].includes(currentStep)}
-                  active={currentStep === 'registering'}
-                />
-                <ProgressStepItem
-                  label={getStepLabel('collecting')}
-                  completed={['preparing', 'completed'].includes(currentStep)}
-                  active={currentStep === 'collecting'}
-                />
-                <ProgressStepItem
-                  label={getStepLabel('preparing')}
                   completed={currentStep === 'completed'}
-                  active={currentStep === 'preparing'}
+                  active={currentStep === 'registering'}
                 />
               </>
             )}
@@ -171,7 +171,7 @@ export function ProgressOverlay({
               <div className="flex items-center justify-center pt-4">
                 <div className="flex items-center gap-2 text-emerald-400">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="text-sm font-medium">¡Proceso completado!</span>
+                  <span className="text-sm font-medium">Redirigiendo...</span>
                 </div>
               </div>
             )}

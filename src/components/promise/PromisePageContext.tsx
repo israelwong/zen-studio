@@ -4,6 +4,23 @@ import { createContext, useContext, ReactNode, useState, useRef, useCallback, us
 
 type ProgressStep = 'validating' | 'sending' | 'registering' | 'collecting' | 'generating_contract' | 'preparing' | 'completed' | 'error';
 
+interface AuthorizationData {
+  promiseId: string;
+  cotizacionId: string;
+  studioSlug: string;
+  formData: {
+    contact_name: string;
+    contact_phone: string;
+    contact_email: string;
+    contact_address: string;
+    event_name: string;
+    event_location: string;
+  };
+  condicionesComercialesId?: string | null;
+  condicionesComercialesMetodoPagoId?: string | null;
+  autoGenerateContract: boolean;
+}
+
 interface PromisePageContextValue {
   onPreparing?: () => void;
   setOnPreparing: (callback: (() => void) | undefined) => void;
@@ -17,6 +34,10 @@ interface PromisePageContextValue {
   setProgressError: (error: string | null) => void;
   autoGenerateContract: boolean;
   setAutoGenerateContract: (value: boolean) => void;
+  isAuthorizationInProgress: boolean;
+  setIsAuthorizationInProgress: (value: boolean) => void;
+  authorizationData: AuthorizationData | null;
+  setAuthorizationData: (data: AuthorizationData | null) => void;
 }
 
 const PromisePageContext = createContext<PromisePageContextValue>({
@@ -30,6 +51,10 @@ const PromisePageContext = createContext<PromisePageContextValue>({
   setProgressError: () => {},
   autoGenerateContract: false,
   setAutoGenerateContract: () => {},
+  isAuthorizationInProgress: false,
+  setIsAuthorizationInProgress: () => {},
+  authorizationData: null,
+  setAuthorizationData: () => {},
 });
 
 export function PromisePageProvider({
@@ -45,6 +70,8 @@ export function PromisePageProvider({
   const [progressStep, setProgressStep] = useState<ProgressStep>('validating');
   const [progressError, setProgressError] = useState<string | null>(null);
   const [autoGenerateContract, setAutoGenerateContract] = useState(false);
+  const [isAuthorizationInProgress, setIsAuthorizationInProgress] = useState(false);
+  const [authorizationData, setAuthorizationData] = useState<AuthorizationData | null>(null);
   const onPreparingRef = useRef<(() => void) | undefined>(initialOnPreparing);
   const onSuccessRef = useRef<(() => void) | undefined>(initialOnSuccess);
 
@@ -79,6 +106,10 @@ export function PromisePageProvider({
     setProgressError,
     autoGenerateContract,
     setAutoGenerateContract,
+    isAuthorizationInProgress,
+    setIsAuthorizationInProgress,
+    authorizationData,
+    setAuthorizationData,
   }), [
     onPreparing,
     setOnPreparing,
@@ -88,6 +119,8 @@ export function PromisePageProvider({
     progressStep,
     progressError,
     autoGenerateContract,
+    isAuthorizationInProgress,
+    authorizationData,
   ]);
 
   return (
