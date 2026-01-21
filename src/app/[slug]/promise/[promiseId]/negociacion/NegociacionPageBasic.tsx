@@ -50,20 +50,7 @@ export function NegociacionPageBasic({
         studioName={studio.studio_name}
         studioLogoUrl={studio.logo_url}
       />
-      {/* Mostrar precio total inmediatamente */}
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 text-center">
-          <p className="text-sm text-zinc-400 mb-2">Precio Total</p>
-          <p className="text-3xl font-bold text-white">
-            {new Intl.NumberFormat('es-MX', {
-              style: 'currency',
-              currency: 'MXN',
-              minimumFractionDigits: 0,
-              maximumFractionDigits: 0,
-            }).format(totalPrice)}
-          </p>
-        </div>
-      </div>
+      {/* ⚠️ HIGIENE UI: No mostrar precio total aquí, NegociacionView lo muestra con lógica completa */}
     </>
   );
 }

@@ -26,7 +26,20 @@ export default async function PendientesPage({ params }: PendientesPageProps) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
-  // ✅ 2. Control de acceso: usar función unificada isRouteValid
+  // ✅ 2. Control de acceso: verificar si hay cotización en negociación (prioridad más alta)
+  // Si hay cotización en negociación, redirigir a negociación en lugar de permitir acceso a pendientes
+  const cotizacionNegociacion = routeState.data.find((cot) => {
+    const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
+    const selectedByProspect = cot.selected_by_prospect ?? false;
+    return normalizedStatus === 'negociacion' && selectedByProspect !== true;
+  });
+
+  if (cotizacionNegociacion) {
+    console.log('🔄 /pendientes: Cotización en negociación detectada, redirigiendo a /negociacion');
+    redirect(`/${slug}/promise/${promiseId}/negociacion`);
+  }
+
+  // ✅ 3. Control de acceso: usar función unificada isRouteValid
   const currentPath = `/${slug}/promise/${promiseId}/pendientes`;
   const isValid = isRouteValid(currentPath, routeState.data);
 

@@ -4285,22 +4285,45 @@ async function _getPublicPromiseRouteStateInternal(
         id: true,
         status: true,
         selected_by_prospect: true,
+        visible_to_client: true, // ⚠️ DEBUG: Incluir para verificar
       },
     });
 
+    // ⚠️ DEBUG: Log para verificar cotizaciones encontradas
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[getPublicPromiseRouteState] Cotizaciones encontradas:', cotizaciones.map(c => ({
+        id: c.id,
+        status: c.status,
+        selected_by_prospect: c.selected_by_prospect,
+        visible_to_client: c.visible_to_client,
+      })));
+    }
+
     // ✅ NORMALIZACIÓN OBLIGATORIA: Normalizar estados antes de devolver
     // Esto asegura que 'cierre' siempre se convierta a 'en_cierre' para consistencia
+    const normalizedData = cotizaciones.map(cot => {
+      // Normalizar status: 'cierre' -> 'en_cierre'
+      const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
+      return {
+        id: cot.id,
+        status: normalizedStatus,
+        selected_by_prospect: cot.selected_by_prospect ?? false,
+      };
+    });
+
+    // ⚠️ DEBUG: Log para verificar datos normalizados
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[getPublicPromiseRouteState] Datos normalizados:', normalizedData);
+      const cotizacionNegociacion = normalizedData.find(cot => {
+        const selectedByProspect = cot.selected_by_prospect ?? false;
+        return cot.status === 'negociacion' && selectedByProspect !== true;
+      });
+      console.log('[getPublicPromiseRouteState] Cotización en negociación encontrada:', cotizacionNegociacion);
+    }
+
     return {
       success: true,
-      data: cotizaciones.map(cot => {
-        // Normalizar status: 'cierre' -> 'en_cierre'
-        const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
-        return {
-          id: cot.id,
-          status: normalizedStatus,
-          selected_by_prospect: cot.selected_by_prospect ?? false,
-        };
-      }),
+      data: normalizedData,
     };
   } catch (error) {
     console.error("[getPublicPromiseRouteState] Error:", error);

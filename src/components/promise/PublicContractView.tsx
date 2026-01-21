@@ -148,20 +148,23 @@ export function PublicContractView({
   }, [studioSlug, promiseId, cotizacionId, contractTemplateId, condicionesComerciales]);
 
   // Cargar contrato y datos
-  // IMPORTANTE: Priorizar contractContent personalizado sobre la plantilla por defecto
-  // Si hay contractContent personalizado, usarlo directamente
-  // Solo si NO hay contractContent pero sí hay contractTemplateId, cargar la plantilla por defecto
+  // IMPORTANTE: Si hay condiciones comerciales, usar template.content para permitir re-renderizado
+  // con el desglose completo. Si no hay condiciones comerciales o es contrato firmado, usar customContent.
+  const shouldUseTemplate = condicionesComerciales && !isSigned && contractTemplateId;
+  
   useEffect(() => {
     if (isOpen) {
-      if (contractContent) {
-        // PRIORIDAD 1: Si hay contenido personalizado, usarlo directamente
-        // Esto asegura que se muestre la versión personalizada del contrato
+      if (shouldUseTemplate && contractTemplateId) {
+        // PRIORIDAD 1: Si hay condiciones comerciales, usar template original para re-renderizar con desglose
+        loadContractFromTemplate();
+      } else if (contractContent) {
+        // PRIORIDAD 2: Si hay contenido personalizado, usarlo directamente
         setRenderedContent(contractContent);
-        setTemplateContent(null); // Limpiar template content para evitar conflictos
-        // Cargar datos en segundo plano, pero mostrar contenido inmediatamente
+        setTemplateContent(null);
+        // Cargar datos en segundo plano para variables básicas
         loadPromiseData();
       } else if (contractTemplateId) {
-        // PRIORIDAD 2: Si NO hay contenido personalizado pero sí hay template_id,
+        // PRIORIDAD 3: Si NO hay contenido personalizado pero sí hay template_id,
         // cargar plantilla por defecto y datos para renderizar dinámicamente
         loadContractFromTemplate();
       }
@@ -173,7 +176,7 @@ export function PublicContractView({
       setLoadingContract(false);
       setLoadingData(false);
     }
-  }, [isOpen, contractContent, contractTemplateId, loadPromiseData, loadContractFromTemplate]);
+  }, [isOpen, contractContent, contractTemplateId, shouldUseTemplate, loadPromiseData, loadContractFromTemplate]);
 
   // Calcular total con descuentos y condiciones comerciales
   const calcularTotal = () => {
@@ -237,7 +240,7 @@ export function PublicContractView({
           montoAnticipo = (totalFinal * condicionesComerciales.advance_percentage) / 100;
         }
         
-        return {
+        const data = {
           nombre: condicionesComerciales.name,
           descripcion: condicionesComerciales.description || undefined,
           porcentaje_descuento: condicionesComerciales.discount_percentage || undefined,
@@ -248,8 +251,20 @@ export function PublicContractView({
           total_final: totalFinal, // Precio después de descuentos
           descuento_aplicado: descuentoAplicado, // Monto del descuento aplicado
         };
+
+        // ⚠️ DEBUG: Log para verificar condicionesData construido
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[PublicContractView] condicionesData construido:', data);
+        }
+
+        return data;
       })()
     : undefined;
+
+  // ⚠️ DEBUG: Log para verificar condicionesComerciales recibidas
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[PublicContractView] condicionesComerciales recibidas:', condicionesComerciales);
+  }
 
   const handleSign = () => {
     if (isSigned) {
@@ -371,10 +386,13 @@ export function PublicContractView({
           ) : (templateContent || renderedContent) ? (
             <div className="bg-zinc-900 rounded-lg max-h-[60vh] overflow-y-auto p-4 md:p-6">
               <ContractPreview
-                content={templateContent || renderedContent || ''}
+                // ⚠️ HIGIENE DE DATOS: Si hay condiciones comerciales, usar template original para re-renderizar con desglose
+                // Si no hay condiciones comerciales, usar contenido renderizado
+                content={shouldUseTemplate && templateContent ? templateContent : (renderedContent || '')}
                 eventData={eventData || eventDataFallback}
                 cotizacionData={eventData?.cotizacionData}
-                condicionesData={eventData?.condicionesData || condicionesData}
+                // ⚠️ HIGIENE DE DATOS: Priorizar condicionesData local (siempre actualizado) sobre eventData?.condicionesData
+                condicionesData={condicionesData || eventData?.condicionesData}
                 showVariables={false}
                 noCard={true}
               />
@@ -499,10 +517,13 @@ export function PublicContractView({
         >
           {(templateContent || renderedContent) && (
             <ContractPreview
-              content={templateContent || renderedContent || ''}
+              // ⚠️ HIGIENE DE DATOS: Si hay condiciones comerciales, usar template original para re-renderizar con desglose
+              // Si no hay condiciones comerciales, usar contenido renderizado
+              content={shouldUseTemplate && templateContent ? templateContent : (renderedContent || '')}
               eventData={eventData || eventDataFallback}
               cotizacionData={eventData?.cotizacionData}
-              condicionesData={eventData?.condicionesData || condicionesData}
+              // ⚠️ HIGIENE DE DATOS: Priorizar condicionesData local (siempre actualizado) sobre eventData?.condicionesData
+              condicionesData={condicionesData || eventData?.condicionesData}
               noCard={true}
               showVariables={false}
             />

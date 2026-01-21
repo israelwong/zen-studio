@@ -27,7 +27,19 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
-  // ✅ 2. Control de acceso: usar función unificada isRouteValid
+  // ✅ 2. Control de acceso: verificar si hay cotización en cierre (prioridad más alta)
+  // Si hay cotización en cierre, redirigir a cierre en lugar de mostrar error
+  const cotizacionEnCierre = routeState.data.find((cot) => {
+    const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
+    return normalizedStatus === 'en_cierre';
+  });
+
+  if (cotizacionEnCierre) {
+    console.log('🔄 /negociacion: Cotización en cierre detectada, redirigiendo a /cierre');
+    redirect(`/${slug}/promise/${promiseId}/cierre`);
+  }
+
+  // ✅ 3. Control de acceso: usar función unificada isRouteValid
   const currentPath = `/${slug}/promise/${promiseId}/negociacion`;
   const isValid = isRouteValid(currentPath, routeState.data);
 

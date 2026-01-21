@@ -26,16 +26,41 @@ export function determinePromiseRoute(
   slug: string,
   promiseId: string
 ): string {
+  // ⚠️ DEBUG: Log de entrada
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[determinePromiseRoute] Entrada:', {
+      cotizaciones: cotizaciones.map(c => ({ id: c.id, status: c.status, selected: c.selected_by_prospect })),
+      slug,
+      promiseId,
+    });
+  }
+
   // Buscar cotización en negociación (prioridad más alta)
   // Negociación: status === 'negociacion' y NO debe tener selected_by_prospect: true
   const cotizacionNegociacion = cotizaciones.find((cot) => {
     const normalizedStatus = normalizeStatus(cot.status);
     const selectedByProspect = cot.selected_by_prospect ?? false;
-    return normalizedStatus === 'negociacion' && selectedByProspect !== true;
+    const isNegociacion = normalizedStatus === 'negociacion' && selectedByProspect !== true;
+    
+    // ⚠️ DEBUG: Log de cada cotización evaluada
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[determinePromiseRoute] Evaluando cotización ${cot.id}:`, {
+        status: cot.status,
+        normalizedStatus,
+        selectedByProspect,
+        isNegociacion,
+      });
+    }
+    
+    return isNegociacion;
   });
 
   if (cotizacionNegociacion) {
-    return `/${slug}/promise/${promiseId}/negociacion`;
+    const route = `/${slug}/promise/${promiseId}/negociacion`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[determinePromiseRoute] ✅ Cotización en negociación encontrada, ruta:', route);
+    }
+    return route;
   }
 
   // Buscar cotización en cierre (segunda prioridad)

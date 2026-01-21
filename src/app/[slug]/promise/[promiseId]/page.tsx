@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
 import { getPublicPromiseMetadata, getPublicPromiseRouteState } from '@/lib/actions/public/promesas.actions';
 import { ZenButton, ZenCard } from '@/components/ui/zen';
-import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
+import { determinePromiseRoute, normalizeStatus } from '@/lib/utils/public-promise-routing';
 
 interface PromisePageProps {
   params: Promise<{
@@ -89,6 +89,16 @@ export default async function PromisePage({ params }: PromisePageProps) {
 
   console.log('🚀 Dispatcher: Redirigiendo a ->', targetRoute);
   console.log('📊 Dispatcher: Cotizaciones disponibles:', cotizaciones.map(c => ({ id: c.id, status: c.status, selected: c.selected_by_prospect })));
+  
+  // ⚠️ DEBUG: Verificar lógica de negociación
+  const cotizacionNegociacion = cotizaciones.find((cot) => {
+    const normalizedStatus = normalizeStatus(cot.status);
+    const selectedByProspect = cot.selected_by_prospect ?? false;
+    const isNegociacion = normalizedStatus === 'negociacion' && selectedByProspect !== true;
+    console.log(`[Dispatcher] Cotización ${cot.id}: status=${cot.status}, normalized=${normalizedStatus}, selected=${selectedByProspect}, isNegociacion=${isNegociacion}`);
+    return isNegociacion;
+  });
+  console.log('🔍 Dispatcher: Cotización en negociación encontrada:', cotizacionNegociacion);
 
   // 4. Si determinePromiseRoute devuelve la ruta raíz, significa que no hay cotizaciones válidas
   // En ese caso, mostrar error en lugar de redirigir (evitar bucle)

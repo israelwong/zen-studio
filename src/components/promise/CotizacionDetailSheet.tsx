@@ -365,6 +365,19 @@ export function CotizacionDetailSheet({
     handleOpenLightbox(0);
   };
 
+  // ⚠️ HIGIENE UI: Bloquear scroll del body cuando el Sheet está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -444,7 +457,7 @@ export function CotizacionDetailSheet({
               Servicios Incluidos
             </h3>
             <PublicServiciosTree
-              servicios={serviciosOrdenados}
+              servicios={currentCotizacion.servicios}
               showPrices={showItemsPrices}
               showSubtotals={showCategoriesSubtotals}
             />

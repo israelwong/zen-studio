@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Check, Eye } from 'lucide-react';
 import { ZenBadge, ZenCard, ZenButton } from '@/components/ui/zen';
 import type { PublicCotizacion, PublicPaquete, PublicSeccionData } from '@/types/public-promise';
@@ -225,6 +225,19 @@ export function ComparadorSheet({
 
   // Obtener todas las secciones únicas
   const allSecciones = getAllUniqueSecciones(visibleItems);
+
+  // ⚠️ HIGIENE UI: Bloquear scroll del body cuando el Sheet está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

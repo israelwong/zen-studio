@@ -287,6 +287,19 @@ export function PaqueteDetailSheet({
     handleOpenLightbox(0);
   };
 
+  // ⚠️ HIGIENE UI: Bloquear scroll del body cuando el Sheet está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

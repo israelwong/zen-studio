@@ -579,7 +579,7 @@ export function PublicQuoteAuthorizedView({
           contractContent={currentContract?.content || null}
           contractTemplateId={currentContract?.template_id || null}
           contractVersion={currentContract?.version}
-          condicionesComerciales={currentContract?.condiciones_comerciales || null}
+          condicionesComerciales={condicionesComerciales}
           promise={promise}
           studio={studio}
           cotizacionPrice={cotizacionPrice}

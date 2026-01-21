@@ -4,7 +4,6 @@ import React, { useMemo, useCallback, useEffect, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2 } from 'lucide-react';
 import { ZenButton, ZenBadge, SeparadorZen } from '@/components/ui/zen';
-import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
 import { PublicServiciosTree } from '@/components/promise/PublicServiciosTree';
 import { PrecioDesglose } from '@/components/promise/shared/PrecioDesglose';
 import { AutorizarCotizacionModal } from '@/components/promise/AutorizarCotizacionModal';
@@ -271,15 +270,7 @@ export function NegociacionView({
 
   return (
     <>
-      {/* Hero Section */}
-      <PromiseHeroSection
-        contactName={promise.contact_name}
-        eventTypeName={promise.event_type_name}
-        eventDate={promise.event_date}
-        studioName={studio.studio_name}
-        studioLogoUrl={studio.logo_url}
-      />
-
+      {/* ⚠️ HIGIENE UI: PromiseHeroSection ya se renderiza en NegociacionPageBasic */}
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
