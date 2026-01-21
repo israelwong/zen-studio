@@ -24,8 +24,9 @@ export function PromiseAutorizadaClient({
   const [cotizacionAutorizada] = React.useState(initialCotizacionAutorizada);
 
   const handleEditSuccess = useCallback(() => {
-    // Los datos se actualizarán automáticamente desde el contexto
-    window.location.reload();
+    // Los datos se actualizarán automáticamente vía CustomEvent y Realtime
+    // El EventInfoCard ya escucha estos eventos y actualiza su estado local
+    setShowEditModal(false);
   }, []);
 
   // Usar datos del contexto directamente
