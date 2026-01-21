@@ -108,27 +108,34 @@ export function isRouteValid(
   const pathParts = currentPath.split('/');
   const routeType = pathParts[pathParts.length - 1]; // 'pendientes', 'negociacion', 'cierre'
 
+  // Verificar prioridades primero (Negociación > Cierre > Pendientes)
+  const hasNegociacion = normalizedCotizaciones.some((cot) => {
+    const selectedByProspect = cot.selected_by_prospect ?? false;
+    return cot.status === 'negociacion' && selectedByProspect !== true;
+  });
+
+  const hasCierre = normalizedCotizaciones.some((cot) => {
+    return cot.status === 'en_cierre';
+  });
+
+  const hasPendientes = normalizedCotizaciones.some((cot) => {
+    return cot.status === 'pendiente';
+  });
+
   switch (routeType) {
     case 'negociacion': {
-      const cotizacionNegociacion = normalizedCotizaciones.find((cot) => {
-        const selectedByProspect = cot.selected_by_prospect ?? false;
-        return cot.status === 'negociacion' && selectedByProspect !== true;
-      });
-      return !!cotizacionNegociacion;
+      // Negociación es válida solo si hay cotización en negociación Y no hay nada con mayor prioridad
+      return hasNegociacion;
     }
 
     case 'cierre': {
-      const cotizacionEnCierre = normalizedCotizaciones.find((cot) => {
-        return cot.status === 'en_cierre';
-      });
-      return !!cotizacionEnCierre;
+      // Cierre es válido solo si hay cotización en cierre Y no hay negociación (mayor prioridad)
+      return hasCierre && !hasNegociacion;
     }
 
     case 'pendientes': {
-      const hasPendientes = normalizedCotizaciones.some((cot) => {
-        return cot.status === 'pendiente';
-      });
-      return hasPendientes;
+      // Pendientes es válido solo si hay cotizaciones pendientes Y no hay negociación ni cierre (mayor prioridad)
+      return hasPendientes && !hasNegociacion && !hasCierre;
     }
 
     default:

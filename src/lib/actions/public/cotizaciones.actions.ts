@@ -178,7 +178,18 @@ export async function autorizarCotizacionPublica(
       });
     });
 
-    // 3.4. Verificar si se debe generar contrato automáticamente
+    // 3.4. Sincronizar pipeline stage de la promesa a "closing"
+    // La cotización está en 'en_cierre', así que la sincronización debe detectar y actualizar a 'closing'
+    try {
+      const { syncPromisePipelineStageFromQuotes } = await import('../studio/commercial/promises/promise-pipeline-sync.actions');
+      await syncPromisePipelineStageFromQuotes(promiseId, promise.studio.id, null).catch((error) => {
+        console.error('[autorizarCotizacionPublica] Error sincronizando pipeline:', error);
+      });
+    } catch (error) {
+      console.error('[autorizarCotizacionPublica] Error al importar syncPromisePipelineStageFromQuotes:', error);
+    }
+
+    // 3.5. Verificar si se debe generar contrato automáticamente
     const shareSettings = await getPromiseShareSettings(studioSlug, promiseId);
     const autoGenerateContract = shareSettings.success && shareSettings.data?.auto_generate_contract;
 
