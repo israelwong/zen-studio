@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { prisma } from '@/lib/prisma';
 import {
     TipoEventoSchema,
@@ -52,14 +52,7 @@ export async function obtenerTiposEvento(
         const tiposEvento = await prisma.studio_event_types.findMany({
             where: { studio_id },
             include: {
-                packages: {
-                    select: {
-                        id: true,
-                        name: true,
-                        precio: true,
-                        status: true,
-                    },
-                },
+                // Eliminado packages - redundante, ya se cargan en getPaquetesShell
                 _count: {
                     select: {
                         events: true,
@@ -80,12 +73,7 @@ export async function obtenerTiposEvento(
             orden: tipo.order,
             createdAt: tipo.createdAt,
             updatedAt: tipo.updatedAt,
-            paquetes: tipo.packages.map((p) => ({
-                id: p.id,
-                nombre: p.name,
-                precio: p.precio || 0,
-                status: p.status,
-            })),
+            paquetes: [], // Vacío - se cargan por separado en getPaquetesShell
             _count: {
                 eventos: tipo._count.events,
             },
@@ -154,6 +142,10 @@ export async function crearTipoEvento(
         });
 
         revalidateTiposEvento(studioSlug);
+        // Invalidar caché de tipos de evento y paquetes
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`tipos-evento-${studioSlug}`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,
@@ -240,6 +232,10 @@ export async function actualizarTipoEvento(
 
         if (studio) {
             revalidateTiposEvento(studio.slug);
+            // Invalidar caché de tipos de evento y paquetes
+            revalidatePath(`/${studio.slug}/studio/commercial/paquetes`);
+            revalidateTag(`tipos-evento-${studio.slug}`);
+            revalidateTag(`paquetes-shell-${studio.slug}`);
         }
 
         return {
@@ -363,6 +359,10 @@ export async function actualizarOrdenTiposEvento(
         );
 
         revalidateTiposEvento(studioSlug);
+        // Invalidar caché de tipos de evento y paquetes
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`tipos-evento-${studioSlug}`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,

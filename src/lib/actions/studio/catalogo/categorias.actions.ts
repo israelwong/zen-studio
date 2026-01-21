@@ -6,6 +6,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 // ============================================
@@ -179,6 +180,22 @@ export async function crearCategoria(
             mediaCount: categoria.category_media.length,
         };
 
+        // Obtener studioSlug desde un item de la categoría para invalidar caché
+        const itemWithStudio = await prisma.studio_items.findFirst({
+            where: { service_category_id: categoria.id },
+            select: {
+                studio: {
+                    select: { slug: true },
+                },
+            },
+        });
+
+        if (itemWithStudio?.studio?.slug) {
+            const studioSlug = itemWithStudio.studio.slug;
+            revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${studioSlug}`);
+        }
+
         console.log(`[CATEGORÍAS] Categoría creada: ${categoria.id} - ${categoria.name}`);
 
         return {
@@ -263,6 +280,22 @@ export async function actualizarCategoria(
             mediaCount: categoria.category_media.length,
         };
 
+        // Obtener studioSlug desde un item de la categoría para invalidar caché
+        const itemWithStudio = await prisma.studio_items.findFirst({
+            where: { service_category_id: categoria.id },
+            select: {
+                studio: {
+                    select: { slug: true },
+                },
+            },
+        });
+
+        if (itemWithStudio?.studio?.slug) {
+            const studioSlug = itemWithStudio.studio.slug;
+            revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${studioSlug}`);
+        }
+
         console.log(`[CATEGORÍAS] Categoría actualizada: ${categoria.id} - ${categoria.name}`);
 
         return {
@@ -340,10 +373,31 @@ export async function eliminarCategoria(
             where: { category_id: categoriaId },
         });
 
+        // Obtener studioSlug antes de eliminar (para invalidar caché)
+        const sectionCategory = await prisma.studio_section_categories.findFirst({
+            where: { category_id: categoriaId },
+            include: {
+                sections: {
+                    include: {
+                        studios: {
+                            select: { slug: true },
+                        },
+                    },
+                },
+            },
+        });
+
         // Eliminar categoría
         await prisma.studio_service_categories.delete({
             where: { id: categoriaId },
         });
+
+        // Invalidar caché si tenemos studioSlug
+        if (sectionCategory?.sections?.studios?.slug) {
+            const studioSlug = sectionCategory.sections.studios.slug;
+            revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${studioSlug}`);
+        }
 
         console.log(`[CATEGORÍAS] Categoría eliminada: ${categoriaId} - ${categoria.name}`);
 
@@ -378,6 +432,16 @@ export async function reordenarCategorias(
             return { success: false, error: "No hay categorías para reordenar" };
         }
 
+        // Obtener studioSlug desde un item de la primera categoría para invalidar caché
+        const itemWithStudio = await prisma.studio_items.findFirst({
+            where: { service_category_id: categoriaIds[0] },
+            select: {
+                studio: {
+                    select: { slug: true },
+                },
+            },
+        });
+
         // Actualizar orden de cada categoría
         await prisma.$transaction(
             categoriaIds.map((id, index) =>
@@ -387,6 +451,13 @@ export async function reordenarCategorias(
                 })
             )
         );
+
+        // Invalidar caché del catálogo
+        if (itemWithStudio?.studio?.slug) {
+            const studioSlug = itemWithStudio.studio.slug;
+            revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${studioSlug}`);
+        }
 
         console.log(`[CATEGORÍAS] Reordenadas ${categoriaIds.length} categorías`);
 

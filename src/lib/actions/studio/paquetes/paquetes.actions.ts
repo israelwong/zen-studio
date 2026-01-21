@@ -1,9 +1,101 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { withRetry } from "@/lib/database/retry-helper";
 import type { PaqueteFromDB } from "@/lib/actions/schemas/paquete-schemas";
+import type { ActionResponse } from "@/lib/actions/schemas/catalogo-schemas";
+
+/**
+ * Obtiene paquetes optimizados para lista (sin paquete_items)
+ * Solo carga campos necesarios para mostrar en la lista
+ */
+export async function getPaquetesShell(
+    studioSlug: string
+): Promise<ActionResponse<Array<{
+    id: string;
+    name: string;
+    precio: number | null;
+    status: string;
+    is_featured: boolean;
+    order: number;
+    event_type_id: string | null;
+    cover_url: string | null;
+    cover_storage_bytes: bigint | null;
+    description: string | null;
+    base_hours: number | null;
+    event_types: {
+        id: string;
+        name: string;
+        order: number;
+    } | null;
+}>>> {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true },
+        });
+
+        if (!studio) {
+            return {
+                success: false,
+                error: "Studio no encontrado",
+            };
+        }
+
+        const paquetes = await prisma.studio_paquetes.findMany({
+            where: {
+                studio_id: studio.id,
+            },
+            select: {
+                id: true,
+                name: true,
+                precio: true,
+                status: true,
+                is_featured: true,
+                order: true,
+                event_type_id: true,
+                cover_url: true,
+                cover_storage_bytes: true,
+                description: true,
+                base_hours: true,
+                event_types: {
+                    select: {
+                        id: true,
+                        name: true,
+                        order: true,
+                    },
+                },
+                // NO incluir paquete_items - solo se cargan cuando se edita
+            },
+            orderBy: { order: "asc" },
+        });
+
+        return {
+            success: true,
+            data: paquetes.map(p => ({
+                id: p.id,
+                name: p.name,
+                precio: p.precio,
+                status: p.status,
+                is_featured: p.is_featured,
+                order: p.order,
+                event_type_id: p.event_type_id,
+                cover_url: p.cover_url,
+                cover_storage_bytes: p.cover_storage_bytes,
+                description: p.description,
+                base_hours: p.base_hours,
+                event_types: p.event_types,
+            })),
+        };
+    } catch (error) {
+        console.error("[getPaquetesShell] Error:", error);
+        return {
+            success: false,
+            error: "Error al obtener paquetes",
+        };
+    }
+}
 
 /**
  * Obtiene todos los paquetes del studio
@@ -206,8 +298,9 @@ export async function crearPaquete(
             items_count: paquete.paquete_items.length
         });
 
-        // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,
@@ -485,8 +578,9 @@ export async function actualizarPaquete(
             items_count: updatedPaquete.paquete_items.length
         });
 
-        // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,
@@ -543,8 +637,9 @@ export async function eliminarPaquete(
             where: { id: paqueteId },
         });
 
-        // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return { success: true };
     } catch (error) {
@@ -552,6 +647,94 @@ export async function eliminarPaquete(
         return {
             success: false,
             error: "Error al eliminar paquete",
+        };
+    }
+}
+
+/**
+ * Obtiene un paquete optimizado para edición (sin relaciones innecesarias de paquete_items)
+ */
+export async function obtenerPaqueteParaEditar(
+    paqueteId: string
+): Promise<ActionResponse<PaqueteFromDB>> {
+    try {
+        const paquete = await withRetry(
+            async () => {
+                return await prisma.studio_paquetes.findUnique({
+                    where: { id: paqueteId },
+                    select: {
+                        id: true,
+                        studio_id: true,
+                        event_type_id: true,
+                        name: true,
+                        description: true,
+                        base_hours: true,
+                        cover_url: true,
+                        cover_storage_bytes: true,
+                        is_featured: true,
+                        cost: true,
+                        expense: true,
+                        utilidad: true,
+                        precio: true,
+                        status: true,
+                        order: true,
+                        created_at: true,
+                        updated_at: true,
+                        event_types: {
+                            select: {
+                                id: true,
+                                name: true,
+                                order: true,
+                            },
+                        },
+                        paquete_items: {
+                            select: {
+                                item_id: true,      // Solo necesario
+                                quantity: true,     // Solo necesario
+                                order: true,        // Necesario para mantener orden
+                                // NO cargar: id, position, visible_to_client, status, created_at, updated_at
+                                // NO cargar relaciones: items, service_categories
+                            },
+                            orderBy: { order: 'asc' },
+                        },
+                    },
+                });
+            },
+            {
+                maxRetries: 3,
+                baseDelay: 1000,
+                maxDelay: 5000,
+                jitter: true
+            }
+        );
+
+        if (!paquete) {
+            return {
+                success: false,
+                error: "Paquete no encontrado",
+            };
+        }
+
+        return {
+            success: true,
+            data: paquete as unknown as PaqueteFromDB,
+        };
+    } catch (error: unknown) {
+        console.error("[obtenerPaqueteParaEditar] Error:", error);
+
+        if (error && typeof error === 'object' && 'code' in error) {
+            const errorCode = error.code as string;
+            if (errorCode === 'P1001' || errorCode === 'P1017' || errorCode === 'P1008') {
+                return {
+                    success: false,
+                    error: "Error de conexión con la base de datos. Por favor, intenta nuevamente en unos momentos.",
+                };
+            }
+        }
+
+        return {
+            success: false,
+            error: "Error al obtener paquete",
         };
     }
 }
@@ -695,6 +878,10 @@ export async function duplicarPaquete(
                 studio_id: studio.id,
                 event_type_id: paqueteOriginal.event_type_id,
                 name: `${paqueteOriginal.name} (Copia)`,
+                description: paqueteOriginal.description,
+                base_hours: paqueteOriginal.base_hours,
+                cover_url: paqueteOriginal.cover_url,
+                cover_storage_bytes: paqueteOriginal.cover_storage_bytes,
                 cost: paqueteOriginal.cost,
                 expense: paqueteOriginal.expense,
                 utilidad: paqueteOriginal.utilidad,
@@ -719,8 +906,9 @@ export async function duplicarPaquete(
             },
         });
 
-        // No revalidar - el estado local se actualiza en el componente
-        // revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,
@@ -789,6 +977,10 @@ export async function reorderPaquetes(
         );
 
         await Promise.all(updatePromises);
+
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/paquetes`);
+        revalidateTag(`paquetes-shell-${studioSlug}`);
 
         return {
             success: true,

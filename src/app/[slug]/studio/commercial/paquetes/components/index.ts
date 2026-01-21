@@ -1,3 +1,4 @@
+export { PaquetesClient } from './PaquetesClient';
 export { default as PaquetesTab } from './PaquetesTab';
 export { PaqueteEditor } from './PaqueteEditor';
 export { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';

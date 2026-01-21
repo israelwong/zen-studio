@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath, unstable_cache } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { retryDatabaseOperation } from "@/lib/actions/utils/database-retry";
@@ -253,10 +253,10 @@ export async function createOffer(
           : undefined,
       };
 
-      // ⚠️ CACHE: Invalidar caché del perfil público
-      // import { revalidateTag } from 'next/cache';
-      // revalidatePath(`/${studioSlug}`); // Ya existe arriba
-      // revalidateTag(`studio-profile-offers-${studioSlug}`);
+      // Invalidar caché de ofertas
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
 
       return { success: true, data: mappedOffer };
     });
@@ -367,6 +367,23 @@ export async function updateOffer(
         updateData.cover_media_url = validatedData.cover_media_url ?? null;
       if ('cover_media_type' in validatedData)
         updateData.cover_media_type = validatedData.cover_media_type ?? null;
+      // Validar que si se intenta activar, la oferta tenga landing page con content blocks
+      if ('is_active' in data && validatedData.is_active === true) {
+        const [landingPageCheck, contentBlocksCount] = await Promise.all([
+          prisma.studio_offer_landing_pages.findUnique({
+            where: { offer_id: offerId },
+            select: { id: true },
+          }),
+          prisma.studio_offer_content_blocks.count({
+            where: { offer_id: offerId },
+          }),
+        ]);
+
+        if (!landingPageCheck || contentBlocksCount === 0) {
+          return { success: false, error: "Debes crear una landing page con al menos un bloque antes de activar la oferta" };
+        }
+      }
+
       // Solo actualizar campos que están explícitamente presentes en data (no defaults de Zod)
       if ('is_active' in data)
         updateData.is_active = validatedData.is_active;
@@ -552,6 +569,12 @@ export async function updateOffer(
           }
           : undefined,
       };
+
+      // Invalidar caché de ofertas
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
+      revalidateTag(`offer-${offerId}`); // Invalidar caché de la oferta individual
 
       // Revalidar perfil público y página de oferta cuando se actualiza is_active
       if (validatedData.is_active !== undefined) {
@@ -1394,6 +1417,104 @@ export async function getPublicOffer(
 }
 
 /**
+ * Obtiene ofertas optimizadas para lista (sin landing_page, leadform, content_blocks)
+ * Solo campos necesarios para mostrar en la tabla de ofertas
+ */
+export async function getOffersShell(
+  studioSlug: string,
+  options?: { include_inactive?: boolean }
+): Promise<OfferListResponse> {
+  try {
+    return await retryDatabaseOperation(async () => {
+      const studio = await prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      });
+
+      if (!studio) {
+        return { success: false, error: "Estudio no encontrado" };
+      }
+
+      const offers = await prisma.studio_offers.findMany({
+        where: {
+          studio_id: studio.id,
+          ...(options?.include_inactive ? {} : { is_active: true }),
+        },
+        select: {
+          id: true,
+          studio_id: true,
+          name: true,
+          description: true,
+          slug: true,
+          cover_media_url: true,
+          cover_media_type: true,
+          is_active: true,
+          is_permanent: true,
+          has_date_range: true,
+          start_date: true,
+          end_date: true,
+          order: true,
+          created_at: true,
+          updated_at: true,
+          business_term_id: true,
+          banner_destination: true,
+          business_term: {
+            select: {
+              id: true,
+              name: true,
+              discount_percentage: true,
+            },
+          },
+        },
+        orderBy: [
+          { order: "asc" },
+          { created_at: "desc" },
+        ],
+      });
+
+      // Mapear a StudioOffer (solo campos necesarios)
+      const mappedOffers: StudioOffer[] = offers.map((offer) => ({
+        id: offer.id,
+        studio_id: offer.studio_id,
+        name: offer.name,
+        description: offer.description,
+        slug: offer.slug,
+        cover_media_url: offer.cover_media_url,
+        cover_media_type: offer.cover_media_type as "image" | "video" | null,
+        is_active: offer.is_active,
+        is_permanent: offer.is_permanent,
+        has_date_range: offer.has_date_range,
+        start_date: offer.start_date,
+        end_date: offer.end_date,
+        created_at: offer.created_at,
+        updated_at: offer.updated_at,
+        business_term_id: offer.business_term_id,
+        banner_destination: (offer.banner_destination as "LEADFORM_ONLY" | "LANDING_THEN_LEADFORM" | "LEADFORM_WITH_LANDING") || "LANDING_THEN_LEADFORM",
+        business_term: offer.business_term
+          ? {
+              id: offer.business_term.id,
+              name: offer.business_term.name,
+              description: null,
+              discount_percentage: offer.business_term.discount_percentage,
+              advance_percentage: null,
+              type: "offer" as const,
+              override_standard: false,
+            }
+          : undefined,
+      }));
+
+      return { success: true, data: mappedOffers };
+    });
+  } catch (error) {
+    console.error("[getOffersShell] Error:", error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Error al listar las ofertas" };
+  }
+}
+
+/**
  * Listar ofertas de un estudio
  */
 export async function listOffers(
@@ -1563,10 +1684,8 @@ export async function archiveOffer(
       revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
       revalidatePath(`/${studioSlug}`);
       revalidatePath(`/${studioSlug}/offer/${offer.slug}`);
-
-      // ⚠️ CACHE: Invalidar caché del perfil público
-      // import { revalidateTag } from 'next/cache';
-      // revalidateTag(`studio-profile-offers-${studioSlug}`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
 
       return { success: true };
     });
@@ -1689,10 +1808,9 @@ export async function deleteOffer(
       revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
       revalidatePath(`/${studioSlug}`);
       revalidatePath(`/${studioSlug}/offer/${offer.slug}`);
-
-      // ⚠️ CACHE: Invalidar caché del perfil público
-      // import { revalidateTag } from 'next/cache';
-      // revalidateTag(`studio-profile-offers-${studioSlug}`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
+      revalidateTag(`offer-${offerId}`); // Invalidar caché de la oferta individual
 
       return { success: true };
     });
@@ -1871,6 +1989,11 @@ export async function duplicateOffer(
           : undefined,
       };
 
+      // Invalidar caché de ofertas
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
+
       return { success: true, data: mappedOffer };
     });
   } catch (error) {
@@ -1943,6 +2066,11 @@ export async function reorderOffers(
           })
         )
       );
+
+      // Invalidar caché de ofertas
+      revalidatePath(`/${studioSlug}/studio/commercial/ofertas`);
+      revalidateTag(`offers-shell-${studioSlug}`);
+      revalidateTag(`offers-stats-${studioSlug}`);
 
       return { success: true };
     });

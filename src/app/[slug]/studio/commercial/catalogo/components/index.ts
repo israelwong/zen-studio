@@ -16,3 +16,5 @@ export type { ItemFormData } from "@/components/shared/catalogo/ItemEditorModal"
 
 // Catálogo
 export { default as Catalogo } from "./Catalogo";
+export { CatalogoClient } from "./CatalogoClient";
+export { CatalogoItemsDeferred } from "./CatalogoItemsDeferred";

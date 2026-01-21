@@ -38,11 +38,124 @@ function revalidateCatalogo(slug: string) {
 }
 
 // =====================================================
+// QUERY OPTIMIZADA: CATALOG SHELL (Fase 1)
+// =====================================================
+
+/**
+ * Obtiene la estructura completa del catálogo con items (optimizada)
+ * ⚠️ OPTIMIZADO: Usa select explícito, solo campos necesarios para la lista
+ * 
+ * @param studioSlug - Slug del studio
+ * @returns Secciones, categorías e items completos (optimizados)
+ */
+export async function getCatalogShell(
+    studioSlug: string
+): Promise<ActionResponse<SeccionData[]>> {
+    try {
+        const studio_id = await getstudio_idFromSlug(studioSlug);
+        if (!studio_id) {
+            return { success: false, error: 'Estudio no encontrado' };
+        }
+
+        // Query optimizada con select explícito (incluye items básicos)
+        const secciones = await prisma.studio_service_sections.findMany({
+            select: {
+                id: true,
+                name: true,
+                order: true,
+                section_categories: {
+                    select: {
+                        service_categories: {
+                            select: {
+                                id: true,
+                                name: true,
+                                order: true,
+                                items: {
+                                    where: {
+                                        studio_id,
+                                    },
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        cost: true,
+                                        utility_type: true,
+                                        billing_type: true,
+                                        order: true,
+                                        status: true,
+                                        // Solo cargar gastos necesarios para cálculo de margen
+                                        item_expenses: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                cost: true,
+                                            },
+                                        },
+                                    },
+                                    orderBy: { order: 'asc' },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: { order: 'asc' },
+        });
+
+        // Transformar a formato SeccionData
+        const shellData: SeccionData[] = secciones.map((seccion) => ({
+            id: seccion.id,
+            nombre: seccion.name,
+            descripcion: null,
+            orden: seccion.order,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            categorias: seccion.section_categories.map((sc) => ({
+                id: sc.service_categories.id,
+                nombre: sc.service_categories.name,
+                orden: sc.service_categories.order,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                seccionId: seccion.id,
+                servicios: sc.service_categories.items.map((s) => ({
+                    id: s.id,
+                    studioId: studio_id,
+                    servicioCategoriaId: sc.service_categories.id,
+                    nombre: s.name,
+                    costo: s.cost,
+                    gasto: 0,
+                    tipo_utilidad: s.utility_type,
+                    type: 'service' as const,
+                    billing_type: s.billing_type,
+                    orden: s.order,
+                    status: s.status,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    gastos: s.item_expenses.map((g) => ({
+                        id: g.id,
+                        nombre: g.name,
+                        costo: g.cost,
+                    })),
+                })),
+            })),
+        }));
+
+        return { success: true, data: shellData };
+    } catch (error) {
+        console.error('Error obteniendo catalog shell:', error);
+        return {
+            success: false,
+            error: 'Error al obtener estructura del catálogo',
+        };
+    }
+}
+
+// =====================================================
 // SECCIONES
 // =====================================================
 
 /**
  * Obtener todas las secciones con categorías y servicios
+ * ⚠️ OPTIMIZADO: Usa select explícito en lugar de include
  * @param onlyActive - Si es true, solo trae items activos. Si es false, trae todos los items. Default: true (para compatibilidad con paquetes)
  */
 export async function obtenerCatalogo(
@@ -55,19 +168,40 @@ export async function obtenerCatalogo(
             return { success: false, error: 'Estudio no encontrado' };
         }
 
+        // Query optimizada con select explícito (sin campos innecesarios)
         const secciones = await prisma.studio_service_sections.findMany({
-            include: {
+            select: {
+                id: true,
+                name: true,
+                order: true,
                 section_categories: {
-                    include: {
+                    select: {
                         service_categories: {
-                            include: {
+                            select: {
+                                id: true,
+                                name: true,
+                                order: true,
                                 items: {
                                     where: {
                                         studio_id,
                                         ...(onlyActive !== false ? { status: 'active' } : {}),
                                     },
-                                    include: {
-                                        item_expenses: true,
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        cost: true,
+                                        utility_type: true,
+                                        billing_type: true,
+                                        order: true,
+                                        status: true,
+                                        // Solo cargar gastos si es necesario para cálculo de margen
+                                        item_expenses: {
+                                            select: {
+                                                id: true,
+                                                name: true,
+                                                cost: true,
+                                            },
+                                        },
                                     },
                                     orderBy: { order: 'asc' },
                                 },
@@ -83,31 +217,31 @@ export async function obtenerCatalogo(
         const catalogoData: SeccionData[] = secciones.map((seccion) => ({
             id: seccion.id,
             nombre: seccion.name,
-            descripcion: seccion.description,
+            descripcion: null, // No se carga description en lista
             orden: seccion.order,
-            createdAt: seccion.created_at,
-            updatedAt: seccion.updated_at,
+            createdAt: new Date(), // Timestamps no necesarios para lista
+            updatedAt: new Date(),
             categorias: seccion.section_categories.map((sc) => ({
                 id: sc.service_categories.id,
                 nombre: sc.service_categories.name,
                 orden: sc.service_categories.order,
-                createdAt: sc.service_categories.created_at,
-                updatedAt: sc.service_categories.updated_at,
+                createdAt: new Date(),
+                updatedAt: new Date(),
                 seccionId: seccion.id,
                 servicios: sc.service_categories.items.map((s) => ({
                     id: s.id,
-                    studioId: s.studio_id,
-                    servicioCategoriaId: s.service_category_id,
+                    studioId: studio_id,
+                    servicioCategoriaId: sc.service_categories.id,
                     nombre: s.name,
                     costo: s.cost,
-                    gasto: s.expense,
+                    gasto: 0, // Calculado desde item_expenses si necesario
                     tipo_utilidad: s.utility_type,
-                    type: s.type, // Agregar campo type del enum
-                    billing_type: s.billing_type, // Tipo de facturación dinámica
+                    type: 'service' as const, // Valor por defecto
+                    billing_type: s.billing_type,
                     orden: s.order,
                     status: s.status,
-                    createdAt: s.created_at,
-                    updatedAt: s.updated_at,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
                     gastos: s.item_expenses.map((g) => ({
                         id: g.id,
                         nombre: g.name,

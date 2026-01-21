@@ -9,6 +9,102 @@ import {
 import type { OfferStatsResponse, OfferStats } from "@/types/offers";
 
 /**
+ * Obtiene estadísticas de múltiples ofertas en batch (elimina N+1 queries)
+ * Retorna un mapa de offer_id -> stats
+ */
+export async function getOffersStatsBatch(
+  offerIds: string[]
+): Promise<{
+  success: boolean;
+  data?: Record<string, {
+    total_visits: number;
+    total_leadform_visits: number;
+    total_submissions: number;
+    conversion_rate: number;
+  }>;
+  error?: string;
+}> {
+  try {
+    if (offerIds.length === 0) {
+      return { success: true, data: {} };
+    }
+
+    return await retryDatabaseOperation(async () => {
+      // Obtener conteos de visitas por tipo y oferta
+      const landingVisits = await prisma.studio_offer_visits.groupBy({
+        by: ['offer_id'],
+        where: {
+          offer_id: { in: offerIds },
+          visit_type: 'landing',
+        },
+        _count: true,
+      });
+
+      const leadformVisits = await prisma.studio_offer_visits.groupBy({
+        by: ['offer_id'],
+        where: {
+          offer_id: { in: offerIds },
+          visit_type: 'leadform',
+        },
+        _count: true,
+      });
+
+      // Obtener conteos de submissions por oferta
+      const submissions = await prisma.studio_offer_submissions.groupBy({
+        by: ['offer_id'],
+        where: {
+          offer_id: { in: offerIds },
+        },
+        _count: true,
+      });
+
+      // Crear mapas para acceso rápido
+      const landingVisitsMap = new Map(
+        landingVisits.map(v => [v.offer_id, v._count])
+      );
+      const leadformVisitsMap = new Map(
+        leadformVisits.map(v => [v.offer_id, v._count])
+      );
+      const submissionsMap = new Map(
+        submissions.map(s => [s.offer_id, s._count])
+      );
+
+      // Construir resultado
+      const statsMap: Record<string, {
+        total_visits: number;
+        total_leadform_visits: number;
+        total_submissions: number;
+        conversion_rate: number;
+      }> = {};
+
+      offerIds.forEach(offerId => {
+        const landingCount = landingVisitsMap.get(offerId) || 0;
+        const leadformCount = leadformVisitsMap.get(offerId) || 0;
+        const submissionsCount = submissionsMap.get(offerId) || 0;
+        const conversionRate = leadformCount > 0
+          ? (submissionsCount / leadformCount) * 100
+          : 0;
+
+        statsMap[offerId] = {
+          total_visits: landingCount,
+          total_leadform_visits: leadformCount,
+          total_submissions: submissionsCount,
+          conversion_rate: conversionRate,
+        };
+      });
+
+      return { success: true, data: statsMap };
+    });
+  } catch (error) {
+    console.error("[getOffersStatsBatch] Error:", error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "Error al obtener las estadísticas" };
+  }
+}
+
+/**
  * Obtener estadísticas agregadas de una oferta
  */
 export async function getOfferStats(

@@ -1,6 +1,8 @@
 export {
+    getPaquetesShell,
     obtenerPaquetes,
     obtenerPaquetePorId,
+    obtenerPaqueteParaEditar,
     crearPaquete,
     actualizarPaquete,
     eliminarPaquete,

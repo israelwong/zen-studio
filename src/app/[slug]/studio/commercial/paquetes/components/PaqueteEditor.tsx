@@ -6,15 +6,19 @@ import { useState, useEffect } from 'react';
 import { ZenButton, ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenSwitch, ZenConfirmModal } from '@/components/ui/zen';
 import { PaqueteFormularioAvanzado } from './PaqueteFormularioAvanzado';
 import type { PaqueteFromDB } from '@/lib/actions/schemas/paquete-schemas';
+import type { SeccionData } from '@/lib/actions/schemas/catalogo-schemas';
+import type { ConfiguracionPrecios } from '@/lib/actions/studio/catalogo/calcular-precio';
 
 interface PaqueteEditorProps {
     studioSlug: string;
     mode: 'create' | 'edit';
     paquete?: PaqueteFromDB | null;
     initialEventTypeId?: string;
+    initialCatalogo?: SeccionData[];
+    initialPreciosConfig?: ConfiguracionPrecios | null;
 }
 
-export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }: PaqueteEditorProps) {
+export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId, initialCatalogo, initialPreciosConfig }: PaqueteEditorProps) {
     const router = useRouter();
     const [isPublished, setIsPublished] = useState(paquete?.status === 'active' || false);
     const [isFeatured, setIsFeatured] = useState((paquete as { is_featured?: boolean })?.is_featured || false);
@@ -130,6 +134,8 @@ export function PaqueteEditor({ studioSlug, mode, paquete, initialEventTypeId }:
                         onSave={handleSave}
                         onCancel={handleCancel}
                         initialEventTypeId={initialEventTypeId}
+                        initialCatalogo={initialCatalogo}
+                        initialPreciosConfig={initialPreciosConfig}
                     />
                 </ZenCardContent>
             </ZenCard>

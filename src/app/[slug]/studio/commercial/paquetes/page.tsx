@@ -1,26 +1,74 @@
-'use client';
-
 import React from 'react';
 import { Package, Percent } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDialog } from '@/components/ui/zen';
-import PaquetesTab from './components/PaquetesTab';
-import { UtilidadForm } from '@/components/shared/configuracion/UtilidadForm';
-import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { unstable_cache } from 'next/cache';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
+import { getPaquetesShell } from '@/lib/actions/studio/paquetes/paquetes.actions';
+import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
+import { PaquetesClient } from './components/PaquetesClient';
 
-export default function PaquetesPage() {
-    const params = useParams();
-    const studioSlug = params.slug as string;
-    const [isUtilidadModalOpen, setIsUtilidadModalOpen] = useState(false);
+interface PaquetesPageProps {
+    params: Promise<{ slug: string }>;
+}
 
-    // Actualizar título de la pestaña
-    useEffect(() => {
-        document.title = 'Zenly Studio - Paquetes';
-    }, []);
+export default async function PaquetesPage({ params }: PaquetesPageProps) {
+    const { slug: studioSlug } = await params;
+
+    // Cachear paquetes con tag para invalidación selectiva
+    // ⚠️ CRÍTICO: Tag incluye studioSlug para aislamiento entre tenants
+    const getCachedPaquetesShell = unstable_cache(
+        async () => {
+            return getPaquetesShell(studioSlug);
+        },
+        ['paquetes-shell', studioSlug], // ✅ studioSlug en keys
+        {
+            tags: [`paquetes-shell-${studioSlug}`], // ✅ Incluye studioSlug en tags
+            revalidate: false, // No cachear por tiempo, solo por tags
+        }
+    );
+
+    // Cachear tipos de evento (cambian poco)
+    const getCachedTiposEvento = unstable_cache(
+        async () => {
+            return obtenerTiposEvento(studioSlug);
+        },
+        ['tipos-evento', studioSlug], // ✅ studioSlug en keys
+        {
+            tags: [`tipos-evento-${studioSlug}`], // ✅ Incluye studioSlug en tags
+            revalidate: 3600, // 1 hora (cambian poco)
+        }
+    );
+
+    const [paquetesResult, tiposResult] = await Promise.all([
+        getCachedPaquetesShell(),
+        getCachedTiposEvento(),
+    ]);
+
+    if (!paquetesResult.success || !paquetesResult.data) {
+        return (
+            <div className="space-y-6">
+                <ZenCard variant="default" padding="none">
+                    <ZenCardContent className="p-6">
+                        <p className="text-red-400">Error al cargar paquetes: {paquetesResult.error}</p>
+                    </ZenCardContent>
+                </ZenCard>
+            </div>
+        );
+    }
+
+    if (!tiposResult.success || !tiposResult.data) {
+        return (
+            <div className="space-y-6">
+                <ZenCard variant="default" padding="none">
+                    <ZenCardContent className="p-6">
+                        <p className="text-red-400">Error al cargar tipos de evento: {tiposResult.error}</p>
+                    </ZenCardContent>
+                </ZenCard>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <ZenCard variant="default" padding="none">
                 <ZenCardHeader className="border-b border-zinc-800">
                     <div className="flex items-center justify-between">
@@ -35,39 +83,17 @@ export default function PaquetesPage() {
                                 </ZenCardDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <ZenButton
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsUtilidadModalOpen(true)}
-                                className="gap-1.5 px-2.5 py-1.5 h-7 text-xs border-l-2 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-300"
-                            >
-                                <Percent className="h-3.5 w-3.5 text-emerald-400/90" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
-                                <span>Margen de utilidad</span>
-                            </ZenButton>
-                        </div>
                     </div>
                 </ZenCardHeader>
 
                 <ZenCardContent className="p-6">
-                    <PaquetesTab />
+                    <PaquetesClient
+                        studioSlug={studioSlug}
+                        initialPaquetes={paquetesResult.data}
+                        initialTiposEvento={tiposResult.data}
+                    />
                 </ZenCardContent>
             </ZenCard>
-
-            {/* Modal de Márgenes */}
-            <ZenDialog
-                isOpen={isUtilidadModalOpen}
-                onClose={() => setIsUtilidadModalOpen(false)}
-                title="Márgenes de Utilidad"
-                description="Gestiona los márgenes de utilidad, comisiones y sobreprecios"
-                maxWidth="2xl"
-                closeOnClickOutside={false}
-            >
-                <UtilidadForm
-                    studioSlug={studioSlug}
-                    onClose={() => setIsUtilidadModalOpen(false)}
-                />
-            </ZenDialog>
         </div>
     );
 }

@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import {
     portfolioFormSchema,
     type PortfolioFormData,
@@ -332,9 +332,12 @@ export async function createStudioPortfolio(studioId: string, data: PortfolioFor
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+        const studioSlug = portfolio.studio.slug;
+        revalidatePath(`/${studioSlug}/profile/edit/content/portfolios`);
+        revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
         if (portfolio.is_published) {
-            revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
+            revalidatePath(`/${studioSlug}/portfolios/${portfolio.slug}`);
         }
 
         return { success: true, data: portfolioWithRelations as unknown as StudioPortfolio };
@@ -413,6 +416,79 @@ export async function getStudioPortfoliosBySlug(studioSlug: string, filters?: Po
         console.error("Error fetching portfolios by slug:", error);
         const errorMessage = error instanceof Error ? error.message : "Error al obtener portfolios";
         console.error("Error details:", errorMessage);
+        return { success: false, error: errorMessage };
+    }
+}
+
+/**
+ * Obtiene portfolios optimizados para lista (sin media, content_blocks, block_media)
+ * Solo campos necesarios para mostrar en la tabla de portafolios
+ */
+export async function getPortfoliosShell(studioSlug: string): Promise<PortfoliosResult> {
+    try {
+        const studio = await prisma.studios.findUnique({
+            where: { slug: studioSlug },
+            select: { id: true }
+        });
+
+        if (!studio) {
+            return { success: false, error: "Studio no encontrado" };
+        }
+
+        const portfolios = await prisma.studio_portfolios.findMany({
+            where: { studio_id: studio.id },
+            select: {
+                id: true,
+                title: true,
+                slug: true,
+                cover_image_url: true,
+                is_published: true,
+                is_featured: true,
+                order: true,
+                created_at: true,
+                updated_at: true,
+                event_type: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+            },
+            orderBy: [{ is_featured: "desc" }, { order: "asc" }],
+        });
+
+        // Mapear a StudioPortfolio (solo campos necesarios)
+        const portfoliosData: StudioPortfolio[] = portfolios.map((p) => ({
+            id: p.id,
+            studio_id: studio.id,
+            title: p.title,
+            slug: p.slug,
+            description: null,
+            caption: null,
+            cover_image_url: p.cover_image_url,
+            cover_storage_bytes: null,
+            cover_index: 0,
+            category: null,
+            event_type_id: p.event_type?.id || null,
+            tags: [],
+            cta_enabled: false,
+            cta_text: "",
+            cta_action: "",
+            cta_link: null,
+            is_featured: p.is_featured,
+            is_published: p.is_published,
+            published_at: null,
+            order: p.order,
+            view_count: 0,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+            event_type: p.event_type,
+        }));
+
+        return { success: true, data: portfoliosData };
+    } catch (error) {
+        console.error("Error fetching portfolios shell:", error);
+        const errorMessage = error instanceof Error ? error.message : "Error al obtener portfolios";
         return { success: false, error: errorMessage };
     }
 }
@@ -777,15 +853,14 @@ export async function updateStudioPortfolio(
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
+        const studioSlug = portfolio.studio.slug;
+        revalidatePath(`/${studioSlug}/profile/edit/content/portfolios`);
+        revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
+        revalidateTag(`portfolio-${portfolioId}`); // Invalidar caché del portfolio individual
         if (portfolio.is_published) {
-            revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
+            revalidatePath(`/${studioSlug}/portfolios/${portfolio.slug}`);
         }
-
-        // ⚠️ CACHE: Invalidar caché del perfil público
-        // import { revalidateTag } from 'next/cache';
-        // revalidateTag(`studio-profile-portfolios-${portfolio.studio_id}`);
-        // revalidateTag(`studio-profile-basic-${portfolio.studio.slug}`); // Si afecta metadata
 
         return { success: true, data: portfolioWithRelations as unknown as StudioPortfolio };
     } catch (error) {
@@ -831,10 +906,10 @@ export async function deleteStudioPortfolio(portfolioId: string) {
             revalidatePath(`/${studioSlug}/portfolios/${portfolio.slug}`);
         }
 
-        // ⚠️ CACHE: Invalidar caché del perfil público
-        // import { revalidateTag } from 'next/cache';
-        // const studio = await prisma.studios.findUnique({ where: { slug: studioSlug }, select: { id: true } });
-        // if (studio) revalidateTag(`studio-profile-portfolios-${studio.id}`);
+        // Invalidar caché de portfolios
+        revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
+        revalidateTag(`portfolio-${portfolioId}`); // Invalidar caché del portfolio individual
 
         return { success: true };
     } catch (error) {
@@ -867,13 +942,11 @@ export async function toggleStudioPortfolioPublish(portfolioId: string) {
             },
         });
 
-        revalidatePath(`/${portfolio.studio.slug}/profile/edit/content/portfolios`);
-        revalidatePath(`/${portfolio.studio.slug}/portfolios/${portfolio.slug}`);
-
-        // ⚠️ CACHE: Invalidar caché del perfil público
-        // import { revalidateTag } from 'next/cache';
-        // revalidateTag(`studio-profile-portfolios-${portfolio.studio_id}`);
-        // revalidateTag(`studio-profile-basic-${portfolio.studio.slug}`); // Si afecta metadata
+        const studioSlug = portfolio.studio.slug;
+        revalidatePath(`/${studioSlug}/profile/edit/content/portfolios`);
+        revalidatePath(`/${studioSlug}/portfolios/${portfolio.slug}`);
+        revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
 
         return { success: true, data: updatedPortfolio };
     } catch (error) {
@@ -930,6 +1003,7 @@ export async function reorderPortfolios(studioSlug: string, portfolioIds: string
         console.log('[reorderPortfolios] Reorden exitoso');
         revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
         revalidatePath(`/${studioSlug}?section=portafolio`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
 
         return { success: true };
     } catch (error) {
@@ -1125,6 +1199,8 @@ export async function duplicatePortfolio(portfolioId: string, studioSlug: string
 
         console.log('[duplicatePortfolio] Duplicación exitosa:', duplicate.id);
         revalidatePath(`/${studioSlug}?section=portafolio`);
+        revalidatePath(`/${studioSlug}/studio/commercial/portafolios`);
+        revalidateTag(`portfolios-shell-${studioSlug}`);
 
         return { success: true, data: duplicate };
     } catch (error) {

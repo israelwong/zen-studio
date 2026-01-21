@@ -9,8 +9,6 @@ import { calcularPrecio, formatearMoneda, type ConfiguracionPrecios } from '@/li
 import { PrecioDesglosePaquete } from '@/components/shared/precio';
 import { CatalogoServiciosTree } from '@/components/shared/catalogo';
 import { ItemEditorModal, type ItemFormData } from '@/components/shared/catalogo/ItemEditorModal';
-import { obtenerCatalogo } from '@/lib/actions/studio/config/catalogo.actions';
-import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
 import { crearPaquete, actualizarPaquete } from '@/lib/actions/studio/paquetes/paquetes.actions';
 import { crearItem, actualizarItem } from '@/lib/actions/studio/catalogo';
 import { calcularCantidadEfectiva } from '@/lib/utils/dynamic-billing-calc';
@@ -30,6 +28,8 @@ interface PaqueteFormularioAvanzadoProps {
     onSave: (paquete: PaqueteFromDB) => void;
     onCancel: () => void;
     initialEventTypeId?: string;
+    initialCatalogo?: SeccionData[];
+    initialPreciosConfig?: ConfiguracionPrecios | null;
 }
 
 export interface PaqueteFormularioRef {
@@ -45,7 +45,9 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     onFeaturedChange,
     onSave,
     onCancel,
-    initialEventTypeId
+    initialEventTypeId,
+    initialCatalogo,
+    initialPreciosConfig
 }, ref) => {
     // Estado del formulario
     const [nombre, setNombre] = useState(paquete?.name || '');
@@ -77,12 +79,29 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const isPublished = isPublishedProp !== undefined ? isPublishedProp : isPublishedInternal;
     const isFeatured = isFeaturedProp !== undefined ? isFeaturedProp : isFeaturedInternal;
     const setIsFeatured = onFeaturedChange || setIsFeaturedInternal;
-    const [items, setItems] = useState<{ [servicioId: string]: number }>({});
+    // Inicializar catálogo y configuración desde props si están disponibles
+    const [catalogo, setCatalogo] = useState<SeccionData[]>(initialCatalogo || []);
+    const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(initialPreciosConfig || null);
+    const [cargandoCatalogo, setCargandoCatalogo] = useState(!initialCatalogo);
+
+    // Inicializar items vacíos desde catálogo usando useMemo
+    const initialItems = useMemo(() => {
+        const items: { [id: string]: number } = {};
+        if (catalogo.length > 0) {
+            catalogo.forEach(seccion => {
+                seccion.categorias.forEach(categoria => {
+                    categoria.servicios.forEach(servicio => {
+                        items[servicio.id] = 0;
+                    });
+                });
+            });
+        }
+        return items;
+    }, [catalogo]);
+
+    const [items, setItems] = useState<{ [servicioId: string]: number }>(initialItems);
     const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
-    const [catalogo, setCatalogo] = useState<SeccionData[]>([]);
-    const [configuracionPrecios, setConfiguracionPrecios] = useState<ConfiguracionPrecios | null>(null);
     const [loading, setLoading] = useState(false);
-    const [cargandoCatalogo, setCargandoCatalogo] = useState(true);
     const [filtroServicio, setFiltroServicio] = useState('');
     const [seccionesExpandidas, setSeccionesExpandidas] = useState<Set<string>>(new Set());
     const [categoriasExpandidas, setCategoriasExpandidas] = useState<Set<string>>(new Set());
@@ -96,117 +115,74 @@ export const PaqueteFormularioAvanzado = forwardRef<PaqueteFormularioRef, Paquet
     const [selectedCategoriaForItem, setSelectedCategoriaForItem] = useState<string | null>(null);
 
 
-    // Cargar catálogo, configuración y datos del paquete en un solo useEffect
+    // Inicializar datos del paquete y expandir secciones
     useEffect(() => {
-        const cargarDatos = async () => {
-            try {
-                setCargandoCatalogo(true);
-                const [catalogoResult, configResult] = await Promise.all([
-                    obtenerCatalogo(studioSlug),
-                    obtenerConfiguracionPrecios(studioSlug)
-                ]);
+        // Si hay catálogo inicial, expandir todas las secciones
+        if (catalogo.length > 0) {
+            const todasLasSecciones = new Set(catalogo.map(seccion => seccion.id));
+            setSeccionesExpandidas(todasLasSecciones);
+        }
 
-                if (catalogoResult.success && catalogoResult.data) {
-                    setCatalogo(catalogoResult.data);
-
-                    // Expandir todas las secciones al iniciar
-                    const todasLasSecciones = new Set(catalogoResult.data.map(seccion => seccion.id));
-                    setSeccionesExpandidas(todasLasSecciones);
-                    // Las categorías permanecen colapsadas (Set vacío)
-
-                    // Inicializar items vacíos
-                    const initialItems: { [id: string]: number } = {};
-                    catalogoResult.data.forEach(seccion => {
-                        seccion.categorias.forEach(categoria => {
-                            categoria.servicios.forEach(servicio => {
-                                initialItems[servicio.id] = 0;
-                            });
-                        });
-                    });
-
-                    // Si estamos editando un paquete, cargar sus datos
-                    if (paquete?.id) {
-                        console.log('🔍 Cargando datos del paquete para editar:', paquete);
-                        setNombre(paquete.name || '');
-                        setDescripcion((paquete as { description?: string }).description || '');
-                        setBaseHours((paquete as { base_hours?: number | null })?.base_hours || '');
-                        if (onFeaturedChange) {
-                            onFeaturedChange((paquete as { is_featured?: boolean }).is_featured || false);
-                        } else {
-                            setIsFeaturedInternal((paquete as { is_featured?: boolean }).is_featured || false);
-                        }
-                        setPrecioPersonalizado(paquete.precio || '');
-
-                        // Cargar cover si existe
-                        const coverUrl = (paquete as { cover_url?: string }).cover_url;
-                        setOriginalCoverUrl(coverUrl || null);
-                        if (coverUrl) {
-                            const filename = coverUrl.split('/').pop() || 'cover.jpg';
-                            const isVideo = filename.toLowerCase().includes('.mp4') ||
-                                filename.toLowerCase().includes('.mov') ||
-                                filename.toLowerCase().includes('.webm') ||
-                                filename.toLowerCase().includes('.avi');
-                            setCoverMedia([{
-                                file_url: coverUrl,
-                                file_type: isVideo ? 'video' : 'image',
-                                filename: filename
-                            }]);
-                        } else {
-                            setCoverMedia([]);
-                        }
-                        if (onPublishedChange) {
-                            onPublishedChange(paquete.status === 'active');
-                        } else {
-                            setIsPublishedInternal(paquete.status === 'active');
-                        }
-
-                        // Cargar items del paquete si existen
-                        if (paquete.paquete_items && paquete.paquete_items.length > 0) {
-                            console.log('✅ Cargando items del paquete:', paquete.paquete_items);
-                            const paqueteItems: { [id: string]: number } = {};
-                            const serviciosSeleccionados = new Set<string>();
-                            paquete.paquete_items.forEach(item => {
-                                if (item.item_id) {
-                                    paqueteItems[item.item_id] = item.quantity;
-                                    serviciosSeleccionados.add(item.item_id);
-                                }
-                            });
-                            console.log('✅ Items procesados:', paqueteItems);
-                            setItems(paqueteItems);
-                            setSelectedServices(serviciosSeleccionados);
-                        } else {
-                            console.log('⚠️ No hay paquete_items o está vacío');
-                            setItems(initialItems);
-                            setSelectedServices(new Set());
-                        }
-                    } else {
-                        // Si no hay paquete, usar items vacíos
-                        setItems(initialItems);
-                        setNombre('');
-                        setDescripcion('');
-                        setPrecioPersonalizado('');
-                    }
-                }
-
-                if (configResult) {
-                    setConfiguracionPrecios({
-                        utilidad_servicio: Number(configResult.utilidad_servicio),
-                        utilidad_producto: Number(configResult.utilidad_producto),
-                        comision_venta: Number(configResult.comision_venta),
-                        sobreprecio: Number(configResult.sobreprecio)
-                    });
-                }
-            } catch (error) {
-                console.error('Error cargando datos:', error);
-                toast.error('Error al cargar los datos');
-            } finally {
-                setCargandoCatalogo(false);
+        // Si estamos editando un paquete, cargar sus datos
+        if (paquete?.id) {
+            setNombre(paquete.name || '');
+            setDescripcion((paquete as { description?: string }).description || '');
+            setBaseHours((paquete as { base_hours?: number | null })?.base_hours || '');
+            if (onFeaturedChange) {
+                onFeaturedChange((paquete as { is_featured?: boolean }).is_featured || false);
+            } else {
+                setIsFeaturedInternal((paquete as { is_featured?: boolean }).is_featured || false);
             }
-        };
+            setPrecioPersonalizado(paquete.precio || '');
 
-        cargarDatos();
+            // Cargar cover si existe
+            const coverUrl = (paquete as { cover_url?: string }).cover_url;
+            setOriginalCoverUrl(coverUrl || null);
+            if (coverUrl) {
+                const filename = coverUrl.split('/').pop() || 'cover.jpg';
+                const isVideo = filename.toLowerCase().includes('.mp4') ||
+                    filename.toLowerCase().includes('.mov') ||
+                    filename.toLowerCase().includes('.webm') ||
+                    filename.toLowerCase().includes('.avi');
+                setCoverMedia([{
+                    file_url: coverUrl,
+                    file_type: isVideo ? 'video' : 'image',
+                    filename: filename
+                }]);
+            } else {
+                setCoverMedia([]);
+            }
+            if (onPublishedChange) {
+                onPublishedChange(paquete.status === 'active');
+            } else {
+                setIsPublishedInternal(paquete.status === 'active');
+            }
+
+            // Cargar items del paquete si existen
+            if (paquete.paquete_items && paquete.paquete_items.length > 0) {
+                const paqueteItems: { [id: string]: number } = {};
+                const serviciosSeleccionados = new Set<string>();
+                paquete.paquete_items.forEach(item => {
+                    if (item.item_id) {
+                        paqueteItems[item.item_id] = item.quantity;
+                        serviciosSeleccionados.add(item.item_id);
+                    }
+                });
+                setItems(paqueteItems);
+                setSelectedServices(serviciosSeleccionados);
+            } else {
+                setItems(initialItems);
+                setSelectedServices(new Set());
+            }
+        } else {
+            // Si no hay paquete, usar items vacíos
+            setItems(initialItems);
+            setNombre('');
+            setDescripcion('');
+            setPrecioPersonalizado('');
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [studioSlug, paquete?.id]); // Solo usar paquete.id para evitar re-renders por cambios en referencia del objeto
+    }, [paquete?.id]); // Solo usar paquete.id para evitar re-renders
 
 
     // Crear mapa de servicios para acceso rápido

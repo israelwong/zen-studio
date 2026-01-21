@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -46,6 +47,8 @@ interface PaquetesTipoEventoListProps {
     paquetes: PaqueteFromDB[];
     onTiposEventoChange: (newTiposEvento: TipoEventoData[]) => void;
     onPaquetesChange: (newPaquetes: PaqueteFromDB[]) => void;
+    isNavigating?: string | null;
+    setIsNavigating?: (routeId: string | null) => void;
 }
 
 export function PaquetesTipoEventoList({
@@ -54,6 +57,8 @@ export function PaquetesTipoEventoList({
     paquetes: initialPaquetes,
     onTiposEventoChange,
     onPaquetesChange,
+    isNavigating,
+    setIsNavigating,
 }: PaquetesTipoEventoListProps) {
     const router = useRouter();
 
@@ -688,14 +693,58 @@ export function PaquetesTipoEventoList({
 
     // Handlers para paquetes - usar navegación en lugar de modal
     const handleEditPaquete = (paquete: PaqueteFromDB) => {
-        router.push(`/${studioSlug}/studio/commercial/paquetes/${paquete.id}/editar`);
+        const routeId = paquete.id;
+        
+        // Cerrar overlays globales antes de navegar
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('close-overlays'));
+        }
+        
+        // Activar flag de navegación
+        if (setIsNavigating) {
+            setIsNavigating(routeId);
+        }
+
+        // Usar startTransition para dar prioridad a la navegación
+        startTransition(() => {
+            router.push(`/${studioSlug}/studio/commercial/paquetes/${routeId}/editar`);
+            
+            // Limpiar flag después de un delay
+            setTimeout(() => {
+                if (setIsNavigating) {
+                    setIsNavigating(null);
+                }
+            }, 1000);
+        });
     };
 
     const handleCrearPaquete = (eventTypeId?: string) => {
         const url = eventTypeId
             ? `/${studioSlug}/studio/commercial/paquetes/nuevo?eventTypeId=${eventTypeId}`
             : `/${studioSlug}/studio/commercial/paquetes/nuevo`;
-        router.push(url);
+        const routeId = 'nuevo';
+        
+        // Cerrar overlays globales antes de navegar
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('close-overlays'));
+        }
+        
+        // Activar flag de navegación
+        if (setIsNavigating) {
+            setIsNavigating(routeId);
+        }
+
+        // Usar startTransition para dar prioridad a la navegación
+        startTransition(() => {
+            router.push(url);
+            
+            // Limpiar flag después de un delay
+            setTimeout(() => {
+                if (setIsNavigating) {
+                    setIsNavigating(null);
+                }
+            }, 1000);
+        });
     };
 
     const handleDuplicatePaquete = async (paquete: PaqueteFromDB) => {

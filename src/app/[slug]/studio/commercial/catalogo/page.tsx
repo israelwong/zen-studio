@@ -1,21 +1,72 @@
-'use client';
+import React from 'react';
+import { ShoppingBag } from 'lucide-react';
+import { unstable_cache } from 'next/cache';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription } from '@/components/ui/zen';
+import { getCatalogShell } from '@/lib/actions/studio/config/catalogo.actions';
+import { obtenerConfiguracionPrecios } from '@/lib/actions/studio/catalogo/utilidad.actions';
+import { CatalogoClient } from './components/CatalogoClient';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { ShoppingBag, Percent } from 'lucide-react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenDialog } from '@/components/ui/zen';
-import { Catalogo } from './components';
-import { UtilidadForm } from '@/components/shared/configuracion/UtilidadForm';
+interface CatalogoPageProps {
+    params: Promise<{ slug: string }>;
+}
 
-export default function CatalogoPage() {
-    const params = useParams();
-    const studioSlug = params.slug as string;
-    const [isUtilidadModalOpen, setIsUtilidadModalOpen] = useState(false);
+export default async function CatalogoPage({ params }: CatalogoPageProps) {
+    const { slug: studioSlug } = await params;
 
-    // Actualizar título de la pestaña
-    useEffect(() => {
-        document.title = 'Zenly Studio - Catálogo';
-    }, []);
+    // Cachear catálogo con tag para invalidación selectiva
+    // ⚠️ CRÍTICO: Tag incluye studioSlug para aislamiento entre tenants
+    const getCachedCatalogShell = unstable_cache(
+        async () => {
+            return getCatalogShell(studioSlug);
+        },
+        ['catalog-shell', studioSlug], // ✅ studioSlug en keys
+        {
+            tags: [`catalog-shell-${studioSlug}`], // ✅ Incluye studioSlug en tags
+            revalidate: false, // No cachear por tiempo, solo por tags
+        }
+    );
+
+    // Cachear configuración de precios (cambia poco)
+    const getCachedPreciosConfig = unstable_cache(
+        async () => {
+            return obtenerConfiguracionPrecios(studioSlug);
+        },
+        ['precios-config', studioSlug], // ✅ studioSlug en keys
+        {
+            tags: [`precios-config-${studioSlug}`], // ✅ Incluye studioSlug en tags
+            revalidate: 3600, // 1 hora (cambia poco)
+        }
+    );
+
+    // ⚠️ OPTIMIZADO: Carga completa optimizada (shell + items en una query) con caché
+    const [catalogoResult, preciosResult] = await Promise.all([
+        getCachedCatalogShell(),
+        getCachedPreciosConfig(),
+    ]);
+
+    if (!catalogoResult.success || !catalogoResult.data) {
+        return (
+            <div className="space-y-6">
+                <ZenCard variant="default" padding="none">
+                    <ZenCardContent className="p-6">
+                        <p className="text-red-400">Error al cargar el catálogo: {catalogoResult.error}</p>
+                    </ZenCardContent>
+                </ZenCard>
+            </div>
+        );
+    }
+
+    // Parsear configuración de precios
+    const parseValue = (val: string | undefined, defaultValue: number): number => {
+        return val ? parseFloat(val) : defaultValue;
+    };
+
+    const preciosConfig = preciosResult ? {
+        utilidad_servicio: parseValue(preciosResult.utilidad_servicio, 0.30),
+        utilidad_producto: parseValue(preciosResult.utilidad_producto, 0.40),
+        comision_venta: parseValue(preciosResult.comision_venta, 0.10),
+        sobreprecio: parseValue(preciosResult.sobreprecio, 0.05),
+    } : null;
 
     return (
         <div className="space-y-6">
@@ -34,39 +85,17 @@ export default function CatalogoPage() {
                                 </ZenCardDescription>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <ZenButton
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setIsUtilidadModalOpen(true)}
-                                className="gap-1.5 px-2.5 py-1.5 h-7 text-xs border-l-2 border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-[0_0_8px_rgba(16,185,129,0.1)] transition-all duration-300"
-                            >
-                                <Percent className="h-3.5 w-3.5 text-emerald-400/90" style={{ animation: 'pulse 3s ease-in-out infinite' }} />
-                                <span>Margen de utilidad</span>
-                            </ZenButton>
-                        </div>
                     </div>
                 </ZenCardHeader>
 
                 <ZenCardContent className="p-6">
-                    <Catalogo />
+                    <CatalogoClient
+                        studioSlug={studioSlug}
+                        initialCatalogo={catalogoResult.data}
+                        initialPreciosConfig={preciosConfig}
+                    />
                 </ZenCardContent>
             </ZenCard>
-
-            {/* Modal de Márgenes */}
-            <ZenDialog
-                isOpen={isUtilidadModalOpen}
-                onClose={() => setIsUtilidadModalOpen(false)}
-                title="Márgenes de Utilidad"
-                description="Gestiona los márgenes de utilidad, comisiones y sobreprecios"
-                maxWidth="2xl"
-                closeOnClickOutside={false}
-            >
-                <UtilidadForm
-                    studioSlug={studioSlug}
-                    onClose={() => setIsUtilidadModalOpen(false)}
-                />
-            </ZenDialog>
         </div>
     );
 }

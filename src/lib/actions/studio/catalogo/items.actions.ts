@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 // Types
 export interface ItemData {
@@ -244,6 +244,10 @@ export async function crearItem(
             })),
         };
 
+        // Invalidar caché del catálogo
+        revalidatePath(`/${validated.studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${validated.studioSlug}`);
+
         console.log(`[ITEMS] Item creado: ${item.id} - ${item.name} - Gastos: ${JSON.stringify(item.item_expenses)}`);
 
         return {
@@ -380,8 +384,9 @@ export async function actualizarItem(
 
         console.log(`[ITEMS] Item actualizado exitosamente: ${item.id} - ${item.name} - Costo: ${item.cost} - Gastos: ${JSON.stringify(item.item_expenses)}`);
 
-        // No revalidar la ruta - el estado local se actualiza en el componente
-        // revalidatePath causaría un refresh completo del catálogo
+        // Invalidar caché del catálogo
+        revalidatePath(`/${existente.studio.slug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${existente.studio.slug}`);
 
         return {
             success: true,
@@ -423,9 +428,16 @@ export async function eliminarItem(
             };
         }
 
-        // Verificar que existe
+        // Verificar que existe y obtener studioSlug
         const item = await prisma.studio_items.findUnique({
             where: { id: itemId },
+            select: {
+                id: true,
+                name: true,
+                studio: {
+                    select: { slug: true },
+                },
+            },
         });
 
         if (!item) {
@@ -435,10 +447,16 @@ export async function eliminarItem(
             };
         }
 
+        const studioSlug = item.studio.slug;
+
         // Eliminar item (cascade borrará media, quote_items, etc)
         await prisma.studio_items.delete({
             where: { id: itemId },
         });
+
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${studioSlug}`);
 
         console.log(`[ITEMS] Item eliminado: ${itemId} - ${item.name}`);
 
@@ -514,6 +532,16 @@ export async function reordenarItems(
             return { success: false, error: "No hay items para reordenar" };
         }
 
+        // Obtener studioSlug desde el primer item para invalidar caché
+        const firstItem = await prisma.studio_items.findUnique({
+            where: { id: itemIds[0] },
+            select: {
+                studio: {
+                    select: { slug: true },
+                },
+            },
+        });
+
         // Actualizar orden de cada item
         await prisma.$transaction(
             itemIds.map((id, index) =>
@@ -523,6 +551,12 @@ export async function reordenarItems(
                 })
             )
         );
+
+        // Invalidar caché del catálogo
+        if (firstItem?.studio?.slug) {
+            revalidatePath(`/${firstItem.studio.slug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${firstItem.studio.slug}`);
+        }
 
         console.log(`[ITEMS] Reordenados ${itemIds.length} items`);
 
@@ -614,6 +648,12 @@ export async function moverItemACategoria(
                 },
             });
         });
+
+        // Invalidar caché del catálogo
+        if (item?.studio?.slug) {
+            revalidatePath(`/${item.studio.slug}/studio/commercial/catalogo`);
+            revalidateTag(`catalog-shell-${item.studio.slug}`);
+        }
 
         console.log(`[ITEMS] Item ${itemId} movido a categoría ${nuevaCategoriaId}`);
 
@@ -707,7 +747,9 @@ export async function toggleItemPublish(
             })),
         };
 
+        // Invalidar caché del catálogo
         revalidatePath(`/${item.studio.slug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${item.studio.slug}`);
 
         return {
             success: true,

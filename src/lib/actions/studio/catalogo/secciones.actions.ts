@@ -7,6 +7,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 
 // ============================================
@@ -227,7 +228,11 @@ export async function crearSeccion(
             mediaCount: 0,
         };
 
-        // 5. Log éxito
+        // 5. Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${studioSlug}`);
+
+        // 6. Log éxito
         console.log(`[SECCIONES] Sección creada: ${seccion.id} - ${seccion.name}`);
 
         return {
@@ -353,7 +358,11 @@ export async function actualizarSeccion(
             mediaCount: seccion.section_media.length,
         };
 
-        // 6. Log éxito
+        // 6. Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${studioSlug}`);
+
+        // 7. Log éxito
         console.log(`[SECCIONES] Sección actualizada: ${seccion.id} - ${seccion.name}`);
 
         return {
@@ -437,7 +446,11 @@ export async function eliminarSeccion(
             where: { id: seccionId },
         });
 
-        // 5. Log éxito
+        // 5. Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${studioSlug}`);
+
+        // 6. Log éxito
         console.log(
             `[SECCIONES] Sección eliminada: ${seccionId} - ${seccion.name}`
         );
@@ -571,6 +584,10 @@ export async function reordenarSecciones(
                 })
             )
         );
+
+        // Invalidar caché del catálogo
+        revalidatePath(`/${studioSlug}/studio/commercial/catalogo`);
+        revalidateTag(`catalog-shell-${studioSlug}`);
 
         console.log(`[SECCIONES] Reordenadas ${seccionIds.length} secciones`);
 

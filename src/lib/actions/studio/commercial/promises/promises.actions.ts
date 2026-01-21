@@ -1557,6 +1557,7 @@ export async function archivePromise(
     };
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    revalidateTag(`promises-list-${studioSlug}`); // Invalidar caché de lista (con studioSlug para aislamiento entre tenants)
     return {
       success: true,
       data: promiseWithContact,
@@ -1861,6 +1862,7 @@ export async function deletePromise(
     });
 
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
+    revalidateTag(`promises-list-${studioSlug}`); // Invalidar caché de lista (con studioSlug para aislamiento entre tenants)
     return { success: true };
   } catch (error) {
     console.error('[PROMISES] Error eliminando promise:', error);
@@ -1990,6 +1992,7 @@ export async function deleteTestPromises(
     // Revalidar rutas
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
     revalidatePath(`/${studioSlug}/studio/commercial/crm`);
+    revalidateTag(`promises-list-${studioSlug}`); // Invalidar caché de lista (con studioSlug para aislamiento entre tenants)
     // Agenda ahora es un sheet, no necesita revalidación de ruta
 
     return {
