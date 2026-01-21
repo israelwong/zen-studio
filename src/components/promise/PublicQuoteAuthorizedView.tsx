@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, startTransition, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { Loader2, CheckCircle2, Building2, Copy, Check } from 'lucide-react';
 import { ZenButton, ZenDialog, ZenCard } from '@/components/ui/zen';
 import { PublicPromiseDataForm } from './PublicPromiseDataForm';
 import { PublicContractView } from './PublicContractView';
 import { PublicContractCard } from './PublicContractCard';
 import { PublicQuoteFinancialCard } from './PublicQuoteFinancialCard';
+import { PublicPromisePageHeader } from './PublicPromisePageHeader';
 import { BankInfoModal } from '@/components/shared/BankInfoModal';
-import { updatePublicPromiseData, getPublicPromiseData, getPublicCotizacionContract } from '@/lib/actions/public/promesas.actions';
+import { updatePublicPromiseData, getPublicPromiseData, getPublicCotizacionContract, getPublicPromiseRouteState, invalidatePublicPromiseRouteState } from '@/lib/actions/public/promesas.actions';
 import { regeneratePublicContract } from '@/lib/actions/public/cotizaciones.actions';
 import { obtenerInfoBancariaStudio } from '@/lib/actions/cliente/pagos.actions';
 import { useCotizacionesRealtime, type CotizacionChangeInfo } from '@/hooks/useCotizacionesRealtime';
 import { usePromiseNavigation } from '@/hooks/usePromiseNavigation';
+import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
 import { toast } from 'sonner';
 import type { PublicCotizacion } from '@/types/public-promise';
 import confetti from 'canvas-confetti';
@@ -52,6 +55,7 @@ export function PublicQuoteAuthorizedView({
   cotizacionPrice,
   eventTypeId,
 }: PublicQuoteAuthorizedViewProps) {
+  const router = useRouter();
   const [showContractView, setShowContractView] = useState(false);
   const [showEditDataModal, setShowEditDataModal] = useState(false);
   const [isUpdatingData, setIsUpdatingData] = useState(false);
@@ -366,15 +370,47 @@ export function PublicQuoteAuthorizedView({
   }, []);
 
   // ⚠️ TAREA 5: Handler mejorado con toasts para cambios de contrato
-  const handleContractUpdated = useCallback((updatedCotizacionId: string, changeInfo?: CotizacionChangeInfo) => {
+  const handleContractUpdated = useCallback(async (updatedCotizacionId: string, changeInfo?: CotizacionChangeInfo) => {
     // ⚠️ CRÍTICO: Bloquear sincronización si estamos navegando
     if (getIsNavigating()) {
       console.log('[PublicQuoteAuthorizedView] Ignorando actualización de realtime durante navegación');
       return;
     }
 
-    // Si la cotización actualizada es la que estamos mostrando, actualizar solo el contrato localmente
+    // Si la cotización actualizada es la que estamos mostrando
     if (updatedCotizacionId === cotizacion.id) {
+      // ⚠️ DETECTAR CANCELACIÓN DE CIERRE: Si el status cambió de 'en_cierre' a 'pendiente' o 'negociacion'
+      if (changeInfo?.statusChanged) {
+        const oldStatus = changeInfo.oldStatus;
+        const newStatus = changeInfo.status;
+
+        // Si estaba en cierre y ahora no lo está, significa que se canceló el cierre
+        if ((oldStatus === 'en_cierre' || oldStatus === 'cierre') && 
+            (newStatus === 'pendiente' || newStatus === 'negociacion')) {
+          console.log('[PublicQuoteAuthorizedView] Cierre cancelado, invalidando caché y redirigiendo');
+          
+          // ⚠️ CRÍTICO: Invalidar caché antes de obtener route state para evitar bucle infinito
+          // El caché puede tener datos obsoletos que muestran la cotización como en_cierre
+          await invalidatePublicPromiseRouteState(studioSlug, promiseId);
+          
+          // Obtener estado actual de todas las cotizaciones para determinar ruta correcta
+          const routeState = await getPublicPromiseRouteState(studioSlug, promiseId);
+          
+          if (routeState.success && routeState.data) {
+            const targetRoute = determinePromiseRoute(routeState.data, studioSlug, promiseId);
+            
+            setNavigating('redirect');
+            window.dispatchEvent(new CustomEvent('close-overlays'));
+            
+            startTransition(() => {
+              router.push(targetRoute);
+              clearNavigating(1000);
+            });
+          }
+          return;
+        }
+      }
+
       // ⚠️ TAREA 5: Toast si el contrato fue actualizado por el estudio
       if (changeInfo?.camposCambiados?.includes('contract_content') || changeInfo?.camposCambiados?.includes('contract_template_id')) {
         toast.info('El estudio ha actualizado tu contrato', {
@@ -383,7 +419,7 @@ export function PublicQuoteAuthorizedView({
       }
       updateContractLocally();
     }
-  }, [cotizacion.id, updateContractLocally, getIsNavigating]);
+  }, [cotizacion.id, updateContractLocally, getIsNavigating, studioSlug, promiseId, router, setNavigating, clearNavigating]);
 
   // Escuchar cambios en tiempo real de cotizaciones_cierre (cuando el estudio edita el contrato)
   // ⚠️ TAREA 1: Bloquear sincronización durante navegación
@@ -476,19 +512,17 @@ export function PublicQuoteAuthorizedView({
 
   return (
     <>
+      {/* Header evolutivo con asesoría profesional */}
+      <PublicPromisePageHeader
+        prospectName={promise.contact_name}
+        eventName={promise.event_name}
+        eventTypeName={promise.event_type_name}
+        eventDate={promise.event_date}
+        variant="cierre"
+        isContractSigned={isContractSigned}
+      />
+
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Header emotivo de celebración */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/20 mb-4 animate-pulse">
-            <CheckCircle2 className="h-8 w-8 text-emerald-400" />
-          </div>
-          <h2 className="text-3xl font-bold text-zinc-100 mb-3">
-            ¡Fecha Reservada con Éxito!
-          </h2>
-          <p className="text-lg text-zinc-400">
-            Tu evento ha quedado pre-agendado. Solo falta un paso para oficializarlo.
-          </p>
-        </div>
 
         {/* Flujo reorganizado: Paso principal destacado */}
         <div className="relative space-y-6">

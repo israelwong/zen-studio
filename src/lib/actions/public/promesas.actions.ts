@@ -1756,8 +1756,20 @@ export async function getPublicPromiseAvailablePackages(
       promise_share_default_show_packages: boolean;
     };
     paquetes: PublicPaquete[];
+    portafolios?: Array<{
+      id: string;
+      title: string;
+      slug: string;
+      description: string | null;
+      cover_image_url: string | null;
+      event_type?: {
+        id: string;
+        name: string;
+      } | null;
+    }>;
     share_settings: {
       show_packages: boolean;
+      portafolios: boolean;
     };
   };
   error?: string;
@@ -1778,9 +1790,10 @@ export async function getPublicPromiseAvailablePackages(
 
     const { promise: promiseBasic, studio } = basicData.data;
 
-    // 2. Obtener share settings (solo show_packages)
+    // 2. Obtener share settings (show_packages y portafolios)
     const shareSettings = {
       show_packages: promiseBasic.share_show_packages ?? studio.promise_share_default_show_packages,
+      portafolios: studio.promise_share_default_portafolios,
     };
 
     if (!shareSettings.show_packages || !promiseBasic.event_type_id) {
@@ -1796,6 +1809,7 @@ export async function getPublicPromiseAvailablePackages(
             promise_share_default_show_packages: studio.promise_share_default_show_packages,
           },
           paquetes: [],
+          portafolios: undefined,
           share_settings: shareSettings,
         },
       };
@@ -1951,6 +1965,59 @@ export async function getPublicPromiseAvailablePackages(
       };
     });
 
+    // 7. Obtener portafolios según tipo de evento (si está habilitado)
+    let portafolios: Array<{
+      id: string;
+      title: string;
+      slug: string;
+      description: string | null;
+      cover_image_url: string | null;
+      event_type?: {
+        id: string;
+        name: string;
+      } | null;
+    }> = [];
+
+    if (shareSettings.portafolios && promiseBasic.event_type_id) {
+      const portafoliosData = await prisma.studio_portfolios.findMany({
+        where: {
+          studio_id: studio.id,
+          event_type_id: promiseBasic.event_type_id,
+          is_published: true,
+        },
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          cover_image_url: true,
+          event_type: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [
+          { is_featured: 'desc' },
+          { order: 'asc' },
+        ],
+        take: 10, // Limitar a 10 portafolios
+      });
+
+      portafolios = portafoliosData.map((p) => ({
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        description: p.description,
+        cover_image_url: p.cover_image_url,
+        event_type: p.event_type ? {
+          id: p.event_type.id,
+          name: p.event_type.name,
+        } : null,
+      }));
+    }
+
     const totalTime = Date.now() - startTime;
     if (process.env.NODE_ENV === 'development') {
       console.log(`[${uniqueId}] getPublicPromiseAvailablePackages:total: ${totalTime}ms`);
@@ -1968,6 +2035,7 @@ export async function getPublicPromiseAvailablePackages(
           promise_share_default_show_packages: studio.promise_share_default_show_packages,
         },
         paquetes: mappedPaquetes,
+        portafolios: portafolios.length > 0 ? portafolios : undefined,
         share_settings: shareSettings,
       },
     };
@@ -4853,6 +4921,24 @@ export async function getPublicPromiseBasicData(
       success: false,
       error: "Error al obtener datos básicos de promesa",
     };
+  }
+}
+
+/**
+ * Invalidar caché de route state público
+ * Usado cuando se detecta cancelación de cierre desde el cliente para evitar bucles infinitos
+ */
+export async function invalidatePublicPromiseRouteState(
+  studioSlug: string,
+  promiseId: string
+): Promise<{ success: boolean }> {
+  try {
+    const { revalidateTag } = await import('next/cache');
+    revalidateTag(`public-promise-route-state-${studioSlug}-${promiseId}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[invalidatePublicPromiseRouteState] Error:", error);
+    return { success: false };
   }
 }
 

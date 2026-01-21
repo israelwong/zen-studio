@@ -2,6 +2,7 @@
 
 import { use } from 'react';
 import { AvailablePackagesSection } from './AvailablePackagesSection';
+import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
 import type { PublicCotizacion } from '@/types/public-promise';
 import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
 
@@ -56,8 +57,20 @@ interface AvailablePackagesSectionWrapperProps {
         servicios: any[];
         tiempo_minimo_contratacion: number | null;
       }>;
+      portafolios?: Array<{
+        id: string;
+        title: string;
+        slug: string;
+        description: string | null;
+        cover_image_url: string | null;
+        event_type?: {
+          id: string;
+          name: string;
+        } | null;
+      }>;
       share_settings: {
         show_packages: boolean;
+        portafolios: boolean;
       };
     };
     error?: string;
@@ -116,28 +129,45 @@ export function AvailablePackagesSectionWrapper({
   const hasActiveQuote = activeQuoteData && activeQuoteData.cotizaciones.length > 0;
   const paquetesData = availablePackagesResult.success && availablePackagesResult.data ? availablePackagesResult.data : null;
 
-  // Si no hay datos de paquetes, no renderizar nada
-  if (!paquetesData || !paquetesData.share_settings.show_packages || paquetesData.paquetes.length === 0) {
+  // Si no hay datos de paquetes, verificar si hay portafolios para mostrar
+  const hasPackages = paquetesData && paquetesData.share_settings.show_packages && paquetesData.paquetes.length > 0;
+  const hasPortafolios = paquetesData && paquetesData.share_settings.portafolios && paquetesData.portafolios && paquetesData.portafolios.length > 0;
+
+  if (!hasPackages && !hasPortafolios) {
     return null;
   }
 
   return (
-    <AvailablePackagesSection
-      availablePackagesPromise={availablePackagesPromise}
-      studioId={basicPromise.studio.id}
-      promiseId={promiseId}
-      studioSlug={studioSlug}
-      showAsAlternative={hasActiveQuote}
-      condicionesComerciales={activeQuoteData?.condiciones_comerciales}
-      terminosCondiciones={activeQuoteData?.terminos_condiciones}
-      minDaysToHire={activeQuoteData?.share_settings.min_days_to_hire ?? basicPromise.studio.promise_share_default_min_days_to_hire}
-      showCategoriesSubtotals={activeQuoteData?.share_settings.show_categories_subtotals ?? basicPromise.studio.promise_share_default_show_categories_subtotals}
-      showItemsPrices={activeQuoteData?.share_settings.show_items_prices ?? basicPromise.studio.promise_share_default_show_items_prices}
-      showStandardConditions={activeQuoteData?.share_settings.show_standard_conditions ?? basicPromise.studio.promise_share_default_show_standard_conditions}
-      showOfferConditions={activeQuoteData?.share_settings.show_offer_conditions ?? basicPromise.studio.promise_share_default_show_offer_conditions}
-      showPackages={activeQuoteData?.share_settings.show_packages ?? basicPromise.studio.promise_share_default_show_packages}
-      cotizaciones={activeQuoteData?.cotizaciones ?? []}
-      cotizacionesCompletas={activeQuoteData?.cotizaciones ?? []}
-    />
+    <>
+      {/* Paquetes disponibles */}
+      {hasPackages && (
+        <AvailablePackagesSection
+          availablePackagesPromise={availablePackagesPromise}
+          studioId={basicPromise.studio.id}
+          promiseId={promiseId}
+          studioSlug={studioSlug}
+          showAsAlternative={hasActiveQuote}
+          condicionesComerciales={activeQuoteData?.condiciones_comerciales}
+          terminosCondiciones={activeQuoteData?.terminos_condiciones}
+          minDaysToHire={activeQuoteData?.share_settings.min_days_to_hire ?? basicPromise.studio.promise_share_default_min_days_to_hire}
+          showCategoriesSubtotals={activeQuoteData?.share_settings.show_categories_subtotals ?? basicPromise.studio.promise_share_default_show_categories_subtotals}
+          showItemsPrices={activeQuoteData?.share_settings.show_items_prices ?? basicPromise.studio.promise_share_default_show_items_prices}
+          showStandardConditions={activeQuoteData?.share_settings.show_standard_conditions ?? basicPromise.studio.promise_share_default_show_standard_conditions}
+          showOfferConditions={activeQuoteData?.share_settings.show_offer_conditions ?? basicPromise.studio.promise_share_default_show_offer_conditions}
+          showPackages={activeQuoteData?.share_settings.show_packages ?? basicPromise.studio.promise_share_default_show_packages}
+          cotizaciones={activeQuoteData?.cotizaciones ?? []}
+          cotizacionesCompletas={activeQuoteData?.cotizaciones ?? []}
+        />
+      )}
+
+      {/* Portafolios disponibles - se muestran después de los paquetes */}
+      {hasPortafolios && paquetesData.portafolios && (
+        <PortafoliosCard
+          portafolios={paquetesData.portafolios}
+          studioSlug={studioSlug}
+          studioId={basicPromise.studio.id}
+        />
+      )}
+    </>
   );
 }

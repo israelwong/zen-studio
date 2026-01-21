@@ -1,7 +1,6 @@
 'use client';
 
 import { use } from 'react';
-import { Calendar } from 'lucide-react';
 import { CotizacionesSectionRealtime } from '@/components/promise/CotizacionesSectionRealtime';
 import type { PublicCotizacion } from '@/types/public-promise';
 import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
@@ -141,33 +140,6 @@ export function ActiveQuoteSection({
   // Los paquetes se cargan después en un Suspense separado
   return (
     <>
-      {/* Fecha sugerida de contratación */}
-      {share_settings.min_days_to_hire && share_settings.min_days_to_hire > 0 && promise.event_date && (
-        <section className="py-4 px-4">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 px-4 py-3 bg-zinc-900/30 border border-zinc-800 rounded-lg">
-              <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-              <p className="text-sm text-zinc-300">
-                Sugerimos contratar antes del{' '}
-                <span className="font-medium text-emerald-400">
-                  {(() => {
-                    const eventDate = new Date(promise.event_date);
-                    const fechaSugerida = new Date(eventDate);
-                    fechaSugerida.setDate(fechaSugerida.getDate() - share_settings.min_days_to_hire);
-                    return fechaSugerida.toLocaleDateString('es-MX', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    });
-                  })()}
-                </span>
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* Cotizaciones personalizadas - se muestra inmediatamente */}
       {cotizaciones.length > 0 && (
         <CotizacionesSectionRealtime

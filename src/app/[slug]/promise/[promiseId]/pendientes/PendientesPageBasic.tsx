@@ -1,4 +1,4 @@
-import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
+import { PublicPromisePageHeader } from '@/components/promise/PublicPromisePageHeader';
 import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
 
 interface PendientesPageBasicProps {
@@ -49,12 +49,13 @@ export function PendientesPageBasic({
   return (
     <>
       <PromiseRedirectWrapper studioSlug={studioSlug} promiseId={promiseId} />
-      <PromiseHeroSection
-        contactName={promise.contact_name}
+      <PublicPromisePageHeader
+        prospectName={promise.contact_name}
+        eventName={promise.event_name}
         eventTypeName={promise.event_type_name}
         eventDate={promise.event_date}
-        studioName={studio.studio_name}
-        studioLogoUrl={studio.logo_url}
+        variant="pendientes"
+        minDaysToHire={studio.promise_share_default_min_days_to_hire}
       />
     </>
   );

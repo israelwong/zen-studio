@@ -73,10 +73,14 @@ export function ProgressOverlay({
       <ZenCard className="max-w-md w-full p-6">
         <div className="text-center mb-6">
           <h3 className="text-xl font-semibold text-white mb-2">
-            Iniciando proceso de contratación
+            {currentStep === 'completed' 
+              ? '¡Contrato generado con éxito!' 
+              : 'Iniciando proceso de contratación'}
           </h3>
           <p className="text-sm text-zinc-400">
-            Por favor espera mientras procesamos tu solicitud
+            {currentStep === 'completed'
+              ? 'Estamos a un solo paso de asegurar tu fecha. Serás redirigido a las opciones de pago...'
+              : 'Por favor espera mientras procesamos tu solicitud'}
           </p>
         </div>
 
@@ -166,12 +170,19 @@ export function ProgressOverlay({
               </>
             )}
 
-            {/* Loading final */}
+            {/* Estado completado - celebración festiva sin botones */}
             {currentStep === 'completed' && (
-              <div className="flex items-center justify-center pt-4">
-                <div className="flex items-center gap-2 text-emerald-400">
-                  <CheckCircle2 className="h-5 w-5" />
-                  <span className="text-sm font-medium">Redirigiendo...</span>
+              <div className="flex flex-col items-center justify-center pt-4 space-y-3">
+                <div className="flex items-center justify-center w-20 h-20 rounded-full bg-emerald-500/30 mb-2 ring-4 ring-emerald-500/20 animate-pulse">
+                  <CheckCircle2 className="h-12 w-12 text-emerald-400" strokeWidth={2.5} />
+                </div>
+                <div className="text-center">
+                  <p className="text-base font-semibold text-emerald-400 mb-1">
+                    Preparando tu contrato...
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Por favor espera mientras te redirigimos
+                  </p>
                 </div>
               </div>
             )}

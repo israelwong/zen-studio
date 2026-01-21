@@ -1,4 +1,4 @@
-import { PromiseHeroSection } from '@/components/promise/PromiseHeroSection';
+import { PublicPromisePageHeader } from '@/components/promise/PublicPromisePageHeader';
 import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
 
 interface NegociacionPageBasicProps {
@@ -43,12 +43,12 @@ export function NegociacionPageBasic({
   return (
     <>
       <PromiseRedirectWrapper studioSlug={studioSlug} promiseId={promiseId} />
-      <PromiseHeroSection
-        contactName={promise.contact_name}
+      <PublicPromisePageHeader
+        prospectName={promise.contact_name}
+        eventName={promise.event_name}
         eventTypeName={promise.event_type_name}
         eventDate={promise.event_date}
-        studioName={studio.studio_name}
-        studioLogoUrl={studio.logo_url}
+        variant="negociacion"
       />
       {/* ⚠️ HIGIENE UI: No mostrar precio total aquí, NegociacionView lo muestra con lógica completa */}
     </>
