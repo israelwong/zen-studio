@@ -118,6 +118,8 @@ export interface TipoEventoData {
     paquetes?: PaqueteData[];
     _count?: {
         eventos: number;
+        paquetes?: number;
+        promesas?: number;
     };
 }
 

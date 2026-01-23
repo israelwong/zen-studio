@@ -233,6 +233,9 @@ export function TipoEventoEnrichedModal({
                 variant="compact"
                 helpText="Imagen o video que se mostrará como portada del tipo de evento"
               />
+              <p className="text-xs text-zinc-500 mt-3 leading-relaxed">
+                <strong className="text-zinc-400">Videos:</strong> Se reproducen automáticamente sin audio y en bucle. Recomendado: máximo 6 segundos, formato horizontal 16:9 (MP4, WEBM, MOV, AVI). Tamaño máximo sugerido: 10MB para carga rápida.
+              </p>
             </div>
           </div>
 
@@ -296,29 +299,29 @@ export function TipoEventoEnrichedModal({
               </p>
             </div>
 
-            {/* Nombre del evento - Botones toggle */}
+            {/* Nombre del evento - Botones toggle e input en una fila */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-zinc-300 block">
                 Nombre del evento
               </label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <button
                   type="button"
                   onClick={() => setNombreEvento('una persona')}
                   disabled={loading}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     nombreEvento === 'una persona'
                       ? 'bg-blue-600 text-white'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  una persona
+                  1 persona
                 </button>
                 <button
                   type="button"
                   onClick={() => setNombreEvento('2 personas')}
                   disabled={loading}
-                  className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
                     nombreEvento === '2 personas'
                       ? 'bg-blue-600 text-white'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -326,16 +329,16 @@ export function TipoEventoEnrichedModal({
                 >
                   2 personas
                 </button>
+                <div className="flex-1">
+                  <ZenInput
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    placeholder={nombreEvento === 'una persona' ? 'Regina' : 'Regina y Armando'}
+                    disabled={loading}
+                  />
+                </div>
               </div>
             </div>
-
-            {/* Input sin label que se actualiza según nombreEvento */}
-            <ZenInput
-              value={region}
-              onChange={(e) => setRegion(e.target.value)}
-              placeholder={nombreEvento === 'una persona' ? 'Regina' : 'Regina y Armando'}
-              disabled={loading}
-            />
           </div>
         </div>
 

@@ -51,39 +51,73 @@ export async function obtenerTiposEvento(
 
         const tiposEvento = await prisma.studio_event_types.findMany({
             where: { studio_id },
-            include: {
-                // Eliminado packages - redundante, ya se cargan en getPaquetesShell
-                _count: {
-                    select: {
-                        events: true,
-                    },
-                },
-            },
             orderBy: { order: 'asc' },
         });
 
-        const tiposEventoData: TipoEventoData[] = tiposEvento.map((tipo) => ({
-            id: tipo.id,
-            studio_id: tipo.studio_id,
-            nombre: tipo.name,
-            description: tipo.description,
-            descripcion: tipo.description, // Legacy
-            color: tipo.color,
-            icon: tipo.icon,
-            icono: tipo.icon, // Legacy
-            cover_image_url: tipo.cover_image_url,
-            cover_video_url: tipo.cover_video_url,
-            cover_media_type: tipo.cover_media_type as 'image' | 'video' | null,
-            cover_design_variant: tipo.cover_design_variant as 'solid' | 'gradient' | null,
-            status: tipo.status,
-            orden: tipo.order,
-            createdAt: tipo.created_at,
-            updatedAt: tipo.updated_at,
-            paquetes: [], // Vacío - se cargan por separado en getPaquetesShell
-            _count: {
-                eventos: tipo._count.events,
-            },
-        }));
+        // Obtener conteos de paquetes, promesas y eventos para cada tipo de evento
+        const tiposEventoData: TipoEventoData[] = await Promise.all(
+            tiposEvento.map(async (tipo) => {
+                // Obtener el stage "pending" del studio
+                const pendingStage = await prisma.studio_promise_pipeline_stages.findFirst({
+                    where: {
+                        studio_id: studio_id,
+                        slug: 'pending',
+                        is_active: true,
+                    },
+                    select: { id: true },
+                });
+
+                const [paquetesCount, promesasCount, eventosCount] = await Promise.all([
+                    prisma.studio_paquetes.count({
+                        where: { event_type_id: tipo.id },
+                    }),
+                    prisma.studio_promises.count({
+                        where: { 
+                            event_type_id: tipo.id,
+                            pipeline_stage_id: pendingStage?.id || null,
+                        },
+                    }),
+                    prisma.studio_events.count({
+                        where: { 
+                            event_type_id: tipo.id,
+                            status: 'ACTIVE', // Solo eventos activos
+                            // Solo eventos con cotización aprobada o autorizada (eventos gestionados)
+                            cotizacion_id: { not: null },
+                            cotizacion: {
+                                status: {
+                                    in: ['aprobada', 'autorizada', 'approved'],
+                                },
+                            },
+                        },
+                    }),
+                ]);
+
+                return {
+                    id: tipo.id,
+                    studio_id: tipo.studio_id,
+                    nombre: tipo.name,
+                    description: tipo.description,
+                    descripcion: tipo.description, // Legacy
+                    color: tipo.color,
+                    icon: tipo.icon,
+                    icono: tipo.icon, // Legacy
+                    cover_image_url: tipo.cover_image_url,
+                    cover_video_url: tipo.cover_video_url,
+                    cover_media_type: tipo.cover_media_type as 'image' | 'video' | null,
+                    cover_design_variant: tipo.cover_design_variant as 'solid' | 'gradient' | null,
+                    status: tipo.status,
+                    orden: tipo.order,
+                    createdAt: tipo.created_at,
+                    updatedAt: tipo.updated_at,
+                    paquetes: [], // Vacío - se cargan por separado en getPaquetesShell
+                    _count: {
+                        eventos: eventosCount,
+                        paquetes: paquetesCount,
+                        promesas: promesasCount,
+                    },
+                };
+            })
+        );
 
         return { success: true, data: tiposEventoData };
     } catch (error) {

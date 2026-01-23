@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle } from '@/components/ui/zen';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenButton } from '@/components/ui/zen';
 import { TipoEventoEnrichedModal } from '@/components/shared/tipos-evento/TipoEventoEnrichedModal';
+import { obtenerTiposEvento } from '@/lib/actions/studio/negocio/tipos-evento.actions';
 import type { TipoEventoData } from '@/lib/actions/schemas/tipos-evento-schemas';
-import { Plus, Edit2, Image as ImageIcon, Video } from 'lucide-react';
+import { Plus, Edit2, Image as ImageIcon, Video, Package } from 'lucide-react';
 import Image from 'next/image';
 
 interface TipoEventosPageBasicProps {
@@ -13,12 +15,19 @@ interface TipoEventosPageBasicProps {
 }
 
 export function TipoEventosPageBasic({
-  tiposEvento,
+  tiposEvento: initialTiposEvento,
   studioSlug,
 }: TipoEventosPageBasicProps) {
+  const [tiposEvento, setTiposEvento] = useState<TipoEventoData[]>(initialTiposEvento);
   const [selectedTipoEvento, setSelectedTipoEvento] = useState<TipoEventoData | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const router = useRouter();
+
+  // Sincronizar con props iniciales si cambian
+  useEffect(() => {
+    setTiposEvento(initialTiposEvento);
+  }, [initialTiposEvento]);
 
   const handleCreate = () => {
     setSelectedTipoEvento(undefined);
@@ -32,9 +41,26 @@ export function TipoEventosPageBasic({
     setIsModalOpen(true);
   };
 
-  const handleSuccess = (tipoEvento: TipoEventoData) => {
-    // Recargar página para actualizar lista
-    window.location.reload();
+  const handleSuccess = async (tipoEvento: TipoEventoData) => {
+    // Actualizar estado local
+    if (isCreating) {
+      // Agregar nuevo tipo de evento
+      setTiposEvento((prev) => [...prev, tipoEvento]);
+    } else {
+      // Actualizar tipo de evento existente
+      setTiposEvento((prev) =>
+        prev.map((tipo) => (tipo.id === tipoEvento.id ? tipoEvento : tipo))
+      );
+    }
+
+    // Recargar datos del servidor para obtener conteos actualizados
+    const result = await obtenerTiposEvento(studioSlug);
+    if (result.success && result.data) {
+      setTiposEvento(result.data);
+    }
+
+    // Revalidar sin recargar la página
+    router.refresh();
   };
 
   const handleClose = () => {
@@ -86,13 +112,12 @@ export function TipoEventosPageBasic({
             {tiposEvento.map((tipo) => (
               <ZenCard
                 key={tipo.id}
-                className="cursor-pointer hover:border-emerald-500/50 transition-colors group"
-                onClick={() => handleEdit(tipo)}
+                className="hover:border-zinc-600 hover:shadow-lg transition-all duration-200 group"
               >
                 <ZenCardContent className="p-0">
                   {/* Cover */}
                   {tipo.cover_media_type === 'image' && tipo.cover_image_url ? (
-                    <div className="relative w-full h-48 bg-zinc-800 rounded-t-lg overflow-hidden">
+                    <div className="relative w-full h-48 bg-zinc-800 rounded-t-lg overflow-hidden group-hover:opacity-90 transition-opacity">
                       <Image
                         src={tipo.cover_image_url}
                         alt={tipo.nombre}
@@ -101,7 +126,7 @@ export function TipoEventosPageBasic({
                       />
                     </div>
                   ) : tipo.cover_media_type === 'video' && tipo.cover_video_url ? (
-                    <div className="relative w-full h-48 bg-zinc-800 rounded-t-lg overflow-hidden">
+                    <div className="relative w-full h-48 bg-zinc-800 rounded-t-lg overflow-hidden group-hover:opacity-90 transition-opacity">
                       <video
                         src={tipo.cover_video_url}
                         className="w-full h-full object-cover"
@@ -126,16 +151,22 @@ export function TipoEventosPageBasic({
 
                   {/* Contenido */}
                   <div className="p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-white">{tipo.nombre}</h3>
+                    <div className="flex items-start justify-between mb-2 gap-2">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-emerald-400 transition-colors flex-1">
+                        {tipo.nombre}
+                      </h3>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(tipo);
+                        onClick={() => handleEdit(tipo)}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-zinc-800 rounded transition-all cursor-pointer flex-shrink-0"
+                        title="Editar tipo de evento"
+                        onMouseEnter={(e) => {
+                          e.currentTarget.closest('.group')?.classList.add('hover');
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-zinc-800 rounded transition-opacity"
+                        onMouseLeave={(e) => {
+                          e.currentTarget.closest('.group')?.classList.remove('hover');
+                        }}
                       >
-                        <Edit2 className="h-4 w-4 text-zinc-400" />
+                        <Edit2 className="h-4 w-4 text-zinc-400 hover:text-emerald-400 transition-colors" />
                       </button>
                     </div>
 
@@ -145,24 +176,48 @@ export function TipoEventosPageBasic({
                       </p>
                     )}
 
-                    {/* Badges */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {tipo.color && (
-                        <div
-                          className="w-4 h-4 rounded-full border border-zinc-700"
-                          style={{ backgroundColor: tipo.color }}
-                        />
-                      )}
-                      {tipo._count?.eventos && tipo._count.eventos > 0 && (
-                        <span className="text-xs text-zinc-500">
-                          {tipo._count.eventos} {tipo._count.eventos === 1 ? 'evento' : 'eventos'}
+                    {/* Estadísticas */}
+                    <div className="space-y-2 mt-3 pt-3 border-t border-zinc-800">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Paquetes asociados:</span>
+                        <span className="text-zinc-300 font-medium">
+                          {tipo._count?.paquetes || 0}
                         </span>
-                      )}
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Promesas pendientes:</span>
+                        <span className="text-zinc-300 font-medium">
+                          {tipo._count?.promesas || 0}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Eventos activos:</span>
+                        <span className="text-zinc-300 font-medium">
+                          {tipo._count?.eventos || 0}
+                        </span>
+                      </div>
                       {tipo.status === 'inactive' && (
-                        <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded">
-                          Inactivo
-                        </span>
+                        <div className="mt-2">
+                          <span className="text-xs px-2 py-0.5 bg-zinc-800 text-zinc-400 rounded">
+                            Inactivo
+                          </span>
+                        </div>
                       )}
+                    </div>
+
+                    {/* Botón crear paquete */}
+                    <div className="mt-4 pt-3 border-t border-zinc-800 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ZenButton
+                        variant="outline"
+                        size="sm"
+                        icon={Package}
+                        onClick={() => {
+                          router.push(`/${studioSlug}/studio/commercial/paquetes/nuevo?eventTypeId=${tipo.id}`);
+                        }}
+                        className="w-full hover:border-emerald-500/50 hover:text-emerald-400 transition-colors"
+                      >
+                        Crear paquete
+                      </ZenButton>
                     </div>
                   </div>
                 </ZenCardContent>

@@ -123,7 +123,12 @@ export function PublicPromisePageHeader({
           {/* Badge de tipo de evento - Superpuesto en la parte inferior, centrado con efecto cristal líquido */}
           {eventTypeName && (
             <div className="absolute bottom-4 left-0 right-0 flex justify-center z-10">
-              <span className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-medium bg-white/10 backdrop-blur-[2px] border border-white/20 text-white shadow-lg shadow-black/20">
+              <span 
+                className="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-semibold bg-white/10 backdrop-blur-[2px] border border-white/20 text-white shadow-lg shadow-black/20"
+                style={{
+                  textShadow: '0 1px 3px rgba(0, 0, 0, 0.4), 0 0 6px rgba(0, 0, 0, 0.2)',
+                }}
+              >
                 {eventTypeName}
               </span>
             </div>
