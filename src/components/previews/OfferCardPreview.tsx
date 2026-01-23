@@ -63,8 +63,8 @@ export function OfferCardPreview({
     <div className="w-full">
       {isCompact ? (
         // Compact variant: Mobile carousel
-        <div className="bg-zinc-900/70 backdrop-blur-xl rounded-lg border border-zinc-700/60 transition-all group">
-          <div className="flex items-center gap-3 p-3">
+        <div className="bg-zinc-900/70 backdrop-blur-xl rounded-lg border border-zinc-700/60 transition-all group h-full relative shadow-lg shadow-black/20">
+          <div className="flex items-center gap-3 p-3 h-full min-h-[80px] pl-3 pr-10">
             {/* Cover - Un poco más grande */}
             <div className="relative w-20 h-20 shrink-0 bg-zinc-800 rounded overflow-hidden">
               {coverMediaUrl ? (
@@ -96,14 +96,14 @@ export function OfferCardPreview({
             </div>
 
             {/* Content - Compacto */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 flex flex-col justify-center">
               <p className="text-sm font-medium text-zinc-100 group-hover:text-purple-400 transition-colors line-clamp-1">
                 {name || "Nombre de la oferta"}
               </p>
 
               {/* Descripción compacta - máximo 100 caracteres */}
               {description && (
-                <p className="text-xs text-zinc-500 line-clamp-2 mt-0.5 pr-4">
+                <p className="text-xs text-zinc-500 line-clamp-2 mt-0.5">
                   {description.length > 100
                     ? `${description.substring(0, 100)}...`
                     : description
