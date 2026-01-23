@@ -111,10 +111,13 @@ export function useMediaUpload(onMediaSizeChange?: (bytes: number, operation: 'a
       try {
         for (const file of files) {
           try {
-            // Validar tamaño
+            // Validar tamaño ANTES de intentar subir
             const validation = validateFileSize(file);
             if (!validation.valid) {
-              toast.error(validation.error || `${file.name}: Tamaño no válido`);
+              // Mostrar error informativo y continuar con siguiente archivo
+              toast.error(validation.error || `No se pudo cargar ${file.name}: Tamaño no válido`, {
+                duration: 6000 // Mostrar más tiempo para mensajes largos
+              });
               continue;
             }
 
@@ -187,8 +190,19 @@ export function useMediaUpload(onMediaSizeChange?: (bytes: number, operation: 'a
             if (uploadError) {
               const errorMsg = uploadError.message || 'Error desconocido';
 
+              // Detectar errores de tamaño (fallback si la validación previa falló)
+              if (errorMsg.includes('exceeded the maximum allowed size') || errorMsg.includes('maximum allowed size')) {
+                const fileType = file.type.startsWith('video/') ? 'video' : 'imagen';
+                const maxSize = file.type.startsWith('video/') ? '50MB' : '10MB';
+                const fileSizeFormatted = formatBytes(file.size);
+                console.error(`[useMediaUpload] Archivo demasiado grande: ${file.name} (${fileSizeFormatted})`);
+                toast.error(
+                  `No se pudo cargar el ${fileType} "${file.name}". El archivo (${fileSizeFormatted}) excede el tamaño máximo permitido de ${maxSize}. Por favor, comprime el ${fileType} o elige uno más pequeño.`,
+                  { duration: 6000 }
+                );
+              } 
               // Detectar errores RLS
-              if (errorMsg.includes('row level security') || errorMsg.includes('policy')) {
+              else if (errorMsg.includes('row level security') || errorMsg.includes('policy')) {
                 console.error('[useMediaUpload] Error RLS:', errorMsg);
                 toast.error(`Permiso denegado: No tienes permisos para subir archivos`);
               } else {
@@ -255,13 +269,21 @@ export function useMediaUpload(onMediaSizeChange?: (bytes: number, operation: 'a
             }
           );
         } else {
-          // Cerrar el toast anterior con duración infinita antes de mostrar el error
-          toast.dismiss(batchToastId);
-          // Pequeño delay para asegurar que el dismiss se procese
-          await new Promise(resolve => setTimeout(resolve, 100));
-          toast.error('No se pudo subir ningún archivo', {
-            duration: 5000 // Auto-dismiss después de 5s
-          });
+          // Solo mostrar error general si no se mostraron errores específicos
+          // (los errores específicos ya se mostraron durante el loop)
+          const hasSpecificErrors = files.length > uploadedFiles.length;
+          if (!hasSpecificErrors) {
+            // Cerrar el toast anterior con duración infinita antes de mostrar el error
+            toast.dismiss(batchToastId);
+            // Pequeño delay para asegurar que el dismiss se procese
+            await new Promise(resolve => setTimeout(resolve, 100));
+            toast.error('No se pudo subir ningún archivo', {
+              duration: 5000 // Auto-dismiss después de 5s
+            });
+          } else {
+            // Si hubo errores específicos, solo cerrar el toast de progreso
+            toast.dismiss(batchToastId);
+          }
         }
 
         return uploadedFiles;

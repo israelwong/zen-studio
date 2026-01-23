@@ -1511,17 +1511,21 @@ model studio_short_urls {
   short_code   String          @unique
   original_url String
   studio_id    String
-  promise_id   String
+  promise_id   String?
+  post_id      String?
   studio_slug  String
   clicks       Int             @default(0)
   created_at   DateTime        @default(now())
   updated_at   DateTime        @updatedAt
   studio       studios         @relation(fields: [studio_id], references: [id], onDelete: Cascade)
-  promise      studio_promises @relation(fields: [promise_id], references: [id], onDelete: Cascade)
+  promise      studio_promises? @relation(fields: [promise_id], references: [id], onDelete: Cascade)
+  post         studio_posts?    @relation(fields: [post_id], references: [id], onDelete: Cascade)
 
   @@index([short_code])
   @@index([studio_id, promise_id])
+  @@index([studio_id, post_id])
   @@index([studio_slug])
+  @@index([post_id])
 }
 
 model studio_events {
@@ -2848,10 +2852,11 @@ model studio_posts {
   view_count    Int                 @default(0)
   created_at    DateTime            @default(now())
   updated_at    DateTime            @updatedAt
-  slug          String
+  slug          String?
   media         studio_post_media[] @relation("post_media")
   event_type    studio_event_types? @relation(fields: [event_type_id], references: [id])
   studio        studios             @relation(fields: [studio_id], references: [id], onDelete: Cascade)
+  short_urls    studio_short_urls[] @relation
 
   @@unique([studio_id, slug])
   @@index([slug])

@@ -39,7 +39,7 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
     // Estado
     const initialTab = searchParams.get('section') || 'inicio';
     const [activeTab, setActiveTab] = useState<string>(initialTab);
-    const [selectedPostSlug, setSelectedPostSlug] = useState<string | null>(null);
+    const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [selectedPortfolioSlug, setSelectedPortfolioSlug] = useState<string | null>(null);
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [isPostEditorOpen, setIsPostEditorOpen] = useState(false);
@@ -119,7 +119,7 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
 
         if (sectionParam && ['inicio', 'inicio-fotos', 'inicio-videos', 'portafolio', 'contacto', 'faq', 'archivados'].includes(sectionParam)) {
             if (sectionParam !== activeTab) {
-                setSelectedPostSlug(null);
+                setSelectedPostId(null);
                 setSelectedPortfolioSlug(null);
                 setIsSearchOpen(false);
                 setIsPostEditorOpen(false);
@@ -128,14 +128,14 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
         }
 
         if (postParam) {
-            setSelectedPostSlug(postParam);
+            setSelectedPostId(postParam); // Ahora es CUID, no slug
             setSelectedPortfolioSlug(null);
         } else if (portfolioParam) {
             setSelectedPortfolioSlug(portfolioParam);
-            setSelectedPostSlug(null);
+            setSelectedPostId(null);
         } else {
             if (!postParam && !portfolioParam) {
-                setSelectedPostSlug(null);
+                setSelectedPostId(null);
                 setSelectedPortfolioSlug(null);
             }
         }
@@ -184,7 +184,7 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
             window.dispatchEvent(new CustomEvent('close-overlays'));
         }
 
-        setSelectedPostSlug(null);
+        setSelectedPostId(null);
         setSelectedPortfolioSlug(null);
         setIsSearchOpen(false);
         setIsPostEditorOpen(false);
@@ -196,9 +196,9 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
         });
     };
 
-    const handlePostClick = (postSlug: string) => {
+    const handlePostClick = (postId: string) => {
         // ⚠️ NAVEGACIÓN: Activar flag de navegación
-        setIsNavigating(postSlug);
+        setIsNavigating(postId);
         isNavigatingRef.current = true;
 
         // ⚠️ UI: Cerrar overlays antes de navegar
@@ -207,8 +207,8 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
         }
 
         startTransition(() => {
-            setSelectedPostSlug(postSlug);
-            router.push(buildUrl({ post: postSlug, tab: activeTab }), { scroll: false });
+            setSelectedPostId(postId);
+            router.push(buildUrl({ post: postId, tab: activeTab }), { scroll: false });
 
             // Limpiar flag después de un delay
             setTimeout(() => {
@@ -225,20 +225,20 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
         }
 
         startTransition(() => {
-            setSelectedPostSlug(null);
+            setSelectedPostId(null);
             setSelectedPortfolioSlug(null);
             router.push(buildUrl({ tab: activeTab }), { scroll: false });
         });
     };
 
     const handleNextPost = () => {
-        if (!selectedPostSlug || publishedPosts.length === 0) return;
-        const currentIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+        if (!selectedPostId || publishedPosts.length === 0) return;
+        const currentIndex = publishedPosts.findIndex(p => p.id === selectedPostId);
         if (currentIndex >= 0 && currentIndex < publishedPosts.length - 1) {
-            const nextSlug = publishedPosts[currentIndex + 1].slug;
+            const nextId = publishedPosts[currentIndex + 1].id;
             
             // ⚠️ NAVEGACIÓN: Activar flag de navegación
-            setIsNavigating(nextSlug);
+            setIsNavigating(nextId);
             isNavigatingRef.current = true;
 
             // ⚠️ UI: Cerrar overlays antes de navegar
@@ -247,8 +247,8 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
             }
 
             startTransition(() => {
-                setSelectedPostSlug(nextSlug);
-                router.push(buildUrl({ post: nextSlug, tab: activeTab }), { scroll: false });
+                setSelectedPostId(nextId);
+                router.push(buildUrl({ post: nextId, tab: activeTab }), { scroll: false });
 
                 // Limpiar flag después de un delay
                 setTimeout(() => {
@@ -260,13 +260,13 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
     };
 
     const handlePrevPost = () => {
-        if (!selectedPostSlug || publishedPosts.length === 0) return;
-        const currentIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+        if (!selectedPostId || publishedPosts.length === 0) return;
+        const currentIndex = publishedPosts.findIndex(p => p.id === selectedPostId);
         if (currentIndex > 0) {
-            const prevSlug = publishedPosts[currentIndex - 1].slug;
+            const prevId = publishedPosts[currentIndex - 1].id;
             
             // ⚠️ NAVEGACIÓN: Activar flag de navegación
-            setIsNavigating(prevSlug);
+            setIsNavigating(prevId);
             isNavigatingRef.current = true;
 
             // ⚠️ UI: Cerrar overlays antes de navegar
@@ -275,8 +275,8 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
             }
 
             startTransition(() => {
-                setSelectedPostSlug(prevSlug);
-                router.push(buildUrl({ post: prevSlug, tab: activeTab }), { scroll: false });
+                setSelectedPostId(prevId);
+                router.push(buildUrl({ post: prevId, tab: activeTab }), { scroll: false });
 
                 // Limpiar flag después de un delay
                 setTimeout(() => {
@@ -365,20 +365,23 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
         }
     };
 
-    // Published posts (sorted)
+    // Published posts (sorted: featured first, then by date descending)
+    // Si hay múltiples destacados, se ordenan por fecha entre ellos
     const publishedPosts = useMemo(() => {
         const filtered = posts?.filter(p => p.is_published) || [];
         return [...filtered].sort((a, b) => {
+            // Featured primero
             if (a.is_featured && !b.is_featured) return -1;
             if (!a.is_featured && b.is_featured) return 1;
+            // Si ambos son featured o ambos no, ordenar por fecha (más reciente primero)
             const dateA = a.created_at ? new Date(a.created_at).getTime() : (a.published_at ? new Date(a.published_at).getTime() : 0);
             const dateB = b.created_at ? new Date(b.created_at).getTime() : (b.published_at ? new Date(b.published_at).getTime() : 0);
-            return dateB - dateA;
+            return dateB - dateA; // Descendente: más reciente primero
         });
     }, [posts]);
 
     // Selected post/portfolio data
-    const selectedPost = selectedPostSlug ? posts?.find(p => p.slug === selectedPostSlug) : null;
+    const selectedPost = selectedPostId ? posts?.find(p => p.id === selectedPostId) : null;
     const selectedPostWithStudio = selectedPost ? {
         ...selectedPost,
         studio: {
@@ -390,7 +393,7 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
     const selectedPortfolio = selectedPortfolioSlug ? portfolios?.find(p => p.slug === selectedPortfolioSlug) : null;
 
     // Navigation state
-    const currentPostIndex = publishedPosts.findIndex(p => p.slug === selectedPostSlug);
+    const currentPostIndex = publishedPosts.findIndex(p => p.id === selectedPostId);
     const hasNextPost = currentPostIndex >= 0 && currentPostIndex < publishedPosts.length - 1;
     const hasPrevPost = currentPostIndex > 0;
 
@@ -401,7 +404,8 @@ export function useProfilePageLogic({ profileData, studioSlug, offers = [] }: Us
     return {
         // State
         activeTab,
-        selectedPostSlug,
+        selectedPostId,
+        selectedPostSlug: selectedPostId, // Mantener para compatibilidad temporal
         selectedPortfolioSlug,
         isSearchOpen,
         isPostEditorOpen,

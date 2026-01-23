@@ -253,10 +253,10 @@ export function ArchivedContent({ studioSlug, onPostClick, onPortfolioClick, onP
                                     isDeleting={deletingId === post.id}
                                     onView={() => {
                                         if (onPostClick) {
-                                            onPostClick(post.slug);
+                                            onPostClick(post.id);
                                         } else {
                                             const params = new URLSearchParams(window.location.search);
-                                            params.set('post', post.slug);
+                                            params.set('post', post.id);
                                             router.push(`${window.location.pathname}?${params.toString()}`, { scroll: false });
                                         }
                                     }}

@@ -38,7 +38,7 @@ interface ProfilePageMobileProps {
 export function ProfilePageMobile({ profileData, studioSlug, offers = [], logic }: ProfilePageMobileProps) {
     const {
         activeTab,
-        selectedPostSlug,
+        selectedPostId,
         selectedPortfolioSlug,
         isSearchOpen,
         isPostEditorOpen,
@@ -181,7 +181,7 @@ export function ProfilePageMobile({ profileData, studioSlug, offers = [], logic 
                 studioSlug={studioSlug}
                 studioId={studio.id}
                 ownerUserId={studio.owner_id}
-                isOpen={!!selectedPostSlug}
+                isOpen={!!selectedPostId}
                 onClose={handleCloseModal}
                 onNext={handleNextPost}
                 onPrev={handlePrevPost}

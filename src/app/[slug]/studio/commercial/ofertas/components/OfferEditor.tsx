@@ -266,7 +266,7 @@ function OfferEditorContent({ studioSlug, studioId, mode, offer }: OfferEditorPr
   }, [formData.cover_media_url, contentBlocks]);
 
   const tabs = useMemo(() => {
-    const baseTabs = [
+    const baseTabs: Array<{ id: OfferEditorTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
       { id: "basic" as const, label: "Información", icon: FileText },
     ];
     

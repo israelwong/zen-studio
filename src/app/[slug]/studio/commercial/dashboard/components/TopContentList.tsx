@@ -61,7 +61,7 @@ export function TopContentList({ posts, studioSlug }: TopContentListProps) {
                 {posts.map((post, index) => (
                     <Link
                         key={post.id}
-                        href={`/${studioSlug}?post=${post.slug}`}
+                        href={`/${studioSlug}?post=${post.id}`}
                         target="_blank"
                         className="flex items-center gap-4 p-4 hover:bg-zinc-800/30 transition-colors group"
                     >

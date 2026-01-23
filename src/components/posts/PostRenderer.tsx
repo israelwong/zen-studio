@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { MediaItem } from "@/lib/actions/schemas/post-schemas";
 import { ImageCarousel } from "@/components/shared/media";
 import { useContentAnalytics } from "@/hooks/useContentAnalytics";
+import { getOrCreatePostShortUrl } from "@/lib/actions/studio/commercial/promises/promise-short-url.actions";
 
 interface PostRendererProps {
   post: {
@@ -52,8 +53,16 @@ interface PostRendererProps {
   onRestore?: () => void;
 }
 
-export function PostRenderer({ post, studioSlug, onNext, onPrev, hasNext, hasPrev, onClose, isArchived = false, onRestore }: PostRendererProps) {
+export function PostRenderer({ post, studioSlug, studioId, ownerUserId, onNext, onPrev, hasNext, hasPrev, onClose, isArchived = false, onRestore }: PostRendererProps) {
   const [linkCopied, setLinkCopied] = React.useState(false);
+
+  // Analytics hook para tracking
+  const analytics = useContentAnalytics({
+    studioId: studioId || '',
+    contentType: 'POST',
+    contentId: post.id,
+    ownerUserId,
+  });
 
   // Filtrar media que tenga id definido (requerido por ImageCarousel)
   const media = Array.isArray(post.media)
@@ -114,9 +123,18 @@ export function PostRenderer({ post, studioSlug, onNext, onPrev, hasNext, hasPre
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      // Generar o obtener short URL
+      const result = await getOrCreatePostShortUrl(studioSlug, post.id);
+      
+      if (!result.success || !result.data) {
+        toast.error('Error al generar URL corta');
+        return;
+      }
+
+      const shortUrl = `${window.location.origin}/s/${result.data.shortCode}`;
+      await navigator.clipboard.writeText(shortUrl);
       setLinkCopied(true);
-      toast.success("Enlace copiado al portapapeles");
+      toast.success("URL corta copiada");
 
       // Trackear evento de compartir
       analytics.trackLinkCopy();
@@ -126,7 +144,8 @@ export function PostRenderer({ post, studioSlug, onNext, onPrev, hasNext, hasPre
         setLinkCopied(false);
       }, 2000);
     } catch (error) {
-      toast.error("Error al copiar el enlace");
+      console.error("Error copiando URL corta:", error);
+      toast.error("Error al copiar URL");
     }
   };
 

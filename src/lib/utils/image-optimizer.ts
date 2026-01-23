@@ -207,14 +207,16 @@ export function formatBytes(bytes: number): string {
 
 /**
  * Valida tamaño de archivo según tipo
+ * Límites basados en Supabase Storage (50MB máximo por archivo)
  */
 export function validateFileSize(file: File): {
   valid: boolean;
   error?: string;
   maxSize?: string;
 } {
+  // Límites más conservadores para evitar errores de Supabase
   const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
-  const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100MB
+  const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB (límite de Supabase Storage)
 
   if (file.type.startsWith('image/')) {
     if (file.size > MAX_IMAGE_SIZE) {
@@ -226,10 +228,12 @@ export function validateFileSize(file: File): {
     }
   } else if (file.type.startsWith('video/')) {
     if (file.size > MAX_VIDEO_SIZE) {
+      const fileSizeFormatted = formatBytes(file.size);
+      const maxSizeFormatted = formatBytes(MAX_VIDEO_SIZE);
       return {
         valid: false,
-        error: `Video demasiado grande. Máximo: ${formatBytes(MAX_VIDEO_SIZE)}`,
-        maxSize: formatBytes(MAX_VIDEO_SIZE),
+        error: `No se pudo cargar el video. El archivo (${fileSizeFormatted}) excede el tamaño máximo permitido de ${maxSizeFormatted}. Por favor, comprime el video o elige uno más pequeño.`,
+        maxSize: maxSizeFormatted,
       };
     }
   }

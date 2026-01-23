@@ -21,7 +21,7 @@ const LazyPaquetesContent = lazy(() =>
 interface ProfileContentViewProps {
     activeTab: string;
     profileData: PublicProfileData;
-    onPostClick?: (postSlug: string) => void;
+    onPostClick?: (postId: string) => void;
     onPortfolioClick?: (portfolioSlug: string) => void;
     onEditPost?: (postId: string) => void;
     studioId?: string;

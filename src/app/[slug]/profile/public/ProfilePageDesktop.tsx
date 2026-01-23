@@ -37,7 +37,7 @@ interface ProfilePageDesktopProps {
 export function ProfilePageDesktop({ profileData, studioSlug, offers = [], logic }: ProfilePageDesktopProps) {
     const {
         activeTab,
-        selectedPostSlug,
+        selectedPostId,
         selectedPortfolioSlug,
         isSearchOpen,
         isPostEditorOpen,
@@ -184,7 +184,7 @@ export function ProfilePageDesktop({ profileData, studioSlug, offers = [], logic
                 studioSlug={studioSlug}
                 studioId={studio.id}
                 ownerUserId={studio.owner_id}
-                isOpen={!!selectedPostSlug}
+                isOpen={!!selectedPostId}
                 onClose={handleCloseModal}
                 onNext={handleNextPost}
                 onPrev={handlePrevPost}

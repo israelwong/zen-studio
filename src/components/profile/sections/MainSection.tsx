@@ -31,7 +31,7 @@ type FilterType = 'all' | 'photos' | 'videos';
 interface MainSectionProps {
     posts: PublicPost[];
     filter?: FilterType;
-    onPostClick?: (postSlug: string) => void;
+    onPostClick?: (postId: string) => void;
     onEditPost?: (postId: string) => void;
     studioId?: string;
     ownerUserId?: string | null;

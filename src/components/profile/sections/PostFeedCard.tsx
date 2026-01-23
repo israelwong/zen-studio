@@ -34,7 +34,7 @@ interface PostFeedCardProps {
         published_at: Date | null;
         view_count?: number;
     };
-    onPostClick?: (postSlug: string) => void;
+    onPostClick?: (postId: string) => void;
     onEditPost?: (postId: string) => void; // Callback para editar post
     onMediaClick?: (mediaId: string) => void; // Callback para tracking de clicks en media
 }
@@ -128,7 +128,7 @@ export function PostFeedCard({ post, onPostClick, onEditPost, onMediaClick }: Po
     // Handler para abrir modal de post
     const handlePostClick = () => {
         if (onPostClick) {
-            onPostClick(post.slug);
+            onPostClick(post.id);
         }
     };
 

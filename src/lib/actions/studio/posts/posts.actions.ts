@@ -183,14 +183,13 @@ export async function createStudioPost(studioId: string, data: PostFormData) {
 
         // Crear post con transacción para manejar media
         const post = await prisma.$transaction(async (tx) => {
-            // Generar slug desde título y verificar unicidad
-            const baseSlug = generateSlug(validatedData.title || 'post');
-            const uniqueSlug = await generateUniquePostSlug(studioId, baseSlug);
+            // Generar slug opcional desde título (solo para metadata, no para URLs)
+            const optionalSlug = validatedData.title ? generateSlug(validatedData.title) : null;
 
             const newPost = await tx.studio_posts.create({
                 data: {
                     studio_id: studioId,
-                    slug: uniqueSlug,
+                    slug: optionalSlug, // Opcional, no se valida unicidad
                     title: validatedData.title,
                     caption: validatedData.caption,
                     cover_index: validatedData.cover_index,
@@ -320,77 +319,12 @@ export async function createStudioPostBySlug(studioSlug: string, data: PostFormD
     }
 }
 
-export async function getStudioPostById(postId: string) {
-    try {
-        const post = await prisma.studio_posts.findUnique({
-            where: { id: postId },
-            include: {
-                event_type: { select: { id: true, name: true } },
-                studio: {
-                    select: {
-                        id: true,
-                        slug: true,
-                        studio_name: true,
-                        phones: {
-                            where: {
-                                type: 'WHATSAPP',
-                                is_active: true
-                            },
-                            select: {
-                                number: true
-                            },
-                            take: 1
-                        }
-                    },
-                },
-                media: {
-                    select: {
-                        id: true,
-                        file_url: true,
-                        file_type: true,
-                        filename: true,
-                        storage_bytes: true,
-                        mime_type: true,
-                        dimensions: true,
-                        duration_seconds: true,
-                        display_order: true,
-                        alt_text: true,
-                        thumbnail_url: true,
-                        storage_path: true,
-                    },
-                    orderBy: { display_order: 'asc' }
-                },
-            },
-        });
-
-        if (!post) {
-            return { success: false, error: "Post no encontrado" };
-        }
-
-        const convertedPost = {
-            ...convertPrismaPostToStudioPost(post),
-            cta_enabled: false,
-            cta_action: '',
-            cta_text: '',
-            studio: {
-                studio_name: post.studio.studio_name,
-                whatsapp_number: post.studio.phones?.[0]?.number || null,
-            }
-        };
-
-        return { success: true, data: convertedPost };
-    } catch (error) {
-        console.error("Error fetching post:", error);
-        return { success: false, error: "Error al obtener post" };
-    }
-}
-
-// READ by slug - Para URLs públicas SEO-friendly
-export async function getStudioPostBySlug(studioSlug: string, postSlug: string) {
+// READ by ID (CUID) - Para URLs públicas
+export async function getStudioPostById(studioSlug: string, postId: string) {
     try {
         const post = await prisma.studio_posts.findFirst({
             where: {
-                slug: postSlug,
+                id: postId,
                 studio: {
                     slug: studioSlug
                 }
@@ -504,17 +438,13 @@ export async function updateStudioPost(
             if (validatedData.event_type_id !== undefined) updateData.event_type_id = validatedData.event_type_id ?? null;
             if (validatedData.tags !== undefined) updateData.tags = validatedData.tags;
 
-            // Actualizar slug automáticamente si cambia el título
+            // Actualizar slug opcional automáticamente si cambia el título (solo para metadata)
             if (validatedData.title !== undefined) {
                 const newSlug = generateSlug(validatedData.title);
-                if (newSlug !== existingPost.slug) {
-                    const uniqueSlug = await generateUniquePostSlug(existingPost.studio_id, newSlug, postId);
-                    updateData.slug = uniqueSlug;
-                }
-            } else if (validatedData.slug !== undefined && validatedData.slug !== existingPost.slug) {
-                // Si se proporciona slug explícitamente (sin cambiar título)
-                const uniqueSlug = await generateUniquePostSlug(existingPost.studio_id, validatedData.slug, postId);
-                updateData.slug = uniqueSlug;
+                updateData.slug = newSlug; // No se valida unicidad, solo para metadata
+            } else if (validatedData.slug !== undefined) {
+                // Si se proporciona slug explícitamente
+                updateData.slug = validatedData.slug; // No se valida unicidad
             }
 
             // Solo actualizar is_featured si se proporciona explícitamente en data
@@ -612,6 +542,12 @@ export async function deleteStudioPost(postId: string) {
             return { success: false, error: "Post no encontrado" };
         }
 
+        // Eliminar short URLs asociadas antes de eliminar el post
+        // (Aunque CASCADE lo haría automáticamente, lo hacemos explícito para logging)
+        await prisma.studio_short_urls.deleteMany({
+            where: { post_id: postId },
+        });
+
         await prisma.studio_posts.delete({
             where: { id: postId },
         });
@@ -681,12 +617,12 @@ export async function toggleStudioPostPublish(postId: string) {
     }
 }
 
-// INCREMENT VIEW COUNT (por slug para URLs públicas)
-export async function incrementPostViewCount(postSlug: string, studioSlug: string) {
+// INCREMENT VIEW COUNT (por ID/CUID para URLs públicas)
+export async function incrementPostViewCount(postId: string, studioSlug: string) {
     try {
         await prisma.studio_posts.updateMany({
             where: {
-                slug: postSlug,
+                id: postId,
                 studio: {
                     slug: studioSlug
                 }

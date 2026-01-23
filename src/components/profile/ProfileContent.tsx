@@ -11,7 +11,7 @@ interface ProfileContentProps {
     loading?: boolean;
     hidePortfolioHeader?: boolean; // Ocultar título y categoría en portfolio-detail cuando está en modo preview del editor
     filter?: 'all' | 'photos' | 'videos'; // Filtro para posts (solo en variant 'inicio')
-    onPostClick?: (postSlug: string) => void;
+    onPostClick?: (postId: string) => void;
     onPortfolioClick?: (portfolioSlug: string) => void;
     onEditPost?: (postId: string) => void;
     studioId?: string;

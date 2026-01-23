@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { X, Plus, Star, Check, Copy } from "lucide-react";
+import { X, Plus, Star } from "lucide-react";
 import { ZenButton, ZenInput, ZenTextarea, ZenBadge, ZenSwitch } from "@/components/ui/zen";
 import { ImageGrid } from "@/components/shared/media";
 import { MediaItem } from "@/types/content-blocks";
-import { createStudioPostBySlug, updateStudioPost, checkPostSlugExists, getStudioPostById } from "@/lib/actions/studio/posts";
+import { createStudioPostBySlug, updateStudioPost, getStudioPostById } from "@/lib/actions/studio/posts";
 import { PostFormData, MediaItem as PostMediaItem } from "@/lib/actions/schemas/post-schemas";
 import { useTempCuid } from "@/hooks/useTempCuid";
 import { useMediaUpload } from "@/hooks/useMediaUpload";
@@ -61,10 +61,9 @@ export function PostEditorSheet({
     const [isSaving, setIsSaving] = useState(false);
     const [isMediaUploading, setIsMediaUploading] = useState(false);
     const [isLoadingPost, setIsLoadingPost] = useState(false);
-    const [linkCopied, setLinkCopied] = useState(false);
     const [titleError, setTitleError] = useState<string | null>(null);
-    const [isValidatingSlug, setIsValidatingSlug] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [currentPostId, setCurrentPostId] = useState<string | undefined>(postId);
 
     // Generar slug automáticamente cuando cambia el título (solo en modo create)
     useEffect(() => {
@@ -82,7 +81,7 @@ export function PostEditorSheet({
             if (mode === "edit" && postId && isOpen) {
                 try {
                     setIsLoadingPost(true);
-                    const result = await getStudioPostById(postId);
+                    const result = await getStudioPostById(studioSlug, currentPostId || postId);
 
                     if (result.success && result.data) {
                         const post = result.data;
@@ -124,6 +123,7 @@ export function PostEditorSheet({
                             is_published: post.is_published ?? true,
                             is_featured: post.is_featured ?? false,
                         });
+                        setCurrentPostId(post.id); // Guardar ID para compartir
                         // Marcar que terminó la carga inicial después de un pequeño delay
                         setTimeout(() => setIsInitialLoad(false), 100);
                     } else {
@@ -158,9 +158,8 @@ export function PostEditorSheet({
             });
             setTagInput("");
             setTitleError(null);
-            setIsValidatingSlug(false);
-            setLinkCopied(false);
             setIsInitialLoad(true);
+                        setCurrentPostId(undefined);
         }
     }, [isOpen]);
 
@@ -170,49 +169,6 @@ export function PostEditorSheet({
             setIsInitialLoad(false);
         }
     }, [isOpen, mode]);
-
-    // Validar slug único (solo después de la carga inicial)
-    useEffect(() => {
-        if (isInitialLoad) {
-            return;
-        }
-
-        const validateSlug = async () => {
-            if (!formData.slug || !formData.slug.trim() || formData.slug.length < 3) {
-                setTitleError(null);
-                setIsValidatingSlug(false);
-                return;
-            }
-
-            setIsValidatingSlug(true);
-            setTitleError(null);
-
-            try {
-                const slugExists = await checkPostSlugExists(
-                    studioSlug,
-                    formData.slug,
-                    mode === "edit" ? postId : undefined
-                );
-
-                if (slugExists) {
-                    setTitleError("Ya existe un post con este título");
-                } else {
-                    setTitleError(null);
-                }
-            } catch (error) {
-                console.error("Error validating slug:", error);
-                setTitleError(null);
-            } finally {
-                setIsValidatingSlug(false);
-            }
-        };
-
-        const timeoutId = setTimeout(() => {
-            validateSlug();
-        }, 500);
-
-        return () => clearTimeout(timeoutId);
-    }, [formData.slug, studioSlug, mode, postId, isInitialLoad]);
 
     // Helper para obtener dimensions de imagen
     const getImageDimensions = (file: File): Promise<{ width: number; height: number } | undefined> => {
@@ -501,25 +457,15 @@ export function PostEditorSheet({
                 return;
             }
 
-            if (!formData.slug || !formData.slug.trim()) {
-                toast.error("El slug es requerido");
-                return;
-            }
-
-            if (titleError) {
-                toast.error(titleError);
-                return;
-            }
-
             if (!formData.media || formData.media.length === 0) {
                 toast.error("Agrega al menos una imagen o video");
                 return;
             }
 
-            // Preparar datos
+            // Preparar datos (slug opcional, solo para metadata)
             const postData: PostFormData = {
-                id: postId || tempCuid,
-                slug: formData.slug,
+                id: currentPostId || postId || tempCuid,
+                slug: formData.slug || undefined, // Opcional, no se valida
                 title: formData.title,
                 caption: formData.caption || null,
                 media: formData.media.map((item, index) => ({
@@ -535,14 +481,21 @@ export function PostEditorSheet({
             };
 
             let result;
+            let createdPostId: string | undefined;
+            
             if (mode === "create") {
                 result = await createStudioPostBySlug(studioSlug, postData);
+                if (result.success && result.data) {
+                    createdPostId = result.data.id;
+                    setCurrentPostId(createdPostId); // Guardar ID para compartir
+                }
             } else {
-                if (!postId) {
+                const idToUpdate = currentPostId || postId;
+                if (!idToUpdate) {
                     toast.error("ID del post no encontrado");
                     return;
                 }
-                result = await updateStudioPost(postId, postData);
+                result = await updateStudioPost(idToUpdate, postData);
             }
 
             if (result.success) {
@@ -660,25 +613,6 @@ export function PostEditorSheet({
                     </div>
                 ) : (
                     <div className="p-4 sm:p-6 space-y-6">
-                        {/* Controles superiores */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-zinc-800">
-                            <ZenSwitch
-                                checked={formData.is_published}
-                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
-                                label="Publicado"
-                            />
-                            <ZenButton
-                                type="button"
-                                variant={formData.is_featured ? undefined : "outline"}
-                                size="sm"
-                                onClick={() => setFormData(prev => ({ ...prev, is_featured: !prev.is_featured }))}
-                                className={`rounded-full w-full sm:w-auto ${formData.is_featured ? "bg-amber-500 hover:bg-amber-600 text-black border-amber-500" : ""}`}
-                            >
-                                <Star className={`w-4 h-4 mr-1.5 ${formData.is_featured ? 'fill-current' : ''}`} />
-                                Destacar
-                            </ZenButton>
-                        </div>
-
                         {/* Título */}
                         <div className="space-y-2">
                             <ZenInput
@@ -692,48 +626,6 @@ export function PostEditorSheet({
                                 required
                                 error={titleError || undefined}
                             />
-
-                            {/* URL Preview */}
-                            {formData.slug && (
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                    <p className="text-xs text-zinc-500 break-all">
-                                        URL: <span className="text-zinc-400 font-mono">
-                                            /{studioSlug}?post={formData.slug}
-                                        </span>
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                        {isValidatingSlug && (
-                                            <span className="text-xs text-zinc-500">Validando...</span>
-                                        )}
-                                        {!isValidatingSlug && formData.slug && !titleError && (
-                                            <span className="text-xs text-emerald-500">✓ Disponible</span>
-                                        )}
-                                        {formData.slug && !titleError && (
-                                            <button
-                                                type="button"
-                                                onClick={async () => {
-                                                    const postUrl = `${window.location.origin}/${studioSlug}?post=${formData.slug}`;
-                                                    try {
-                                                        await navigator.clipboard.writeText(postUrl);
-                                                        setLinkCopied(true);
-                                                        toast.success("Link copiado");
-                                                        setTimeout(() => setLinkCopied(false), 2000);
-                                                    } catch {
-                                                        toast.error("Error al copiar");
-                                                    }
-                                                }}
-                                                className="p-1 hover:bg-zinc-800 rounded transition-colors"
-                                            >
-                                                {linkCopied ? (
-                                                    <Check className="w-3 h-3 text-emerald-500" />
-                                                ) : (
-                                                    <Copy className="w-3 h-3 text-zinc-400" />
-                                                )}
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         {/* Caption */}
@@ -840,6 +732,21 @@ export function PostEditorSheet({
                                 </div>
                             )}
                         </div>
+
+                        {/* Controles de estado - Publicado y Destacar */}
+                        <div className="flex items-start gap-6 pt-4 border-t border-zinc-800 px-2">
+                            <ZenSwitch
+                                checked={formData.is_published}
+                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_published: checked }))}
+                                label="Publicado"
+                            />
+                            <ZenSwitch
+                                checked={formData.is_featured}
+                                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_featured: checked }))}
+                                label="Destacar publicación"
+                                variant="amber"
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -850,7 +757,7 @@ export function PostEditorSheet({
                             onClick={handleSave}
                             className="flex-1 w-full"
                             loading={isSaving}
-                            disabled={isSaving || isValidatingSlug || !!titleError || isLoadingPost || isGeneratingThumbnails}
+                            disabled={isSaving || isLoadingPost || isGeneratingThumbnails}
                         >
                             {mode === "create" ? "Crear Post" : "Actualizar"}
                         </ZenButton>
