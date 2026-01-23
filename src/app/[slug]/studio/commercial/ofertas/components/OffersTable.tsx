@@ -95,10 +95,10 @@ function SortableOfferRow({
         <TableRow
             ref={setNodeRef}
             style={style}
-            className="border-zinc-800 cursor-pointer hover:bg-zinc-900/50 transition-colors group"
+            className="border-zinc-800 cursor-pointer group"
             onClick={() => onEdit(offer.id)}
         >
-            <TableCell className="w-8 py-4 sticky left-0 bg-zinc-800 z-10 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800" onClick={(e) => e.stopPropagation()}>
+            <TableCell className="w-8 py-4 sticky left-0 z-10 group-hover:bg-zinc-800 transition-colors border-r border-zinc-800" onClick={(e) => e.stopPropagation()}>
                 <div
                     {...attributes}
                     {...listeners}
@@ -107,7 +107,7 @@ function SortableOfferRow({
                     <GripVertical className="h-4 w-4 text-zinc-500" />
                 </div>
             </TableCell>
-            <TableCell className="text-center py-4 px-4 w-[80px] sticky left-8 bg-zinc-800 z-10 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800" onClick={(e) => e.stopPropagation()}>
+            <TableCell className="text-center py-4 px-4 w-[80px] sticky left-8 z-10 group-hover:bg-zinc-800 transition-colors border-r border-zinc-800" onClick={(e) => e.stopPropagation()}>
                 <ZenSwitch
                     checked={offer.is_active}
                     onCheckedChange={(checked) => {
@@ -115,7 +115,7 @@ function SortableOfferRow({
                     }}
                 />
             </TableCell>
-            <TableCell className="font-medium text-zinc-100 py-4 w-[300px] max-w-[300px] sticky left-[88px] bg-zinc-800 z-10 group-hover:bg-zinc-900 transition-colors border-r border-zinc-800">
+            <TableCell className="font-medium text-zinc-100 py-4 w-[300px] max-w-[300px] sticky left-[88px] z-10 group-hover:bg-zinc-800 transition-colors border-r border-zinc-800">
                 <div className="flex items-center gap-2 min-w-0 max-w-full">
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-zinc-800 shrink-0">
                         {offer.cover_media_url ? (
@@ -171,51 +171,9 @@ function SortableOfferRow({
                             )}
                         </div>
                     </div>
-                    <div onClick={(e) => e.stopPropagation()} className="shrink-0">
-                        <ZenDropdownMenu>
-                            <ZenDropdownMenuTrigger asChild>
-                                <ZenButton
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200"
-                                >
-                                    <MoreVertical className="h-4 w-4" />
-                                </ZenButton>
-                            </ZenDropdownMenuTrigger>
-                            <ZenDropdownMenuContent align="end">
-                                <ZenDropdownMenuItem onClick={() => onEdit(offer.id)}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Editar
-                                </ZenDropdownMenuItem>
-                                <ZenDropdownMenuItem
-                                    onClick={() => onDuplicate(offer.id)}
-                                    disabled={isDuplicating}
-                                >
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    Duplicar
-                                </ZenDropdownMenuItem>
-                                <ZenDropdownMenuSeparator />
-                                <ZenDropdownMenuItem
-                                    onClick={() => onArchive(offer.id)}
-                                    className="text-zinc-400 focus:text-zinc-300"
-                                >
-                                    <Archive className="h-4 w-4 mr-2" />
-                                    Archivar
-                                </ZenDropdownMenuItem>
-                                <ZenDropdownMenuSeparator />
-                                <ZenDropdownMenuItem
-                                    onClick={() => onDelete(offer.id)}
-                                    className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
-                                >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Eliminar
-                                </ZenDropdownMenuItem>
-                            </ZenDropdownMenuContent>
-                        </ZenDropdownMenu>
-                    </div>
                 </div>
             </TableCell>
-            <TableCell className="text-zinc-300 py-4 px-4 min-w-[180px]">
+            <TableCell className="text-zinc-300 py-4 px-4 min-w-[180px] group-hover:bg-zinc-800 transition-colors">
                 <div className="flex flex-col gap-1.5">
                     {offer.business_term?.discount_percentage ? (
                         <div className="flex items-center gap-2">
@@ -249,14 +207,58 @@ function SortableOfferRow({
                     )}
                 </div>
             </TableCell>
-            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[100px]">
+            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[100px] group-hover:bg-zinc-800 transition-colors">
                 <span className="text-base">{stats.total_visits}</span>
             </TableCell>
-            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[120px]">
+            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[120px] group-hover:bg-zinc-800 transition-colors">
                 <span className="text-base">{noConvertidos}</span>
             </TableCell>
-            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[120px]">
+            <TableCell className="text-center text-zinc-300 py-4 px-4 w-[120px] group-hover:bg-zinc-800 transition-colors">
                 <span className="text-base">{stats.total_submissions}</span>
+            </TableCell>
+            <TableCell className="text-right py-4 px-4 w-[80px] group-hover:bg-zinc-800 transition-colors" onClick={(e) => e.stopPropagation()}>
+                <div className="flex justify-end">
+                    <ZenDropdownMenu>
+                        <ZenDropdownMenuTrigger asChild>
+                            <ZenButton
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-200"
+                            >
+                                <MoreVertical className="h-4 w-4" />
+                            </ZenButton>
+                        </ZenDropdownMenuTrigger>
+                        <ZenDropdownMenuContent align="end">
+                            <ZenDropdownMenuItem onClick={() => onEdit(offer.id)}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Editar
+                            </ZenDropdownMenuItem>
+                            <ZenDropdownMenuItem
+                                onClick={() => onDuplicate(offer.id)}
+                                disabled={isDuplicating}
+                            >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Duplicar
+                            </ZenDropdownMenuItem>
+                            <ZenDropdownMenuSeparator />
+                            <ZenDropdownMenuItem
+                                onClick={() => onArchive(offer.id)}
+                                className="text-zinc-400 focus:text-zinc-300"
+                            >
+                                <Archive className="h-4 w-4 mr-2" />
+                                Archivar
+                            </ZenDropdownMenuItem>
+                            <ZenDropdownMenuSeparator />
+                            <ZenDropdownMenuItem
+                                onClick={() => onDelete(offer.id)}
+                                className="text-red-400 focus:text-red-300 focus:bg-red-950/20"
+                            >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Eliminar
+                            </ZenDropdownMenuItem>
+                        </ZenDropdownMenuContent>
+                    </ZenDropdownMenu>
+                </div>
             </TableCell>
 
         </TableRow>
@@ -305,16 +307,17 @@ export function OffersTable({
                     collisionDetection={closestCenter}
                     onDragEnd={onDragEnd}
                 >
-                    <Table className="min-w-[870px]">
+                    <Table className="min-w-[950px]">
                         <TableHeader>
                             <TableRow className="border-zinc-800 hover:bg-transparent">
                                 <TableHead className="text-zinc-400 font-medium w-8 py-4 sticky left-0 bg-zinc-900 z-20 border-r border-zinc-800"></TableHead>
                                 <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[80px] sticky left-8 bg-zinc-900 z-20 border-r border-zinc-800">Status</TableHead>
-                                <TableHead className="text-zinc-400 font-medium py-4 w-[400px] max-w-[400px] sticky left-[88px] bg-zinc-900 z-20 border-r border-zinc-800">Oferta</TableHead>
-                                <TableHead className="text-zinc-400 font-medium py-4 px-4 min-w-[180px]">Condiciones</TableHead>
-                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[100px]">Visitas Landing</TableHead>
-                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[120px]">Visitas Leadform</TableHead>
-                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[120px]">Conversiones Leadform</TableHead>
+                                <TableHead className="text-zinc-400 font-medium py-4 w-[300px] max-w-[300px] sticky left-[88px] bg-zinc-900 z-20 border-r border-zinc-800">Oferta</TableHead>
+                                <TableHead className="text-zinc-400 font-medium py-4 px-4 min-w-[180px] bg-zinc-900">Condiciones</TableHead>
+                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[100px] bg-zinc-900">Visitas Landing</TableHead>
+                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[120px] bg-zinc-900">Visitas Leadform</TableHead>
+                                <TableHead className="text-zinc-400 font-medium text-center py-4 px-4 w-[120px] bg-zinc-900">Conversiones Leadform</TableHead>
+                                <TableHead className="text-zinc-400 font-medium text-right py-4 px-4 w-[80px] bg-zinc-900"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>

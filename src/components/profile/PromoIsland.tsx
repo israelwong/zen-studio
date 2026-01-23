@@ -39,12 +39,8 @@ export function PromoIsland({ offers, studioSlug, studioId, ownerUserId }: Promo
 
     useEffect(() => {
         if (!offers || offers.length === 0) {
-            console.log('[PromoIsland] No offers available');
             return;
         }
-
-        // Debug: Log de ofertas recibidas
-        console.log(`[PromoIsland] Received ${offers.length} offers:`, offers.map(o => ({ id: o.id, name: o.name })));
 
         // Limpiar sessionStorage si existe (para que se muestre de nuevo)
         const sessionKey = `promo-island-closed-${studioId}`;
