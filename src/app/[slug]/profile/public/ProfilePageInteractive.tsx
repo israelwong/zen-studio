@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PublicProfileData } from '@/types/public-profile';
 import { useProfilePageLogic } from './hooks/useProfilePageLogic';
 import { ProfilePageMobile } from './ProfilePageMobile';
@@ -32,13 +32,26 @@ interface ProfilePageInteractiveProps {
 /**
  * ProfilePageInteractive - Dispatcher que renderiza Mobile o Desktop
  * Lógica compartida extraída a useProfilePageLogic hook
- * Detecta desktop/mobile antes del render para evitar flash
+ * Usa estado mounted para evitar mismatch de hidratación
  */
 export function ProfilePageInteractive({ profileData, studioSlug, offers = [] }: ProfilePageInteractiveProps) {
     const logic = useProfilePageLogic({ profileData, studioSlug, offers });
     const isDesktop = useIsDesktop();
+    const [mounted, setMounted] = useState(false);
 
-    // Renderizar según detección (evita flash de contenido)
+    // Evitar mismatch de hidratación: renderizar mobile por defecto hasta que se monte
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    // Durante SSR y antes de montar, siempre renderizar mobile para consistencia
+    if (!mounted) {
+        return (
+            <ProfilePageMobile profileData={profileData} studioSlug={studioSlug} offers={offers} logic={logic} />
+        );
+    }
+
+    // Después de la hidratación, renderizar según detección
     if (isDesktop) {
         return (
             <ProfilePageDesktop profileData={profileData} studioSlug={studioSlug} offers={offers} logic={logic} />
