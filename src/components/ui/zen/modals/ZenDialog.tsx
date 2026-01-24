@@ -99,51 +99,48 @@ export function ZenDialog({
   const contentZIndex = zIndex + 1;
 
   const modalContent = (
-    <>
-      {/* Overlay separado - DEBE estar debajo del contenido (z-index menor) */}
+    <div
+      className={cn(
+        "fixed inset-0 flex items-center justify-center transition-all duration-200",
+        fullScreen ? "p-0" : "p-4",
+        isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95"
+      )}
+      style={{
+        zIndex: contentZIndex,
+        pointerEvents: 'auto'
+      }}
+    >
+      {/* Overlay - dentro del contenedor para mejor posicionamiento */}
       <div
         className={cn(
-          "fixed inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200",
+          "absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity duration-200",
           isOpen ? "opacity-100" : "opacity-0"
         )}
         style={{
-          zIndex: overlayZIndex,
-          pointerEvents: closeOnClickOutside ? 'auto' : 'auto'
+          zIndex: 0
         }}
         onClick={(e) => {
           // Solo cerrar si closeOnClickOutside está habilitado
           if (closeOnClickOutside && e.target === e.currentTarget) {
             onClose();
           }
-          // No hacer stopPropagation para permitir que dropdowns dentro del modal funcionen
         }}
       />
-      {/* Contenido del modal - DEBE estar encima del overlay (z-index mayor) */}
+      {/* Contenido del modal - encima del overlay */}
       <div
         className={cn(
-          "fixed inset-0 flex items-center justify-center transition-all duration-200",
-          fullScreen ? "p-0" : "p-4",
-          isOpen ? "opacity-100 scale-100" : "opacity-0 scale-95"
+          'shadow-xl w-full flex flex-col relative',
+          fullScreen
+            ? 'h-screen rounded-none'
+            : 'rounded-lg max-h-[90vh]',
+          title ? 'bg-zinc-900' : 'bg-zinc-950/50 backdrop-blur-md border border-zinc-800/50',
+          !fullScreen && maxWidthClasses[maxWidth]
         )}
         style={{
-          zIndex: contentZIndex,
-          pointerEvents: 'none'
+          pointerEvents: 'auto',
+          zIndex: 1,
+          position: 'relative'
         }}
-      >
-        <div
-          className={cn(
-            'shadow-xl w-full flex flex-col relative',
-            fullScreen
-              ? 'h-screen rounded-none'
-              : 'rounded-lg max-h-[90vh]',
-            title ? 'bg-zinc-900' : 'bg-zinc-950/50 backdrop-blur-md border border-zinc-800/50',
-            !fullScreen && maxWidthClasses[maxWidth]
-          )}
-          style={{
-            pointerEvents: 'auto',
-            zIndex: 1,
-            position: 'relative'
-          }}
           onClick={(e) => {
             // No bloquear eventos de dropdowns dentro del modal
             const target = e.target as HTMLElement;
@@ -248,8 +245,7 @@ export function ZenDialog({
             </div>
           )}
         </div>
-      </div>
-    </>
+    </div>
   );
 
   return createPortal(modalContent, document.body);
