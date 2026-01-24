@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Eye, EyeOff, Clock, DollarSign, Hash } from 'lucide-react';
+import { Plus, ChevronDown, ChevronRight, Edit2, Trash2, Loader2, GripVertical, Copy, MoreHorizontal, Eye, EyeOff, Clock, DollarSign, Hash, MoveVertical } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenButton, ZenDialog, ZenBadge } from '@/components/ui/zen';
 import {
     ZenDropdownMenu,
@@ -238,6 +238,9 @@ export function CatalogoClient({
     const [categoriaToDelete, setCategoriaToDelete] = useState<Categoria | null>(null);
     const [isDeleteItemModalOpen, setIsDeleteItemModalOpen] = useState(false);
     const [itemToDelete, setItemToDelete] = useState<Item | null>(null);
+    const [isMoveItemModalOpen, setIsMoveItemModalOpen] = useState(false);
+    const [itemToMove, setItemToMove] = useState<Item | null>(null);
+    const [selectedCategoriaId, setSelectedCategoriaId] = useState<string | null>(null);
 
     // Función para cargar configuración de precios
     const loadConfiguracionPrecios = useCallback(async () => {
@@ -635,6 +638,79 @@ export function CatalogoClient({
             setIsLoading(false);
             setIsDeleteItemModalOpen(false);
             setItemToDelete(null);
+        }
+    };
+
+    const handleMoveItem = async () => {
+        if (!itemToMove || !selectedCategoriaId) return;
+
+        // No mover si es la misma categoría
+        if (itemToMove.categoriaId === selectedCategoriaId) {
+            toast.info("El item ya está en esta categoría");
+            setIsMoveItemModalOpen(false);
+            setItemToMove(null);
+            setSelectedCategoriaId(null);
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            const response = await moverItemACategoria(itemToMove.id, selectedCategoriaId);
+
+            if (response.success) {
+                const categoriaOrigenId = itemToMove.categoriaId;
+                const categoriaDestinoId = selectedCategoriaId;
+
+                // Actualizar itemsData: remover de origen, agregar a destino
+                setItemsData(prev => {
+                    const newData = { ...prev };
+                    
+                    // Remover de categoría origen
+                    if (categoriaOrigenId && newData[categoriaOrigenId]) {
+                        newData[categoriaOrigenId] = newData[categoriaOrigenId].filter(i => i.id !== itemToMove.id);
+                    }
+                    
+                    // Agregar a categoría destino
+                    const movedItem = {
+                        ...itemToMove,
+                        categoriaId: categoriaDestinoId
+                    };
+                    newData[categoriaDestinoId] = [...(newData[categoriaDestinoId] || []), movedItem];
+                    
+                    return newData;
+                });
+
+                // Actualizar contadores de categorías
+                setCategoriasData(prev => {
+                    const newData = { ...prev };
+                    Object.keys(newData).forEach(seccionId => {
+                        newData[seccionId] = newData[seccionId].map(cat => {
+                            if (cat.id === categoriaOrigenId) {
+                                return { ...cat, items: Math.max(0, (cat.items || 0) - 1) };
+                            }
+                            if (cat.id === categoriaDestinoId) {
+                                return { ...cat, items: (cat.items || 0) + 1 };
+                            }
+                            return cat;
+                        });
+                    });
+                    return newData;
+                });
+
+                const categoriaDestino = Object.values(categoriasData).flat().find(c => c.id === categoriaDestinoId);
+                toast.success(`Item movido a "${categoriaDestino?.name || 'nueva categoría'}"`);
+                
+                setIsMoveItemModalOpen(false);
+                setItemToMove(null);
+                setSelectedCategoriaId(null);
+            } else {
+                toast.error(response.error || "Error al mover item");
+            }
+        } catch (error) {
+            console.error("Error moviendo item:", error);
+            toast.error(error instanceof Error ? error.message : "Error al mover item");
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -1472,6 +1548,15 @@ export function CatalogoClient({
                                     Duplicar
                                 </ZenDropdownMenuItem>
                                 <ZenDropdownMenuSeparator />
+                                <ZenDropdownMenuItem onClick={() => {
+                                    setItemToMove(item);
+                                    setSelectedCategoriaId(null);
+                                    setIsMoveItemModalOpen(true);
+                                }}>
+                                    <MoveVertical className="h-4 w-4 mr-2" />
+                                    Mover a
+                                </ZenDropdownMenuItem>
+                                <ZenDropdownMenuSeparator />
                                 <ZenDropdownMenuItem
                                     onClick={() => handleDeleteItem(item)}
                                     className="text-red-400 focus:text-red-300"
@@ -1671,6 +1756,88 @@ export function CatalogoClient({
                     variant="destructive"
                     loading={isLoading}
                 />
+
+                {/* Modal para mover item */}
+                <ZenDialog
+                    isOpen={isMoveItemModalOpen}
+                    onClose={() => {
+                        setIsMoveItemModalOpen(false);
+                        setItemToMove(null);
+                        setSelectedCategoriaId(null);
+                    }}
+                    title="Mover item"
+                    description={`Selecciona la categoría destino para "${itemToMove?.name}"`}
+                    maxWidth="md"
+                >
+                    <div className="space-y-4">
+                        <div className="max-h-96 overflow-y-auto space-y-2">
+                            {secciones
+                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                .map((seccion) => {
+                                    const categoriasDeSeccion = categoriasData[seccion.id] || [];
+                                    if (categoriasDeSeccion.length === 0) return null;
+
+                                    return (
+                                        <div key={seccion.id} className="space-y-1">
+                                            <div className="text-sm font-medium text-zinc-400 px-2 py-1">
+                                                {seccion.name}
+                                            </div>
+                                            {categoriasDeSeccion
+                                                .sort((a, b) => (a.order || 0) - (b.order || 0))
+                                                .map((categoria) => {
+                                                    const isSelected = selectedCategoriaId === categoria.id;
+                                                    const isCurrentCategory = itemToMove?.categoriaId === categoria.id;
+                                                    
+                                                    return (
+                                                        <button
+                                                            key={categoria.id}
+                                                            onClick={() => !isCurrentCategory && setSelectedCategoriaId(categoria.id)}
+                                                            disabled={isCurrentCategory}
+                                                            className={`w-full text-left px-4 py-2 rounded-md text-sm transition-colors ${
+                                                                isCurrentCategory
+                                                                    ? 'bg-zinc-800/50 text-zinc-500 cursor-not-allowed'
+                                                                    : isSelected
+                                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                                    : 'hover:bg-zinc-800/50 text-zinc-300'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2">
+                                                                <ChevronRight className="h-4 w-4" />
+                                                                <span>{categoria.name}</span>
+                                                                {isCurrentCategory && (
+                                                                    <span className="text-xs text-zinc-500 ml-auto">(Actual)</span>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                        <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
+                            <ZenButton
+                                variant="ghost"
+                                onClick={() => {
+                                    setIsMoveItemModalOpen(false);
+                                    setItemToMove(null);
+                                    setSelectedCategoriaId(null);
+                                }}
+                                disabled={isLoading}
+                            >
+                                Cancelar
+                            </ZenButton>
+                            <ZenButton
+                                variant="primary"
+                                onClick={handleMoveItem}
+                                disabled={!selectedCategoriaId || isLoading}
+                                loading={isLoading}
+                            >
+                                Mover
+                            </ZenButton>
+                        </div>
+                    </div>
+                </ZenDialog>
             </div>
         </>
     );
