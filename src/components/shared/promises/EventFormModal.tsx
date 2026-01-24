@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ZenDialog, ZenInput, ZenTextarea, ZenCard, ZenCardContent, ZenButton } from '@/components/ui/zen';
 import { Calendar } from '@/components/ui/calendar';
@@ -831,10 +831,31 @@ export function EventFormModal({
                     if (contactId) {
                         const promiseResult = await getPromiseIdByContactId(contactId);
                         if (promiseResult.success && promiseResult.data) {
+                            const promiseId = promiseResult.data.promise_id;
+                            
+                            // Cerrar modal antes de redirigir
                             onClose();
-                            router.push(`/${studioSlug}/studio/commercial/promises/${promiseResult.data.promise_id}`);
+                            
+                            // Cerrar overlays antes de navegar
+                            window.dispatchEvent(new CustomEvent('close-overlays'));
+                            
+                            // Redirigir usando startTransition para evitar bloqueos
+                            startTransition(() => {
+                                router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+                                router.refresh(); // Forzar recarga de datos
+                            });
+                            
+                            // Si hay onSuccess, llamarlo después de iniciar la redirección
+                            if (onSuccess) {
+                                onSuccess();
+                            }
                         } else {
                             toast.error('Promesa creada pero no se pudo obtener el ID');
+                            // Aún así cerrar el modal y refrescar
+                            onClose();
+                            if (onSuccess) {
+                                onSuccess();
+                            }
                         }
                     }
                 }

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { X, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
@@ -814,12 +814,24 @@ export function CotizacionForm({
 
       toast.success('Cotización creada exitosamente');
 
+      // Cerrar overlays antes de navegar
+      window.dispatchEvent(new CustomEvent('close-overlays'));
+
       if (redirectOnSuccess) {
-        router.push(redirectOnSuccess);
+        startTransition(() => {
+          router.push(redirectOnSuccess);
+          router.refresh(); // Forzar recarga de datos del servidor
+        });
       } else if (promiseId) {
-        router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+        startTransition(() => {
+          router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+          router.refresh();
+        });
       } else {
-        router.back();
+        startTransition(() => {
+          router.back();
+          router.refresh();
+        });
       }
     } catch (error) {
       console.error('Error saving quote:', error);
