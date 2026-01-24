@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { PromiseRedirectSkeleton } from './PromiseRedirectSkeleton';
 
 interface PromiseRedirectHandlerProps {
   slug: string;
@@ -29,5 +30,6 @@ export function PromiseRedirectHandler({ slug, promiseId }: PromiseRedirectHandl
     handleRedirect();
   }, [slug, promiseId]);
 
-  return null;
+  // Mostrar skeleton mientras se valida el redireccionamiento
+  return <PromiseRedirectSkeleton />;
 }
