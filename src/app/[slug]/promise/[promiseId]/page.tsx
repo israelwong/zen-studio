@@ -1,8 +1,7 @@
 import { Metadata } from 'next';
-import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
-import { getPublicPromiseMetadata, getPublicPromiseRouteState } from '@/lib/actions/public/promesas.actions';
-import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
+import { getPublicPromiseMetadata } from '@/lib/actions/public/promesas.actions';
+import { PromiseRedirectHandler } from './PromiseRedirectHandler';
 
 interface PromisePageProps {
   params: Promise<{
@@ -12,43 +11,14 @@ interface PromisePageProps {
 }
 
 /**
- * Router/Dispatcher: Determina el estado de las cotizaciones y redirige a la ruta apropiada
+ * Router/Dispatcher: Usa componente cliente para hacer redirect y evitar que el layout se renderice
  */
 export default async function PromisePage({ params }: PromisePageProps) {
   const { slug, promiseId } = await params;
 
-  // ⚠️ FIX: Hacer redirect lo más temprano posible para evitar que el layout se renderice
-  // 1. Consulta inicial ligera: solo estados de cotizaciones para determinar routing
-  const routeStateResult = await getPublicPromiseRouteState(slug, promiseId);
-
-  // Si hay error o no hay datos, redirigir a pendientes como fallback
-  if (!routeStateResult.success || !routeStateResult.data) {
-    redirect(`/${slug}/promise/${promiseId}/pendientes`);
-  }
-
-  const cotizaciones = routeStateResult.data;
-
-  // 2. Verificar si hay cotización aprobada (redirigir a /cliente)
-  const cotizacionAprobada = cotizaciones.find(cot =>
-    cot.status === 'aprobada' || cot.status === 'autorizada' || cot.status === 'approved'
-  );
-
-  if (cotizacionAprobada) {
-    redirect(`/${slug}/cliente`);
-  }
-
-  // 3. Determinar ruta usando función helper centralizada
-  // Prioridad: Negociación > Cierre > Pendientes
-  const targetRoute = determinePromiseRoute(cotizaciones, slug, promiseId);
-
-  // 4. Si determinePromiseRoute devuelve la ruta raíz, redirigir a pendientes como fallback
-  if (targetRoute === `/${slug}/promise/${promiseId}`) {
-    redirect(`/${slug}/promise/${promiseId}/pendientes`);
-  }
-  
-  // ⚠️ FIX: Redirect debe ser la última línea
-  // Next.js redirect() lanza una excepción especial (NEXT_REDIRECT) que debe propagarse
-  redirect(targetRoute);
+  // ⚠️ FIX: Retornar componente cliente que hace redirect
+  // Esto evita que el layout se renderice antes del redirect
+  return <PromiseRedirectHandler slug={slug} promiseId={promiseId} />;
 }
 
 /**

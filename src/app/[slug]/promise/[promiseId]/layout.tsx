@@ -65,34 +65,10 @@ export default async function PromiseLayout({
     getPlatformConfigCached(),
   ]);
 
-  return (
-    <Suspense fallback={null}>
-      <PromiseLayoutContent
-        studio={studio}
-        platformConfig={platformConfig}
-        slug={slug}
-      >
-        {children}
-      </PromiseLayoutContent>
-    </Suspense>
-  );
-}
-
-/**
- * Componente interno para renderizar el contenido del layout
- * Envuelto en Suspense para evitar renderizar antes del redirect
- */
-async function PromiseLayoutContent({
-  studio,
-  platformConfig,
-  slug,
-  children,
-}: {
-  studio: { studio_name: string; slogan: string | null; logo_url: string | null } | null;
-  platformConfig: { company_name: string | null; commercial_name: string | null; domain: string | null } | null;
-  slug: string;
-  children: React.ReactNode;
-}) {
+  // ⚠️ FIX: Si children es el PromiseRedirectHandler, no renderizar el layout
+  // Esto evita que el layout se renderice antes del redirect
+  // El PromiseRedirectHandler retorna null, así que podemos verificar si children es null
+  // Pero mejor aún, simplemente renderizar el layout normalmente y dejar que el redirect ocurra
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header fijo */}
@@ -142,3 +118,4 @@ async function PromiseLayoutContent({
     </div>
   );
 }
+
