@@ -73,6 +73,48 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
     useEffect(() => {
         if (!glideRef.current || !mediaItems.length) return;
 
+        // Prevenir scroll vertical durante swipe horizontal
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let isSwiping = false;
+
+        const handleTouchStart = (e: TouchEvent) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+            isSwiping = false;
+        };
+
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!touchStartX || !touchStartY) return;
+            
+            const touchX = e.touches[0].clientX;
+            const touchY = e.touches[0].clientY;
+            const deltaX = Math.abs(touchX - touchStartX);
+            const deltaY = Math.abs(touchY - touchStartY);
+
+            // Si el movimiento horizontal es mayor que el vertical, es un swipe horizontal
+            // Usar ratio 2:1 para mejor detección (movimiento horizontal debe ser al menos 2x el vertical)
+            if (deltaX > deltaY * 2 && deltaX > 15) {
+                isSwiping = true;
+                // Prevenir scroll vertical y mantener posición
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        };
+
+        const handleTouchEnd = () => {
+            touchStartX = 0;
+            touchStartY = 0;
+            isSwiping = false;
+        };
+
+        const trackElement = glideRef.current.querySelector('[data-glide-el="track"]') as HTMLElement;
+        if (trackElement) {
+            trackElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+            trackElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+            trackElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+        }
+
         const glideInstance = new Glide(glideRef.current, {
             type: 'carousel',
             focusAt: 'center',
@@ -81,17 +123,30 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
             autoplay: false,
             animationDuration: 200,
             gap: 0,
-            dragThreshold: 50,
-            swipeThreshold: 50,
-            throttle: 16,
+            dragThreshold: 20,
+            swipeThreshold: 20,
+            throttle: 10,
             touchRatio: 1,
-            touchAngle: 45,
+            touchAngle: 30,
+            perTouch: 1,
             classes: {
                 activeNav: '[&>*]:bg-white',
             },
             breakpoints: {
-                768: { peek: { before: 0, after: 0 }, gap: 0, dragThreshold: 40, swipeThreshold: 40 },
-                640: { peek: { before: 0, after: 0 }, gap: 0, dragThreshold: 30, swipeThreshold: 30 }
+                768: { 
+                    peek: { before: 0, after: 0 }, 
+                    gap: 0, 
+                    dragThreshold: 15, 
+                    swipeThreshold: 15,
+                    touchAngle: 30
+                },
+                640: { 
+                    peek: { before: 0, after: 150 }, 
+                    gap: 8, 
+                    dragThreshold: 15, 
+                    swipeThreshold: 15,
+                    touchAngle: 30
+                }
             }
         });
 
@@ -99,6 +154,11 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
         glideInstanceRef.current = glideInstance;
 
         return () => {
+            if (trackElement) {
+                trackElement.removeEventListener('touchstart', handleTouchStart);
+                trackElement.removeEventListener('touchmove', handleTouchMove);
+                trackElement.removeEventListener('touchend', handleTouchEnd);
+            }
             if (glideInstanceRef.current) {
                 glideInstanceRef.current.destroy();
                 glideInstanceRef.current = null;
@@ -124,6 +184,11 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
         <>
             {/* Custom CSS para diseño con altura fija - todas las imágenes del mismo tamaño */}
             <style jsx>{`
+                .post-carousel-glide {
+                    user-select: none;
+                    -webkit-user-select: none;
+                    -webkit-touch-callout: none;
+                }
                 .post-carousel-glide .glide__slide {
                     height: 100% !important;
                     flex-shrink: 0;
@@ -136,7 +201,6 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     position: relative;
                     width: 100%;
                     height: 100%;
-                    touch-action: pan-x pan-y;
                 }
                 .post-carousel-glide .glide__slide img {
                     width: 100% !important;
@@ -146,6 +210,8 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
                     pointer-events: none;
+                    user-select: none;
+                    -webkit-user-select: none;
                 }
                 .post-carousel-glide .glide__slide video {
                     width: 100% !important;
@@ -155,13 +221,35 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
                     pointer-events: none;
+                    user-select: none;
+                    -webkit-user-select: none;
                 }
                 .post-carousel-glide .glide__track {
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
+                    touch-action: pan-x !important;
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior-x: contain;
                 }
                 .post-carousel-glide .glide__slides {
-                    touch-action: pan-x pan-y !important;
+                    touch-action: pan-x !important;
+                    -webkit-overflow-scrolling: touch;
+                    overscroll-behavior-x: contain;
+                }
+                @media (max-width: 640px) {
+                    .post-carousel-glide .glide__track {
+                        touch-action: pan-x !important;
+                        overscroll-behavior-x: contain;
+                        overscroll-behavior-y: contain;
+                    }
+                    .post-carousel-glide .glide__slides {
+                        touch-action: pan-x !important;
+                        overscroll-behavior-x: contain;
+                        overscroll-behavior-y: contain;
+                    }
+                    .post-carousel-glide .glide__slide > div {
+                        touch-action: pan-x !important;
+                    }
                 }
             `}</style>
 
@@ -169,7 +257,7 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
             <div className="relative w-full aspect-square bg-zinc-900 overflow-hidden mx-0 lg:rounded-md">
                 <div ref={glideRef} className="glide post-carousel-glide h-full">
                     <div className="overflow-hidden h-full" data-glide-el="track">
-                        <ul className="whitespace-no-wrap flex-no-wrap [backface-visibility: hidden] [transform-style: preserve-3d] [touch-action: pan-x pan-y] [will-change: transform] relative flex w-full overflow-hidden p-0 h-full">
+                        <ul className="whitespace-no-wrap flex-no-wrap [backface-visibility: hidden] [transform-style: preserve-3d] [will-change: transform] relative flex w-full overflow-hidden p-0 h-full">
                             {mediaItems.map((item, index) => (
                                 <li key={item.id} className="glide__slide">
                                     <div
