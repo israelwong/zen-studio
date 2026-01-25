@@ -77,19 +77,21 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
             type: 'carousel',
             focusAt: 'center',
             perView: 1,
-            peek: { before: 0, after: 80 },
+            peek: { before: 0, after: 0 },
             autoplay: false,
             animationDuration: 200,
-            gap: 12,
-            dragThreshold: 80,
-            swipeThreshold: 80,
+            gap: 0,
+            dragThreshold: 50,
+            swipeThreshold: 50,
             throttle: 16,
+            touchRatio: 1,
+            touchAngle: 45,
             classes: {
                 activeNav: '[&>*]:bg-white',
             },
             breakpoints: {
-                768: { peek: { before: 0, after: 60 }, gap: 10 },
-                640: { peek: { before: 0, after: 50 }, gap: 8 }
+                768: { peek: { before: 0, after: 0 }, gap: 0, dragThreshold: 40, swipeThreshold: 40 },
+                640: { peek: { before: 0, after: 0 }, gap: 0, dragThreshold: 30, swipeThreshold: 30 }
             }
         });
 
@@ -127,11 +129,14 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     flex-shrink: 0;
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
+                    user-select: none;
+                    -webkit-user-select: none;
                 }
                 .post-carousel-glide .glide__slide > div {
                     position: relative;
                     width: 100%;
                     height: 100%;
+                    touch-action: pan-x pan-y;
                 }
                 .post-carousel-glide .glide__slide img {
                     width: 100% !important;
@@ -140,6 +145,7 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     cursor: pointer;
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
+                    pointer-events: none;
                 }
                 .post-carousel-glide .glide__slide video {
                     width: 100% !important;
@@ -148,10 +154,14 @@ export function PostCarouselContent({ media, onMediaClick }: PostCarouselContent
                     cursor: pointer;
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
+                    pointer-events: none;
                 }
                 .post-carousel-glide .glide__track {
                     transform: translateZ(0);
                     -webkit-transform: translateZ(0);
+                }
+                .post-carousel-glide .glide__slides {
+                    touch-action: pan-x pan-y !important;
                 }
             `}</style>
 
