@@ -173,6 +173,19 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
     return (
         <div className="p-2">
             <nav className="flex items-center justify-between gap-2 relative">
+                {/* Botón de regreso a promesa - Al principio, lado izquierdo */}
+                {hasPromiseReturn && returnUrl && (
+                    <button
+                        onClick={handleReturnToPromise}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-600/15 hover:bg-blue-600/25 border border-blue-600/40 hover:border-blue-600/60 transition-all duration-200 shrink-0 relative z-20"
+                        aria-label="Volver a mi promesa"
+                        title="Volver a mi promesa"
+                    >
+                        <Undo2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Mi promesa</span>
+                    </button>
+                )}
+
                 {/* Contenedor de tabs con gradiente */}
                 <div className="flex-1 relative min-w-0">
                     {/* Tabs con scroll horizontal invisible */}
@@ -241,19 +254,6 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
                     >
                         <Plus className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Crear</span>
-                    </button>
-                )}
-
-                {/* Botón de regreso a promesa - Minimalista pero destacado */}
-                {hasPromiseReturn && returnUrl && (
-                    <button
-                        onClick={handleReturnToPromise}
-                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-600/15 hover:bg-blue-600/25 border border-blue-600/40 hover:border-blue-600/60 transition-all duration-200 shrink-0 relative z-20"
-                        aria-label="Volver a mi promesa"
-                        title="Volver a mi promesa"
-                    >
-                        <Undo2 className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">Mi promesa</span>
                     </button>
                 )}
             </nav>
