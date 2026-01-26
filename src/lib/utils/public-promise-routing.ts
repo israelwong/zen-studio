@@ -80,10 +80,10 @@ export function determinePromiseRoute(
     return normalizedStatus === 'pendiente';
   });
 
-  // Si no hay cotizaciones válidas, devolver ruta de error (no redirigir a pendientes)
+  // ✅ CASO DE USO: Si no hay cotizaciones válidas, permitir acceso a /pendientes para ver paquetes
+  // Esto permite que el prospecto vea paquetes disponibles incluso sin cotizaciones
   if (!hasPendientes) {
-    // Retornar ruta que mostrará error en lugar de crear bucle
-    return `/${slug}/promise/${promiseId}`;
+    return `/${slug}/promise/${promiseId}/pendientes`;
   }
 
   // Default: Cotizaciones pendientes
@@ -93,20 +93,27 @@ export function determinePromiseRoute(
 /**
  * Valida si una ruta es válida para las cotizaciones dadas
  * Usa la misma lógica que determinePromiseRoute para garantizar consistencia
+ * 
+ * ✅ CASO DE USO: Si no hay cotizaciones, /pendientes es válida para ver paquetes disponibles
  */
 export function isRouteValid(
   currentPath: string,
   cotizaciones: Array<CotizacionConStatus>
 ): boolean {
+  // Extraer la ruta base (sin slug y promiseId)
+  const pathParts = currentPath.split('/');
+  const routeType = pathParts[pathParts.length - 1]; // 'pendientes', 'negociacion', 'cierre'
+
+  // ✅ CASO ESPECIAL: Si no hay cotizaciones, /pendientes es válida para ver paquetes
+  if (!cotizaciones || cotizaciones.length === 0) {
+    return routeType === 'pendientes';
+  }
+
   // Normalizar estados antes de validar
   const normalizedCotizaciones = cotizaciones.map(cot => ({
     ...cot,
     status: normalizeStatus(cot.status),
   }));
-
-  // Extraer la ruta base (sin slug y promiseId)
-  const pathParts = currentPath.split('/');
-  const routeType = pathParts[pathParts.length - 1]; // 'pendientes', 'negociacion', 'cierre'
 
   // Verificar prioridades primero (Negociación > Cierre > Pendientes)
   const hasNegociacion = normalizedCotizaciones.some((cot) => {

@@ -11,7 +11,9 @@ export async function GET(
   try {
     const routeStateResult = await getPublicPromiseRouteState(slug, promiseId);
 
-    if (!routeStateResult.success || !routeStateResult.data) {
+    // ✅ CASO DE USO: Si no hay cotizaciones, redirigir a /pendientes para ver paquetes disponibles
+    if (!routeStateResult.success || !routeStateResult.data || routeStateResult.data.length === 0) {
+      console.log('[PromiseRedirectAPI] No hay cotizaciones, redirigiendo a /pendientes para ver paquetes');
       return NextResponse.json({ redirect: `/${slug}/promise/${promiseId}/pendientes` });
     }
 
@@ -29,13 +31,11 @@ export async function GET(
     // Determinar ruta
     const targetRoute = determinePromiseRoute(cotizaciones, slug, promiseId);
 
-    if (targetRoute === `/${slug}/promise/${promiseId}`) {
-      return NextResponse.json({ redirect: `/${slug}/promise/${promiseId}/pendientes` });
-    }
-
+    // determinePromiseRoute siempre devuelve una ruta válida (incluyendo /pendientes si no hay cotizaciones válidas)
     return NextResponse.json({ redirect: targetRoute });
   } catch (error) {
     console.error('[PromiseRedirectAPI] Error:', error);
+    // En caso de error, redirigir a /pendientes para permitir ver paquetes
     return NextResponse.json({ redirect: `/${slug}/promise/${promiseId}/pendientes` });
   }
 }

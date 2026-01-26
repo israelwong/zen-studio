@@ -23,7 +23,8 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
   // ⚠️ OPTIMIZADO: Usa caché compartido con dispatcher
   const routeState = await getPublicPromiseRouteState(slug, promiseId);
 
-  if (!routeState.success || !routeState.data) {
+  if (!routeState.success || !routeState.data || routeState.data.length === 0) {
+    console.log('❌ /negociacion: No hay cotizaciones disponibles. Redirigiendo al raíz.');
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
@@ -44,7 +45,10 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
   const isValid = isRouteValid(currentPath, routeState.data);
 
   if (!isValid) {
-    console.log('❌ Validación fallida en /negociacion: Redirigiendo al raíz. Datos:', routeState.data);
+    console.log('❌ Validación fallida en /negociacion: Redirigiendo al raíz.', {
+      cotizacionesCount: routeState.data.length,
+      cotizaciones: routeState.data.map(c => ({ id: c.id, status: c.status })),
+    });
     redirect(`/${slug}/promise/${promiseId}`);
   }
 

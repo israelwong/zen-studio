@@ -20,7 +20,9 @@
     "db:verify-seeds": "tsx scripts/verify-seeds.ts",
     "db:check-extensions": "tsx scripts/check-extensions-pre-upgrade.ts",
     "db:reset": "tsx scripts/prisma-with-direct.ts migrate reset --force && npm run db:seed",
-    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook"
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/stripe/webhook",
+    "audit:check": "npm audit --audit-level=moderate",
+    "audit:fix": "npm audit fix"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
