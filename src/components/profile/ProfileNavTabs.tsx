@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useMemo, useState } from 'react';
-import { Home, Folder, Phone, HelpCircle, Search, Archive, Image, Video, Plus } from 'lucide-react';
+import { Home, Folder, Phone, HelpCircle, Search, Archive, Image, Video, Plus, Undo2 } from 'lucide-react';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface ProfileNavTabsProps {
     activeTab: string;
@@ -21,7 +22,13 @@ interface ProfileNavTabsProps {
  * - Perfil público (navegación de tabs)
  * - Preview del builder
  */
+const STORAGE_KEY = 'promise_return_url';
+const DISMISSED_KEY = 'promise_return_dismissed';
+const EXPIRY_HOURS = 24;
+
 export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiveFAQs = false, isOwner = false, onCreatePost }: ProfileNavTabsProps) {
+    const router = useRouter();
+    const pathname = usePathname();
     const tabsContainerRef = useRef<HTMLDivElement>(null);
     const buttonRefs = useRef<Record<string, HTMLButtonElement>>({});
     
@@ -30,6 +37,8 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
     const [mounted, setMounted] = useState(false);
     const [effectiveIsOwner, setEffectiveIsOwner] = useState(false);
     const [effectiveHasActiveFAQs, setEffectiveHasActiveFAQs] = useState(hasActiveFAQs);
+    const [hasPromiseReturn, setHasPromiseReturn] = useState(false);
+    const [returnUrl, setReturnUrl] = useState<string | null>(null);
 
     // Después de la hidratación, actualizar los valores reales
     useEffect(() => {
@@ -37,6 +46,50 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
         setEffectiveIsOwner(isOwner);
         setEffectiveHasActiveFAQs(hasActiveFAQs);
     }, [isOwner, hasActiveFAQs]);
+
+    // Verificar si hay promesa guardada para mostrar botón de regreso
+    useEffect(() => {
+        // No mostrar si estamos en una ruta de promesa
+        if (pathname && pathname.includes('/promise/')) {
+            setHasPromiseReturn(false);
+            return;
+        }
+
+        const checkPromiseReturn = () => {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                const dismissed = typeof window !== 'undefined' ? sessionStorage.getItem(DISMISSED_KEY) === 'true' : false;
+
+                if (dismissed || !stored) {
+                    setHasPromiseReturn(false);
+                    return;
+                }
+
+                const data = JSON.parse(stored);
+                const now = Date.now();
+                const expiryTime = EXPIRY_HOURS * 60 * 60 * 1000;
+
+                if (now - data.timestamp > expiryTime) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    if (typeof window !== 'undefined') {
+                        sessionStorage.removeItem(DISMISSED_KEY);
+                    }
+                    setHasPromiseReturn(false);
+                    return;
+                }
+
+                if (data.url && data.url.includes('/promise/')) {
+                    setReturnUrl(data.url);
+                    setHasPromiseReturn(true);
+                }
+            } catch (error) {
+                console.error('[ProfileNavTabs] Error reading localStorage:', error);
+                setHasPromiseReturn(false);
+            }
+        };
+
+        checkPromiseReturn();
+    }, [pathname]);
 
     // Construir tabs de manera determinística (sin mutaciones)
     const isInicioSection = activeTab === 'inicio' || activeTab === 'inicio-fotos' || activeTab === 'inicio-videos';
@@ -101,6 +154,20 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
 
     const handleTabClick = (tabId: string) => {
         onTabChange(tabId);
+    };
+
+    const handleReturnToPromise = () => {
+        if (returnUrl) {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                if (typeof window !== 'undefined') {
+                    sessionStorage.removeItem(DISMISSED_KEY);
+                }
+            } catch (error) {
+                console.error('[ProfileNavTabs] Error clearing storage:', error);
+            }
+            router.push(returnUrl);
+        }
     };
 
     return (
@@ -174,6 +241,19 @@ export function ProfileNavTabs({ activeTab, onTabChange, onSearchClick, hasActiv
                     >
                         <Plus className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Crear</span>
+                    </button>
+                )}
+
+                {/* Botón de regreso a promesa - Minimalista pero destacado */}
+                {hasPromiseReturn && returnUrl && (
+                    <button
+                        onClick={handleReturnToPromise}
+                        className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium text-blue-400 hover:text-blue-300 bg-blue-600/15 hover:bg-blue-600/25 border border-blue-600/40 hover:border-blue-600/60 transition-all duration-200 shrink-0 relative z-20"
+                        aria-label="Volver a mi promesa"
+                        title="Volver a mi promesa"
+                    >
+                        <Undo2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Mi promesa</span>
                     </button>
                 )}
             </nav>

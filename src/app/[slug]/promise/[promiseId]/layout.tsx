@@ -1,8 +1,8 @@
 import React, { Suspense } from 'react';
-import Link from 'next/link';
 import { unstable_cache } from 'next/cache';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
 import { PublicPageFooterServer } from '@/components/shared/PublicPageFooterServer';
+import { PromiseProfileLink } from '@/components/promise/PromiseProfileLink';
 import { prisma } from '@/lib/prisma';
 
 interface PromiseLayoutProps {
@@ -94,12 +94,12 @@ export default async function PromiseLayout({
                 )}
               </div>
             </div>
-            <Link
+            <PromiseProfileLink
               href={`/${slug}`}
               className="text-xs text-zinc-400 hover:text-zinc-300 px-3 py-1.5 rounded-md border border-zinc-700 hover:border-zinc-600 transition-colors"
             >
               Ver perfil
-            </Link>
+            </PromiseProfileLink>
           </div>
         </header>
       )}
