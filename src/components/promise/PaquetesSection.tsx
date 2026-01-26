@@ -113,7 +113,7 @@ function PaqueteCard({
                                     {paquete.recomendado && (
                                         <div className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full">
                                             <Star className="h-3 w-3 fill-amber-400" />
-                                            <span className="text-[8px] font-bold uppercase tracking-wide">Más vendido</span>
+                                            <span className="text-[8px] font-bold uppercase tracking-wide">MÁS POPULAR</span>
                                         </div>
                                     )}
                                 </div>
