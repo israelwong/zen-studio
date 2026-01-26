@@ -958,7 +958,7 @@ export function EventFormModal({
                             }}
                             required
                             error={errors.phone}
-                            placeholder="10 dígitos"
+                            placeholder="10 dígitos (ej: +52 55 4330 4995)"
                         />
                         <ZenInput
                             label="Email"
@@ -1050,8 +1050,8 @@ export function EventFormModal({
 
                         <div>
                             <ZenInput
-                                label="Nombre del Evento (opcional)"
-                                placeholder="Ej: Los quince años de Ana, Boda de Ana y Roberto"
+                                label="Nombre del/los festajado/s"
+                                placeholder="Ej: Ana, Ana y Roberto"
                                 value={formData.event_name || ''}
                                 onChange={(e) => {
                                     setFormData((prev) => ({
@@ -1451,6 +1451,7 @@ export function EventFormModal({
                                         numberOfMonths={1}
                                         locale={es}
                                         buttonVariant="ghost"
+                                        captionLayout="dropdown"
                                         className="border border-zinc-700 rounded-lg"
                                     />
                                     <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-700 mt-3 shrink-0">
@@ -1587,14 +1588,12 @@ export function EventFormModal({
                         type="tel"
                         value={newReferrerPhone}
                         onChange={(e) => {
-                            const value = e.target.value.replace(/\D/g, '');
-                            if (value.length <= 10) {
-                                setNewReferrerPhone(value);
-                            }
+                            // Usar la misma función normalizePhone que toma los últimos 10 dígitos
+                            const normalized = normalizePhone(e.target.value);
+                            setNewReferrerPhone(normalized);
                         }}
-                        placeholder="10 dígitos"
+                        placeholder="10 dígitos (ej: +52 55 4330 4995)"
                         required
-                        maxLength={10}
                     />
                     <div className="flex justify-end gap-2 pt-4 border-t border-zinc-800">
                         <ZenButton
