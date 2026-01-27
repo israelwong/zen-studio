@@ -1,6 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo } from 'react';
+import { formatRoundedPrice } from '@/lib/utils/price-rounding';
 
 interface PrecioDesgloseProps {
   precioBase: number;
@@ -12,9 +13,13 @@ interface PrecioDesgloseProps {
   anticipo: number;
   diferido: number;
   cortesias?: number; // Monto total de cortesías (items marcados como cortesía)
+  useCharmRounding?: boolean; // Si es true, usa redondeo charm (solo para paquetes)
 }
 
-const formatPrice = (price: number) => {
+const formatPrice = (price: number, useCharm: boolean = false) => {
+  if (useCharm) {
+    return formatRoundedPrice(price, 'charm');
+  }
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
@@ -35,6 +40,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
       anticipo,
       diferido,
       cortesias = 0,
+      useCharmRounding = false,
     },
     ref
   ) => {
@@ -70,7 +76,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
           <div className="flex justify-between items-center">
             <span className="text-sm text-zinc-400">Precio original</span>
             <span className="text-sm font-medium text-zinc-300">
-              {formatPrice(precioBase)}
+              {formatPrice(precioBase, useCharmRounding)}
             </span>
           </div>
           {tienePrecioNegociado && precioNegociadoNormalizado !== null && (
@@ -78,14 +84,14 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Precio negociado</span>
                 <span className="text-sm font-medium text-blue-400">
-                  {formatPrice(precioNegociadoNormalizado)}
+                  {formatPrice(precioNegociadoNormalizado, useCharmRounding)}
                 </span>
               </div>
               {ahorroTotal > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-zinc-400">Ahorro total</span>
                   <span className="text-sm font-medium text-emerald-400">
-                    {formatPrice(ahorroTotal)}
+                    {formatPrice(ahorroTotal, useCharmRounding)}
                   </span>
                 </div>
               )}
@@ -102,15 +108,15 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
           {cortesias > 0 && !tienePrecioNegociado && (
             <div className="flex justify-between items-center">
               <span className="text-sm text-zinc-400">Cortesías</span>
-              <span className="text-sm font-medium text-emerald-400">
-                -{formatPrice(cortesias)}
+                <span className="text-sm font-medium text-emerald-400">
+                -{formatPrice(cortesias, useCharmRounding)}
               </span>
             </div>
           )}
           <div className="flex justify-between items-center pt-2 border-t border-zinc-700">
             <span className="text-sm font-semibold text-white">Total a pagar</span>
             <span className="text-lg font-bold text-emerald-400">
-              {formatPrice(precioFinalAPagar)}
+              {formatPrice(precioFinalAPagar, useCharmRounding)}
             </span>
           </div>
           {anticipo > 0 && (
@@ -122,7 +128,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
                     : `Anticipo (${anticipoPorcentaje ?? 0}%)`}
                 </span>
                 <span className="text-sm font-medium text-blue-400">
-                  {formatPrice(anticipo)}
+                  {formatPrice(anticipo, useCharmRounding)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -135,7 +141,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
                   )}
                 </span>
                 <span className="text-sm font-medium text-zinc-300">
-                  {formatPrice(diferido)}
+                  {formatPrice(diferido, useCharmRounding)}
                 </span>
               </div>
             </>

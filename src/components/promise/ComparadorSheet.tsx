@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, Eye } from 'lucide-react';
 import { ZenBadge, ZenCard, ZenButton } from '@/components/ui/zen';
 import type { PublicCotizacion, PublicPaquete, PublicSeccionData } from '@/types/public-promise';
+import { formatRoundedPrice } from '@/lib/utils/price-rounding';
 
 interface ComparadorSheetProps {
   cotizaciones: PublicCotizacion[];
@@ -189,7 +190,10 @@ export function ComparadorSheet({
   onClose,
   onViewDetails,
 }: ComparadorSheetProps) {
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number, isPaquete: boolean = false) => {
+    if (isPaquete) {
+      return formatRoundedPrice(price, 'charm');
+    }
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
       currency: 'MXN',
@@ -332,11 +336,11 @@ export function ComparadorSheet({
                         </ZenBadge>
                         <p className="font-semibold text-white text-xs sm:text-sm truncate mt-1.5 capitalize">{item.name}</p>
                         <p className="text-md sm:text-base font-bold text-white mt-1">
-                          {formatPrice(finalPrice)}
+                          {formatPrice(finalPrice, item.type === 'paquete')}
                         </p>
                         {isCotizacion(item) && item.discount && (
                           <p className="text-[10px] text-zinc-500 line-through">
-                            {formatPrice(item.price)}
+                            {formatPrice(item.price, false)}
                           </p>
                         )}
                       </div>
@@ -448,11 +452,11 @@ export function ComparadorSheet({
                         <div className="bg-zinc-900/30 rounded-lg border border-zinc-800/50 px-3 py-2">
                           <div className="text-center">
                             <p className="text-lg sm:text-base font-bold text-white">
-                              {formatPrice(finalPrice)}
+                              {formatPrice(finalPrice, item.type === 'paquete')}
                             </p>
                             {isCotizacion(item) && item.discount && (
                               <p className="text-[10px] text-zinc-500 line-through mt-0.5">
-                                {formatPrice(item.price)}
+                                {formatPrice(item.price, false)}
                               </p>
                             )}
                             {onViewDetails && (

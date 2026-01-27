@@ -12,6 +12,7 @@ import { PrecioDesglose } from './shared/PrecioDesglose';
 import { TerminosCondiciones } from './shared/TerminosCondiciones';
 import { obtenerCondicionesComercialesPublicas, obtenerTerminosCondicionesPublicos, filtrarCondicionesPorPreferencias } from '@/lib/actions/public/promesas.actions';
 import { formatCurrency } from '@/lib/actions/utils/formatting';
+import { formatRoundedPrice } from '@/lib/utils/price-rounding';
 import Lightbox from 'yet-another-react-lightbox';
 import VideoPlugin from 'yet-another-react-lightbox/plugins/video';
 import Zoom from 'yet-another-react-lightbox/plugins/zoom';
@@ -137,12 +138,7 @@ export function PaqueteDetailSheet({
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price);
+    return formatRoundedPrice(price, 'charm');
   };
 
 
@@ -390,6 +386,7 @@ export function PaqueteDetailSheet({
                 anticipoPorcentaje={precioCalculado.anticipoPorcentaje}
                 anticipo={precioCalculado.anticipo}
                 diferido={precioCalculado.diferido}
+                useCharmRounding={true}
               />
             )}
           </div>
