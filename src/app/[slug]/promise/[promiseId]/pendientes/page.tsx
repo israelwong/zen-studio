@@ -10,6 +10,9 @@ import { PendientesPageBasic } from './PendientesPageBasic';
 import { PendientesPageDeferred } from './PendientesPageDeferred';
 import { ProgressOverlayWrapper } from './ProgressOverlayWrapper';
 
+// ⚠️ FORCE-DYNAMIC: Evitar caché estático en página de validación
+export const dynamic = 'force-dynamic';
+
 interface PendientesPageProps {
   params: Promise<{
     slug: string;
@@ -20,58 +23,30 @@ interface PendientesPageProps {
 export default async function PendientesPage({ params }: PendientesPageProps) {
   const { slug, promiseId } = await params;
 
-  // ✅ 1. Validación temprana: verificar estado antes de cargar datos pesados
-  const routeState = await getPublicPromiseRouteState(slug, promiseId);
+  // ✅ 1. Validación mínima: solo verificar errores críticos
+  // ⚠️ OPTIMIZADO: Usa caché compartido con layout
+  // ⚠️ MANEJO ROBUSTO: Evitar que errores aborten boundaries
+  const routeState = await getPublicPromiseRouteState(slug, promiseId).catch((error) => {
+    console.error('[PendientesPage] Error obteniendo routeState:', error);
+    return { success: false, error: 'Error al obtener estado' };
+  });
 
-  // ✅ CASO DE USO: Si no hay cotizaciones, permitir acceso a /pendientes para ver paquetes disponibles
-  if (!routeState.success || !routeState.data) {
-    console.log('⚠️ /pendientes: No se pudo obtener estado de cotizaciones. Continuando para mostrar paquetes.');
+  // Solo validar errores críticos - NO validar discrepancias de estado
+  // El Direct Navigator (con datos frescos vía Realtime) tomará la decisión final de redirección
+  // /pendientes siempre permite acceso para ver paquetes disponibles
+  if (!routeState.success) {
     // Continuar sin redirigir - permitir acceso para ver paquetes
-  } else if (routeState.data.length === 0) {
-    console.log('ℹ️ /pendientes: No hay cotizaciones. Permitiendo acceso para ver paquetes disponibles.');
-    // Continuar sin redirigir - permitir acceso para ver paquetes
-  } else {
-    // ✅ 2. Control de acceso: verificar si hay cotización en negociación (prioridad más alta)
-    // Si hay cotización en negociación, redirigir a negociación en lugar de permitir acceso a pendientes
-    const cotizacionNegociacion = routeState.data.find((cot) => {
-      const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
-      const selectedByProspect = cot.selected_by_prospect ?? false;
-      return normalizedStatus === 'negociacion' && selectedByProspect !== true;
-    });
-
-    if (cotizacionNegociacion) {
-      console.log('🔄 /pendientes: Cotización en negociación detectada, redirigiendo a /negociacion');
-      redirect(`/${slug}/promise/${promiseId}/negociacion`);
-    }
-
-    // ✅ 3. Control de acceso: verificar si hay cotización en cierre (segunda prioridad)
-    const cotizacionEnCierre = routeState.data.find((cot) => {
-      const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
-      return normalizedStatus === 'en_cierre';
-    });
-
-    if (cotizacionEnCierre) {
-      console.log('🔄 /pendientes: Cotización en cierre detectada, redirigiendo a /cierre');
-      redirect(`/${slug}/promise/${promiseId}/cierre`);
-    }
-
-    // ✅ 4. Control de acceso: usar función unificada isRouteValid (solo si hay cotizaciones)
-    const currentPath = `/${slug}/promise/${promiseId}/pendientes`;
-    const isValid = isRouteValid(currentPath, routeState.data);
-
-    if (!isValid) {
-      console.log('❌ Validación fallida en /pendientes: Redirigiendo al raíz.', {
-        cotizacionesCount: routeState.data.length,
-        cotizaciones: routeState.data.map(c => ({ id: c.id, status: c.status })),
-      });
-      redirect(`/${slug}/promise/${promiseId}`);
-    }
   }
 
   // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
-  const basicData = await getPublicPromiseBasicData(slug, promiseId);
+  // ⚠️ MANEJO ROBUSTO: Evitar que errores aborten boundaries
+  const basicData = await getPublicPromiseBasicData(slug, promiseId).catch((error) => {
+    console.error('[PendientesPage] Error obteniendo basicData:', error);
+    return { success: false, error: 'Error al obtener datos básicos' };
+  });
 
   if (!basicData.success || !basicData.data) {
+    // Solo redirigir si es un error crítico, no por discrepancias de estado
     redirect(`/${slug}/promise/${promiseId}`);
   }
 

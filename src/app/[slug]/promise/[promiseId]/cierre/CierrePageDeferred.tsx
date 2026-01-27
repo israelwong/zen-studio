@@ -1,8 +1,14 @@
 'use client';
 
 import { use } from 'react';
-import { PublicQuoteAuthorizedView } from '@/components/promise/PublicQuoteAuthorizedView';
+import dynamic from 'next/dynamic';
 import type { PublicCotizacion } from '@/types/public-promise';
+
+// ⚠️ DYNAMIC IMPORT: Evitar problemas de bundling con hot reload
+const PublicQuoteAuthorizedView = dynamic(
+  () => import('@/components/promise/PublicQuoteAuthorizedView').then(mod => ({ default: mod.PublicQuoteAuthorizedView })),
+  { ssr: false }
+);
 
 interface CierrePageDeferredProps {
   dataPromise: Promise<{

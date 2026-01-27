@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, useTransition } from 'react';
 import { CotizacionesSection } from './CotizacionesSection';
-import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
-import { RealtimeUpdateNotification } from './RealtimeUpdateNotification';
+import type { CotizacionChangeInfo } from '@/hooks/useCotizacionesRealtime';
+// ⚠️ RealtimeUpdateNotification deshabilitado para evitar conflictos
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 
 // ⚠️ BLOQUEO GLOBAL: Persiste aunque el componente se re-monte
@@ -65,12 +65,7 @@ export function CotizacionesSectionRealtime({
 }: CotizacionesSectionRealtimeProps) {
   const [cotizaciones, setCotizaciones] = useState<PublicCotizacion[]>(initialCotizaciones);
   const [isPending, startTransition] = useTransition();
-  const [pendingUpdate, setPendingUpdate] = useState<{ 
-    count: number; 
-    type: 'quote' | 'promise' | 'both';
-    changeType?: 'price' | 'description' | 'name' | 'inserted' | 'deleted' | 'general';
-    requiresManualUpdate?: boolean;
-  } | null>(null);
+  // ⚠️ Notificaciones deshabilitadas para evitar conflictos
   const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
   const reloadTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isReloadingRef = useRef(false);
@@ -184,182 +179,8 @@ export function CotizacionesSectionRealtime({
     };
   }, []);
 
-  // ⚠️ HANDLER INTELIGENTE: Solo recargar si hay cambios críticos
-  const handleCotizacionUpdated = useCallback(
-    (cotizacionId: string, payload?: unknown) => {
-      const p = payload as any;
-      const changeInfo = p?.changeInfo;
-      const newRecord = p?.newRecord || p?.new;
-
-      // ⚠️ TAREA 3: Comparación de datos en el cliente antes de llamar al servidor
-      if (newRecord) {
-        const existingCotizacion = cotizaciones.find((c) => c.id === cotizacionId);
-        if (existingCotizacion) {
-          // Comparar campos críticos
-          const hasRealChange =
-            existingCotizacion.status !== newRecord.status ||
-            existingCotizacion.selected_by_prospect !== newRecord.selected_by_prospect ||
-            existingCotizacion.price !== newRecord.price ||
-            existingCotizacion.name !== newRecord.name;
-
-          if (!hasRealChange) {
-            console.log('🔔 [CotizacionesSectionRealtime] Ignorando: sin cambios reales detectados', {
-              cotizacionId,
-            });
-            return; // No hay cambios reales, ignorar
-          }
-        }
-      }
-
-      // Si hay información de cambios, verificar si son críticos
-      if (changeInfo) {
-        // Cambios críticos que requieren recarga completa
-        const cambiosCriticos = ['status', 'selected_by_prospect'];
-        const tieneCambioCritico = changeInfo.camposCambiados?.some((campo: string) =>
-          cambiosCriticos.includes(campo)
-        );
-
-        if (tieneCambioCritico || changeInfo.statusChanged) {
-          console.log('🔔 [CotizacionesSectionRealtime] Cambio crítico detectado, recargando', {
-            cotizacionId,
-            changeInfo,
-          });
-          reloadCotizaciones();
-          return;
-        }
-
-        // Para cambios no críticos, actualizar solo localmente si es posible
-        if (changeInfo.camposCambiados && changeInfo.camposCambiados.length > 0) {
-          console.log('🔔 [CotizacionesSectionRealtime] Cambio no crítico, actualizando localmente', {
-            cotizacionId,
-            campos: changeInfo.camposCambiados,
-          });
-          // Intentar actualizar localmente (ej: name, price, description)
-          if (newRecord) {
-            const updates: Partial<PublicCotizacion> = {};
-            let changeType: 'price' | 'description' | 'name' | 'general' = 'general';
-            
-            if (changeInfo.camposCambiados.includes('price') && newRecord.price !== undefined) {
-              updates.price = newRecord.price;
-              changeType = 'price';
-            }
-            if (changeInfo.camposCambiados.includes('description') && newRecord.description !== undefined) {
-              updates.description = newRecord.description;
-              if (changeType === 'general') changeType = 'description';
-            }
-            if (changeInfo.camposCambiados.includes('name') && newRecord.name) {
-              updates.name = newRecord.name;
-              if (changeType === 'general') changeType = 'name';
-            }
-            
-            if (Object.keys(updates).length > 0) {
-              updateCotizacionLocal(cotizacionId, updates);
-              // Mostrar indicador visual sutil de actualización
-              setRecentlyUpdated((prev) => {
-                const next = new Set(prev);
-                next.add(cotizacionId);
-                // Limpiar después de 3 segundos
-                setTimeout(() => {
-                  setRecentlyUpdated((current) => {
-                    const updated = new Set(current);
-                    updated.delete(cotizacionId);
-                    return updated;
-                  });
-                }, 3000);
-                return next;
-              });
-              // Notificar que hubo cambios pero ya se actualizaron automáticamente (sin botón de actualizar)
-              handleUpdateDetected('quote', changeType, false); // requiresManualUpdate: false
-              return; // No recargar desde servidor
-            }
-          }
-        }
-      }
-
-      // Si no hay información de cambios o no se pudo actualizar localmente
-      // Solo notificar si realmente hay un cambio que no podemos manejar localmente
-      if (changeInfo?.camposCambiados && changeInfo.camposCambiados.length > 0) {
-        // Hay cambios pero no pudimos actualizar localmente, notificar para recarga manual
-        console.log('🔔 [CotizacionesSectionRealtime] Cambios detectados que requieren recarga manual');
-        handleUpdateDetected('quote', 'general', true); // requiresManualUpdate: true
-      } else {
-        // Sin información de cambios, verificar si realmente cambió algo antes de recargar
-        console.log('🔔 [CotizacionesSectionRealtime] Sin información de cambios, verificando antes de recargar');
-        // No recargar automáticamente si no hay información clara de cambios
-        // El usuario puede usar la notificación si necesita actualizar
-      }
-    },
-    [reloadCotizaciones, updateCotizacionLocal, cotizaciones]
-  );
-
-  // Callback para incrementar contador según el tipo de cambio
-  const handleUpdateDetected = useCallback((
-    type: 'quote' | 'promise' = 'quote',
-    changeType?: 'price' | 'description' | 'name' | 'inserted' | 'deleted' | 'general',
-    requiresManualUpdate: boolean = true
-  ) => {
-    setPendingUpdate((prev) => {
-      if (!prev) {
-        return { count: 1, type, changeType: changeType || 'general', requiresManualUpdate };
-      }
-      // Si el tipo es diferente, combinar en 'both'
-      const newType = prev.type === type ? type : 'both';
-      // Priorizar tipos más específicos
-      const priority: Record<string, number> = { price: 4, description: 3, name: 2, inserted: 5, deleted: 5, general: 1 };
-      const newChangeType = (changeType && priority[changeType] > (priority[prev.changeType || 'general'] || 0))
-        ? changeType
-        : (prev.changeType || 'general');
-      // Si alguno requiere actualización manual, mantenerlo como true
-      const newRequiresManualUpdate = requiresManualUpdate || (prev.requiresManualUpdate !== false);
-      return { count: prev.count + 1, type: newType, changeType: newChangeType, requiresManualUpdate: newRequiresManualUpdate };
-    });
-  }, []);
-
-  // ⚠️ TAREA 3: Función de recarga quirúrgica (solo cotizaciones y datos básicos)
-  const handleManualReload = useCallback(async () => {
-    if (isReloadingRef.current) {
-      return;
-    }
-
-    isReloadingRef.current = true;
-    try {
-      // ⚠️ TAREA 3: Usar función ligera getPublicPromiseUpdate
-      const { getPublicPromiseUpdate } = await import('@/lib/actions/public/promesas.actions');
-      const result = await getPublicPromiseUpdate(studioSlug, promiseId);
-
-      if (result.success && result.data) {
-        // ⚠️ TAREA 4: Actualizar solo cotizaciones sin perder scroll
-        startTransition(() => {
-          if (result.data!.cotizaciones) {
-            setCotizaciones(result.data!.cotizaciones);
-          }
-          setPendingUpdate(null); // ⚠️ TAREA 3: Resetear estado después de actualizar
-        });
-      }
-    } catch (error) {
-      console.error('[CotizacionesSectionRealtime] Error en recarga manual:', error);
-    } finally {
-      isReloadingRef.current = false;
-    }
-  }, [studioSlug, promiseId, startTransition]);
-
-  // Usar el hook de Realtime (sin recarga automática)
-  useCotizacionesRealtime({
-    studioSlug,
-    promiseId,
-    onCotizacionInserted: () => {
-      console.log('🔔 [CotizacionesSectionRealtime] Nueva cotización insertada');
-      handleUpdateDetected('quote', 'inserted', true); // Nueva cotización requiere recarga manual
-    },
-    onCotizacionUpdated: handleCotizacionUpdated,
-    onCotizacionDeleted: (cotizacionId) => {
-      console.log('🔔 [CotizacionesSectionRealtime] Cotización eliminada', { cotizacionId });
-      setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
-      // Eliminación ya se actualizó localmente, notificar sin botón
-      handleUpdateDetected('quote', 'deleted', false);
-    },
-    onUpdateDetected: () => handleUpdateDetected('quote', 'general', true),
-  });
+  // ⚠️ SIN HOOK PROPIO: El padre (PendientesPageClient) maneja todo el Realtime
+  // Esto evita competencia y garantiza que la redirección funcione correctamente
 
   return (
     <>
@@ -382,11 +203,7 @@ export function CotizacionesSectionRealtime({
         durationHours={durationHours}
       />
       {/* ⚠️ TAREA 2: Componente de notificación flotante Zen */}
-      <RealtimeUpdateNotification
-        pendingUpdate={pendingUpdate}
-        onUpdate={handleManualReload}
-        onDismiss={() => setPendingUpdate(null)}
-      />
+      {/* ⚠️ Notificaciones deshabilitadas para evitar conflictos con redirección */}
     </>
   );
 }

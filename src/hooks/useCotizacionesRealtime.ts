@@ -14,11 +14,13 @@ export interface CotizacionChangeInfo {
   cotizacionId: string;
   status?: string;
   oldStatus?: string;
+  statusChanged?: boolean;
   visible_to_client?: boolean;
   old_visible_to_client?: boolean;
   name?: string;
   price?: number;
   selected_by_prospect?: boolean;
+  camposCambiados?: string[];
   [key: string]: unknown;
 }
 
@@ -174,10 +176,14 @@ export function useCotizacionesRealtime({
         if (record && record.cotizacion_id) {
           const cotizacionId = record.cotizacion_id as string;
           // ⚠️ TAREA 3: Construir información de cambio para eventos de cierre
+          // Incluir statusChanged para que se ejecute la redirección automática
           const changeInfo: CotizacionChangeInfo = {
             cotizacionId,
             // Los eventos de cierre no tienen status directo, pero podemos inferirlo
             status: 'en_cierre',
+            statusChanged: true,
+            oldStatus: 'pendiente', // Asumir que venía de pendiente (o negociación)
+            camposCambiados: ['status'],
           };
           if (cotizacionId && onUpdatedRef.current) {
             onUpdatedRef.current(cotizacionId, changeInfo);
@@ -292,20 +298,68 @@ export function useCotizacionesRealtime({
           cotizacionId,
           status: newRecord.status as string,
           oldStatus: oldRecord.status as string,
+          statusChanged: cambioDetectado?.statusChanged || false,
           visible_to_client: newRecord.visible_to_client as boolean,
           old_visible_to_client: oldRecord.visible_to_client as boolean,
           name: newRecord.name as string,
           price: newRecord.price as number,
           selected_by_prospect: newRecord.selected_by_prospect as boolean,
+          camposCambiados,
           ...Object.fromEntries(
             camposCambiados.map(campo => [campo, newRecord[campo]])
           ),
         };
+      } else {
+        // Si no hay oldRecord/newRecord, verificar si el status es en_cierre
+        // Esto puede pasar cuando el evento viene de otra fuente
+        const currentStatus = cotizacion.status as string;
+        if (currentStatus === 'en_cierre' || currentStatus === 'cierre') {
+          changeInfo = {
+            ...changeInfo,
+            status: currentStatus === 'cierre' ? 'en_cierre' : currentStatus,
+            statusChanged: true,
+            camposCambiados: ['status'],
+          };
+        }
+      }
+
+      // ⚠️ DEBUG: Log para verificar qué se está enviando
+      if (changeInfo.status === 'en_cierre' || changeInfo.status === 'cierre') {
+        console.log('[useCotizacionesRealtime] Evento de cierre detectado:', {
+          cotizacionId,
+          status: changeInfo.status,
+          statusChanged: changeInfo.statusChanged,
+          oldStatus: changeInfo.oldStatus,
+          hasOldRecord: !!oldRecord,
+          hasNewRecord: !!newRecord,
+        });
+        console.log('[useCotizacionesRealtime] Llamando onUpdatedRef.current:', {
+          cotizacionId,
+          hasCallback: !!onUpdatedRef.current,
+          changeInfo,
+        });
       }
 
       // ⚠️ TAREA 3: Pasar información completa de cambio
+      // Normalizar payload: pasar changeInfo directamente como segundo parámetro
       if (cotizacionId && onUpdatedRef.current) {
-        onUpdatedRef.current(cotizacionId, changeInfo);
+        try {
+          console.log('[useCotizacionesRealtime] Ejecutando callback onCotizacionUpdated', {
+            cotizacionId,
+            status: changeInfo.status,
+            statusChanged: changeInfo.statusChanged,
+          });
+          // Pasar changeInfo directamente como segundo parámetro
+          onUpdatedRef.current(cotizacionId, changeInfo);
+          console.log('[useCotizacionesRealtime] Callback ejecutado exitosamente');
+        } catch (error) {
+          console.error('[useCotizacionesRealtime] Error al ejecutar callback:', error);
+        }
+      } else {
+        console.warn('[useCotizacionesRealtime] No se puede ejecutar callback:', {
+          cotizacionId,
+          hasCallback: !!onUpdatedRef.current,
+        });
       }
     },
     [promiseId, extractCotizacion, ignoreCierreEvents]

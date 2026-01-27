@@ -9,6 +9,9 @@ import { PromisePageProvider } from '@/components/promise/PromisePageContext';
 import { NegociacionPageBasic } from './NegociacionPageBasic';
 import { NegociacionPageDeferred } from './NegociacionPageDeferred';
 
+// ⚠️ FORCE-DYNAMIC: Evitar caché estático en página de validación
+export const dynamic = 'force-dynamic';
+
 interface NegociacionPageProps {
   params: Promise<{
     slug: string;
@@ -19,49 +22,42 @@ interface NegociacionPageProps {
 export default async function NegociacionPage({ params }: NegociacionPageProps) {
   const { slug, promiseId } = await params;
 
-  // ✅ 1. Validación temprana: verificar estado antes de cargar datos pesados
-  // ⚠️ OPTIMIZADO: Usa caché compartido con dispatcher
-  const routeState = await getPublicPromiseRouteState(slug, promiseId);
-
-  if (!routeState.success || !routeState.data || routeState.data.length === 0) {
-    console.log('❌ /negociacion: No hay cotizaciones disponibles. Redirigiendo al raíz.');
-    redirect(`/${slug}/promise/${promiseId}`);
-  }
-
-  // ✅ 2. Control de acceso: verificar si hay cotización en cierre (prioridad más alta)
-  // Si hay cotización en cierre, redirigir a cierre en lugar de mostrar error
-  const cotizacionEnCierre = routeState.data.find((cot) => {
-    const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
-    return normalizedStatus === 'en_cierre';
+  // ✅ 1. Validación mínima: solo verificar errores críticos
+  // ⚠️ OPTIMIZADO: Usa caché compartido con layout
+  // ⚠️ MANEJO ROBUSTO: Evitar que errores aborten boundaries
+  const routeState = await getPublicPromiseRouteState(slug, promiseId).catch((error) => {
+    console.error('[NegociacionPage] Error obteniendo routeState:', error);
+    return { success: false, error: 'Error al obtener estado' };
   });
 
-  if (cotizacionEnCierre) {
-    console.log('🔄 /negociacion: Cotización en cierre detectada, redirigiendo a /cierre');
-    redirect(`/${slug}/promise/${promiseId}/cierre`);
-  }
-
-  // ✅ 3. Control de acceso: usar función unificada isRouteValid
-  const currentPath = `/${slug}/promise/${promiseId}/negociacion`;
-  const isValid = isRouteValid(currentPath, routeState.data);
-
-  if (!isValid) {
-    console.log('❌ Validación fallida en /negociacion: Redirigiendo al raíz.', {
-      cotizacionesCount: routeState.data.length,
-      cotizaciones: routeState.data.map(c => ({ id: c.id, status: c.status })),
-    });
+  // Solo validar errores críticos - NO validar discrepancias de estado
+  // El Direct Navigator (con datos frescos vía Realtime) tomará la decisión final de redirección
+  if (!routeState.success) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
+  // ⚠️ PERMITIR acceso incluso si no hay cotizaciones o hay discrepancias
+  // El Gatekeeper manejará la redirección basada en datos frescos de Realtime
+
   // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
-  const [basicData, priceData] = await Promise.all([
+  // ⚠️ MANEJO ROBUSTO: Usar Promise.allSettled para evitar abortos de boundaries
+  const [basicDataResult, priceDataResult] = await Promise.allSettled([
     getPublicPromiseBasicData(slug, promiseId),
     getPublicPromiseNegociacionBasic(slug, promiseId),
   ]);
+
+  const basicData = basicDataResult.status === 'fulfilled' 
+    ? basicDataResult.value 
+    : { success: false, error: 'Error al obtener datos básicos' };
+  const priceData = priceDataResult.status === 'fulfilled' 
+    ? priceDataResult.value 
+    : { success: false, error: 'Error al obtener datos de precio' };
 
   if (!basicData.success || !basicData.data || !priceData.success || !priceData.data) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
+  // TypeScript: En este punto sabemos que ambos son exitosos
   const { promise: promiseBasic, studio: studioBasic } = basicData.data;
   const { totalPrice } = priceData.data;
 

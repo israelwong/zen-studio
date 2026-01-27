@@ -424,7 +424,12 @@ export function PromiseCierreClient({
           {/* Modal Confirmar Cancelar Cierre */}
           <ZenConfirmModal
             isOpen={cierreLogic.showCancelModal}
-            onClose={() => cierreLogic.setShowCancelModal(false)}
+            onClose={() => {
+              cierreLogic.setShowCancelModal(false);
+              if (cierreLogic.isCancelling) {
+                cierreLogic.setIsCancelling(false);
+              }
+            }}
             onConfirm={cierreLogic.handleCancelarCierre}
             title="¿Cancelar proceso de cierre?"
             description={
@@ -444,6 +449,7 @@ export function PromiseCierreClient({
             confirmText={cierreLogic.isCancelling ? 'Cancelando...' : 'Sí, cancelar cierre'}
             cancelText="No, mantener cierre"
             variant="destructive"
+            loading={cierreLogic.isCancelling}
           />
 
           {/* Modal Confirmar Autorizar */}

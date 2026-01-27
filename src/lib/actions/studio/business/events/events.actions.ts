@@ -652,7 +652,7 @@ export async function moveEvent(
     revalidatePath(`/${studioSlug}/studio/business/events/${evento.id}`);
     
     // Invalidar caché de lista (con studioSlug para aislamiento)
-    revalidateTag(`events-list-${studioSlug}`);
+    revalidateTag(`events-list-${studioSlug}`, 'max');
 
     return {
       success: true,
@@ -1717,7 +1717,7 @@ export async function cancelarEvento(
     revalidatePath(`/${studioSlug}/studio/business/events/${eventoId}`);
     
     // Invalidar caché de lista (con studioSlug para aislamiento)
-    revalidateTag(`events-list-${studioSlug}`);
+    revalidateTag(`events-list-${studioSlug}`, 'max');
     
     // Agenda ahora es un sheet, no necesita revalidación de ruta
     if (evento.promise_id) {

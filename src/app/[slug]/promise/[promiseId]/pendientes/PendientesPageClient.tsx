@@ -5,19 +5,15 @@ import { useRouter } from 'next/navigation';
 import { startTransition } from 'react';
 import { Calendar } from 'lucide-react';
 import { toast } from 'sonner';
-import type { CotizacionChangeInfo } from '@/hooks/useCotizacionesRealtime';
 import { CotizacionesSectionRealtime } from '@/components/promise/CotizacionesSectionRealtime';
 import { PaquetesSection } from '@/components/promise/PaquetesSection';
 import { ComparadorButton } from '@/components/promise/ComparadorButton';
 import { PortafoliosCard } from '@/components/promise/PortafoliosCard';
 import { ProgressOverlay } from '@/components/promise/ProgressOverlay';
-import { RealtimeUpdateNotification } from '@/components/promise/RealtimeUpdateNotification';
 import { usePromiseSettingsRealtime } from '@/hooks/usePromiseSettingsRealtime';
-import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
 import { usePromisesRealtime } from '@/hooks/usePromisesRealtime';
-import { getPublicPromiseRouteState, updatePublicPromiseData, getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
+import { updatePublicPromiseData, getPublicPromiseData } from '@/lib/actions/public/promesas.actions';
 import { autorizarCotizacionPublica } from '@/lib/actions/public/cotizaciones.actions';
-import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
 import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
 import type { PublicCotizacion, PublicPaquete } from '@/types/public-promise';
 import { usePromisePageContext } from '@/components/promise/PromisePageContext';
@@ -200,58 +196,17 @@ export function PendientesPageClient({
     setCotizaciones(initialCotizaciones);
   }, [initialCotizaciones]);
 
-  // Función para recargar cotizaciones cuando hay cambios en tiempo real
+  // Función para recargar cotizaciones cuando hay cambios en tiempo real (solo actualización local)
   const reloadCotizaciones = useCallback(async () => {
-    // ⚠️ TAREA 2: Bloqueo global persistente
-    const lockKey = `${studioSlug}-${promiseId}`;
-    const now = Date.now();
-    const lock = globalReloadLocks.get(lockKey);
-
-    if (lock) {
-      if (now < lock.blockUntil) {
-        const remaining = Math.ceil((lock.blockUntil - now) / 1000);
-        console.log(`🔒 [PendientesPageClient] Reload bloqueado globalmente: esperando ${remaining}s más`);
-        return;
-      }
-      if (now - lock.lastReload < 5000) {
-        const remaining = Math.ceil((5000 - (now - lock.lastReload)) / 1000);
-        console.log(`🔒 [PendientesPageClient] Reload bloqueado: esperando ${remaining}s más`);
-        return;
-      }
-    }
-
-    // Actualizar bloqueo global
-    globalReloadLocks.set(lockKey, {
-      blockUntil: now + 5000,
-      lastReload: now,
-    });
-
     try {
-      // Usar getPublicPromiseRouteState (consulta ligera) en lugar de getPublicPromiseData (consulta pesada)
-      const result = await getPublicPromiseRouteState(studioSlug, promiseId);
-      if (result.success && result.data) {
-        const cotizaciones = result.data;
-
-        // Verificar si hay cambio de estado y redirigir según prioridad
-        // Usar función helper centralizada para consistencia
-        const targetRoute = determinePromiseRoute(cotizaciones, studioSlug, promiseId);
-        
-        // Si la ruta es diferente a pendientes, redirigir
-        if (!targetRoute.includes('/pendientes')) {
-          startTransition(() => {
-            router.push(targetRoute);
-          });
-          return;
-        }
-
-        // Si estamos en pendientes, no necesitamos actualizar el estado
-        // El componente padre ya filtró las cotizaciones pendientes
-        // Solo recargamos si hay un cambio de estado que requiera redirección
+      const result = await getPublicPromiseData(studioSlug, promiseId);
+      if (result.success && result.data?.cotizaciones) {
+        setCotizaciones(result.data.cotizaciones);
       }
     } catch (error) {
       console.error('[PendientesPageClient] Error en reloadCotizaciones:', error);
     }
-  }, [studioSlug, promiseId, router]);
+  }, [studioSlug, promiseId]);
 
   // Escuchar evento personalizado para recargar cotizaciones después de autorizar
   useEffect(() => {
@@ -269,6 +224,7 @@ export function PendientesPageClient({
     };
   }, [reloadCotizaciones]);
 
+
   // Escucha el evento authorization-started (mantener por compatibilidad, aunque ya no es crítico)
   useEffect(() => {
     const handleAuthorizationStarted = (e: CustomEvent) => {
@@ -280,339 +236,18 @@ export function PendientesPageClient({
     return () => window.removeEventListener('authorization-started', handleAuthorizationStarted as EventListener);
   }, [setIsAuthorizationInProgress]);
 
-  // ⚠️ TAREA 2: Auto-redirección inteligente cuando cambia estado
-  const checkAndRedirect = useCallback(async (changeInfo?: CotizacionChangeInfo) => {
-    // ⚠️ TAREA 4: Bloquear durante navegación
-    if (getIsNavigating()) {
-      console.log('[PendientesPageClient] Ignorando checkAndRedirect durante navegación');
-      return;
-    }
 
-    // Si hay cambio de estado, verificar si necesitamos redirigir
-    if (changeInfo?.statusChanged) {
-      const newStatus = changeInfo.status;
-      const oldStatus = changeInfo.oldStatus;
+  // ⚠️ SIN LÓGICA DE REDIRECCIÓN: El Gatekeeper en el layout maneja toda la redirección
+  // Esta página solo se preocupa por mostrar sus datos
 
-      // ⚠️ TAREA 2: Auto-redirigir si cambia a negociación o cierre
-      if (newStatus === 'negociacion' && changeInfo.visible_to_client) {
-        console.log('[PendientesPageClient] Redirigiendo a negociación');
-        setNavigating('negociacion');
-        window.dispatchEvent(new CustomEvent('close-overlays'));
-        startTransition(() => {
-          router.push(`/${studioSlug}/promise/${promiseId}/negociacion`);
-          clearNavigating(1000);
-        });
-        return;
-      }
-
-      if (newStatus === 'en_cierre' || newStatus === 'cierre') {
-        console.log('[PendientesPageClient] Redirigiendo a cierre');
-        setNavigating('cierre');
-        window.dispatchEvent(new CustomEvent('close-overlays'));
-        startTransition(() => {
-          router.push(`/${studioSlug}/promise/${promiseId}/cierre`);
-          clearNavigating(1000);
-        });
-        return;
-      }
-    }
-  }, [studioSlug, promiseId, router, getIsNavigating, setNavigating, clearNavigating]);
-
-  // Handler para actualizaciones de cotizaciones con información de cambios
-  const handleCotizacionUpdated = useCallback(
-    (cotizacionId: string, changeInfo?: CotizacionChangeInfo) => {
-      // ⚠️ BLOQUEO CRÍTICO: No procesar actualizaciones durante el proceso de autorización
-      // Verificar tanto el estado del contexto como el lock global síncrono
-      // El prospecto no debe recibir avisos de "cambio de estado" porque él mismo es quien provocó el cambio
-      if (isAuthorizationInProgress || (window as any).__IS_AUTHORIZING) {
-        console.log('[PendientesPageClient] Ignorando actualización durante proceso de autorización', {
-          isAuthorizationInProgress,
-          globalLock: (window as any).__IS_AUTHORIZING,
-          reason: 'Proceso de autorización en curso - cambios son resultado de la acción del usuario'
-        });
-        return;
-      }
-
-      // ⚠️ TAREA 4: Bloquear durante navegación
-      if (getIsNavigating()) {
-        return;
-      }
-
-      // ⚠️ TAREA 4: No mostrar toast si ya estamos en la ruta destino
-      const currentPath = window.location.pathname;
-      if (changeInfo?.status === 'negociacion' && currentPath.includes('/negociacion')) {
-        // Pero sí redirigir si cambió a cierre
-        if (changeInfo.status === 'en_cierre' || changeInfo.status === 'cierre') {
-          checkAndRedirect(changeInfo);
-        }
-        return;
-      }
-      if ((changeInfo?.status === 'en_cierre' || changeInfo?.status === 'cierre') && currentPath.includes('/cierre')) {
-        return;
-      }
-
-      // ⚠️ TAREA 1: Toasts específicos según cambio de estado
-      // Solo mostrar toasts si NO estamos en proceso de autorización
-      // (las notificaciones solo deben aparecer cuando el estudio hace cambios manuales)
-      if (changeInfo?.statusChanged && !isAuthorizationInProgress && !(window as any).__IS_AUTHORIZING) {
-        const newStatus = changeInfo.status;
-        const oldStatus = changeInfo.oldStatus;
-
-        if (newStatus === 'negociacion' && changeInfo.visible_to_client) {
-          toast.success('¡Nueva oferta especial enviada!', {
-            description: 'El estudio ha preparado una propuesta personalizada para ti',
-          });
-          checkAndRedirect(changeInfo);
-          return;
-        }
-
-        if (newStatus === 'en_cierre' || newStatus === 'cierre') {
-          toast.success('¡Todo listo! Tu contrato está preparado.', {
-            description: 'Revisa y firma tu contrato digital',
-          });
-          checkAndRedirect(changeInfo);
-          return;
-        }
-      }
-
-      // Para otros cambios, verificar versión y notificar
-      const newVersion = `${cotizacionId}-${changeInfo?.status || ''}-${changeInfo?.selected_by_prospect || false}-${changeInfo?.price || 0}`;
-      const existingVersion = cotizacionesVersionsRef.current.get(cotizacionId);
-      
-      if (existingVersion === newVersion) {
-        console.log('🔔 [PendientesPageClient] Ignorando evento: versión idéntica', {
-          cotizacionId,
-          version: newVersion,
-        });
-        return;
-      }
-
-      cotizacionesVersionsRef.current.set(cotizacionId, newVersion);
-
-      // ⚠️ TAREA 5: Instrumentación detallada en el navegador
-      console.table({
-        event: 'UPDATE',
-        cotizacionId,
-        table: 'studio_cotizaciones',
-        change: changeInfo ? {
-          status: changeInfo.status,
-          selected_by_prospect: changeInfo.selected_by_prospect,
-          price: changeInfo.price,
-          name: changeInfo.name,
-        } : 'N/A',
-        changeInfo: changeInfo ? {
-          statusChanged: changeInfo.statusChanged,
-          camposCambiados: changeInfo.camposCambiados?.join(', ') || 'N/A',
-        } : 'N/A',
-      });
-
-      // Detectar tipo específico de cambio para notificación más precisa
-      const detectChangeType = (): 'price' | 'description' | 'name' | 'general' => {
-        if (!changeInfo?.camposCambiados || changeInfo.camposCambiados.length === 0) {
-          return 'general';
-        }
-        if (changeInfo.camposCambiados.includes('price')) {
-          return 'price';
-        }
-        if (changeInfo.camposCambiados.includes('description')) {
-          return 'description';
-        }
-        if (changeInfo.camposCambiados.includes('name')) {
-          return 'name';
-        }
-        return 'general';
-      };
-
-      // Para otros cambios, solo notificar (no recargar automáticamente)
-      if (changeInfo?.camposCambiados && !changeInfo.statusChanged) {
-        const cambiosCriticos = ['status', 'selected_by_prospect'];
-        const tieneCambioCritico = changeInfo.camposCambiados.some((campo: string) =>
-          cambiosCriticos.includes(campo)
-        );
-
-        if (tieneCambioCritico) {
-          console.log('🔔 [PendientesPageClient] Cambio crítico detectado, notificando', {
-            cotizacionId,
-            campos: changeInfo.camposCambiados,
-          });
-          handleUpdateDetected('quote', detectChangeType(), true); // Requiere recarga manual
-          return;
-        }
-      }
-
-      // Si hay cambio válido pero no crítico, notificar con tipo específico
-      // Solo si NO estamos en proceso de autorización
-      if (changeInfo && !changeInfo.statusChanged && !isAuthorizationInProgress && !(window as any).__IS_AUTHORIZING) {
-        handleUpdateDetected('quote', detectChangeType(), true); // Requiere recarga manual
-      }
-    },
-    [checkAndRedirect, getIsNavigating, handleUpdateDetected, isAuthorizationInProgress]
-  );
-
-  // Estado de actualización con tipo y tipo de cambio específico
-  const [pendingUpdate, setPendingUpdate] = useState<{ 
-    count: number; 
-    type: 'quote' | 'promise' | 'both';
-    changeType?: 'price' | 'description' | 'name' | 'inserted' | 'deleted' | 'general';
-    requiresManualUpdate?: boolean; // true si requiere recarga manual, false si ya se actualizó automáticamente
-  } | null>(null);
-
-  // Callback para incrementar contador según el tipo de cambio
-  const handleUpdateDetected = useCallback((
-    type: 'quote' | 'promise' = 'quote',
-    changeType?: 'price' | 'description' | 'name' | 'inserted' | 'deleted' | 'general',
-    requiresManualUpdate: boolean = true // Por defecto requiere actualización manual
-  ) => {
-    // BLOQUEO: No mostrar notificación durante el proceso de autorización
-    if (isAuthorizationInProgress || (window as any).__IS_AUTHORIZING) {
-      console.log('[PendientesPageClient] Ignorando notificación de actualización durante proceso de autorización');
-      return;
-    }
-
-    setPendingUpdate((prev) => {
-      if (!prev) {
-        return { count: 1, type, changeType: changeType || 'general', requiresManualUpdate };
-      }
-      // Si el tipo es diferente, combinar en 'both'
-      const newType = prev.type === type ? type : 'both';
-      // Priorizar tipos más específicos (price > description > name > general)
-      const priority: Record<string, number> = { price: 4, description: 3, name: 2, inserted: 5, deleted: 5, general: 1 };
-      const newChangeType = (changeType && priority[changeType] > (priority[prev.changeType || 'general'] || 0))
-        ? changeType
-        : (prev.changeType || 'general');
-      // Si alguno requiere actualización manual, mantenerlo como true
-      const newRequiresManualUpdate = requiresManualUpdate || (prev.requiresManualUpdate !== false);
-      return { count: prev.count + 1, type: newType, changeType: newChangeType, requiresManualUpdate: newRequiresManualUpdate };
-    });
-  }, [isAuthorizationInProgress]);
-
-  // ⚠️ TAREA 3: Función de recarga quirúrgica (solo cotizaciones y datos básicos)
-  const handleManualReload = useCallback(async () => {
-    try {
-      const { getPublicPromiseUpdate } = await import('@/lib/actions/public/promesas.actions');
-      const result = await getPublicPromiseUpdate(studioSlug, promiseId);
-
-      if (result.success && result.data) {
-        // ⚠️ TAREA 4: Actualizar solo los campos específicos sin perder scroll
-        startTransition(() => {
-          // Actualizar cotizaciones
-          if (result.data.cotizaciones) {
-            setCotizaciones(result.data.cotizaciones);
-          }
-
-          // Actualizar datos básicos de la promise (si cambiaron)
-          // Nota: Los datos de promise se pasan como props, pero podemos actualizar el estado local si es necesario
-          // Por ahora, solo actualizamos cotizaciones ya que son los cambios más frecuentes
-        });
-
-        // Limpiar estado de actualización pendiente
-        setPendingUpdate(null);
-      }
-    } catch (error) {
-      console.error('[PendientesPageClient] Error en recarga manual:', error);
-    }
-  }, [studioSlug, promiseId]);
-
-  // ⚠️ TAREA 2: Auto-redirección inteligente cuando cambia estado
-  const checkAndRedirect = useCallback(async (changeInfo?: CotizacionChangeInfo) => {
-    // ⚠️ TAREA 4: Bloquear durante navegación
-    if (getIsNavigating()) {
-      console.log('[PendientesPageClient] Ignorando checkAndRedirect durante navegación');
-      return;
-    }
-
-    // Si hay cambio de estado, verificar si necesitamos redirigir
-    if (changeInfo?.statusChanged) {
-      const newStatus = changeInfo.status;
-      const oldStatus = changeInfo.oldStatus;
-
-      // ⚠️ TAREA 2: Auto-redirigir si cambia a negociación o cierre
-      if (newStatus === 'negociacion' && changeInfo.visible_to_client) {
-        console.log('[PendientesPageClient] Redirigiendo a negociación');
-        setNavigating('negociacion');
-        window.dispatchEvent(new CustomEvent('close-overlays'));
-        startTransition(() => {
-          router.push(`/${studioSlug}/promise/${promiseId}/negociacion`);
-          clearNavigating(1000);
-        });
-        return;
-      }
-
-      if (newStatus === 'en_cierre' || newStatus === 'cierre') {
-        console.log('[PendientesPageClient] Redirigiendo a cierre');
-        setNavigating('cierre');
-        window.dispatchEvent(new CustomEvent('close-overlays'));
-        startTransition(() => {
-          router.push(`/${studioSlug}/promise/${promiseId}/cierre`);
-          clearNavigating(1000);
-        });
-        return;
-      }
-    }
-  }, [studioSlug, promiseId, router, getIsNavigating, setNavigating, clearNavigating]);
-
-  // Handler mejorado con toasts específicos
-  const handleCotizacionInserted = useCallback((changeInfo?: CotizacionChangeInfo) => {
-    // BLOQUEO: No procesar inserciones durante el proceso de autorización
-    if (isAuthorizationInProgress || (window as any).__IS_AUTHORIZING) {
-      console.log('[PendientesPageClient] Ignorando inserción durante proceso de autorización', {
-        reason: 'Proceso de autorización en curso - cambios son resultado de la acción del usuario'
-      });
-      return;
-    }
-
-    // No mostrar toast si ya estamos en la ruta destino
-    const currentPath = window.location.pathname;
-    if (changeInfo?.status === 'negociacion' && currentPath.includes('/negociacion')) {
-      return;
-    }
-    if ((changeInfo?.status === 'en_cierre' || changeInfo?.status === 'cierre') && currentPath.includes('/cierre')) {
-      return;
-    }
-
-    // ⚠️ TAREA 1: Toast específico según tipo
-    // Solo mostrar toasts si NO estamos en proceso de autorización
-    // (las notificaciones solo deben aparecer cuando el estudio hace cambios manuales)
-    if (changeInfo?.visible_to_client && !isAuthorizationInProgress && !(window as any).__IS_AUTHORIZING) {
-      if (changeInfo.status === 'negociacion') {
-        toast.success('¡Nueva oferta especial enviada!', {
-          description: 'El estudio ha preparado una propuesta personalizada para ti',
-        });
-        // Auto-redirigir a negociación
-        checkAndRedirect(changeInfo);
-      } else {
-        toast.success('¡Nueva cotización disponible!', {
-          description: 'Haz clic para ver los detalles',
-        });
-        handleUpdateDetected('quote', 'inserted', true); // Nueva cotización requiere recarga manual
-      }
-    }
-  }, [checkAndRedirect, handleUpdateDetected, isAuthorizationInProgress]);
-
-  // Escuchar cambios en tiempo real de cotizaciones (sin recarga automática)
-  useCotizacionesRealtime({
-    studioSlug,
-    promiseId,
-    onCotizacionInserted: handleCotizacionInserted,
-    onCotizacionUpdated: handleCotizacionUpdated,
-    onCotizacionDeleted: (cotizacionId) => {
-      setCotizaciones((prev) => prev.filter((c) => c.id !== cotizacionId));
-      // Eliminación ya se actualizó localmente, notificar sin botón
-      if (!isAuthorizationInProgress && !(window as any).__IS_AUTHORIZING) {
-        handleUpdateDetected('quote', 'deleted', false);
-      }
-    },
-    onUpdateDetected: () => handleUpdateDetected('quote', 'general', true), // Cambios que requieren recarga manual
-  });
-
-  // ⚠️ TAREA 1: Escuchar cambios en studio_promises
+  // ⚠️ Escuchar cambios en studio_promises (solo para logging, sin notificaciones)
   usePromisesRealtime({
     studioSlug,
     onPromiseUpdated: (updatedPromiseId) => {
-      // Solo notificar si es la promise actual
+      // Solo loggear si es la promise actual
       if (updatedPromiseId === promiseId) {
         console.log('🔔 [PendientesPageClient] Cambio detectado en studio_promises', { updatedPromiseId });
-        handleUpdateDetected('promise', 'general', true); // Cambios en promise requieren recarga manual
+        // ⚠️ Notificaciones deshabilitadas para evitar conflictos
       }
     },
   });
@@ -633,13 +268,7 @@ export function PendientesPageClient({
     onSettingsUpdated: handleSettingsUpdated,
   });
 
-  // Limpiar notificación cuando se inicia el proceso de autorización
-  useEffect(() => {
-    if (isAuthorizationInProgress) {
-      // Limpiar notificación pendiente cuando se muestra el overlay
-      setPendingUpdate(null);
-    }
-  }, [isAuthorizationInProgress]);
+  // ⚠️ Limpieza de notificaciones deshabilitada (las notificaciones están deshabilitadas)
 
   // Procesar autorización cuando se active el estado
   // Este useEffect se ejecuta cuando isAuthorizationInProgress cambia a true
@@ -742,30 +371,20 @@ export function PendientesPageClient({
     processAuthorization();
   }, [isAuthorizationInProgress, authorizationData, setProgressStep, setProgressError, setIsAuthorizationInProgress, setAuthorizationData]);
 
-  // Redirigir a cierre cuando el proceso esté completado
-  // El overlay se mantiene abierto hasta que ocurra la redirección
-  const redirectPath = `/${studioSlug}/promise/${promiseId}/cierre`;
+  // ⚠️ SIN REDIRECCIÓN: El Gatekeeper detectará el cambio de estado y redirigirá automáticamente
+  // Limpiar flags cuando el proceso esté completado
   useEffect(() => {
     if (progressStep === 'completed' && isAuthorizationInProgress) {
-      // Limpiar notificación pendiente antes de redirigir
-      setPendingUpdate(null);
-      
-      // Delay de 500ms para que el usuario pueda leer el estado "¡Listo!" o "Contrato Generado"
       const timer = setTimeout(() => {
-        // Limpiar flag de autorización del contexto y lock global antes de redirigir
+        // Limpiar flag de autorización del contexto
         setIsAuthorizationInProgress(false);
         (window as any).__IS_AUTHORIZING = false;
         setAuthorizationData(null);
-        setNavigating('cierre');
-        window.dispatchEvent(new CustomEvent('close-overlays'));
-        startTransition(() => {
-          router.push(redirectPath);
-          clearNavigating(1000);
-        });
+        // El Gatekeeper detectará el cambio y redirigirá automáticamente
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [progressStep, isAuthorizationInProgress, router, redirectPath, setNavigating, clearNavigating, setIsAuthorizationInProgress, setAuthorizationData]);
+  }, [progressStep, isAuthorizationInProgress, setIsAuthorizationInProgress, setAuthorizationData]);
 
   // Filtrar condiciones comerciales según settings en tiempo real
   const condicionesFiltradas = useMemo(() => {
@@ -815,14 +434,9 @@ export function PendientesPageClient({
       {/* ⚠️ Hero Section ya se renderiza en PendientesPageBasic (instantáneo) */}
       {/* No duplicar aquí para evitar header duplicado */}
 
-      {/* Notificación de cambios - Fixed bottom, persistente al scroll */}
-      {!isAuthorizationInProgress && !(window as any).__IS_AUTHORIZING && (
-        <RealtimeUpdateNotification
-          pendingUpdate={pendingUpdate}
-          onUpdate={handleManualReload}
-          onDismiss={() => setPendingUpdate(null)}
-        />
-      )}
+      {/* ⚠️ NOTIFICACIONES DESHABILITADAS: Se eliminaron para evitar conflictos con la lógica de redirección */}
+      {/* Las notificaciones solo aparecían para cambios que no fueran de estatus, pero generaban conflictos */}
+      {/* Si se necesitan en el futuro, se pueden reactivar con lógica más específica */}
 
       {/* Fecha sugerida de contratación */}
       {shareSettings.min_days_to_hire && shareSettings.min_days_to_hire > 0 && promise.event_date && (

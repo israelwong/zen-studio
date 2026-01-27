@@ -3,6 +3,7 @@ import { unstable_cache } from 'next/cache';
 import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
 import { PublicPageFooterServer } from '@/components/shared/PublicPageFooterServer';
 import { PromiseProfileLink } from '@/components/promise/PromiseProfileLink';
+import { PromiseRouteGuard } from '@/components/promise/PromiseRouteGuard';
 import { prisma } from '@/lib/prisma';
 
 interface PromiseLayoutProps {
@@ -50,10 +51,12 @@ export default async function PromiseLayout({
   children,
   params,
 }: PromiseLayoutProps) {
-  const { slug } = await params;
+  const { slug, promiseId } = await params;
 
-  // Obtener información básica del studio para el header y platform config en paralelo
-  const [studio, platformConfig] = await Promise.all([
+  // Manejo robusto de errores: Evitar que errores aborten boundaries
+  // Obtener información básica del studio y platform config
+  // NO necesitamos routeState aquí - el Direct Navigator lo obtiene del servidor
+  const [studio, platformConfig] = await Promise.allSettled([
     prisma.studios.findUnique({
       where: { slug },
       select: {
@@ -65,31 +68,31 @@ export default async function PromiseLayout({
     getPlatformConfigCached(),
   ]);
 
-  // ⚠️ FIX: Si children es el PromiseRedirectHandler, no renderizar el layout
-  // Esto evita que el layout se renderice antes del redirect
-  // El PromiseRedirectHandler retorna null, así que podemos verificar si children es null
-  // Pero mejor aún, simplemente renderizar el layout normalmente y dejar que el redirect ocurra
+  // Extraer valores de las promesas resueltas
+  const studioData = studio.status === 'fulfilled' ? studio.value : null;
+  const platformConfigData = platformConfig.status === 'fulfilled' ? platformConfig.value : null;
+
   return (
     <div className="min-h-screen bg-zinc-950">
       {/* Header fijo */}
-      {studio && (
+      {studioData && (
         <header className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-800/50">
           <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {studio.logo_url && (
+              {studioData.logo_url && (
                 <img
-                  src={studio.logo_url}
-                  alt={studio.studio_name}
+                  src={studioData.logo_url}
+                  alt={studioData.studio_name}
                   className="h-9 w-9 object-contain rounded-full"
                 />
               )}
               <div>
                 <h1 className="text-sm font-semibold text-white">
-                  {studio.studio_name}
+                  {studioData.studio_name}
                 </h1>
-                {studio.slogan && (
+                {studioData.slogan && (
                   <p className="text-[10px] text-zinc-400">
-                    {studio.slogan}
+                    {studioData.slogan}
                   </p>
                 )}
               </div>
@@ -104,6 +107,9 @@ export default async function PromiseLayout({
         </header>
       )}
 
+      {/* Guardián de ruta: Verifica que el usuario esté en la ruta correcta según el estado de las cotizaciones */}
+      <PromiseRouteGuard studioSlug={slug} promiseId={promiseId} />
+
       {/* Contenido principal con padding-top para header y padding-bottom para notificación fija */}
       <div className="pt-[65px] pb-[10px]">
         {children}
@@ -111,9 +117,9 @@ export default async function PromiseLayout({
 
       {/* Footer by Zen - Server Component optimizado */}
       <PublicPageFooterServer
-        companyName={platformConfig?.company_name || 'Zenly México'}
-        commercialName={platformConfig?.commercial_name || platformConfig?.company_name || 'Zenly Studio'}
-        domain={platformConfig?.domain || 'zenly.mx'}
+        companyName={platformConfigData?.company_name || 'Zenly México'}
+        commercialName={platformConfigData?.commercial_name || platformConfigData?.company_name || 'Zenly Studio'}
+        domain={platformConfigData?.domain || 'zenly.mx'}
       />
     </div>
   );

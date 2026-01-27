@@ -2,11 +2,13 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
-import { getPublicPromiseRouteState, getPublicPromiseCierre, getPublicPromiseMetadata, getPublicPromiseBasicData, getPublicPromiseCierreBasic } from '@/lib/actions/public/promesas.actions';
+import { getPublicPromiseRouteState, getPublicPromiseCierre, getPublicPromiseMetadata, getPublicPromiseBasicData } from '@/lib/actions/public/promesas.actions';
 import { isRouteValid } from '@/lib/utils/public-promise-routing';
 import { CierrePageSkeleton } from './CierrePageSkeleton';
-import { CierrePageBasic } from './CierrePageBasic';
 import { CierrePageDeferred } from './CierrePageDeferred';
+
+// ⚠️ FORCE-DYNAMIC: Evitar caché estático en página de validación
+export const dynamic = 'force-dynamic';
 
 interface CierrePageProps {
   params: Promise<{
@@ -18,67 +20,41 @@ interface CierrePageProps {
 export default async function CierrePage({ params }: CierrePageProps) {
   const { slug, promiseId } = await params;
 
-  // ✅ 1. Validación temprana: verificar estado antes de cargar datos pesados
-  // ⚠️ OPTIMIZADO: Usa caché compartido con dispatcher
-  const routeState = await getPublicPromiseRouteState(slug, promiseId);
-
-  if (!routeState.success || !routeState.data || routeState.data.length === 0) {
-    console.log('❌ /cierre: No hay cotizaciones disponibles. Redirigiendo al raíz.');
-    redirect(`/${slug}/promise/${promiseId}`);
-  }
-
-  // ✅ 2. Control de acceso: verificar si hay cotización en negociación (prioridad más alta)
-  // Si hay cotización en negociación, redirigir a negociación en lugar de permitir acceso a cierre
-  const cotizacionNegociacion = routeState.data.find((cot) => {
-    const normalizedStatus = cot.status === 'cierre' ? 'en_cierre' : cot.status;
-    const selectedByProspect = cot.selected_by_prospect ?? false;
-    return normalizedStatus === 'negociacion' && selectedByProspect !== true;
+  // ✅ 1. Validación mínima: solo verificar errores críticos
+  // ⚠️ OPTIMIZADO: Usa caché compartido con layout
+  // ⚠️ MANEJO ROBUSTO: Evitar que errores aborten boundaries
+  const routeState = await getPublicPromiseRouteState(slug, promiseId).catch((error) => {
+    console.error('[CierrePage] Error obteniendo routeState:', error);
+    return { success: false, error: 'Error al obtener estado' };
   });
 
-  if (cotizacionNegociacion) {
-    console.log('🔄 /cierre: Cotización en negociación detectada, redirigiendo a /negociacion');
-    redirect(`/${slug}/promise/${promiseId}/negociacion`);
-  }
-
-  // ✅ 3. Control de acceso: usar función unificada isRouteValid
-  const currentPath = `/${slug}/promise/${promiseId}/cierre`;
-  const isValid = isRouteValid(currentPath, routeState.data);
-
-  if (!isValid) {
-    console.log('❌ Validación fallida en /cierre: Redirigiendo al raíz.', {
-      cotizacionesCount: routeState.data.length,
-      cotizaciones: routeState.data.map(c => ({ id: c.id, status: c.status })),
-    });
+  // Solo validar errores críticos - NO validar discrepancias de estado
+  // El Direct Navigator (con datos frescos vía Realtime) tomará la decisión final de redirección
+  if (!routeState.success) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
-  // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
-  const [basicData, priceData] = await Promise.all([
-    getPublicPromiseBasicData(slug, promiseId),
-    getPublicPromiseCierreBasic(slug, promiseId),
-  ]);
+  // ⚠️ PERMITIR acceso incluso si no hay cotizaciones o hay discrepancias
+  // El Gatekeeper manejará la redirección basada en datos frescos de Realtime
 
-  if (!basicData.success || !basicData.data || !priceData.success || !priceData.data) {
+  // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
+  // ⚠️ MANEJO ROBUSTO: Evitar que errores aborten boundaries
+  const basicData = await getPublicPromiseBasicData(slug, promiseId).catch((error) => {
+    console.error('[CierrePage] Error obteniendo basicData:', error);
+    return { success: false, error: 'Error al obtener datos básicos' };
+  });
+
+  if (!basicData.success || !basicData.data) {
     redirect(`/${slug}/promise/${promiseId}`);
   }
 
   const { promise: promiseBasic, studio: studioBasic } = basicData.data;
-  const { totalPrice } = priceData.data;
 
   // ⚠️ STREAMING: Crear promesa para datos pesados (NO await - deferred)
   const deferredDataPromise = getPublicPromiseCierre(slug, promiseId);
 
   return (
     <>
-      {/* ⚠️ STREAMING: Parte A - Instantánea (datos básicos + precio total) */}
-      <CierrePageBasic
-        promise={promiseBasic}
-        studio={studioBasic}
-        totalPrice={totalPrice}
-        studioSlug={slug}
-        promiseId={promiseId}
-      />
-      
       {/* ⚠️ STREAMING: Parte B - Deferred (datos pesados con Suspense) */}
       <Suspense fallback={<CierrePageSkeleton />}>
         <CierrePageDeferred

@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { useCotizacionesRealtime } from '@/hooks/useCotizacionesRealtime';
+import { syncPromiseRoute } from '@/lib/utils/public-promise-routing';
 import { PromiseRedirectSkeleton } from './PromiseRedirectSkeleton';
 
 interface PromiseRedirectHandlerProps {
@@ -10,29 +12,58 @@ interface PromiseRedirectHandlerProps {
 
 export function PromiseRedirectHandler({ slug, promiseId }: PromiseRedirectHandlerProps) {
   const [error, setError] = useState<string | null>(null);
+  const hasRedirectedRef = useRef(false);
   const currentPath = `/${slug}/promise/${promiseId}`;
 
-  useEffect(() => {
-    async function handleRedirect() {
-      try {
-        const response = await fetch(`/api/promise/${slug}/${promiseId}/redirect`);
-        const data = await response.json();
-
-        if (data.redirect) {
-          // ⚠️ FIX: Usar window.location.href para redirect completo y evitar problemas de hidratación
-          window.location.href = data.redirect;
-        } else {
-          // Si no hay redirect, redirigir a /pendientes por defecto (para ver paquetes)
-          window.location.href = `/${slug}/promise/${promiseId}/pendientes`;
-        }
-      } catch (error) {
-        console.error('[PromiseRedirectHandler] Error:', error);
-        setError('Error al cargar la información. Por favor, intenta nuevamente.');
+  // Función para sincronizar ruta con el servidor
+  const handleSyncRoute = async () => {
+    if (hasRedirectedRef.current) return;
+    
+    try {
+      const redirected = await syncPromiseRoute(promiseId, window.location.pathname, slug);
+      if (redirected) {
+        hasRedirectedRef.current = true;
       }
+    } catch (error) {
+      console.error('[PromiseRedirectHandler] Error en syncPromiseRoute:', error);
     }
+  };
 
-    handleRedirect();
-  }, [slug, promiseId, currentPath]);
+  // Carga inicial: Sincronizar inmediatamente al montar
+  useEffect(() => {
+    handleSyncRoute();
+  }, [slug, promiseId]);
+
+  // Realtime: Reaccionar a cualquier cambio en cotizaciones (incluyendo visible_to_client)
+  // Usar ref para mantener la función estable
+  const handleSyncRouteRef = useRef(handleSyncRoute);
+  handleSyncRouteRef.current = handleSyncRoute;
+
+  useCotizacionesRealtime({
+    studioSlug: slug,
+    promiseId,
+    // Cualquier cambio (UPDATE, INSERT, DELETE) dispara sincronización
+    // Esto incluye cambios en visible_to_client
+    onCotizacionUpdated: (cotizacionId, changeInfo) => {
+      console.log('🔔 [PromiseRedirectHandler] Cambio detectado en cotización:', {
+        cotizacionId,
+        status: changeInfo?.status,
+        visible_to_client: changeInfo?.visible_to_client,
+        old_visible_to_client: changeInfo?.old_visible_to_client,
+        camposCambiados: changeInfo?.camposCambiados,
+      });
+      // Ejecutar sincronización siempre que haya un cambio
+      handleSyncRouteRef.current();
+    },
+    onCotizacionInserted: () => {
+      console.log('🔔 [PromiseRedirectHandler] Cotización insertada. Sincronizando ruta...');
+      handleSyncRouteRef.current();
+    },
+    onCotizacionDeleted: () => {
+      console.log('🔔 [PromiseRedirectHandler] Cotización eliminada. Sincronizando ruta...');
+      handleSyncRouteRef.current();
+    },
+  });
 
   // Si hay error, mostrar mensaje en lugar de skeleton
   if (error) {

@@ -3,91 +3,191 @@ import type { PublicCotizacion } from '@/types/public-promise';
 /**
  * Normaliza el status de una cotización para comparación
  * EXPORTADO para uso en validaciones
+ * 
+ * Convierte 'cierre' a 'en_cierre' para consistencia.
+ * Maneja variantes en mayúsculas/minúsculas y espacios.
  */
 export function normalizeStatus(status: string): string {
-  if (status === 'cierre') return 'en_cierre';
-  return status;
+  if (!status) return status;
+  const normalized = status.toLowerCase().trim();
+  if (normalized === 'cierre') return 'en_cierre';
+  return normalized;
 }
 
 /**
  * Tipo para cotizaciones con estado (acepta tanto formato completo como simplificado)
  */
 type CotizacionConStatus = 
-  | (PublicCotizacion & { status: string; selected_by_prospect?: boolean })
-  | { id: string; status: string; selected_by_prospect?: boolean | null };
+  | (PublicCotizacion & { status: string; selected_by_prospect?: boolean; visible_to_client?: boolean })
+  | { id: string; status: string; selected_by_prospect?: boolean | null; visible_to_client?: boolean | null };
 
 /**
- * Determina la ruta de redirección basada en el estado de las cotizaciones
- * Prioridad: Negociación > Cierre > Pendientes
+ * Determina la ruta de redirección basada en el estado de las cotizaciones.
+ * 
+ * Prioridad: Aprobada > Negociación > Cierre > Pendientes
  * Acepta tanto formato completo (PublicCotizacion) como simplificado (solo estado)
+ * 
+ * @param cotizaciones - Array de cotizaciones con estado
+ * @param slug - Slug del estudio
+ * @param promiseId - ID de la promesa
+ * @returns Ruta de redirección según la prioridad
  */
 export function determinePromiseRoute(
   cotizaciones: Array<CotizacionConStatus>,
   slug: string,
   promiseId: string
 ): string {
-  // ⚠️ DEBUG: Log de entrada
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[determinePromiseRoute] Entrada:', {
-      cotizaciones: cotizaciones.map(c => ({ id: c.id, status: c.status, selected: c.selected_by_prospect })),
-      slug,
-      promiseId,
-    });
+  // 🔍 DIAGNÓSTICO: Log de todas las cotizaciones recibidas
+  console.log('🔍 [determinePromiseRoute] Cotizaciones recibidas:', cotizaciones.map(q => ({
+    id: q.id,
+    status: q.status,
+    visible_to_client: q.visible_to_client,
+    selected_by_prospect: q.selected_by_prospect,
+  })));
+
+  // FILTRO INICIAL: Solo considerar cotizaciones visibles al cliente
+  const visibleQuotes = cotizaciones.filter(q => q.visible_to_client === true);
+
+  // 🔍 DIAGNÓSTICO: Log de cotizaciones visibles
+  console.log('🔍 [determinePromiseRoute] Cotizaciones visibles:', visibleQuotes.map(q => ({
+    id: q.id,
+    status: q.status,
+    normalized: normalizeStatus(q.status),
+    selected_by_prospect: q.selected_by_prospect,
+  })));
+
+  // Si no hay cotizaciones visibles, siempre redirigir a /pendientes
+  if (visibleQuotes.length === 0) {
+    console.log('🔍 [determinePromiseRoute] No hay cotizaciones visibles, redirigiendo a /pendientes');
+    return `/${slug}/promise/${promiseId}/pendientes`;
   }
 
-  // Buscar cotización en negociación (prioridad más alta)
+  // PRIORIDAD 1: Buscar cotización aprobada/autorizada (máxima prioridad)
+  const cotizacionAprobada = visibleQuotes.find((cot) => {
+    const status = (cot.status || '').toLowerCase();
+    return status === 'aprobada' || status === 'autorizada' || status === 'approved';
+  });
+
+  if (cotizacionAprobada) {
+    console.log('🔍 [determinePromiseRoute] PRIORIDAD 1: Cotización aprobada encontrada');
+    return `/${slug}/cliente`;
+  }
+
+  // PRIORIDAD 2: Buscar cotización en negociación
   // Negociación: status === 'negociacion' y NO debe tener selected_by_prospect: true
-  const cotizacionNegociacion = cotizaciones.find((cot) => {
+  const cotizacionNegociacion = visibleQuotes.find((cot) => {
     const normalizedStatus = normalizeStatus(cot.status);
     const selectedByProspect = cot.selected_by_prospect ?? false;
-    const isNegociacion = normalizedStatus === 'negociacion' && selectedByProspect !== true;
-    
-    // ⚠️ DEBUG: Log de cada cotización evaluada
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`[determinePromiseRoute] Evaluando cotización ${cot.id}:`, {
-        status: cot.status,
-        normalizedStatus,
-        selectedByProspect,
-        isNegociacion,
-      });
-    }
-    
-    return isNegociacion;
+    return normalizedStatus === 'negociacion' && selectedByProspect !== true;
   });
 
   if (cotizacionNegociacion) {
-    const route = `/${slug}/promise/${promiseId}/negociacion`;
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[determinePromiseRoute] ✅ Cotización en negociación encontrada, ruta:', route);
-    }
-    return route;
+    console.log('🔍 [determinePromiseRoute] PRIORIDAD 2: Cotización en negociación encontrada');
+    return `/${slug}/promise/${promiseId}/negociacion`;
   }
 
-  // Buscar cotización en cierre (segunda prioridad)
+  // PRIORIDAD 3: Buscar cotización en cierre
   // Cierre: status === 'en_cierre' o 'cierre' (acepta selección manual del estudio o del prospecto)
-  const cotizacionEnCierre = cotizaciones.find((cot) => {
+  const cotizacionEnCierre = visibleQuotes.find((cot) => {
     const normalizedStatus = normalizeStatus(cot.status);
-    return normalizedStatus === 'en_cierre';
+    const isCierre = normalizedStatus === 'en_cierre';
+    console.log('🔍 [determinePromiseRoute] Evaluando cierre:', {
+      id: cot.id,
+      status: cot.status,
+      normalized: normalizedStatus,
+      isCierre,
+    });
+    return isCierre;
   });
 
   if (cotizacionEnCierre) {
+    console.log('🔍 [determinePromiseRoute] PRIORIDAD 3: Cotización en cierre encontrada, redirigiendo a /cierre');
     return `/${slug}/promise/${promiseId}/cierre`;
   }
 
-  // Verificar si hay cotizaciones pendientes válidas
-  const hasPendientes = cotizaciones.some((cot) => {
+  // PRIORIDAD 4: Verificar si hay cotizaciones pendientes válidas
+  const hasPendientes = visibleQuotes.some((cot) => {
     const normalizedStatus = normalizeStatus(cot.status);
     return normalizedStatus === 'pendiente';
   });
 
-  // ✅ CASO DE USO: Si no hay cotizaciones válidas, permitir acceso a /pendientes para ver paquetes
+  // CASO DE USO: Si no hay cotizaciones válidas, permitir acceso a /pendientes para ver paquetes
   // Esto permite que el prospecto vea paquetes disponibles incluso sin cotizaciones
   if (!hasPendientes) {
+    console.log('🔍 [determinePromiseRoute] PRIORIDAD 4: No hay cotizaciones válidas, redirigiendo a /pendientes');
     return `/${slug}/promise/${promiseId}/pendientes`;
   }
 
   // Default: Cotizaciones pendientes
+  console.log('🔍 [determinePromiseRoute] Default: Redirigiendo a /pendientes');
   return `/${slug}/promise/${promiseId}/pendientes`;
+}
+
+/**
+ * Single Source of Truth (SSOT) para sincronización de rutas de promesas.
+ * 
+ * Esta función es la única autorizada para ejecutar redirecciones basadas en el estado
+ * de las cotizaciones. Consulta al servidor (bypass cache) para obtener la ruta correcta
+ * según la prioridad: Aprobada > Negociación > Cierre > Pendientes.
+ * 
+ * @param promiseId - ID de la promesa
+ * @param currentPath - Ruta actual del navegador
+ * @param slug - Slug del estudio
+ * @returns true si hubo redirección, false si ya está en la ruta correcta
+ * 
+ * @example
+ * ```typescript
+ * const redirected = await syncPromiseRoute(promiseId, pathname, studioSlug);
+ * if (!redirected) {
+ *   // Ruta válida, continuar renderizado
+ * }
+ * ```
+ */
+export async function syncPromiseRoute(
+  promiseId: string,
+  currentPath: string,
+  slug: string
+): Promise<boolean> {
+  try {
+    // Obtener la verdad del servidor (bypass cache con timestamp)
+    // Mejora Técnica: Parámetro de cache-busting automático (?t=${Date.now()}) para ignorar
+    // cualquier caché intermedio del navegador o de Next.js
+    const response = await fetch(
+      `/api/promise/${slug}/${promiseId}/redirect?t=${Date.now()}`,
+      {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.error('[syncPromiseRoute] Error en respuesta del servidor:', response.status);
+      return false;
+    }
+
+    const { redirect: targetRoute } = await response.json();
+
+    if (!targetRoute) {
+      console.error('[syncPromiseRoute] No se recibió targetRoute del servidor');
+      return false;
+    }
+
+    // Comparación binaria de rutas (sin query params)
+    const normalizedCurrent = currentPath.split('?')[0];
+    const normalizedTarget = targetRoute.split('?')[0];
+
+    if (normalizedCurrent !== normalizedTarget) {
+      window.location.replace(targetRoute);
+      return true; // Hubo redirección
+    }
+
+    return false; // Ya está en la ruta correcta
+  } catch (error) {
+    console.error('[syncPromiseRoute] Error:', error);
+    return false;
+  }
 }
 
 /**
@@ -109,8 +209,16 @@ export function isRouteValid(
     return routeType === 'pendientes';
   }
 
+  // FILTRO INICIAL: Solo considerar cotizaciones visibles al cliente
+  const visibleQuotes = cotizaciones.filter(q => q.visible_to_client === true);
+
+  // Si no hay cotizaciones visibles, solo /pendientes es válida
+  if (visibleQuotes.length === 0) {
+    return routeType === 'pendientes';
+  }
+
   // Normalizar estados antes de validar
-  const normalizedCotizaciones = cotizaciones.map(cot => ({
+  const normalizedCotizaciones = visibleQuotes.map(cot => ({
     ...cot,
     status: normalizeStatus(cot.status),
   }));

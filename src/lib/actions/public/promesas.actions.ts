@@ -4465,6 +4465,7 @@ async function _getPublicPromiseRouteStateInternal(
     }
 
     // 2. Verificar si hay cotizaciones aprobadas (redirigir a /cliente)
+    // ⚠️ NO-STORE: Forzar consulta fresca sin caché
     const cotizacionAprobada = await prisma.studio_cotizaciones.findFirst({
       where: {
         promise_id: promiseId,
@@ -4482,6 +4483,7 @@ async function _getPublicPromiseRouteStateInternal(
     }
 
     // 3. Obtener solo estados de cotizaciones visibles
+    // ⚠️ NO-STORE: Forzar consulta fresca sin caché para evitar datos obsoletos
     const cotizaciones = await prisma.studio_cotizaciones.findMany({
       where: {
         promise_id: promiseId,
@@ -4547,8 +4549,8 @@ export async function getPublicPromiseRouteState(
   }>;
   error?: string;
 }> {
-  // ✅ CACHÉ: Compartir resultado entre dispatcher y sub-rutas
-  // El caché se invalida automáticamente cuando cambian las cotizaciones
+  // ⚠️ CACHÉ CON INVALIDACIÓN MANUAL: Compartir resultado pero invalidar por tags
+  // El caché se invalida automáticamente cuando cambian las cotizaciones vía tags
   const getCachedRouteState = unstable_cache(
     async () => {
       return _getPublicPromiseRouteStateInternal(studioSlug, promiseId);
@@ -4556,7 +4558,7 @@ export async function getPublicPromiseRouteState(
     ['public-promise-route-state', studioSlug, promiseId],
     {
       tags: [`public-promise-route-state-${studioSlug}-${promiseId}`],
-      revalidate: false, // Invalidación manual por tags
+      revalidate: false, // Invalidación manual por tags (revalidateTag)
     }
   );
 
@@ -5101,7 +5103,7 @@ export async function invalidatePublicPromiseRouteState(
 ): Promise<{ success: boolean }> {
   try {
     const { revalidateTag } = await import('next/cache');
-    revalidateTag(`public-promise-route-state-${studioSlug}-${promiseId}`);
+    revalidateTag(`public-promise-route-state-${studioSlug}-${promiseId}`, 'max');
     return { success: true };
   } catch (error) {
     console.error("[invalidatePublicPromiseRouteState] Error:", error);

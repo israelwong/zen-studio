@@ -10,15 +10,14 @@ import { PublicContractCard } from './PublicContractCard';
 import { PublicQuoteFinancialCard } from './PublicQuoteFinancialCard';
 import { PublicPromisePageHeader } from './PublicPromisePageHeader';
 import { BankInfoModal } from '@/components/shared/BankInfoModal';
-import { updatePublicPromiseData, getPublicPromiseData, getPublicCotizacionContract, getPublicPromiseRouteState, invalidatePublicPromiseRouteState } from '@/lib/actions/public/promesas.actions';
+import { updatePublicPromiseData, getPublicPromiseData, getPublicCotizacionContract } from '@/lib/actions/public/promesas.actions';
 import { regeneratePublicContract } from '@/lib/actions/public/cotizaciones.actions';
 import { obtenerInfoBancariaStudio } from '@/lib/actions/cliente/pagos.actions';
-import { useCotizacionesRealtime, type CotizacionChangeInfo } from '@/hooks/useCotizacionesRealtime';
+import type { CotizacionChangeInfo } from '@/hooks/useCotizacionesRealtime';
 import { usePromiseNavigation } from '@/hooks/usePromiseNavigation';
-import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
 import { toast } from 'sonner';
 import type { PublicCotizacion } from '@/types/public-promise';
-import confetti from 'canvas-confetti';
+import { RealtimeUpdateNotification } from './RealtimeUpdateNotification';
 
 interface PublicQuoteAuthorizedViewProps {
   cotizacion: PublicCotizacion;
@@ -70,19 +69,14 @@ export function PublicQuoteAuthorizedView({
   const [bankInfo, setBankInfo] = useState<{ banco?: string | null; titular?: string | null; clabe?: string | null } | null>(null);
   const [loadingBankInfo, setLoadingBankInfo] = useState(false);
   const [copiedClabe, setCopiedClabe] = useState(false);
-  // ⚠️ Usar sessionStorage para persistir el estado del confetti durante la sesión
-  // Esto evita que se dispare cada vez que se recarga la página
-  const getConfettiFired = useCallback(() => {
-    if (typeof window === 'undefined') return false;
-    const key = `confetti-fired-${promiseId}-${cotizacion.id}`;
-    return sessionStorage.getItem(key) === 'true';
-  }, [promiseId, cotizacion.id]);
-
-  const setConfettiFired = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    const key = `confetti-fired-${promiseId}-${cotizacion.id}`;
-    sessionStorage.setItem(key, 'true');
-  }, [promiseId, cotizacion.id]);
+  
+  // Estado de actualización para notificaciones (solo insert/delete, no cambios de estatus)
+  const [pendingUpdate, setPendingUpdate] = useState<{ 
+    count: number; 
+    type: 'quote' | 'promise' | 'both';
+    changeType?: 'price' | 'description' | 'name' | 'inserted' | 'deleted' | 'general';
+    requiresManualUpdate?: boolean;
+  } | null>(null);
 
   // Estado separado para el contrato (se actualiza independientemente)
   const [contractData, setContractData] = useState<{
@@ -154,59 +148,6 @@ export function PublicQuoteAuthorizedView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Solo al montar
-
-  // Efecto Confetti: Disparar celebración solo una vez por sesión
-  // Solo se dispara cuando la cotización está recién autorizada (en_cierre pero sin contrato firmado)
-  useEffect(() => {
-    if (getConfettiFired()) {
-      console.log('[Confetti] Ya se disparó anteriormente en esta sesión, omitiendo');
-      return;
-    }
-
-    console.log('[Confetti] Verificando condiciones:', { isEnCierre, isContractSigned, cotizacionStatus: cotizacion.status });
-
-    // Solo disparar confetti si estamos en estado de cierre (recién autorizado)
-    // y el contrato aún no está firmado (primera vez que ven esta página)
-    if (isEnCierre && !isContractSigned) {
-      console.log('[Confetti] ✅ Condiciones cumplidas, disparando confetti en 500ms');
-      setConfettiFired();
-
-      // Delay reducido a 500ms para que sea más inmediato
-      const timer = setTimeout(() => {
-        console.log('[Confetti] 🎉 Disparando confetti');
-        // Disparar confetti desde el centro superior de la pantalla con más partículas
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.2 },
-          colors: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444'],
-        });
-        
-        // Segundo disparo para más impacto
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 50,
-            origin: { y: 0.2, x: 0.3 },
-            colors: ['#10b981', '#3b82f6', '#8b5cf6'],
-          });
-        }, 200);
-        
-        setTimeout(() => {
-          confetti({
-            particleCount: 100,
-            spread: 50,
-            origin: { y: 0.2, x: 0.7 },
-            colors: ['#10b981', '#3b82f6', '#8b5cf6'],
-          });
-        }, 400);
-      }, 500);
-
-      return () => clearTimeout(timer);
-    } else {
-      console.log('[Confetti] ❌ Condiciones no cumplidas:', { isEnCierre, isContractSigned });
-    }
-  }, [isEnCierre, isContractSigned, getConfettiFired, setConfettiFired]);
 
   // Cargar información bancaria automáticamente cuando el contrato esté firmado
   useEffect(() => {
@@ -373,65 +314,90 @@ export function PublicQuoteAuthorizedView({
     }
   }, []);
 
-  // ⚠️ TAREA 5: Handler mejorado con toasts para cambios de contrato
+  // ⚠️ SIN LÓGICA DE REDIRECCIÓN: El Gatekeeper en el layout maneja toda la redirección
+  // Solo mantener lógica de actualización local del contrato si es necesario
   const handleContractUpdated = useCallback(async (updatedCotizacionId: string, changeInfo?: CotizacionChangeInfo) => {
-    // ⚠️ CRÍTICO: Bloquear sincronización si estamos navegando
-    if (getIsNavigating()) {
-      console.log('[PublicQuoteAuthorizedView] Ignorando actualización de realtime durante navegación');
-      return;
-    }
-
-    // Si la cotización actualizada es la que estamos mostrando
+    // Solo procesar si es la cotización actual y hay cambios en el contrato
     if (updatedCotizacionId === cotizacion.id) {
-      // ⚠️ DETECTAR CANCELACIÓN DE CIERRE: Si el status cambió de 'en_cierre' a 'pendiente' o 'negociacion'
-      if (changeInfo?.statusChanged) {
-        const oldStatus = changeInfo.oldStatus;
-        const newStatus = changeInfo.status;
-
-        // Si estaba en cierre y ahora no lo está, significa que se canceló el cierre
-        if ((oldStatus === 'en_cierre' || oldStatus === 'cierre') && 
-            (newStatus === 'pendiente' || newStatus === 'negociacion')) {
-          console.log('[PublicQuoteAuthorizedView] Cierre cancelado, invalidando caché y redirigiendo');
-          
-          // ⚠️ CRÍTICO: Invalidar caché antes de obtener route state para evitar bucle infinito
-          // El caché puede tener datos obsoletos que muestran la cotización como en_cierre
-          await invalidatePublicPromiseRouteState(studioSlug, promiseId);
-          
-          // Obtener estado actual de todas las cotizaciones para determinar ruta correcta
-          const routeState = await getPublicPromiseRouteState(studioSlug, promiseId);
-          
-          if (routeState.success && routeState.data) {
-            const targetRoute = determinePromiseRoute(routeState.data, studioSlug, promiseId);
-            
-            setNavigating('redirect');
-            window.dispatchEvent(new CustomEvent('close-overlays'));
-            
-            startTransition(() => {
-              router.push(targetRoute);
-              clearNavigating(1000);
-            });
-          }
-          return;
-        }
-      }
-
-      // ⚠️ TAREA 5: Toast si el contrato fue actualizado por el estudio
+      // ⚠️ Toast si el contrato fue actualizado por el estudio
       if (changeInfo?.camposCambiados?.includes('contract_content') || changeInfo?.camposCambiados?.includes('contract_template_id')) {
         toast.info('El estudio ha actualizado tu contrato', {
           description: 'Los cambios se han aplicado automáticamente',
         });
       }
-      updateContractLocally();
+      // Actualizar contrato localmente si hay cambios
+      if (changeInfo?.camposCambiados && changeInfo.camposCambiados.length > 0) {
+        updateContractLocally();
+      }
     }
-  }, [cotizacion.id, updateContractLocally, getIsNavigating, studioSlug, promiseId, router, setNavigating, clearNavigating]);
+  }, [cotizacion.id, updateContractLocally]);
 
-  // Escuchar cambios en tiempo real de cotizaciones_cierre (cuando el estudio edita el contrato)
-  // ⚠️ TAREA 1: Bloquear sincronización durante navegación
-  useCotizacionesRealtime({
-    studioSlug,
-    promiseId,
-    onCotizacionUpdated: handleContractUpdated,
-  });
+  // Handler para cuando se inserta una nueva cotización (mostrar notificación)
+  const handleCotizacionInserted = useCallback((changeInfo?: CotizacionChangeInfo) => {
+    console.log('[PublicQuoteAuthorizedView] Nueva cotización insertada', { changeInfo });
+    setPendingUpdate((prev) => {
+      if (!prev) {
+        return { count: 1, type: 'quote', changeType: 'inserted', requiresManualUpdate: true };
+      }
+      return { 
+        count: prev.count + 1, 
+        type: prev.type === 'quote' ? 'quote' : 'both',
+        changeType: 'inserted',
+        requiresManualUpdate: true 
+      };
+    });
+  }, []);
+
+  // Handler para cuando se elimina una cotización (mostrar notificación)
+  const handleCotizacionDeleted = useCallback((cotizacionId: string) => {
+    console.log('[PublicQuoteAuthorizedView] Cotización eliminada', { cotizacionId });
+    setPendingUpdate((prev) => {
+      if (!prev) {
+        return { count: 1, type: 'quote', changeType: 'deleted', requiresManualUpdate: true };
+      }
+      return { 
+        count: prev.count + 1, 
+        type: prev.type === 'quote' ? 'quote' : 'both',
+        changeType: 'deleted',
+        requiresManualUpdate: true 
+      };
+    });
+  }, []);
+
+  // Función para recargar datos cuando el usuario hace clic en el botón
+  const handleManualReload = useCallback(async () => {
+    try {
+      const result = await getPublicPromiseData(studioSlug, promiseId);
+      if (result.success && result.data) {
+        const updatedCotizacion = result.data.cotizaciones.find(c => c.id === cotizacion.id);
+        if (updatedCotizacion) {
+          setCotizacion(updatedCotizacion);
+          const contract = (updatedCotizacion as any).contract;
+          if (contract) {
+            setContractData({
+              template_id: contract.template_id,
+              content: contract.content,
+              version: contract.version,
+              signed_at: contract.signed_at,
+              condiciones_comerciales: contract.condiciones_comerciales,
+            });
+          } else {
+            setContractData(null);
+          }
+        }
+        if (result.data.promise) {
+          setPromise(result.data.promise);
+        }
+        setPendingUpdate(null);
+      }
+    } catch (error) {
+      console.error('[PublicQuoteAuthorizedView] Error en recarga manual:', error);
+    }
+  }, [studioSlug, promiseId, cotizacion.id]);
+
+  // ⚠️ SIN HOOK DE REALTIME: El Gatekeeper en el layout maneja toda la redirección
+  // Si necesitamos actualizar el contrato localmente, podemos usar router.refresh() o eventos
+  // Por ahora, confiamos en que el Gatekeeper redirigirá cuando sea necesario
 
   const handleUpdateData = async (data: {
     contact_name: string;
@@ -516,6 +482,13 @@ export function PublicQuoteAuthorizedView({
 
   return (
     <>
+      {/* Notificación de cambios - Solo para insert/delete, no para cambios de estatus */}
+      <RealtimeUpdateNotification
+        pendingUpdate={pendingUpdate}
+        onUpdate={handleManualReload}
+        onDismiss={() => setPendingUpdate(null)}
+      />
+
       {/* Header evolutivo con asesoría profesional */}
       <PublicPromisePageHeader
         prospectName={promise.contact_name}

@@ -1,7 +1,5 @@
 'use client';
 
-import { PublicPageFooter } from '@/components/shared/PublicPageFooter';
-
 export function PromisePageSkeleton() {
   return (
     <div className="min-h-screen bg-zinc-950">
@@ -20,7 +18,7 @@ export function PromisePageSkeleton() {
       </header>
 
       {/* Contenido principal con padding-top para header */}
-      <div className="pt-[65px]">
+      <div className="pt-[65px] pb-[10px]">
         {/* Hero Section skeleton */}
         <section className="relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/40 via-zinc-950 to-zinc-950" />
@@ -127,9 +125,6 @@ export function PromisePageSkeleton() {
             <div className="h-10 w-40 bg-zinc-800 rounded-lg animate-pulse" />
           </div>
         </section>
-
-        {/* Footer */}
-        <PublicPageFooter />
       </div>
     </div>
   );

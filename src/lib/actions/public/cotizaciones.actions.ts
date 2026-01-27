@@ -258,13 +258,16 @@ export async function autorizarCotizacionPublica(
     // Revalidar paths y caché para refrescar datos en el panel
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
     revalidatePath(`/${studioSlug}/studio/commercial/promises`);
-    revalidatePath(`/${studioSlug}/promise/${promiseId}`);
+    revalidatePath(`/${studioSlug}/promise/${promiseId}`, 'layout'); // ⚠️ CRÍTICO: Invalidar layout para forzar frescura
+    revalidatePath(`/${studioSlug}/promise/${promiseId}/pendientes`, 'layout');
+    revalidatePath(`/${studioSlug}/promise/${promiseId}/cierre`, 'layout');
+    revalidatePath(`/${studioSlug}/promise/${promiseId}/negociacion`, 'layout');
     
     // ⚠️ TAREA 4: Invalidación granular de caché
-    revalidateTag(`public-promise-${studioSlug}-${promiseId}`);
-    revalidateTag(`public-promise-route-state-${studioSlug}-${promiseId}`);
-    revalidateTag(`public-promise-negociacion-${studioSlug}-${promiseId}`);
-    revalidateTag(`public-promise-cierre-${studioSlug}-${promiseId}`);
+    revalidateTag(`public-promise-${studioSlug}-${promiseId}`, 'max');
+    revalidateTag(`public-promise-route-state-${studioSlug}-${promiseId}`, 'max');
+    revalidateTag(`public-promise-negociacion-${studioSlug}-${promiseId}`, 'max');
+    revalidateTag(`public-promise-cierre-${studioSlug}-${promiseId}`, 'max');
 
     // 4. Calcular precio final con descuentos y anticipos
     const formatPrice = (price: number) => {
@@ -584,7 +587,7 @@ export async function regeneratePublicContract(
     // Revalidar paths y caché
     revalidatePath(`/${studioSlug}/promise/${promiseId}`);
     revalidatePath(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
-    revalidateTag(`public-promise-${studioSlug}-${promiseId}`);
+    revalidateTag(`public-promise-${studioSlug}-${promiseId}`, 'max');
 
     return {
       success: true,

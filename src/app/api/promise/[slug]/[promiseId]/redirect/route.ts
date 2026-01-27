@@ -1,6 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getPublicPromiseRouteState } from '@/lib/actions/public/promesas.actions';
-import { determinePromiseRoute } from '@/lib/utils/public-promise-routing';
+import { prisma } from '@/lib/prisma';
+import { determinePromiseRoute, normalizeStatus } from '@/lib/utils/public-promise-routing';
+
+// Force-dynamic: Evitar caché en este endpoint
+export const dynamic = 'force-dynamic';
+
+// Bypass cache: Consulta directa a la base de datos sin caché
+async function getRouteStateDirect(studioSlug: string, promiseId: string) {
+  const studio = await prisma.studios.findUnique({
+    where: { slug: studioSlug },
+    select: { id: true },
+  });
+
+  if (!studio) {
+    return { success: false, data: [] };
+  }
+
+  // Consulta directa sin caché - Traer TODAS las cotizaciones asociadas al promiseId
+  // El filtro por visible_to_client se aplicará en determinePromiseRoute
+  const cotizaciones = await prisma.studio_cotizaciones.findMany({
+    where: {
+      promise_id: promiseId,
+      studio_id: studio.id,
+      status: {
+        in: ['pendiente', 'negociacion', 'en_cierre', 'cierre', 'aprobada', 'autorizada', 'approved', 'contract_generated', 'contract_signed'],
+      },
+    },
+    select: {
+      id: true,
+      status: true,
+      selected_by_prospect: true,
+      visible_to_client: true,
+    },
+  });
+
+  // 📊 LOG DE DEPURACIÓN: Estado de visibilidad
+  cotizaciones.forEach(q => {
+    console.log('📊 [Visibility Check] Quote ID:', q.id, 'Status:', q.status, 'Visible:', q.visible_to_client);
+  });
+
+  return {
+    success: true,
+    data: cotizaciones.map(cot => ({
+      id: cot.id,
+      status: normalizeStatus(cot.status), // Normalizar usando la función maestra
+      selected_by_prospect: cot.selected_by_prospect,
+      visible_to_client: cot.visible_to_client,
+    })),
+  };
+}
 
 export async function GET(
   request: NextRequest,
@@ -9,29 +57,33 @@ export async function GET(
   const { slug, promiseId } = await params;
 
   try {
-    const routeStateResult = await getPublicPromiseRouteState(slug, promiseId);
+    // Bypass cache: Consulta directa a la BD sin usar getPublicPromiseRouteState (que usa cache)
+    const routeStateResult = await getRouteStateDirect(slug, promiseId);
 
-    // ✅ CASO DE USO: Si no hay cotizaciones, redirigir a /pendientes para ver paquetes disponibles
+    // Si no hay cotizaciones, redirigir a /pendientes para ver paquetes disponibles
     if (!routeStateResult.success || !routeStateResult.data || routeStateResult.data.length === 0) {
-      console.log('[PromiseRedirectAPI] No hay cotizaciones, redirigiendo a /pendientes para ver paquetes');
       return NextResponse.json({ redirect: `/${slug}/promise/${promiseId}/pendientes` });
     }
 
     const cotizaciones = routeStateResult.data;
 
-    // Verificar si hay cotización aprobada
-    const cotizacionAprobada = cotizaciones.find(cot =>
-      cot.status === 'aprobada' || cot.status === 'autorizada' || cot.status === 'approved'
-    );
+    // 🔍 DIAGNÓSTICO: Log antes de llamar a determinePromiseRoute
+    console.log('🔍 [PromiseRedirectAPI] Cotizaciones antes de determinePromiseRoute:', cotizaciones.map(c => ({
+      id: c.id,
+      status: c.status,
+      visible_to_client: c.visible_to_client,
+      selected_by_prospect: c.selected_by_prospect,
+    })));
 
-    if (cotizacionAprobada) {
-      return NextResponse.json({ redirect: `/${slug}/cliente` });
-    }
-
-    // Determinar ruta
+    // Determinar ruta usando la función maestra (evalúa todas las cotizaciones y filtra por visibilidad)
+    // La función maestra decide la prioridad: Aprobada > Negociación > Cierre > Pendientes
+    // y aplica el filtro de visibilidad obligatorio
     const targetRoute = determinePromiseRoute(cotizaciones, slug, promiseId);
 
-    // determinePromiseRoute siempre devuelve una ruta válida (incluyendo /pendientes si no hay cotizaciones válidas)
+    // 🔍 DIAGNÓSTICO: Log de la ruta determinada
+    console.log('🔍 [PromiseRedirectAPI] Ruta determinada:', targetRoute);
+
+    // determinePromiseRoute siempre devuelve una ruta válida
     return NextResponse.json({ redirect: targetRoute });
   } catch (error) {
     console.error('[PromiseRedirectAPI] Error:', error);
