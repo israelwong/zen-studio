@@ -133,7 +133,7 @@ export function CotizacionesSection({
               <h2 className="text-xl md:text-3xl font-bold text-white flex items-center gap-2 flex-wrap">
                 {cotizacionesOrdenadas.length === 1 ? 'Cotización Personalizada' : 'Cotizaciones Personalizadas'}
                 {durationHours !== null && durationHours !== undefined && durationHours > 0 && (
-                  <ZenBadge variant="outline" className="text-[10px] px-2.5 py-1 text-zinc-400 border-zinc-700 bg-zinc-900/30 rounded-full">
+                  <ZenBadge variant="outline" className="text-[10px] px-2.5 py-1 text-emerald-400 border-emerald-500/30 bg-emerald-500/10 rounded-full">
                     {durationHours} {durationHours === 1 ? 'hora' : 'horas'}
                   </ZenBadge>
                 )}
