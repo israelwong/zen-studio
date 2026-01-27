@@ -12,13 +12,16 @@ import { SubscriptionPopover } from '../ui/SubscriptionPopover';
 import { SubscriptionBadge } from '@/components/shared/subscription/SubscriptionBadge';
 import { GoogleStatusPopover } from '@/components/shared/integrations/GoogleStatusPopover';
 import { useCommercialNameShort } from '@/hooks/usePlatformConfig';
-import { Calendar, CalendarCheck, ContactRound, Settings, AlarmClockCheck } from 'lucide-react';
+import { CalendarCheck, ContactRound, Settings } from 'lucide-react';
 import { useAgendaCount } from '@/hooks/useAgendaCount';
 import { useRemindersCount } from '@/hooks/useRemindersCount';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
-import { ZenBadge } from '@/components/ui/zen';
+import { AgendaPopover } from '@/components/shared/agenda/AgendaPopover';
+import { AlertsPopover } from '@/components/shared/reminders/AlertsPopover';
 import type { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
 import type { StorageStats } from '@/lib/actions/shared/calculate-storage.actions';
+import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
+import type { ReminderWithPromise } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 
 interface AppHeaderProps {
     studioSlug: string;
@@ -27,6 +30,8 @@ interface AppHeaderProps {
     initialAgendaCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
     initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
     initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+    initialAgendaEvents?: AgendaItem[]; // ✅ 6 eventos más próximos para AgendaPopover
+    initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios vencidos + hoy para AlertsPopover
     onCommandOpen?: () => void;
     onAgendaClick?: () => void;
     onTareasOperativasClick?: () => void;
@@ -42,6 +47,8 @@ export function AppHeader({
     initialAgendaCount = 0, // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
     initialRemindersCount = 0, // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
     initialHeaderUserId = null, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+    initialAgendaEvents = [], // ✅ 6 eventos más próximos
+    initialRemindersAlerts = [], // ✅ Recordatorios vencidos + hoy
     onCommandOpen,
     onAgendaClick,
     onTareasOperativasClick,
@@ -207,56 +214,30 @@ export function AppHeader({
                 {/* Grupo de Alertas (Recordatorios + Agenda) */}
                 {(onRemindersClick || onAgendaClick || onTareasOperativasClick) && (
                     <div className="flex items-center gap-1 rounded-full bg-zinc-950/60 px-1 ">
-                        {/* Recordatorios */}
+                        {/* Recordatorios - Popover */}
                         {onRemindersClick && (
                             <>
-                                <ZenButton
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                                    onClick={onRemindersClick}
-                                    title="Recordatorios"
-                                >
-                                    <AlarmClockCheck className="h-5 w-5" />
-                                    {remindersCount > 0 && (
-                                        <ZenBadge
-                                            variant="destructive"
-                                            size="sm"
-                                            className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
-                                        >
-                                            {remindersCount > 9 ? '9+' : remindersCount}
-                                        </ZenBadge>
-                                    )}
-                                    <span className="sr-only">Recordatorios</span>
-                                </ZenButton>
+                                <AlertsPopover
+                                    studioSlug={studioSlug}
+                                    initialAlerts={initialRemindersAlerts}
+                                    initialCount={remindersCount}
+                                    onRemindersClick={onRemindersClick}
+                                />
                                 {(onAgendaClick || onTareasOperativasClick) && (
                                     <div className="h-4 w-px bg-zinc-700/50" />
                                 )}
                             </>
                         )}
 
-                        {/* Agenda */}
+                        {/* Agenda - Popover */}
                         {onAgendaClick && (
                             <>
-                                <ZenButton
-                                    variant="ghost"
-                                    size="icon"
-                                    className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                                    onClick={onAgendaClick}
-                                    title="Agenda"
-                                >
-                                    <Calendar className="h-5 w-5" />
-                                    {agendaCount > 0 && (
-                                        <ZenBadge
-                                            variant="destructive"
-                                            size="sm"
-                                            className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
-                                        >
-                                            {agendaCount > 9 ? '9+' : agendaCount}
-                                        </ZenBadge>
-                                    )}
-                                    <span className="sr-only">Agenda</span>
-                                </ZenButton>
+                                <AgendaPopover
+                                    studioSlug={studioSlug}
+                                    initialEvents={initialAgendaEvents}
+                                    initialCount={agendaCount}
+                                    onAgendaClick={onAgendaClick}
+                                />
                                 {onTareasOperativasClick && (
                                     <div className="h-4 w-px bg-zinc-700/50" />
                                 )}

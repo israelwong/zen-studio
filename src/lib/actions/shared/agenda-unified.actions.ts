@@ -198,7 +198,8 @@ function obtenerMetadataAgenda(agenda: {
 }): Record<string, unknown> {
   // Si ya tiene metadata, retornarlo
   if (agenda.metadata && typeof agenda.metadata === 'object') {
-    return agenda.metadata as Record<string, unknown>;
+    const existingMetadata = agenda.metadata as Record<string, unknown>;
+    return existingMetadata;
   }
 
   // Calcular metadata dinámicamente
@@ -221,11 +222,13 @@ function obtenerMetadataAgenda(agenda: {
     isMainEventDate = eventMainDateOnly.getTime() === agendaDateOnly.getTime();
   }
 
-  return construirMetadataAgenda({
+  const calculatedMetadata = construirMetadataAgenda({
     contexto,
     type_scheduling: typeScheduling,
     isMainEventDate,
   });
+  
+  return calculatedMetadata;
 }
 
 // =============================================================================
@@ -380,6 +383,7 @@ export async function obtenerAgendaUnificada(
                 metadata: agenda.metadata,
                 eventos: agenda.eventos,
             });
+            
 
             // Normalizar fecha usando UTC antes de retornar para evitar problemas de zona horaria
             let fechaNormalizada: Date;
@@ -395,7 +399,7 @@ export async function obtenerAgendaUnificada(
                 fechaNormalizada = new Date();
             }
 
-            return {
+            const item = {
                 id: agenda.id,
                 date: fechaNormalizada,
                 time: agenda.time,
@@ -408,7 +412,7 @@ export async function obtenerAgendaUnificada(
                 contexto: (agenda.contexto as 'promise' | 'evento' | null) || null,
                 promise_id: agenda.promise_id,
                 evento_id: agenda.evento_id,
-                metadata: agenda.metadata as Record<string, unknown> | null,
+                metadata: metadata as Record<string, unknown> | null, // ✅ Usar metadata calculado, no el raw
                 created_at: agenda.created_at || null,
                 updated_at: agenda.updated_at || null,
                 contact_name: agenda.promise?.contact?.name || agenda.eventos?.contact?.name || null,
@@ -424,6 +428,8 @@ export async function obtenerAgendaUnificada(
                 is_pending_date: false,
                 is_main_event_date: isMainEventDate || false,
             };
+            
+            return item;
         });
 
         // Obtener todas las promesas con fechas de interés (solo las que NO están en etapa "approved")
@@ -479,10 +485,18 @@ export async function obtenerAgendaUnificada(
 
         // Crear un mapa de fechas de agendamiento por promesa (normalizar a fecha sin hora usando UTC)
         const agendaDatesByPromise = new Map<string, Set<string>>();
-        const promisesWithAgendaIds = new Set<string>(); // IDs de promesas que tienen agendamientos
+        const promisesWithAgendaIds = new Set<string>(); // IDs de promesas que tienen agendamientos (cualquier contexto)
+        
+        // Incluir promise_id de TODOS los agendamientos (tanto 'promise' como 'evento')
+        for (const agenda of agendasUnicas.values()) {
+            if (agenda.promise_id) {
+                promisesWithAgendaIds.add(agenda.promise_id);
+            }
+        }
+        
+        // También procesar agendasByPromise para el mapa de fechas
         for (const agenda of agendasByPromise) {
             if (agenda.promise_id && agenda.date) {
-                promisesWithAgendaIds.add(agenda.promise_id);
                 const date = new Date(agenda.date);
                 // Normalizar usando UTC para evitar problemas de zona horaria
                 const dateKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
@@ -532,7 +546,7 @@ export async function obtenerAgendaUnificada(
                         const todayKey = `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, '0')}-${String(today.getUTCDate()).padStart(2, '0')}`;
                         const isExpired = dateKey < todayKey;
 
-                        pendingDateItems.push({
+                        const pendingItem: AgendaItem = {
                             id: `pending-${promise.id}-${dateKey}`,
                             date,
                             time: null,
@@ -558,7 +572,20 @@ export async function obtenerAgendaUnificada(
                             evento_status: null,
                             is_pending_date: true,
                             is_expired: isExpired,
+                        };
+                        
+                        // Calcular metadata para el item
+                        pendingItem.metadata = obtenerMetadataAgenda({
+                            contexto: pendingItem.contexto,
+                            type_scheduling: pendingItem.type_scheduling,
+                            evento_id: pendingItem.evento_id,
+                            promise_id: pendingItem.promise_id,
+                            date: pendingItem.date,
+                            metadata: pendingItem.metadata,
+                            eventos: [],
                         });
+                        
+                        pendingDateItems.push(pendingItem);
                     }
                 }
             }
@@ -631,7 +658,7 @@ export async function obtenerAgendaUnificada(
                     12, 0, 0
                 ));
 
-                confirmedEventDateItems.push({
+                const confirmedItem: AgendaItem = {
                     id: `confirmed-${promise.id}-${eventDateKey}`,
                     date: fechaNormalizada,
                     time: null,
@@ -658,7 +685,20 @@ export async function obtenerAgendaUnificada(
                     is_pending_date: false,
                     is_confirmed_event_date: true,
                     is_expired: isExpired,
+                };
+                
+                // Calcular metadata para el item
+                confirmedItem.metadata = obtenerMetadataAgenda({
+                    contexto: confirmedItem.contexto,
+                    type_scheduling: confirmedItem.type_scheduling,
+                    evento_id: confirmedItem.evento_id,
+                    promise_id: confirmedItem.promise_id,
+                    date: confirmedItem.date,
+                    metadata: confirmedItem.metadata,
+                    eventos: [],
                 });
+                
+                confirmedEventDateItems.push(confirmedItem);
             }
         }
 
@@ -668,6 +708,19 @@ export async function obtenerAgendaUnificada(
         // Eliminar duplicados finales: mismo promise_id/evento_id + misma fecha normalizada
         const itemsUnicos = new Map<string, AgendaItem>();
         for (const item of allItems) {
+            // Asegurar que el item tenga metadata
+            if (!item.metadata || (typeof item.metadata === 'object' && Object.keys(item.metadata).length === 0)) {
+                item.metadata = obtenerMetadataAgenda({
+                    contexto: item.contexto,
+                    type_scheduling: item.type_scheduling,
+                    evento_id: item.evento_id,
+                    promise_id: item.promise_id,
+                    date: item.date,
+                    metadata: item.metadata,
+                    eventos: [],
+                });
+            }
+            
             // Crear clave única basada en contexto, ID y fecha normalizada usando UTC
             const fechaNormalizada = item.date instanceof Date ? item.date : new Date(item.date);
             const fechaKey = `${fechaNormalizada.getUTCFullYear()}-${String(fechaNormalizada.getUTCMonth() + 1).padStart(2, '0')}-${String(fechaNormalizada.getUTCDate()).padStart(2, '0')}`;
@@ -692,13 +745,30 @@ export async function obtenerAgendaUnificada(
             }
         }
 
+        const finalItems = Array.from(itemsUnicos.values()).sort((a, b) => {
+            const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
+            const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
+            return dateA - dateB;
+        });
+
+        // Verificación final: asegurar que todos los items tengan metadata válido
+        for (const item of finalItems) {
+            if (!item.metadata || (typeof item.metadata === 'object' && (!item.metadata.agenda_type))) {
+                item.metadata = obtenerMetadataAgenda({
+                    contexto: item.contexto,
+                    type_scheduling: item.type_scheduling,
+                    evento_id: item.evento_id,
+                    promise_id: item.promise_id,
+                    date: item.date,
+                    metadata: item.metadata,
+                    eventos: [],
+                });
+            }
+        }
+
         return {
             success: true,
-            data: Array.from(itemsUnicos.values()).sort((a, b) => {
-                const dateA = a.date instanceof Date ? a.date.getTime() : new Date(a.date).getTime();
-                const dateB = b.date instanceof Date ? b.date.getTime() : new Date(b.date).getTime();
-                return dateA - dateB;
-            }),
+            data: finalItems,
         };
     } catch (error) {
         console.error('[AGENDA_UNIFIED] Error obteniendo agenda:', error);
@@ -1097,6 +1167,48 @@ export async function crearAgendamiento(
             }
         }
 
+        // Calcular metadata automáticamente si no se proporciona
+        let metadataToSave: Prisma.InputJsonValue | undefined;
+        if (validatedData.metadata) {
+            metadataToSave = validatedData.metadata as Prisma.InputJsonValue;
+        } else {
+            // Calcular metadata basándose en contexto y type_scheduling
+            // Necesitamos determinar si es fecha principal del evento para eventos
+            let isMainEventDate = false;
+            if (validatedData.contexto === 'evento' && validatedData.evento_id) {
+                const evento = await prisma.studio_events.findUnique({
+                    where: { id: validatedData.evento_id },
+                    select: {
+                        promise: {
+                            select: {
+                                event_date: true,
+                            },
+                        },
+                    },
+                });
+                if (evento?.promise?.event_date && validatedData.date) {
+                    const eventMainDateOnly = new Date(Date.UTC(
+                        new Date(evento.promise.event_date).getUTCFullYear(),
+                        new Date(evento.promise.event_date).getUTCMonth(),
+                        new Date(evento.promise.event_date).getUTCDate()
+                    ));
+                    const agendaDateOnly = new Date(Date.UTC(
+                        new Date(validatedData.date).getUTCFullYear(),
+                        new Date(validatedData.date).getUTCMonth(),
+                        new Date(validatedData.date).getUTCDate()
+                    ));
+                    isMainEventDate = eventMainDateOnly.getTime() === agendaDateOnly.getTime();
+                }
+            }
+            
+            const calculatedMetadata = construirMetadataAgenda({
+                contexto: validatedData.contexto,
+                type_scheduling: validatedData.type_scheduling || null,
+                isMainEventDate,
+            });
+            metadataToSave = calculatedMetadata as Prisma.InputJsonValue;
+        }
+
         const agenda = await prisma.studio_agenda.create({
             data: {
                 studio_id: studio.id,
@@ -1112,7 +1224,7 @@ export async function crearAgendamiento(
                 type_scheduling: validatedData.type_scheduling || null,
                 agenda_tipo: validatedData.agenda_tipo || null,
                 user_id: validatedData.user_id || null,
-                metadata: validatedData.metadata ? (validatedData.metadata as Prisma.InputJsonValue) : undefined,
+                metadata: metadataToSave,
                 status: 'pendiente',
             },
             include: {
@@ -1177,7 +1289,22 @@ export async function crearAgendamiento(
             contexto: (agenda.contexto as 'promise' | 'evento' | null) || null,
             promise_id: agenda.promise_id,
             evento_id: agenda.evento_id,
-            metadata: agenda.metadata as Record<string, unknown> | null,
+            metadata: (() => {
+                // Asegurar que el metadata esté presente (si no está, calcularlo)
+                let itemMetadata: Record<string, unknown> | null = agenda.metadata as Record<string, unknown> | null;
+                if (!itemMetadata || (typeof itemMetadata === 'object' && !itemMetadata.agenda_type)) {
+                    itemMetadata = obtenerMetadataAgenda({
+                        contexto: agenda.contexto,
+                        type_scheduling: agenda.type_scheduling,
+                        evento_id: agenda.evento_id,
+                        promise_id: agenda.promise_id,
+                        date: agenda.date,
+                        metadata: agenda.metadata,
+                        eventos: agenda.eventos,
+                    });
+                }
+                return itemMetadata;
+            })(),
             created_at: agenda.created_at || null,
             updated_at: agenda.updated_at || null,
             // @ts-expect-error - Prisma includes relations but TypeScript doesn't infer them
@@ -1720,7 +1847,8 @@ export async function eliminarAgendamiento(
 }
 
 /**
- * Obtener conteo de agendamientos futuros
+ * Obtener conteo de agendamientos futuros (excluyendo promesas de evento - event_date)
+ * Solo cuenta: citas comerciales, citas de eventos y fechas de eventos
  */
 export async function getAgendaCount(studioSlug: string): Promise<{
     success: boolean;
@@ -1740,16 +1868,59 @@ export async function getAgendaCount(studioSlug: string): Promise<{
         const now = new Date();
         now.setHours(0, 0, 0, 0);
 
-        const count = await prisma.studio_agenda.count({
+        // Obtener todas las agendas futuras para filtrar
+        const agendas = await prisma.studio_agenda.findMany({
             where: {
                 studio_id: studio.id,
                 date: {
                     gte: now,
                 },
             },
+            select: {
+                id: true,
+                contexto: true,
+                type_scheduling: true,
+                metadata: true,
+            },
         });
 
-        return { success: true, count };
+        // Filtrar usando la misma lógica que getCachedAgendaEvents
+        const filteredCount = agendas.filter(agenda => {
+            // Estrategia de filtrado: verificar metadata primero, luego contexto
+            const metadata = agenda.metadata as Record<string, unknown> | null;
+            const agendaType = metadata?.agenda_type as string | undefined;
+            
+            // 1. Si tiene metadata con agenda_type, usarlo directamente
+            if (agendaType) {
+                // Excluir solo event_date (fechas de promesa sin cita)
+                if (agendaType === 'event_date') {
+                    return false;
+                }
+                // Incluir todos los demás tipos: commercial_appointment, main_event_date, event_appointment, scheduler_task
+                return true;
+            }
+            
+            // 2. Si no tiene metadata, calcular basado en contexto y type_scheduling
+            // Promesa sin type_scheduling = fecha de evento (excluir)
+            if (agenda.contexto === 'promise' && !agenda.type_scheduling) {
+                return false;
+            }
+            
+            // Promesa con type_scheduling = cita comercial (incluir)
+            if (agenda.contexto === 'promise' && agenda.type_scheduling) {
+                return true;
+            }
+            
+            // Todos los eventos se incluyen
+            if (agenda.contexto === 'evento') {
+                return true;
+            }
+            
+            // Por seguridad, excluir otros casos
+            return false;
+        }).length;
+
+        return { success: true, count: filteredCount };
     } catch (error) {
         console.error('[AGENDA] Error obteniendo conteo:', error);
         return { success: false, error: 'Error interno del servidor' };

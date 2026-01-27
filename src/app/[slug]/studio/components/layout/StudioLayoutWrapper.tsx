@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { StudioSidebar } from '../sidebar/StudioSidebar';
 import { AppHeader } from '../header/AppHeader';
+import { HeaderDataLoader } from './HeaderDataLoader';
 import { ZenMagicChatWrapper } from '../ZenMagic';
 import { CommandMenu } from '../tools/CommandMenu';
 import { useZenMagicChat } from '../ZenMagic';
@@ -26,6 +27,8 @@ import { TipoEventoManagementModal } from '@/components/shared/tipos-evento/Tipo
 
 import type { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
 import type { StorageStats } from '@/lib/actions/shared/calculate-storage.actions';
+import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
+import type { ReminderWithPromise } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 
 interface StudioLayoutWrapperProps {
   studioSlug: string;
@@ -35,6 +38,8 @@ interface StudioLayoutWrapperProps {
   initialAgendaCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
   initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
   initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+  initialAgendaEvents?: AgendaItem[]; // ✅ 6 eventos más próximos para AgendaPopover
+  initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios vencidos + hoy para AlertsPopover
 }
 
 function StudioLayoutContent({
@@ -45,8 +50,19 @@ function StudioLayoutContent({
   initialAgendaCount = 0, // ✅ PASO 4: Pre-cargado en servidor
   initialRemindersCount = 0, // ✅ PASO 4: Pre-cargado en servidor
   initialHeaderUserId = null, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+  initialAgendaEvents = [], // ✅ 6 eventos más próximos
+  initialRemindersAlerts = [], // ✅ Recordatorios vencidos + hoy
 }: StudioLayoutWrapperProps) {
   const pathname = usePathname();
+  
+  // ✅ OPTIMIZACIÓN: Estado para datos cargados en el cliente
+  const [headerData, setHeaderData] = useState({
+    headerUserId: initialHeaderUserId,
+    agendaCount: initialAgendaCount,
+    remindersCount: initialRemindersCount,
+    agendaEvents: initialAgendaEvents,
+    remindersAlerts: initialRemindersAlerts,
+  });
   const { toggleChat } = useZenMagicChat();
   const { isOpen: contactsOpen, openContactsSheet, closeContactsSheet, initialContactId } = useContactsSheet();
   const promisesConfig = usePromisesConfig();
@@ -269,15 +285,23 @@ function StudioLayoutContent({
           studioSlug={studioSlug}
           initialIdentidadData={initialIdentidadData} // ✅ OPTIMIZACIÓN: Pasar datos pre-cargados
           initialStorageData={initialStorageData} // ✅ OPTIMIZACIÓN: Pasar storage pre-calculado
-          initialAgendaCount={initialAgendaCount} // ✅ PASO 4: Pre-cargado en servidor (eliminar POST)
-          initialRemindersCount={initialRemindersCount} // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs)
-          initialHeaderUserId={initialHeaderUserId} // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+          initialAgendaCount={headerData.agendaCount} // ✅ Cargado en cliente después del primer render
+          initialRemindersCount={headerData.remindersCount} // ✅ Cargado en cliente después del primer render
+          initialHeaderUserId={headerData.headerUserId} // ✅ Cargado en cliente después del primer render
+          initialAgendaEvents={headerData.agendaEvents} // ✅ Cargado en cliente después del primer render
+          initialRemindersAlerts={headerData.remindersAlerts} // ✅ Cargado en cliente después del primer render
           onCommandOpen={() => setCommandOpen(true)}
           onAgendaClick={handleAgendaClick}
           onTareasOperativasClick={handleTareasOperativasClick}
           onContactsClick={handleContactsClick}
           onRemindersClick={handleRemindersClick}
           onPromisesConfigClick={handlePromisesConfigClick}
+        />
+        
+        {/* ✅ OPTIMIZACIÓN: Cargar datos no críticos después del primer render */}
+        <HeaderDataLoader 
+          studioSlug={studioSlug} 
+          onDataLoaded={setHeaderData}
         />
 
         {/* Container: Sidebar + Main Content */}
@@ -416,6 +440,8 @@ export function StudioLayoutWrapper({
   initialAgendaCount, // ✅ PASO 4: Pre-cargado en servidor
   initialRemindersCount, // ✅ PASO 4: Pre-cargado en servidor
   initialHeaderUserId, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+  initialAgendaEvents, // ✅ 6 eventos más próximos
+  initialRemindersAlerts, // ✅ Recordatorios vencidos + hoy
 }: StudioLayoutWrapperProps) {
   return (
     <PromisesConfigProvider>
@@ -426,6 +452,8 @@ export function StudioLayoutWrapper({
         initialAgendaCount={initialAgendaCount} // ✅ PASO 4: Pre-cargado en servidor
         initialRemindersCount={initialRemindersCount} // ✅ PASO 4: Pre-cargado en servidor
         initialHeaderUserId={initialHeaderUserId} // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
+        initialAgendaEvents={initialAgendaEvents} // ✅ 6 eventos más próximos
+        initialRemindersAlerts={initialRemindersAlerts} // ✅ Recordatorios vencidos + hoy
       >
         {children}
       </StudioLayoutContent>
