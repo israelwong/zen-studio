@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { determinePromiseRoute, normalizeStatus } from '@/lib/utils/public-promise-routing';
 
 interface ActionResponse<T> {
   success: boolean;
@@ -21,6 +22,54 @@ function generateShortCode(): string {
   }
   
   return code;
+}
+
+/**
+ * Obtener información completa del short URL (incluye original_url)
+ */
+export async function getShortUrlInfo(
+  studioSlug: string,
+  promiseId: string
+): Promise<ActionResponse<{ shortCode: string; originalUrl: string }>> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const shortUrl = await prisma.studio_short_urls.findFirst({
+      where: {
+        studio_id: studio.id,
+        promise_id: promiseId,
+      },
+      select: {
+        short_code: true,
+        original_url: true,
+      },
+    });
+
+    if (!shortUrl) {
+      return { success: false, error: 'Short URL no encontrado' };
+    }
+
+    return {
+      success: true,
+      data: {
+        shortCode: shortUrl.short_code,
+        originalUrl: shortUrl.original_url,
+      },
+    };
+  } catch (error) {
+    console.error('[SHORT_URL] Error obteniendo información:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener información',
+    };
+  }
 }
 
 /**
@@ -221,6 +270,117 @@ export async function getOrCreatePostShortUrl(
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Error al generar URL corta',
+    };
+  }
+}
+
+/**
+ * Sincronizar la ruta del short URL según el estado actual de las cotizaciones
+ * Actualiza el original_url para que apunte a la sub-ruta correcta según determinePromiseRoute
+ */
+export async function syncShortUrlRoute(
+  studioSlug: string,
+  promiseId: string
+): Promise<ActionResponse<{ updated: boolean; targetRoute: string }>> {
+  try {
+    // Obtener studio
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    // Verificar que existe la promesa
+    const promise = await prisma.studio_promises.findUnique({
+      where: { id: promiseId },
+      select: { id: true, studio_id: true },
+    });
+
+    if (!promise) {
+      return { success: false, error: 'Promesa no encontrada' };
+    }
+
+    if (promise.studio_id !== studio.id) {
+      return { success: false, error: 'La promesa no pertenece al studio' };
+    }
+
+    // Buscar el short URL asociado a esta promesa
+    const shortUrl = await prisma.studio_short_urls.findFirst({
+      where: {
+        studio_id: studio.id,
+        promise_id: promiseId,
+      },
+      select: {
+        id: true,
+        original_url: true,
+      },
+    });
+
+    // Si no existe short URL, no hay nada que sincronizar
+    if (!shortUrl) {
+      return {
+        success: true,
+        data: { updated: false, targetRoute: '' },
+      };
+    }
+
+    // Obtener todas las cotizaciones de la promesa para calcular la ruta
+    const cotizaciones = await prisma.studio_cotizaciones.findMany({
+      where: {
+        promise_id: promiseId,
+        studio_id: studio.id,
+        status: {
+          in: ['pendiente', 'negociacion', 'en_cierre', 'cierre', 'aprobada', 'autorizada', 'approved', 'contract_generated', 'contract_signed'],
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        selected_by_prospect: true,
+        visible_to_client: true,
+        evento_id: true,
+      },
+    });
+
+    // Calcular la ruta objetivo usando determinePromiseRoute
+    const cotizacionesFormatted = cotizaciones.map(cot => ({
+      id: cot.id,
+      status: normalizeStatus(cot.status),
+      selected_by_prospect: cot.selected_by_prospect,
+      visible_to_client: cot.visible_to_client,
+      evento_id: cot.evento_id,
+    }));
+
+    const targetRoute = determinePromiseRoute(cotizacionesFormatted, studioSlug, promiseId);
+
+    // Si la ruta no cambió, no actualizar
+    if (shortUrl.original_url === targetRoute) {
+      return {
+        success: true,
+        data: { updated: false, targetRoute },
+      };
+    }
+
+    // Actualizar el original_url
+    await prisma.studio_short_urls.update({
+      where: { id: shortUrl.id },
+      data: {
+        original_url: targetRoute,
+      },
+    });
+
+    return {
+      success: true,
+      data: { updated: true, targetRoute },
+    };
+  } catch (error) {
+    console.error('[SHORT_URL] Error sincronizando ruta:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al sincronizar ruta',
     };
   }
 }

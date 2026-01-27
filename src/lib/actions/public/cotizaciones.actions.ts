@@ -269,6 +269,12 @@ export async function autorizarCotizacionPublica(
     revalidateTag(`public-promise-negociacion-${studioSlug}-${promiseId}`, 'max');
     revalidateTag(`public-promise-cierre-${studioSlug}-${promiseId}`, 'max');
 
+    // Sincronizar short URL según nuevo estado
+    const { syncShortUrlRoute } = await import('../studio/commercial/promises/promise-short-url.actions');
+    await syncShortUrlRoute(studioSlug, promiseId).catch((error) => {
+      console.error('[autorizarCotizacionPublica] Error sincronizando short URL:', error);
+    });
+
     // 4. Calcular precio final con descuentos y anticipos
     const formatPrice = (price: number) => {
       return new Intl.NumberFormat('es-MX', {
