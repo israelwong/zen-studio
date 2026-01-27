@@ -17,9 +17,16 @@ import { useAgendaCount } from '@/hooks/useAgendaCount';
 import { useRemindersCount } from '@/hooks/useRemindersCount';
 import { obtenerEstadoConexion } from '@/lib/integrations/google';
 import { ZenBadge } from '@/components/ui/zen';
+import type { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
+import type { StorageStats } from '@/lib/actions/shared/calculate-storage.actions';
 
 interface AppHeaderProps {
     studioSlug: string;
+    initialIdentidadData?: IdentidadData | null; // ✅ OPTIMIZACIÓN: Datos pre-cargados del servidor
+    initialStorageData?: StorageStats | null; // ✅ OPTIMIZACIÓN: Storage pre-calculado del servidor
+    initialAgendaCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
+    initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
+    initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
     onCommandOpen?: () => void;
     onAgendaClick?: () => void;
     onTareasOperativasClick?: () => void;
@@ -30,6 +37,11 @@ interface AppHeaderProps {
 
 export function AppHeader({
     studioSlug,
+    initialIdentidadData, // ✅ OPTIMIZACIÓN: Usar datos pre-cargados
+    initialStorageData, // ✅ OPTIMIZACIÓN: Usar storage pre-calculado
+    initialAgendaCount = 0, // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
+    initialRemindersCount = 0, // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
+    initialHeaderUserId = null, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
     onCommandOpen,
     onAgendaClick,
     onTareasOperativasClick,
@@ -40,58 +52,36 @@ export function AppHeader({
     const [isMounted, setIsMounted] = useState(false);
     const [hasGoogleCalendar, setHasGoogleCalendar] = useState(false);
     const { toggleSidebar } = useZenSidebar();
-    const { identidadData } = useStudioData({ studioSlug });
+    // ✅ OPTIMIZACIÓN: Solo llamar useStudioData si no hay datos iniciales
+    const { identidadData: hookIdentidadData } = useStudioData({ 
+        studioSlug,
+        enabled: !initialIdentidadData, // Solo cargar si no hay datos iniciales
+    });
+    // ✅ OPTIMIZACIÓN: Usar datos pre-cargados del servidor primero
+    const identidadData = initialIdentidadData || hookIdentidadData;
     const commercialNameShort = useCommercialNameShort();
-    const { count: agendaCount } = useAgendaCount({ studioSlug, enabled: isMounted });
-    const { count: remindersCount } = useRemindersCount({ studioSlug, enabled: isMounted });
+    // ✅ PASO 4: Usar conteos pre-cargados del servidor (eliminar POSTs del cliente)
+    const { count: hookAgendaCount } = useAgendaCount({ studioSlug, enabled: isMounted && initialAgendaCount === undefined });
+    const { count: hookRemindersCount } = useRemindersCount({ studioSlug, enabled: isMounted && initialRemindersCount === undefined });
+    const agendaCount = initialAgendaCount !== undefined ? initialAgendaCount : hookAgendaCount;
+    const remindersCount = initialRemindersCount !== undefined ? initialRemindersCount : hookRemindersCount;
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
+    // ✅ PASO 4: NO llamar obtenerEstadoConexion en mount (solo cuando se abre el popover)
+    // GoogleStatusPopover maneja su propia carga cuando se abre
     useEffect(() => {
-        if (!isMounted) return;
-
-        let isMountedRef = true;
-
-        const checkConnection = () => {
-            if (!isMountedRef) return;
-
-            obtenerEstadoConexion(studioSlug)
-                .then((result) => {
-                    if (!isMountedRef) return;
-
-                    if (result.success && result.isConnected) {
-                        const hasCalendarScope =
-                            result.scopes?.some(
-                                (scope) =>
-                                    scope.includes('calendar') || scope.includes('calendar.events')
-                            ) || false;
-                        setHasGoogleCalendar(hasCalendarScope);
-                    } else {
-                        setHasGoogleCalendar(false);
-                    }
-                })
-                .catch(() => {
-                    if (!isMountedRef) return;
-                    setHasGoogleCalendar(false);
-                });
-        };
-
-        checkConnection();
-
+        // Solo escuchar eventos de cambio de conexión, NO hacer POST en mount
         const handleConnectionChange = () => {
-            if (isMountedRef) {
-                checkConnection();
-            }
+            // El popover se actualizará cuando se abra
         };
         window.addEventListener('google-calendar-connection-changed', handleConnectionChange);
-
         return () => {
-            isMountedRef = false;
             window.removeEventListener('google-calendar-connection-changed', handleConnectionChange);
         };
-    }, [isMounted, studioSlug]);
+    }, []);
 
     return (
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/95 px-4 backdrop-blur-sm">
@@ -160,7 +150,10 @@ export function AppHeader({
 
                 {/* Badge de Almacenamiento - oculto en mobile */}
                 <div className="hidden md:block">
-                    <StorageBadge studioSlug={studioSlug} />
+                    <StorageBadge 
+                        studioSlug={studioSlug} 
+                        initialStorageData={initialStorageData} // ✅ OPTIMIZACIÓN: Pasar datos pre-calculados
+                    />
                 </div>
 
                 {/* Divider */}
@@ -290,7 +283,10 @@ export function AppHeader({
                 {/* <div className="h-6 w-px bg-zinc-700" /> */}
 
                 {/* Notificaciones */}
-                <NotificationsDropdown studioSlug={studioSlug} />
+                <NotificationsDropdown 
+                  studioSlug={studioSlug} 
+                  initialUserId={initialHeaderUserId} // ✅ PASO 4: Pasar userId del servidor (eliminar POST)
+                />
 
                 {/* Divider */}
                 <div className="h-6 w-px bg-zinc-700" />

@@ -58,28 +58,47 @@ export async function getPromises(
       };
     }
 
-    const total = await prisma.studio_promises.count({ where });
-
-    const promises = await prisma.studio_promises.findMany({
+    // ✅ OPTIMIZACIÓN: Medir tiempo de consultas
+    const timeLabelTotal = `GET_PROMISES_TOTAL_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.time(timeLabelTotal);
+    
+    // ✅ PASO 3: Unificar queries - Ejecutar count() y findMany() en paralelo
+    const timeLabelCount = `GET_PROMISES_COUNT_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.time(timeLabelCount);
+    const countPromise = prisma.studio_promises.count({ 
       where,
-      include: {
+      // ✅ Usará el índice idx_studio_promises_kanban_master (studio_id, pipeline_stage_id, is_test)
+    });
+
+    // ✅ OPTIMIZACIÓN CRÍTICA: Solo traer campos necesarios para el Kanban
+    const timeLabelQuery = `GET_PROMISES_QUERY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.time(timeLabelQuery);
+    const promisesPromise = prisma.studio_promises.findMany({
+      where,
+      select: {
+        // ✅ Campos básicos de la promesa
+        id: true,
+        studio_id: true,
+        name: true,
+        event_date: true,
+        defined_date: true,
+        tentative_dates: true,
+        event_location: true,
+        duration_hours: true,
+        pipeline_stage_id: true,
+        event_type_id: true,
+        is_test: true,
+        updated_at: true,
+        // ✅ Contact: Solo campos usados en la card
         contact: {
           select: {
             id: true,
             name: true,
-            phone: true,
-            email: true,
-            address: true,
             avatar_url: true,
-            status: true,
-            acquisition_channel_id: true,
-            social_network_id: true,
-            referrer_contact_id: true,
-            referrer_name: true,
-            created_at: true,
-            updated_at: true,
+            updated_at: true, // Para "Últ. interacción"
           },
         },
+        // ✅ Pipeline stage: Solo campos usados
         pipeline_stage: {
           select: {
             id: true,
@@ -89,18 +108,20 @@ export async function getPromises(
             order: true,
           },
         },
+        // ✅ Event type: Solo nombre
         event_type: {
           select: {
             id: true,
             name: true,
           },
         },
+        // ✅ Event: Solo para validación (no se muestra en card)
         event: {
           select: {
             id: true,
             status: true,
-            promise_id: true, // Incluir promise_id para validación explícita
-            cotizacion_id: true, // Incluir cotizacion_id para validar que tenga cotización autorizada
+            promise_id: true,
+            cotizacion_id: true,
             cotizacion: {
               select: {
                 id: true,
@@ -109,6 +130,7 @@ export async function getPromises(
             },
           },
         },
+        // ✅ Logs: Solo el último (usado en card)
         logs: {
           orderBy: { created_at: 'desc' },
           take: 1,
@@ -118,33 +140,36 @@ export async function getPromises(
             created_at: true,
           },
         },
+        // ✅ Tags: Solo campos usados en card (id, name, color)
         tags: {
-          include: {
+          where: {
+            tag: {
+              is_active: true, // Solo tags activos
+            },
+          },
+          select: {
             tag: {
               select: {
                 id: true,
                 name: true,
-                slug: true,
                 color: true,
-                description: true,
-                order: true,
-                is_active: true,
-                created_at: true,
-                updated_at: true,
+                slug: true, // Para filtrado si es necesario
               },
             },
           },
           orderBy: { created_at: 'asc' },
         },
+        // ✅ Quotes: Solo count (no necesitamos los objetos completos)
         quotes: {
           where: {
             archived: false,
             status: { not: 'archivada' },
           },
           select: {
-            id: true,
+            id: true, // Solo para contar
           },
         },
+        // ✅ Agenda: Solo el último con campos mínimos (usado en card)
         agenda: {
           select: {
             id: true,
@@ -157,18 +182,37 @@ export async function getPromises(
           },
           orderBy: { date: 'desc' },
           take: 1,
+          // ✅ OPTIMIZACIÓN: No traer relaciones pesadas de agenda
         },
+        // ✅ Offer: Solo campos usados en card
         offer: {
           select: {
             id: true,
             name: true,
-            slug: true,
             business_term: {
               select: {
-                id: true,
-                name: true,
                 discount_percentage: true,
                 advance_percentage: true,
+              },
+            },
+          },
+        },
+        // ✅ Reminder: Traer siempre (filtrar por is_completed en el mapeo para mejor performance)
+        reminder: {
+          select: {
+            id: true,
+            subject_id: true,
+            subject_text: true,
+            description: true,
+            reminder_date: true,
+            is_completed: true,
+            completed_at: true,
+            created_at: true,
+            updated_at: true,
+            subject: {
+              select: {
+                id: true,
+                text: true,
               },
             },
           },
@@ -179,22 +223,32 @@ export async function getPromises(
       take: limit,
     });
 
-    // Mapear promesas a PromiseWithContact
+    // ✅ PASO 3: Ejecutar ambas queries en paralelo (Promise.all)
+    const [promises, total] = await Promise.all([
+      promisesPromise,
+      countPromise,
+    ]);
+    
+    console.timeEnd(timeLabelQuery);
+    console.timeEnd(timeLabelCount);
+    console.timeEnd(timeLabelTotal);
+
+    // ✅ OPTIMIZACIÓN: Mapear promesas a PromiseWithContact
+    const timeLabelMap = `GET_PROMISES_MAP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.time(timeLabelMap);
     const mappedPromises = promises.map((promise): PromiseWithContact => {
-      // Mapear tags activos
-      const tags = promise.tags
-        ?.filter((pt) => pt.tag.is_active)
-        .map((pt) => ({
-          id: pt.tag.id,
-          name: pt.tag.name,
-          slug: pt.tag.slug,
-          color: pt.tag.color,
-          description: pt.tag.description,
-          order: pt.tag.order,
-          is_active: pt.tag.is_active,
-          created_at: pt.tag.created_at,
-          updated_at: pt.tag.updated_at,
-        })) || [];
+      // ✅ Mapear tags (ya filtrados por is_active en la query)
+      const tags = promise.tags?.map((pt) => ({
+        id: pt.tag.id,
+        name: pt.tag.name,
+        slug: pt.tag.slug,
+        color: pt.tag.color,
+        description: null, // No se usa en card
+        order: 0, // No se usa en card
+        is_active: true, // Ya filtrado
+        created_at: new Date(), // No se usa en card
+        updated_at: new Date(), // No se usa en card
+      })) || [];
 
       // Validar que el evento realmente pertenezca a esta promesa Y tenga cotización autorizada
       // Un evento solo es válido si tiene una cotización autorizada/aprobada asociada
@@ -225,11 +279,11 @@ export async function getPromises(
         promise_id: promise.id,
         studio_id: promise.studio_id,
         name: promise.contact.name,
-        phone: promise.contact.phone,
-        email: promise.contact.email,
-        address: promise.contact.address || null,
+        phone: '', // ✅ No se usa en card del kanban - valor por defecto
+        email: null, // ✅ No se usa en card del kanban
+        address: null, // ✅ No se usa en card del kanban
         avatar_url: promise.contact.avatar_url,
-        status: promise.contact.status,
+        status: 'prospecto', // ✅ No se usa en card del kanban - valor por defecto
         event_type_id: promise.event_type_id,
         event_name: promise.name || null,
         event_location: promise.event_location || null,
@@ -238,8 +292,6 @@ export async function getPromises(
           ? (promise.tentative_dates as string[])
           : null,
         // Normalizar event_date: convertir Date a string YYYY-MM-DD antes de serializar
-        // Esto evita problemas cuando Next.js serializa Date objects a ISO strings
-        // El cliente recibirá un string puro que puede parsear directamente
         event_date: promise.event_date
           ? dateToDateOnlyString(promise.event_date)
           : null,
@@ -249,12 +301,12 @@ export async function getPromises(
           : null,
         promise_pipeline_stage_id: promise.pipeline_stage_id,
         is_test: promise.is_test || false,
-        acquisition_channel_id: promise.contact.acquisition_channel_id,
-        social_network_id: promise.contact.social_network_id,
-        referrer_contact_id: promise.contact.referrer_contact_id,
-        referrer_name: promise.contact.referrer_name,
-        created_at: promise.contact.created_at,
-        updated_at: promise.updated_at,
+        acquisition_channel_id: null, // ✅ No se usa en card del kanban
+        social_network_id: null, // ✅ No se usa en card del kanban
+        referrer_contact_id: null, // ✅ No se usa en card del kanban
+        referrer_name: null, // ✅ No se usa en card del kanban
+        created_at: promise.contact.updated_at || promise.updated_at || new Date(), // ✅ Valor por defecto
+        updated_at: promise.contact.updated_at || promise.updated_at, // Usado para "Últ. interacción"
         event_type: promise.event_type || null,
         promise_pipeline_stage: promise.pipeline_stage || null,
         last_log: promise.logs?.[0] || null,
@@ -265,16 +317,35 @@ export async function getPromises(
         offer: promise.offer ? {
           id: promise.offer.id,
           name: promise.offer.name,
-          slug: promise.offer.slug,
+          slug: '', // No se usa en card
           business_term: promise.offer.business_term ? {
-            id: promise.offer.business_term.id,
-            name: promise.offer.business_term.name,
+            id: '', // No se usa en card
+            name: '', // No se usa en card
             discount_percentage: promise.offer.business_term.discount_percentage,
             advance_percentage: promise.offer.business_term.advance_percentage,
           } : null,
         } : null,
+        // ✅ Reminder: Incluir solo si existe y NO está completado (filtrar en mapeo)
+        reminder: promise.reminder && !promise.reminder.is_completed ? {
+          id: promise.reminder.id,
+          studio_id: promise.studio_id,
+          promise_id: promise.id,
+          subject_id: promise.reminder.subject_id,
+          subject_text: promise.reminder.subject_text,
+          description: promise.reminder.description,
+          reminder_date: promise.reminder.reminder_date,
+          is_completed: promise.reminder.is_completed,
+          completed_at: promise.reminder.completed_at,
+          completed_by_user_id: null, // No se usa en card
+          metadata: null, // No se usa en card
+          created_at: promise.reminder.created_at,
+          updated_at: promise.reminder.updated_at,
+          subject: promise.reminder.subject,
+          completed_by: null, // No se usa en card
+        } : null,
       };
     });
+    console.timeEnd(timeLabelMap);
 
     return {
       success: true,

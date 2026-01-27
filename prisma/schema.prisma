@@ -1375,6 +1375,8 @@ model studio_promises {
   @@index([offer_id])
   @@index([pipeline_stage_id])
   @@index([event_date])
+  // ✅ PASO 1: Índice maestro para optimizar count() y queries del Kanban
+  @@index([studio_id, pipeline_stage_id, is_test])
 }
 
 model studio_promise_pipeline_stages {

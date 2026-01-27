@@ -4,24 +4,34 @@ import React, { useRef, useState, useEffect } from 'react';
 import { UserSearch, Plus, AlertTriangle, Trash2 } from 'lucide-react';
 import { ZenCard, ZenCardContent, ZenCardHeader, ZenCardTitle, ZenCardDescription, ZenButton, ZenConfirmModal } from '@/components/ui/zen';
 import { PromisesKanbanClient } from './PromisesKanbanClient';
-import { getTestPromisesCount, deleteTestPromises } from '@/lib/actions/studio/commercial/promises/promises.actions';
+// ✅ OPTIMIZACIÓN: Eliminado import de getTestPromisesCount - ya viene del servidor
+import { deleteTestPromises } from '@/lib/actions/studio/commercial/promises/promises.actions';
 import { toast } from 'sonner';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
+
+import type { PromiseTag } from '@/lib/actions/studio/commercial/promises/promise-tags.actions';
 
 interface PromisesPageClientProps {
   studioSlug: string;
   initialPromises: PromiseWithContact[];
   initialPipelineStages: PipelineStage[];
+  initialTestPromisesCount?: number; // ✅ OPTIMIZACIÓN: Pasar desde servidor
+  initialUserId?: string | null; // ✅ OPTIMIZACIÓN: Pasar desde servidor
+  initialAvailableTags?: PromiseTag[]; // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
 }
 
 export function PromisesPageClient({
   studioSlug,
   initialPromises,
   initialPipelineStages,
+  initialTestPromisesCount = 0, // ✅ OPTIMIZACIÓN: Usar valor del servidor
+  initialUserId, // ✅ OPTIMIZACIÓN: Usar userId del servidor
+  initialAvailableTags = [], // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
 }: PromisesPageClientProps) {
   const openPromiseFormRef = useRef<(() => void) | null>(null);
   const removeTestPromisesRef = useRef<(() => void) | null>(null);
-  const [testPromisesCount, setTestPromisesCount] = useState(0);
+  // ✅ OPTIMIZACIÓN: Inicializar con valor del servidor (no hacer POST adicional)
+  const [testPromisesCount, setTestPromisesCount] = useState(initialTestPromisesCount);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -29,16 +39,7 @@ export function PromisesPageClient({
     document.title = 'Zenly Studio - Promesas';
   }, []);
 
-  // Cargar conteo de promesas de prueba
-  useEffect(() => {
-    const loadTestCount = async () => {
-      const result = await getTestPromisesCount(studioSlug);
-      if (result.success && result.count !== undefined) {
-        setTestPromisesCount(result.count);
-      }
-    };
-    loadTestCount();
-  }, [studioSlug]);
+  // ✅ OPTIMIZACIÓN: Ya no se carga desde el cliente, viene del servidor
 
   const handleOpenPromiseForm = () => {
     if (openPromiseFormRef.current) {
@@ -135,6 +136,8 @@ export function PromisesPageClient({
             studioSlug={studioSlug}
             initialPromises={initialPromises}
             initialPipelineStages={initialPipelineStages}
+            initialUserId={initialUserId} // ✅ OPTIMIZACIÓN: Pasar userId desde servidor
+            initialAvailableTags={initialAvailableTags} // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
             onOpenPromiseFormRef={openPromiseFormRef}
             onRemoveTestPromisesRef={removeTestPromisesRef}
           />

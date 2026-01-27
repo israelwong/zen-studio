@@ -64,6 +64,7 @@ export {
   completeReminder,
   deleteReminder,
   getRemindersDue,
+  getRemindersDueCount, // ✅ OPTIMIZACIÓN: Función optimizada para contar sin cargar arrays
 } from './reminders.actions';
 
 export type { Reminder, ReminderWithPromise } from './reminders.actions';

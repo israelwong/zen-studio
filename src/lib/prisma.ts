@@ -103,9 +103,9 @@ const pgPool = globalThis.__pgPool || new Pool({
 
 // ✅ Aumentar límite de listeners para evitar MaxListenersExceededWarning
 // El pool puede tener muchos listeners (error, connect, acquire, remove, etc.)
-// En desarrollo con hot reload, se pueden acumular listeners, así que aumentamos a 50
+// En desarrollo con hot reload, se pueden acumular listeners, así que aumentamos a 100
 if (pgPool && !globalThis.__pgPool) {
-  pgPool.setMaxListeners(50);
+  pgPool.setMaxListeners(100); // ✅ AISLAMIENTO: Aumentado a 100 para evitar warnings
 }
 
 // ✅ Singleton: Guardar en global para reutilización (todos los entornos)

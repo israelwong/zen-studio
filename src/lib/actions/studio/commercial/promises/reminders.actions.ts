@@ -517,6 +517,70 @@ export async function deleteReminder(
 }
 
 /**
+ * ✅ OPTIMIZACIÓN: Obtener conteo de seguimientos vencidos o del día (sin cargar arrays)
+ */
+export async function getRemindersDueCount(
+  studioSlug: string,
+  options?: GetRemindersDueParams
+): Promise<ActionResponse<number>> {
+  try {
+    const validatedOptions = getRemindersDueSchema.parse(options || {});
+
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+    const todayEnd = new Date(todayStart);
+    todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+
+    const where: any = {
+      studio_id: studio.id,
+    };
+
+    if (!validatedOptions.includeCompleted) {
+      where.is_completed = false;
+    }
+
+    switch (validatedOptions.dateRange) {
+      case 'today':
+        where.reminder_date = {
+          gte: todayStart,
+          lt: todayEnd,
+        };
+        break;
+      case 'overdue':
+        where.reminder_date = {
+          lt: todayStart,
+        };
+        break;
+      case 'all':
+        break;
+    }
+
+    // ✅ OPTIMIZACIÓN: Usar count() en lugar de findMany().length
+    const count = await prisma.studio_reminders.count({ where });
+
+    return { success: true, data: count };
+  } catch (error) {
+    console.error('[REMINDERS] Error en getRemindersDueCount:', error);
+    if (error instanceof z.ZodError) {
+      return { success: false, error: error.errors[0].message };
+    }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener conteo de seguimientos',
+    };
+  }
+}
+
+/**
  * Obtener seguimientos vencidos o del día
  */
 export async function getRemindersDue(

@@ -188,6 +188,29 @@ export interface PromiseWithContact {
       advance_percentage: number | null;
     } | null;
   } | null;
+  reminder?: {
+    id: string;
+    studio_id: string;
+    promise_id: string;
+    subject_id: string | null;
+    subject_text: string;
+    description: string | null;
+    reminder_date: Date;
+    is_completed: boolean;
+    completed_at: Date | null;
+    completed_by_user_id: string | null;
+    metadata: Record<string, unknown> | null;
+    created_at: Date;
+    updated_at: Date;
+    subject?: {
+      id: string;
+      text: string;
+    } | null;
+    completed_by?: {
+      id: string;
+      full_name: string;
+    } | null;
+  } | null;
 }
 
 export interface PipelineStage {

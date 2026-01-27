@@ -16,7 +16,7 @@ import {
     type SloganUpdateForm,
     type LogoUrlUpdateForm,
 } from '@/lib/actions/schemas/identidad-schemas';
-import { FAQItem } from '@/app/[slug]/studio/profile/identidad/types';
+import { FAQItem } from '@/app/[slug]/studio/business/identity/types';
 
 /**
  * Identidad Actions - CRUD para datos de identidad del estudio

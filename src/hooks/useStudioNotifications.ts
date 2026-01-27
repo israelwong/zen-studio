@@ -27,6 +27,7 @@ interface RealtimeBroadcastPayload {
 interface UseStudioNotificationsOptions {
   studioSlug: string;
   enabled?: boolean;
+  initialUserId?: string | null; // ✅ PASO 4: userId pre-obtenido en servidor (eliminar POST)
 }
 
 interface UseStudioNotificationsReturn {
@@ -43,45 +44,49 @@ interface UseStudioNotificationsReturn {
 export function useStudioNotifications({
   studioSlug,
   enabled = true,
+  initialUserId, // ✅ PASO 4: userId pre-obtenido en servidor
 }: UseStudioNotificationsOptions): UseStudioNotificationsReturn {
-  const [notifications, setNotifications] = useState<studio_notifications[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [isLoadingUserId, setIsLoadingUserId] = useState(true);
+    const [notifications, setNotifications] = useState<studio_notifications[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    // ✅ PASO 4: Usar initialUserId si está disponible, sino cargar desde el cliente
+    const [userId, setUserId] = useState<string | null>(initialUserId || null);
+    const [isLoadingUserId, setIsLoadingUserId] = useState(!initialUserId); // Solo cargar si no viene del servidor
 
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const isMountedRef = useRef(true);
+    const channelRef = useRef<RealtimeChannel | null>(null);
+    const isMountedRef = useRef(true);
 
-  const supabase = createClient();
+    const supabase = createClient();
 
-  // Obtener userId (studio_user_profiles.id)
-  useEffect(() => {
-    if (!enabled) {
-      setIsLoadingUserId(false);
-      setLoading(false);
-      return;
-    }
-
-    const fetchUser = async () => {
-      try {
-        setIsLoadingUserId(true);
-        const result = await getCurrentUserId(studioSlug);
-        if (result.success && result.data) {
-          setUserId(result.data);
-        } else {
-          setError(result.error || 'Usuario no encontrado');
+    // ✅ PASO 4: Solo obtener userId si NO viene del servidor
+    useEffect(() => {
+        if (!enabled || initialUserId) {
+            setIsLoadingUserId(false);
+            if (!initialUserId) {
+                setLoading(false);
+            }
+            return;
         }
-      } catch (error) {
-        setError('Error al obtener usuario');
-      } finally {
-        setIsLoadingUserId(false);
-      }
-    };
 
-    fetchUser();
-  }, [studioSlug, enabled]);
+        const fetchUser = async () => {
+            try {
+                setIsLoadingUserId(true);
+                const result = await getCurrentUserId(studioSlug);
+                if (result.success && result.data) {
+                    setUserId(result.data);
+                } else {
+                    setError(result.error || 'Usuario no encontrado');
+                }
+            } catch (error) {
+                setError('Error al obtener usuario');
+            } finally {
+                setIsLoadingUserId(false);
+            }
+        };
+
+        fetchUser();
+    }, [studioSlug, enabled, initialUserId]);
 
   // Cargar notificaciones iniciales
   const loadNotifications = useCallback(async () => {

@@ -26,7 +26,7 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
       const [promisesResult, stagesResult] = await Promise.all([
         getPromises(studioSlug, {
           page: 1,
-          limit: 1000, // Cargar todos para el kanban
+          limit: 200, // ✅ OPTIMIZACIÓN: Límite razonable para el kanban (reducido de 1000)
           // Búsqueda ahora es local, no se envía al servidor
         }),
         getPipelineStages(studioSlug),
@@ -132,13 +132,9 @@ export function PromisesWrapper({ studioSlug, onOpenPromiseFormRef, onReloadKanb
     setPromises((prev) => prev.filter((p) => p.promise_id !== promiseId));
   }, []);
 
-  // Suscribirse a cambios en tiempo real
-  usePromisesRealtime({
-    studioSlug,
-    onPromiseInserted: handlePromiseInserted,
-    onPromiseUpdated: handlePromiseUpdatedRealtime,
-    onPromiseDeleted: handlePromiseDeleted,
-  });
+  // ✅ OPTIMIZACIÓN: Eliminada instancia duplicada de usePromisesRealtime
+  // Solo debe haber una instancia en PromisesKanbanClient (nivel superior)
+  // Esto evita múltiples suscripciones a Supabase Realtime
 
   // Exponer función para abrir modal desde el header
   useEffect(() => {

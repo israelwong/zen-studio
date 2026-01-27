@@ -24,14 +24,27 @@ import { ContractTemplateManagerModal } from '@/components/shared/contracts/Cont
 import { StudioContractDataModal } from '@/components/shared/contracts/StudioContractDataModal';
 import { TipoEventoManagementModal } from '@/components/shared/tipos-evento/TipoEventoManagementModal';
 
+import type { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
+import type { StorageStats } from '@/lib/actions/shared/calculate-storage.actions';
+
 interface StudioLayoutWrapperProps {
   studioSlug: string;
   children: React.ReactNode;
+  initialIdentidadData?: IdentidadData | null; // ✅ OPTIMIZACIÓN: Datos pre-cargados del servidor
+  initialStorageData?: StorageStats | null; // ✅ OPTIMIZACIÓN: Storage pre-calculado del servidor
+  initialAgendaCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POST del cliente)
+  initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
+  initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
 }
 
 function StudioLayoutContent({
   studioSlug,
   children,
+  initialIdentidadData,
+  initialStorageData,
+  initialAgendaCount = 0, // ✅ PASO 4: Pre-cargado en servidor
+  initialRemindersCount = 0, // ✅ PASO 4: Pre-cargado en servidor
+  initialHeaderUserId = null, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
 }: StudioLayoutWrapperProps) {
   const pathname = usePathname();
   const { toggleChat } = useZenMagicChat();
@@ -251,9 +264,14 @@ function StudioLayoutContent({
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* COLUMNA 1: Main Column (AppHeader + Sidebar + Content en flex-col) */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* AppHeader - Full width */}
+        {/* ✅ RESTAURADO: AppHeader con datos pre-cargados (modo optimizado) */}
         <AppHeader
           studioSlug={studioSlug}
+          initialIdentidadData={initialIdentidadData} // ✅ OPTIMIZACIÓN: Pasar datos pre-cargados
+          initialStorageData={initialStorageData} // ✅ OPTIMIZACIÓN: Pasar storage pre-calculado
+          initialAgendaCount={initialAgendaCount} // ✅ PASO 4: Pre-cargado en servidor (eliminar POST)
+          initialRemindersCount={initialRemindersCount} // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs)
+          initialHeaderUserId={initialHeaderUserId} // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
           onCommandOpen={() => setCommandOpen(true)}
           onAgendaClick={handleAgendaClick}
           onTareasOperativasClick={handleTareasOperativasClick}
@@ -393,10 +411,16 @@ function StudioLayoutContent({
 export function StudioLayoutWrapper({
   studioSlug,
   children,
+  initialIdentidadData,
+  initialStorageData,
 }: StudioLayoutWrapperProps) {
   return (
     <PromisesConfigProvider>
-      <StudioLayoutContent studioSlug={studioSlug}>
+      <StudioLayoutContent 
+        studioSlug={studioSlug}
+        initialIdentidadData={initialIdentidadData}
+        initialStorageData={initialStorageData}
+      >
         {children}
       </StudioLayoutContent>
     </PromisesConfigProvider>

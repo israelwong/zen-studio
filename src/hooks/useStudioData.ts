@@ -2,16 +2,17 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { obtenerIdentidadStudio } from '@/lib/actions/studio/profile/identidad';
-import type { IdentidadData } from '@/app/[slug]/studio/profile/identidad/types';
+import type { IdentidadData } from '@/app/[slug]/studio/business/identity/types';
 
 interface UseStudioDataOptions {
   studioSlug: string;
   onUpdate?: (data: IdentidadData) => void;
+  enabled?: boolean; // ✅ OPTIMIZACIÓN: Permitir deshabilitar la carga
 }
 
-export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
+export function useStudioData({ studioSlug, onUpdate, enabled = true }: UseStudioDataOptions) {
   const [identidadData, setIdentidadData] = useState<IdentidadData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled); // ✅ OPTIMIZACIÓN: No cargar si disabled
   const [error, setError] = useState<string | null>(null);
 
   // Memoizar refetch para que sea estable entre renders
@@ -37,9 +38,12 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
     }
   }, [studioSlug, onUpdate]);
 
-  // Cargar datos iniciales
+  // ✅ OPTIMIZACIÓN: Solo cargar si está habilitado
   useEffect(() => {
-    if (!studioSlug) return;
+    if (!studioSlug || !enabled) {
+      setLoading(false);
+      return;
+    }
 
     const loadStudioData = async () => {
       try {
@@ -76,7 +80,7 @@ export function useStudioData({ studioSlug, onUpdate }: UseStudioDataOptions) {
     };
 
     loadStudioData();
-  }, [studioSlug, onUpdate]);
+  }, [studioSlug, onUpdate, enabled]);
 
   return {
     identidadData,

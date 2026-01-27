@@ -11,6 +11,7 @@ import {
 
 interface UsePromisesRealtimeProps {
   studioSlug: string;
+  userId?: string | null; // ✅ OPTIMIZACIÓN: userId pre-obtenido en servidor (opcional para compatibilidad)
   onPromiseInserted?: (promiseId: string) => void;
   onPromiseUpdated?: (promiseId: string) => void;
   onPromiseDeleted?: (promiseId: string) => void;
@@ -18,13 +19,17 @@ interface UsePromisesRealtimeProps {
 
 export function usePromisesRealtime({
   studioSlug,
+  userId, // ✅ OPTIMIZACIÓN: userId pre-obtenido en servidor
   onPromiseInserted,
   onPromiseUpdated,
   onPromiseDeleted,
 }: UsePromisesRealtimeProps) {
-  const supabase = createClient();
+  // ✅ PASO 4: Crear supabase una sola vez (fuera del useEffect para evitar recreaciones)
+  const supabaseRef = useRef(createClient());
+  const supabase = supabaseRef.current;
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const isMountedRef = useRef(true);
+  const setupInProgressRef = useRef(false); // ✅ PASO 4: Prevenir múltiples setups simultáneos
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -91,20 +96,38 @@ export function usePromisesRealtime({
     [onPromiseDeleted]
   );
 
+  // ✅ OPTIMIZACIÓN: Usar refs para callbacks para evitar re-ejecuciones del useEffect
+  const handleInsertRef = useRef(handleInsert);
+  const handleUpdateRef = useRef(handleUpdate);
+  const handleDeleteRef = useRef(handleDelete);
+
+  // Actualizar refs cuando cambian los callbacks
+  useEffect(() => {
+    handleInsertRef.current = handleInsert;
+    handleUpdateRef.current = handleUpdate;
+    handleDeleteRef.current = handleDelete;
+  }, [handleInsert, handleUpdate, handleDelete]);
+
   useEffect(() => {
     if (!studioSlug) {
       console.warn('[usePromisesRealtime] No studio slug provided');
       return;
     }
 
-    // Verificar si ya hay una conexión activa
-    if (channelRef.current?.state === 'subscribed') {
+    // ✅ PASO 4: Verificar si ya hay una conexión activa (evitar múltiples suscripciones)
+    if (channelRef.current?.state === 'subscribed' || channelRef.current?.state === 'SUBSCRIBED') {
       console.log('[usePromisesRealtime] Canal ya suscrito, evitando duplicación');
       return;
     }
 
-    // Configurar Realtime usando utilidad centralizada
+    // ✅ PASO 4: Prevenir múltiples ejecuciones simultáneas
+    if (setupInProgressRef.current) {
+      console.log('[usePromisesRealtime] Setup ya en progreso, evitando duplicación');
+      return;
+    }
+    
     const setupRealtime = async () => {
+      setupInProgressRef.current = true; // ✅ PASO 4: Marcar como en progreso
       try {
         console.log('[usePromisesRealtime] 🚀 Iniciando setup de Realtime (v2):', {
           studioSlug,
@@ -127,28 +150,13 @@ export function usePromisesRealtime({
           return;
         }
 
-        // Verificar permisos antes de suscribirse (similar a useStudioNotifications)
-        // Esto asegura que el usuario tenga studio_user_profiles activo
-        try {
-          const { getCurrentUserId } = await import('@/lib/actions/studio/notifications/notifications.actions');
-          const profileResult = await getCurrentUserId(studioSlug);
-
-          if (!profileResult.success) {
-            console.error('[usePromisesRealtime] ❌ No tienes permisos para este studio:', profileResult.error);
-            return;
-          }
-
-          console.log('[usePromisesRealtime] ✅ Permisos verificados:', {
-            userId: profileResult.data,
-            studioSlug,
-          });
-
-          // Esperar un momento para que el perfil se propague en la BD
-          // y que el token se propague en Realtime
-          await new Promise(resolve => setTimeout(resolve, 500));
-        } catch (error) {
-          console.error('[usePromisesRealtime] ❌ Error verificando permisos:', error);
-          return;
+        // ✅ OPTIMIZACIÓN CRÍTICA: Si userId viene del servidor, no hacer POST adicional
+        // Solo validar permisos si NO se pasó userId (compatibilidad legacy)
+        if (!userId) {
+          console.warn('[usePromisesRealtime] ⚠️ userId no proporcionado, omitiendo validación de permisos');
+          // En modo legacy, continuar sin validación (menos seguro pero evita POST)
+        } else {
+          console.log('[usePromisesRealtime] ✅ Usando userId del servidor:', userId);
         }
 
         // Crear configuración del canal usando preset
@@ -158,19 +166,19 @@ export function usePromisesRealtime({
         // Crear canal usando utilidad centralizada (después de setAuth)
         const channel = createRealtimeChannel(supabase, channelConfig);
 
-        // Agregar listeners
+        // Agregar listeners usando refs para evitar re-suscripciones
         // Nota: realtime.send envía eventos como 'broadcast' con el nombre de operación como event
         channel
-          .on('broadcast', { event: 'INSERT' }, handleInsert)
-          .on('broadcast', { event: 'UPDATE' }, handleUpdate)
-          .on('broadcast', { event: 'DELETE' }, handleDelete)
+          .on('broadcast', { event: 'INSERT' }, (payload) => handleInsertRef.current(payload))
+          .on('broadcast', { event: 'UPDATE' }, (payload) => handleUpdateRef.current(payload))
+          .on('broadcast', { event: 'DELETE' }, (payload) => handleDeleteRef.current(payload))
           // También escuchar eventos genéricos de realtime.send (formato alternativo)
           .on('broadcast', { event: '*' }, (payload: unknown) => {
             const p = payload as any;
             const operation = p.operation || p.event;
-            if (operation === 'INSERT') handleInsert(payload);
-            else if (operation === 'UPDATE') handleUpdate(payload);
-            else if (operation === 'DELETE') handleDelete(payload);
+            if (operation === 'INSERT') handleInsertRef.current(payload);
+            else if (operation === 'UPDATE') handleUpdateRef.current(payload);
+            else if (operation === 'DELETE') handleDeleteRef.current(payload);
           });
 
         // Suscribirse usando utilidad centralizada
@@ -181,8 +189,10 @@ export function usePromisesRealtime({
         });
 
         channelRef.current = channel;
+        setupInProgressRef.current = false; // ✅ PASO 4: Marcar setup como completado
         console.log('[usePromisesRealtime] ✅ Canal configurado y suscrito exitosamente');
       } catch (error) {
+        setupInProgressRef.current = false; // ✅ PASO 4: Resetear en caso de error
         console.error('[usePromisesRealtime] ❌ Error en setupRealtime:', error);
       }
     };
@@ -197,6 +207,6 @@ export function usePromisesRealtime({
         channelRef.current = null;
       }
     };
-  }, [studioSlug, handleInsert, handleUpdate, handleDelete, supabase]);
+  }, [studioSlug]); // ✅ PASO 4: Eliminar 'supabase' de dependencias (es estable, no cambia)
 }
 

@@ -36,13 +36,15 @@ export function useRemindersCount({
       setLoading(true);
       setError(null);
 
-      // Obtener seguimientos vencidos y del día
+      // ✅ OPTIMIZACIÓN: Usar count() en lugar de cargar arrays completos
+      const { getRemindersDueCount } = await import('@/lib/actions/studio/commercial/promises/reminders.actions');
+      
       const [overdueResult, todayResult] = await Promise.all([
-        getRemindersDue(studioSlug, {
+        getRemindersDueCount(studioSlug, {
           includeCompleted: false,
           dateRange: 'overdue',
         }),
-        getRemindersDue(studioSlug, {
+        getRemindersDueCount(studioSlug, {
           includeCompleted: false,
           dateRange: 'today',
         }),
@@ -50,12 +52,12 @@ export function useRemindersCount({
 
       let totalCount = 0;
       
-      if (overdueResult.success && overdueResult.data) {
-        totalCount += overdueResult.data.length;
+      if (overdueResult.success && overdueResult.data !== undefined) {
+        totalCount += overdueResult.data;
       }
       
-      if (todayResult.success && todayResult.data) {
-        totalCount += todayResult.data.length;
+      if (todayResult.success && todayResult.data !== undefined) {
+        totalCount += todayResult.data;
       }
 
       setCount(totalCount);

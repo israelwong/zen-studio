@@ -20,9 +20,10 @@ import type { studio_notifications } from '@prisma/client';
 
 interface NotificationsDropdownProps {
   studioSlug: string;
+  initialUserId?: string | null; // ✅ PASO 4: userId pre-obtenido en servidor (eliminar POST)
 }
 
-export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps) {
+export function NotificationsDropdown({ studioSlug, initialUserId }: NotificationsDropdownProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [historySheetOpen, setHistorySheetOpen] = useState(false);
@@ -30,7 +31,7 @@ export function NotificationsDropdown({ studioSlug }: NotificationsDropdownProps
   const [isMounted, setIsMounted] = useState(false);
   const previousUnreadCountRef = useRef(0);
   const { notifications, unreadCount, loading, error, markAsClicked, deleteNotification } =
-    useStudioNotifications({ studioSlug });
+    useStudioNotifications({ studioSlug, initialUserId }); // ✅ PASO 4: Pasar userId del servidor
 
   // Evitar problemas de hidratación con Radix UI
   useEffect(() => {

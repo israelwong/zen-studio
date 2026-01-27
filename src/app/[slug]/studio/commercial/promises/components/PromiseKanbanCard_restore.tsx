@@ -24,29 +24,24 @@ interface PromiseKanbanCardProps {
     promise: PromiseWithContact;
     onClick?: (promise: PromiseWithContact) => void;
     studioSlug?: string;
-    availableTags?: PromiseTag[]; // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
     onArchived?: () => void;
     onDeleted?: () => void;
     onTagsUpdated?: () => void;
     pipelineStages?: PipelineStage[];
 }
 
-export function PromiseKanbanCard({ promise, onClick, studioSlug, availableTags = [], onArchived, onDeleted, onTagsUpdated, pipelineStages = [] }: PromiseKanbanCardProps) {
+export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, onDeleted, onTagsUpdated, pipelineStages = [] }: PromiseKanbanCardProps) {
     // Crear mapa de nombres de stages para obtener nombres personalizados
     const stageNameMap = pipelineStages.length > 0 ? createStageNameMap(pipelineStages) : null;
     const [showArchiveModal, setShowArchiveModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
     const [showTagsModal, setShowTagsModal] = useState(false);
-    // ✅ OPTIMIZACIÓN: Tags vienen del servidor, no hacer POST adicional
-    const [localAvailableTags, setLocalAvailableTags] = useState<PromiseTag[]>(availableTags);
+    const [availableTags, setAvailableTags] = useState<PromiseTag[]>([]);
     const [isLoadingTags, setIsLoadingTags] = useState(false);
     const [isAddingTag, setIsAddingTag] = useState<string | null>(null);
     const [isRemovingTag, setIsRemovingTag] = useState<string | null>(null);
-    // ✅ OPTIMIZACIÓN: Usar reminder que viene en la promesa (ya no se carga por separado)
-    const [reminder, setReminder] = useState<Reminder | null>(
-      promise.reminder && !promise.reminder.is_completed ? promise.reminder as Reminder : null
-    );
+    const [reminder, setReminder] = useState<Reminder | null>(null);
     const {
         attributes,
         listeners,
@@ -160,103 +155,145 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, availableTags 
         }
     }, [promise.tags]);
 
-    // ✅ AISLAMIENTO: Comentado temporalmente para eliminar POSTs - los datos vienen del servidor
-    // useEffect(() => {
-    //     const promiseId = promise.promise_id;
-    //     if (!promiseId || !studioSlug) return;
+    useEffect(() => {
+        const promiseId = promise.promise_id;
+        if (!promiseId || !studioSlug) return;
 
-    //     // Solo cargar si no vienen en la promesa
-    //     if (promise.tags && promise.agenda !== undefined && promise.cotizaciones_count !== undefined) {
-    //         return; // Ya tenemos los datos
-    //     }
+        // Solo cargar si no vienen en la promesa
+        if (promise.tags && promise.agenda !== undefined && promise.cotizaciones_count !== undefined) {
+            return; // Ya tenemos los datos
+        }
 
-    //     const loadData = async () => {
-    //         // Cargar etiquetas solo si no vienen
-    //         if (!promise.tags) {
-    //             try {
-    //                 const tagsResult = await getPromiseTagsByPromiseId(promiseId);
-    //                 if (tagsResult.success && tagsResult.data) {
-    //                     setFallbackTags(tagsResult.data);
-    //                 }
-    //             } catch (error) {
-    //                 console.error('Error loading tags:', error);
-    //             }
-    //         }
+        const loadData = async () => {
+            // Cargar etiquetas solo si no vienen
+            if (!promise.tags) {
+                try {
+                    const tagsResult = await getPromiseTagsByPromiseId(promiseId);
+                    if (tagsResult.success && tagsResult.data) {
+                        setFallbackTags(tagsResult.data);
+                    }
+                } catch (error) {
+                    console.error('Error loading tags:', error);
+                }
+            }
 
-    //         // Cargar agendamiento solo si no viene
-    //         if (promise.agenda === undefined) {
-    //             try {
-    //                 const agendaResult = await obtenerAgendamientoPorPromise(studioSlug, promiseId);
-    //                 if (agendaResult.success && agendaResult.data) {
-    //                     setFallbackAgendamiento(agendaResult.data);
-    //                 }
-    //             } catch (error) {
-    //                 console.error('Error loading agendamiento:', error);
-    //             }
-    //         }
+            // Cargar agendamiento solo si no viene
+            if (promise.agenda === undefined) {
+                try {
+                    const agendaResult = await obtenerAgendamientoPorPromise(studioSlug, promiseId);
+                    if (agendaResult.success && agendaResult.data) {
+                        setFallbackAgendamiento(agendaResult.data);
+                    }
+                } catch (error) {
+                    console.error('Error loading agendamiento:', error);
+                }
+            }
 
-    //         // Cargar cotizaciones solo si no viene
-    //         if (promise.cotizaciones_count === undefined) {
-    //             try {
-    //                 const cotizacionesResult = await getCotizacionesByPromiseId(promiseId);
-    //                 if (cotizacionesResult.success && cotizacionesResult.data) {
-    //                     setFallbackCotizacionesCount(cotizacionesResult.data.length);
-    //                     setFallbackCotizaciones(cotizacionesResult.data);
-    //                 }
-    //             } catch (error) {
-    //                 console.error('Error loading cotizaciones:', error);
-    //             }
-    //         }
+            // Cargar cotizaciones solo si no viene
+            if (promise.cotizaciones_count === undefined) {
+                try {
+                    const cotizacionesResult = await getCotizacionesByPromiseId(promiseId);
+                    if (cotizacionesResult.success && cotizacionesResult.data) {
+                        setFallbackCotizacionesCount(cotizacionesResult.data.length);
+                        setFallbackCotizaciones(cotizacionesResult.data);
+                    }
+                } catch (error) {
+                    console.error('Error loading cotizaciones:', error);
+                }
+            }
 
-    //         // Cargar recordatorio (reminder) si existe
-    //         if (studioSlug) {
-    //             try {
-    //                 const reminderResult = await getReminderByPromise(studioSlug, promiseId);
-    //                 if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
-    //                     setReminder(reminderResult.data);
-    //                 }
-    //             } catch (error) {
-    //                 console.error('Error loading reminder:', error);
-    //             }
-    //         }
-    //     };
+            // Cargar recordatorio (reminder) si existe
+            if (studioSlug) {
+                try {
+                    const reminderResult = await getReminderByPromise(studioSlug, promiseId);
+                    if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
+                        setReminder(reminderResult.data);
+                    }
+                } catch (error) {
+                    console.error('Error loading reminder:', error);
+                }
+            }
+        };
 
-    //     loadData();
-    // }, [promise.promise_id, studioSlug, promise.tags, promise.agenda, promise.cotizaciones_count]);
+        loadData();
+    }, [promise.promise_id, studioSlug, promise.tags, promise.agenda, promise.cotizaciones_count]);
 
-    // ✅ AISLAMIENTO: Comentado - reminder viene en la promesa
-    // useEffect(() => {
-    //     const promiseId = promise.promise_id;
-    //     if (!promiseId || !studioSlug) {
-    //         setReminder(null);
-    //         return;
-    //     }
+    // Cargar recordatorio cuando cambia la promesa
+    useEffect(() => {
+        const promiseId = promise.promise_id;
+        if (!promiseId || !studioSlug) {
+            setReminder(null);
+            return;
+        }
 
-    //     const loadReminder = async () => {
-    //         try {
-    //             const reminderResult = await getReminderByPromise(studioSlug, promiseId);
-    //             if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
-    //                 setReminder(reminderResult.data);
-    //             } else {
-    //                 setReminder(null);
-    //             }
-    //         } catch (error) {
-    //             console.error('Error loading reminder:', error);
-    //             setReminder(null);
-    //         }
-    //     };
+        const loadReminder = async () => {
+            try {
+                const reminderResult = await getReminderByPromise(studioSlug, promiseId);
+                if (reminderResult.success && reminderResult.data && !reminderResult.data.is_completed) {
+                    setReminder(reminderResult.data);
+                } else {
+                    setReminder(null);
+                }
+            } catch (error) {
+                console.error('Error loading reminder:', error);
+                setReminder(null);
+            }
+        };
 
-    //     loadReminder();
-    // }, [promise.promise_id, studioSlug]);
+        loadReminder();
+    }, [promise.promise_id, studioSlug]);
 
-    // ✅ AISLAMIENTO: Filtrar tags solo cuando se abre el modal (sin POST)
-    const handleOpenTagsModal = () => {
-        setShowTagsModal(true);
-        const currentTagIds = fallbackTags.map(t => t.id);
-        const filtered = availableTags.filter(tag => !currentTagIds.includes(tag.id));
-        setLocalAvailableTags(filtered);
-        setIsLoadingTags(false);
-    };
+    // Cargar tags disponibles cuando se abre el modal
+    useEffect(() => {
+        if (!showTagsModal || !studioSlug) {
+            setAvailableTags([]);
+            setIsLoadingTags(false);
+            return;
+        }
+
+        let cancelled = false;
+        const loadAvailableTags = async () => {
+            setIsLoadingTags(true);
+            try {
+                const result = await getPromiseTags(studioSlug);
+                if (cancelled) return;
+
+                if (result.success && result.data) {
+                    // Filtrar tags que ya están asignadas a la promesa
+                    // Usar fallbackTags que siempre está actualizado
+                    const currentTagIds = fallbackTags.map(t => t.id);
+                    const filtered = result.data.filter(tag => !currentTagIds.includes(tag.id));
+                    if (!cancelled) {
+                        setAvailableTags(filtered);
+                    }
+                } else {
+                    console.error('Error loading tags:', result.error);
+                    if (!cancelled) {
+                        toast.error(result.error || 'Error al cargar etiquetas');
+                        setAvailableTags([]);
+                    }
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.error('Error loading tags:', error);
+                    toast.error('Error al cargar etiquetas');
+                    setAvailableTags([]);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoadingTags(false);
+                }
+            }
+        };
+
+        loadAvailableTags();
+
+        return () => {
+            cancelled = true;
+        };
+        // Solo ejecutar cuando se abre el modal, no cuando cambian las tags
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showTagsModal, studioSlug]);
 
     // Validar si un agendamiento tiene una cita válida (con date y type_scheduling)
     const hasValidCita = (agenda: AgendaItem | null): boolean => {
@@ -337,91 +374,84 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, availableTags 
 
     // Confirmar eliminar promesa
     const handleConfirmDelete = async () => {
-        // ✅ COMENTADO: Server Action prohibida en prueba de aislamiento
-        // if (!promise.promise_id || !studioSlug) return;
-        // setIsDeleting(true);
-        // try {
-        //     const result = await deletePromise(studioSlug, promise.promise_id);
-        //     if (result.success) {
-        //         setShowDeleteModal(false);
-        //         toast.success('Promesa eliminada');
-        //         setTimeout(() => {
-        //             onDeleted?.();
-        //         }, 0);
-        //     } else {
-        //         toast.error(result.error || 'Error al eliminar promesa');
-        //     }
-        // } catch (error) {
-        //     console.error('Error deleting promise:', error);
-        //     toast.error('Error al eliminar promesa');
-        // } finally {
-        //     setIsDeleting(false);
-        // }
-        setIsDeleting(false);
-        setShowDeleteModal(false);
+        if (!promise.promise_id || !studioSlug) return;
+        setIsDeleting(true);
+        try {
+            const result = await deletePromise(studioSlug, promise.promise_id);
+            if (result.success) {
+                setShowDeleteModal(false);
+                toast.success('Promesa eliminada');
+                setTimeout(() => {
+                    onDeleted?.();
+                }, 0);
+            } else {
+                toast.error(result.error || 'Error al eliminar promesa');
+            }
+        } catch (error) {
+            console.error('Error deleting promise:', error);
+            toast.error('Error al eliminar promesa');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     // Agregar etiqueta a la promesa
     const handleAddTag = async (tagId: string) => {
-        // ✅ COMENTADO: Server Action prohibida en prueba de aislamiento
-        // if (!promise.promise_id) return;
+        if (!promise.promise_id) return;
 
-        // setIsAddingTag(tagId);
-        // try {
-        //     const result = await addTagToPromise(promise.promise_id, tagId);
-        //     if (result.success) {
-        //         // Buscar el tag en localAvailableTags para agregarlo localmente
-        //         const tagToAdd = localAvailableTags.find(tag => tag.id === tagId);
-        //         if (tagToAdd) {
-        //             // Actualizar tags localmente
-        //             setFallbackTags(prev => [...prev, tagToAdd]);
-        //             // Remover de localAvailableTags
-        //             setLocalAvailableTags(prev => prev.filter(tag => tag.id !== tagId));
-        //         }
-        //         toast.success('Etiqueta agregada');
-        //         // No cerrar el modal automáticamente para permitir agregar más
-        //     } else {
-        //         toast.error(result.error || 'Error al agregar etiqueta');
-        //     }
-        // } catch (error) {
-        //     console.error('Error adding tag:', error);
-        //     toast.error('Error al agregar etiqueta');
-        // } finally {
-        //     setIsAddingTag(null);
-        // }
-        setIsAddingTag(null);
+        setIsAddingTag(tagId);
+        try {
+            const result = await addTagToPromise(promise.promise_id, tagId);
+            if (result.success) {
+                // Buscar el tag en availableTags para agregarlo localmente
+                const tagToAdd = availableTags.find(tag => tag.id === tagId);
+                if (tagToAdd) {
+                    // Actualizar tags localmente
+                    setFallbackTags(prev => [...prev, tagToAdd]);
+                    // Remover de availableTags
+                    setAvailableTags(prev => prev.filter(tag => tag.id !== tagId));
+                }
+                toast.success('Etiqueta agregada');
+                // No cerrar el modal automáticamente para permitir agregar más
+            } else {
+                toast.error(result.error || 'Error al agregar etiqueta');
+            }
+        } catch (error) {
+            console.error('Error adding tag:', error);
+            toast.error('Error al agregar etiqueta');
+        } finally {
+            setIsAddingTag(null);
+        }
     };
 
     // Eliminar etiqueta de la promesa
     const handleRemoveTag = async (tagId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        // ✅ COMENTADO: Server Action prohibida en prueba de aislamiento
-        // if (!promise.promise_id) return;
+        if (!promise.promise_id) return;
 
-        // setIsRemovingTag(tagId);
-        // try {
-        //     const result = await removeTagFromPromise(promise.promise_id, tagId);
-        //     if (result.success) {
-        //         // Guardar el tag eliminado para poder restaurarlo si es necesario
-        //         const removedTag = finalTags.find(t => t.id === tagId);
-        //         // Actualizar tags localmente
-        //         setFallbackTags(prev => prev.filter(t => t.id !== tagId));
-        //         // Si el modal está abierto, agregar el tag de vuelta a localAvailableTags
-        //         if (showTagsModal && removedTag) {
-        //             setLocalAvailableTags(prev => [...prev, removedTag as PromiseTag]);
-        //         }
-        //         toast.success('Etiqueta eliminada');
-        //         // NO llamar a onTagsUpdated para evitar recargar todo el kanban
-        //     } else {
-        //         toast.error(result.error || 'Error al eliminar etiqueta');
-        //     }
-        // } catch (error) {
-        //     console.error('Error removing tag:', error);
-        //     toast.error('Error al eliminar etiqueta');
-        // } finally {
-        //     setIsRemovingTag(null);
-        // }
-        setIsRemovingTag(null);
+        setIsRemovingTag(tagId);
+        try {
+            const result = await removeTagFromPromise(promise.promise_id, tagId);
+            if (result.success) {
+                // Guardar el tag eliminado para poder restaurarlo si es necesario
+                const removedTag = finalTags.find(t => t.id === tagId);
+                // Actualizar tags localmente
+                setFallbackTags(prev => prev.filter(t => t.id !== tagId));
+                // Si el modal está abierto, agregar el tag de vuelta a availableTags
+                if (showTagsModal && removedTag) {
+                    setAvailableTags(prev => [...prev, removedTag as PromiseTag]);
+                }
+                toast.success('Etiqueta eliminada');
+                // NO llamar a onTagsUpdated para evitar recargar todo el kanban
+            } else {
+                toast.error(result.error || 'Error al eliminar etiqueta');
+            }
+        } catch (error) {
+            console.error('Error removing tag:', error);
+            toast.error('Error al eliminar etiqueta');
+        } finally {
+            setIsRemovingTag(null);
+        }
     };
 
     const handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -813,13 +843,13 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, availableTags 
                 <div className="space-y-4">
                     {isLoadingTags ? (
                         <div className="text-center py-8 text-zinc-400">Cargando etiquetas...</div>
-                    ) : localAvailableTags.length === 0 ? (
+                    ) : availableTags.length === 0 ? (
                         <div className="text-center py-8 text-zinc-400">
                             No hay etiquetas disponibles para agregar
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-2 max-h-96 overflow-y-auto">
-                            {localAvailableTags.map((tag) => (
+                            {availableTags.map((tag) => (
                                 <button
                                     key={tag.id}
                                     onClick={() => handleAddTag(tag.id)}

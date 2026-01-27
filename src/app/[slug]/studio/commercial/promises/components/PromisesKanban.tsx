@@ -36,10 +36,13 @@ import confetti from 'canvas-confetti';
 import { getSystemStageName } from '@/lib/utils/pipeline-stage-names';
 import { ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenSwitch } from '@/components/ui/zen';
 
+import type { PromiseTag } from '@/lib/actions/studio/commercial/promises/promise-tags.actions';
+
 interface PromisesKanbanProps {
   studioSlug: string;
   promises: PromiseWithContact[];
   pipelineStages: PipelineStage[];
+  initialAvailableTags?: PromiseTag[]; // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
   search: string;
   onSearchChange: (search: string) => void;
   onPromiseCreated: () => void;
@@ -56,6 +59,7 @@ function PromisesKanban({
   studioSlug,
   promises,
   pipelineStages,
+  initialAvailableTags = [], // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
   search: externalSearch,
   onSearchChange,
   onPromiseCreated,
@@ -963,6 +967,7 @@ function PromisesKanban({
                 onPromiseUpdated={onPromiseUpdated}
                 pipelineStages={pipelineStages}
                 onPipelineStagesUpdated={onPipelineStagesUpdated}
+                availableTags={initialAvailableTags} // ✅ OPTIMIZACIÓN: Pasar tags desde servidor
               />
             ))
           ) : (
@@ -982,6 +987,7 @@ function PromisesKanban({
                   pipelineStages={localPipelineStages}
                   onPipelineStagesUpdated={onPipelineStagesUpdated}
                   onUpdateLocalStage={updateLocalStage}
+                  availableTags={initialAvailableTags} // ✅ OPTIMIZACIÓN: Pasar tags desde servidor
                 />
               ))}
             </div>
@@ -1000,6 +1006,7 @@ function PromisesKanban({
               <PromiseKanbanCard
                 promise={activePromise}
                 studioSlug={studioSlug}
+                availableTags={initialAvailableTags} // ✅ OPTIMIZACIÓN: Pasar tags desde servidor (CERO POSTs)
                 onArchived={() => activePromise.promise_id && handlePromiseArchived(activePromise.promise_id)}
                 onDeleted={() => activePromise.promise_id && handlePromiseDeleted(activePromise.promise_id)}
                 onTagsUpdated={onPromiseUpdated}
@@ -1045,6 +1052,7 @@ function KanbanColumn({
   pipelineStages = [],
   onPipelineStagesUpdated,
   onUpdateLocalStage,
+  availableTags = [], // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
 }: {
   stage: PipelineStage;
   promises: PromiseWithContact[];
@@ -1057,6 +1065,7 @@ function KanbanColumn({
   pipelineStages?: PipelineStage[];
   onPipelineStagesUpdated?: () => void;
   onUpdateLocalStage?: (stageId: string, updates: Partial<PipelineStage>) => void;
+  availableTags?: PromiseTag[]; // ✅ OPTIMIZACIÓN: Tags desde servidor (CERO POSTs por tarjeta)
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
@@ -1295,6 +1304,7 @@ function KanbanColumn({
               promise={promise}
               onClick={onPromiseClick}
               studioSlug={studioSlug}
+              availableTags={availableTags} // ✅ OPTIMIZACIÓN: Pasar tags desde servidor (CERO POSTs)
               onArchived={() => promise.promise_id && onPromiseArchived?.(promise.promise_id)}
               onDeleted={() => promise.promise_id && onPromiseDeleted?.(promise.promise_id)}
               onTagsUpdated={onPromiseUpdated}

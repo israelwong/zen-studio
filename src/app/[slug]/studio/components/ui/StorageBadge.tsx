@@ -9,6 +9,7 @@ interface StorageBadgeProps {
     studioSlug: string;
     quotaLimitBytes?: number;
     className?: string;
+    initialStorageData?: StorageStats | null; // ✅ OPTIMIZACIÓN: Datos pre-calculados del servidor
 }
 
 /**
@@ -19,9 +20,11 @@ export function StorageBadge({
     studioSlug,
     quotaLimitBytes = 10 * 1024 * 1024 * 1024, // 10GB default
     className = "",
+    initialStorageData, // ✅ OPTIMIZACIÓN: Usar datos pre-calculados
 }: StorageBadgeProps) {
-    const [storageStats, setStorageStats] = useState<StorageStats | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+    // ✅ OPTIMIZACIÓN: Inicializar con datos del servidor si están disponibles
+    const [storageStats, setStorageStats] = useState<StorageStats | null>(initialStorageData || null);
+    const [isLoading, setIsLoading] = useState(!initialStorageData); // Solo cargar si no hay datos iniciales
     const [isExpanded, setIsExpanded] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -42,9 +45,12 @@ export function StorageBadge({
         }
     }, [studioSlug]);
 
+    // ✅ OPTIMIZACIÓN: Solo cargar si no hay datos iniciales
     useEffect(() => {
-        cargarStorage();
-    }, [cargarStorage]);
+        if (!initialStorageData) {
+            cargarStorage();
+        }
+    }, [cargarStorage, initialStorageData]);
 
     // Recargar cuando se dispare el evento de refresh
     useEffect(() => {
