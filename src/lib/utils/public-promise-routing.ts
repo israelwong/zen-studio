@@ -67,6 +67,7 @@ export function determinePromiseRoute(
   // PRIORIDAD 1: Buscar cotización aprobada/autorizada CON evento creado (máxima prioridad)
   // Solo redirige a /cliente si la cotización tiene evento_id (evento creado después de autorización)
   // Estados: aprobada, autorizada, approved
+  // ✅ OPTIMIZACIÓN: Si evento_id es null/undefined, asumir que no tiene evento (no redirigir a /cliente)
   const cotizacionAprobada = visibleQuotes.find((cot) => {
     const status = (cot.status || '').toLowerCase();
     const hasEvento = !!cot.evento_id;
@@ -85,6 +86,7 @@ export function determinePromiseRoute(
 
   // PRIORIDAD 2: Buscar cotización en negociación
   // Negociación: status === 'negociacion' y NO debe tener selected_by_prospect: true
+  // ✅ OPTIMIZACIÓN: Si selected_by_prospect es null/undefined, asumir false (no seleccionado)
   const cotizacionNegociacion = visibleQuotes.find((cot) => {
     const normalizedStatus = normalizeStatus(cot.status);
     const selectedByProspect = cot.selected_by_prospect ?? false;
@@ -184,11 +186,19 @@ export async function syncPromiseRoute(
       return false;
     }
 
-    // Comparación binaria de rutas (sin query params)
-    const normalizedCurrent = currentPath.split('?')[0];
-    const normalizedTarget = targetRoute.split('?')[0];
+    // Comparación robusta de rutas: limpiar espacios, trailing slashes y query params
+    const clean = (path: string): string => {
+      if (!path) return '';
+      return path
+        .split('?')[0] // Sin query params
+        .trim() // Sin espacios
+        .replace(/\/$/, ''); // Sin trailing slash
+    };
+    
+    const cleanCurrent = clean(currentPath);
+    const cleanTarget = clean(targetRoute);
 
-    if (normalizedCurrent !== normalizedTarget) {
+    if (cleanCurrent !== cleanTarget) {
       window.location.replace(targetRoute);
       return true; // Hubo redirección
     }

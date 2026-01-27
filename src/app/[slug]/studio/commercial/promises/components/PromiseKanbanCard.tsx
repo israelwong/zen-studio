@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, MoreVertical, Trash2, Clock } from 'lucide-react';
@@ -16,6 +17,8 @@ import { toast } from 'sonner';
 import { obtenerAgendamientoPorPromise } from '@/lib/actions/shared/agenda-unified.actions';
 import { getCotizacionesByPromiseId, type CotizacionListItem } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import type { AgendaItem } from '@/lib/actions/shared/agenda-unified.actions';
+import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
+import { createStageNameMap, getCotizacionStatusDisplayName } from '@/lib/utils/pipeline-stage-names';
 
 interface PromiseKanbanCardProps {
     promise: PromiseWithContact;
@@ -24,9 +27,12 @@ interface PromiseKanbanCardProps {
     onArchived?: () => void;
     onDeleted?: () => void;
     onTagsUpdated?: () => void;
+    pipelineStages?: PipelineStage[];
 }
 
-export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, onDeleted, onTagsUpdated }: PromiseKanbanCardProps) {
+export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, onDeleted, onTagsUpdated, pipelineStages = [] }: PromiseKanbanCardProps) {
+    // Crear mapa de nombres de stages para obtener nombres personalizados
+    const stageNameMap = pipelineStages.length > 0 ? createStageNameMap(pipelineStages) : null;
     const [showArchiveModal, setShowArchiveModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -448,9 +454,32 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
         }
     };
 
-    const handleViewDetails = () => {
+    const handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        // Si es Ctrl/Cmd+click, permitir comportamiento nativo (abrir en nueva ventana)
+        if (e.ctrlKey || e.metaKey) {
+            return; // Dejar que Link maneje (abrir en nueva ventana)
+        }
+        
+        // Click normal: prevenir default y usar onClick del padre para mantener estado
+        e.preventDefault();
         if (onClick) {
             onClick(promise);
+        }
+    };
+
+    const handleMouseDown = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        // Si el click viene del drag handle, prevenir navegación
+        const target = e.target as HTMLElement;
+        if (target.closest('[data-drag-handle]')) {
+            e.preventDefault();
+        }
+    };
+
+    const handleAuxClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        // Middle-click (button === 1) o click con botón secundario con modificador
+        // Permitir comportamiento nativo para abrir en nueva ventana
+        if (e.button === 1 || (e.button === 2 && (e.ctrlKey || e.metaKey))) {
+            return; // Dejar que el navegador maneje
         }
     };
 
@@ -509,21 +538,29 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
         return formatDisplayDateShort(reminderDate);
     };
 
+    const promiseId = promise.promise_id || promise.id;
+    const href = studioSlug ? `/${studioSlug}/studio/commercial/promises/${promiseId}` : '#';
+
     return (
         <>
-            <div
+            <Link
+                href={href}
                 ref={setNodeRef}
                 style={style}
                 {...attributes}
-                onClick={handleViewDetails}
-                data-id={promise.promise_id || promise.id}
-                className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 hover:shadow-lg relative cursor-pointer"
+                onClick={handleCardClick}
+                onMouseDown={handleMouseDown}
+                onAuxClick={handleAuxClick}
+                data-id={promiseId}
+                className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700 hover:border-zinc-600 transition-all duration-200 hover:shadow-lg relative cursor-pointer block no-underline text-inherit"
                 suppressHydrationWarning
             >
                 {/* Drag Handle - Esquina superior izquierda */}
                 <div
                     {...listeners}
+                    data-drag-handle
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
                     className="absolute top-2 left-2 p-1.5 rounded-md hover:bg-zinc-700/50 transition-colors text-zinc-400 hover:text-zinc-300 cursor-grab active:cursor-grabbing z-20"
                     title="Arrastrar para mover"
                 >
@@ -698,12 +735,12 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                                             <div className="flex items-center gap-1.5">
                                                 {cotizacionesPendientes > 0 && (
                                                     <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400/90 text-[10px] font-medium border border-blue-500/30">
-                                                        {cotizacionesPendientes} pendiente{cotizacionesPendientes !== 1 ? 's' : ''}
+                                                        {cotizacionesPendientes} {getCotizacionStatusDisplayName('pendiente', stageNameMap).toLowerCase()}{cotizacionesPendientes !== 1 ? 's' : ''}
                                                     </span>
                                                 )}
                                                 {cotizacionesEnNegociacion > 0 && (
                                                     <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400/90 text-[10px] font-medium border border-amber-500/30">
-                                                        {cotizacionesEnNegociacion} negociación
+                                                        {cotizacionesEnNegociacion} {getCotizacionStatusDisplayName('negociacion', stageNameMap).toLowerCase()}
                                                     </span>
                                                 )}
                                             </div>
@@ -768,7 +805,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                         </div>
                     )}
                 </div>
-            </div>
+            </Link>
 
             {/* Modal de confirmación archivar - fuera del contenedor clickeable */}
             <ZenConfirmModal

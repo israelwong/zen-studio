@@ -22,7 +22,7 @@ export function ActiveLink({ children, href, exact = false, ...props }: ActiveLi
 
     return (
         <ZenSidebarMenuButton asChild isActive={isActive}>
-            <Link href={href} {...props}>
+            <Link href={href} prefetch={false} {...props}>
                 <div className="flex items-center gap-3">
                     {children}
                 </div>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, startTransition } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Archive, X, TableColumnsSplit, Columns2 } from 'lucide-react';
+import { Search, Archive, X, TableColumnsSplit, Columns2, Pencil, RotateCcw, Eye, Settings, Undo2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -28,10 +28,13 @@ import { ZenInput, ZenButton } from '@/components/ui/zen';
 import { PromiseKanbanCard } from './PromiseKanbanCard';
 import { EventFormModal } from '@/components/shared/promises';
 import { PromiseTagsManageModal } from './PromiseTagsManageModal';
+import { updatePipelineStage } from '@/lib/actions/studio/commercial/promises/promise-pipeline-stages.actions';
 import { movePromise } from '@/lib/actions/studio/commercial/promises';
-import { toast } from 'sonner';
 import type { PromiseWithContact, PipelineStage } from '@/lib/actions/schemas/promises-schemas';
+import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
+import { getSystemStageName } from '@/lib/utils/pipeline-stage-names';
+import { ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator, ZenSwitch } from '@/components/ui/zen';
 
 interface PromisesKanbanProps {
   studioSlug: string;
@@ -72,12 +75,91 @@ function PromisesKanban({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activePromiseStageId, setActivePromiseStageId] = useState<string | null>(null);
   const [localPromises, setLocalPromises] = useState<PromiseWithContact[]>(promises);
+  const [localPipelineStages, setLocalPipelineStages] = useState<PipelineStage[]>(pipelineStages);
   const prevPromisesRef = useRef<PromiseWithContact[]>(promises);
   const isDraggingRef = useRef(false);
-  const [showArchived, setShowArchived] = useState(false);
-  const [showCanceled, setShowCanceled] = useState(false);
+  
+  // Sincronizar stages locales cuando cambian desde el padre
+  // Solo actualizar si hay diferencias reales (evitar loops)
+  useEffect(() => {
+    const hasChanges = pipelineStages.length !== localPipelineStages.length ||
+      pipelineStages.some((stage, index) => {
+        const localStage = localPipelineStages[index];
+        return !localStage || stage.id !== localStage.id || stage.name !== localStage.name;
+      });
+    
+    if (hasChanges) {
+      setLocalPipelineStages(pipelineStages);
+    }
+  }, [pipelineStages]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Cargar preferencias de visibilidad desde localStorage
+  // Valores por defecto: archived=false, canceled=false, approved=true
+  const [showArchived, setShowArchived] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem(`kanban-show-archived-${studioSlug}`);
+      // Si hay valor guardado, usarlo; si no, usar false por defecto
+      return saved !== null ? saved === 'true' : false;
+    } catch (error) {
+      return false;
+    }
+  });
+  
+  const [showCanceled, setShowCanceled] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const saved = localStorage.getItem(`kanban-show-canceled-${studioSlug}`);
+      // Si hay valor guardado, usarlo; si no, usar false por defecto
+      return saved !== null ? saved === 'true' : false;
+    } catch (error) {
+      return false;
+    }
+  });
+  
+  const [showApproved, setShowApproved] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const saved = localStorage.getItem(`kanban-show-approved-${studioSlug}`);
+      // Si hay valor guardado, usarlo; si no, usar true por defecto
+      return saved !== null ? saved === 'true' : true;
+    } catch (error) {
+      return true;
+    }
+  });
+  
+  const [showViewConfig, setShowViewConfig] = useState(false);
   const [localSearch, setLocalSearch] = useState(externalSearch || '');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // Persistir cambios de visibilidad en localStorage
+  // Guardar inmediatamente cuando cambia el estado (incluyendo false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`kanban-show-archived-${studioSlug}`, String(showArchived));
+    } catch (error) {
+      // Ignorar errores de localStorage (privado, cuota excedida, etc.)
+      console.warn('[PromisesKanban] Error guardando preferencia de visibilidad:', error);
+    }
+  }, [showArchived, studioSlug]);
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`kanban-show-canceled-${studioSlug}`, String(showCanceled));
+    } catch (error) {
+      console.warn('[PromisesKanban] Error guardando preferencia de visibilidad:', error);
+    }
+  }, [showCanceled, studioSlug]);
+  
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(`kanban-show-approved-${studioSlug}`, String(showApproved));
+    } catch (error) {
+      console.warn('[PromisesKanban] Error guardando preferencia de visibilidad:', error);
+    }
+  }, [showApproved, studioSlug]);
 
   // Sincronizar estado local cuando cambian las promesas desde el padre
   // Evitar sincronización durante drag and drop o navegación para prevenir parpadeos
@@ -328,9 +410,17 @@ function PromisesKanban({
     });
   }, [filteredPromises]);
 
+  // Slugs de columnas críticas que siempre deben ser visibles
+  const CRITICAL_STAGE_SLUGS = ['pending', 'pendiente', 'negotiation', 'negociacion', 'closing', 'cierre', 'en_cierre'];
+  
   // Filtrar stages según toggles de vista
   const visibleStages = useMemo(() => {
-    const filtered = pipelineStages.filter((stage) => {
+    const filtered = localPipelineStages.filter((stage) => {
+      // REGLA DE ORO: Columnas críticas siempre visibles
+      if (CRITICAL_STAGE_SLUGS.includes(stage.slug)) {
+        return true;
+      }
+      
       // Ocultar archived si showArchived es false
       if (stage.slug === 'archived') {
         return showArchived;
@@ -339,15 +429,28 @@ function PromisesKanban({
       if (stage.slug === 'canceled') {
         return showCanceled;
       }
+      // Ocultar approved si showApproved es false
+      if (stage.slug === 'approved' || stage.slug === 'aprobada') {
+        return showApproved;
+      }
       // Mostrar siempre los demás stages
       return true;
     });
     return filtered;
-  }, [pipelineStages, showArchived, showCanceled]);
+  }, [localPipelineStages, showArchived, showCanceled, showApproved]);
 
   // Determinar si estamos en "vista completa" (ambos activos) o "vista compacta"
   const isFullView = showArchived && showCanceled;
 
+  // Función para actualizar un stage localmente (optimista)
+  const updateLocalStage = useCallback((stageId: string, updates: Partial<PipelineStage>) => {
+    setLocalPipelineStages(prev => 
+      prev.map(stage => 
+        stage.id === stageId ? { ...stage, ...updates } : stage
+      )
+    );
+  }, []);
+  
   // Agrupar promises por stage (ya ordenadas)
   // Si una promesa no tiene stage_id, se asigna a la primera etapa disponible (no archivada ni cancelada)
   const promisesByStage = useMemo(() => {
@@ -712,21 +815,86 @@ function PromisesKanban({
           </div>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto items-center">
+          {/* Divisor */}
+          <div className="h-6 w-px bg-zinc-700" />
+          
+          {/* Menú de Configuración de Vista */}
+          <ZenDropdownMenu open={showViewConfig} onOpenChange={setShowViewConfig}>
+            <ZenDropdownMenuTrigger asChild>
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                className="gap-1.5 h-8"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline text-xs">Vista</span>
+              </ZenButton>
+            </ZenDropdownMenuTrigger>
+            <ZenDropdownMenuContent align="end" className="w-56">
+              <div className="px-2 py-1.5 text-xs font-semibold text-zinc-400">
+                Configuración de Vista
+              </div>
+              <ZenDropdownMenuSeparator />
+              <div className="px-2 py-1.5">
+                <div className="flex items-center justify-between gap-4">
+                  <label htmlFor="show-approved" className="text-sm text-zinc-300 cursor-pointer">
+                    Mostrar Aprobado
+                  </label>
+                  <ZenSwitch
+                    id="show-approved"
+                    checked={showApproved}
+                    onCheckedChange={setShowApproved}
+                  />
+                </div>
+              </div>
+              <div className="px-2 py-1.5">
+                <div className="flex items-center justify-between gap-4">
+                  <label htmlFor="show-archived" className="text-sm text-zinc-300 cursor-pointer">
+                    Mostrar Archivado
+                  </label>
+                  <ZenSwitch
+                    id="show-archived"
+                    checked={showArchived}
+                    onCheckedChange={setShowArchived}
+                  />
+                </div>
+              </div>
+              <div className="px-2 py-1.5">
+                <div className="flex items-center justify-between gap-4">
+                  <label htmlFor="show-canceled" className="text-sm text-zinc-300 cursor-pointer">
+                    Mostrar Cancelado
+                  </label>
+                  <ZenSwitch
+                    id="show-canceled"
+                    checked={showCanceled}
+                    onCheckedChange={setShowCanceled}
+                  />
+                </div>
+              </div>
+              <ZenDropdownMenuSeparator />
+              <div className="px-2 py-1.5">
+                <p className="text-xs text-zinc-500">
+                  Pendiente, Negociación y Cierre siempre están visibles
+                </p>
+              </div>
+            </ZenDropdownMenuContent>
+          </ZenDropdownMenu>
+          
           <ZenButton
-            variant={isFullView ? "secondary" : "outline"}
-            size="md"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               // Toggle vista completa: activa/desactiva ambos
               const newState = !isFullView;
               setShowArchived(newState);
               setShowCanceled(newState);
             }}
-            className="gap-1.5 h-10"
+            className="gap-1.5 h-8"
             title={isFullView ? "Ocultar promesas archivadas y canceladas" : "Mostrar todas las promesas (incluyendo archivadas y canceladas)"}
           >
-            {isFullView ? <Columns2 className="h-4 w-4" /> : <TableColumnsSplit className="h-4 w-4" />}
-            <span>{isFullView ? 'Pipeline Compacto' : 'Pipeline Completo'}</span>
+            {isFullView ? <Columns2 className="h-3.5 w-3.5" /> : <TableColumnsSplit className="h-3.5 w-3.5" />}
+            <span className="text-xs">{isFullView ? 'Pipeline Compacto' : 'Pipeline Completo'}</span>
           </ZenButton>
         </div>
       </div>
@@ -752,6 +920,8 @@ function PromisesKanban({
                 onPromiseArchived={handlePromiseArchived}
                 onPromiseDeleted={handlePromiseDeleted}
                 onPromiseUpdated={onPromiseUpdated}
+                pipelineStages={pipelineStages}
+                onPipelineStagesUpdated={onPipelineStagesUpdated}
               />
             ))
           ) : (
@@ -768,6 +938,9 @@ function PromisesKanban({
                   onPromiseArchived={handlePromiseArchived}
                   onPromiseDeleted={handlePromiseDeleted}
                   onPromiseUpdated={onPromiseUpdated}
+                  pipelineStages={localPipelineStages}
+                  onPipelineStagesUpdated={onPipelineStagesUpdated}
+                  onUpdateLocalStage={updateLocalStage}
                 />
               ))}
             </div>
@@ -789,6 +962,7 @@ function PromisesKanban({
                 onArchived={() => activePromise.promise_id && handlePromiseArchived(activePromise.promise_id)}
                 onDeleted={() => activePromise.promise_id && handlePromiseDeleted(activePromise.promise_id)}
                 onTagsUpdated={onPromiseUpdated}
+                pipelineStages={localPipelineStages}
               />
             </div>
           ) : null}
@@ -827,6 +1001,9 @@ function KanbanColumn({
   onPromiseArchived,
   onPromiseDeleted,
   onPromiseUpdated,
+  pipelineStages = [],
+  onPipelineStagesUpdated,
+  onUpdateLocalStage,
 }: {
   stage: PipelineStage;
   promises: PromiseWithContact[];
@@ -836,10 +1013,119 @@ function KanbanColumn({
   onPromiseArchived?: (promiseId: string) => void;
   onPromiseDeleted?: (promiseId: string) => void;
   onPromiseUpdated?: () => void;
+  pipelineStages?: PipelineStage[];
+  onPipelineStagesUpdated?: () => void;
+  onUpdateLocalStage?: (stageId: string, updates: Partial<PipelineStage>) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id: stage.id,
   });
+  
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(stage.name);
+  const [isHovered, setIsHovered] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Obtener nombre original del sistema
+  const systemName = getSystemStageName(stage.slug);
+  const isRenamed = stage.name !== systemName;
+  
+  // Sincronizar editedName cuando cambia stage.name
+  useEffect(() => {
+    setEditedName(stage.name);
+  }, [stage.name]);
+  
+  // Focus en input cuando entra en modo edición
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+  
+  const handleSave = async () => {
+    if (editedName.trim() === stage.name.trim()) {
+      setIsEditing(false);
+      return;
+    }
+    
+    if (!editedName.trim()) {
+      setEditedName(stage.name);
+      setIsEditing(false);
+      toast.error('El nombre no puede estar vacío');
+      return;
+    }
+    
+    const newName = editedName.trim();
+    
+    // Actualización optimista: actualizar inmediatamente en el DOM
+    onUpdateLocalStage?.(stage.id, { name: newName });
+    setIsEditing(false);
+    
+    // Luego sincronizar con el servidor (sin recargar todo)
+    const result = await updatePipelineStage(studioSlug, {
+      id: stage.id,
+      name: newName,
+    });
+    
+    if (result.success) {
+      // Actualizar el stage local con los datos del servidor (por si hay cambios adicionales)
+      if (result.data) {
+        onUpdateLocalStage?.(stage.id, result.data);
+      }
+      toast.success('Nombre actualizado');
+      // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
+      // La actualización optimista ya actualizó el DOM
+    } else {
+      // Revertir si falla
+      onUpdateLocalStage?.(stage.id, { name: stage.name });
+      setEditedName(stage.name);
+      toast.error(result.error || 'Error al actualizar nombre');
+    }
+  };
+  
+  const handleReset = async () => {
+    if (stage.name === systemName) return;
+    
+    // Actualización optimista: actualizar inmediatamente en el DOM
+    onUpdateLocalStage?.(stage.id, { name: systemName });
+    setIsEditing(false);
+    
+    // Luego sincronizar con el servidor (sin recargar todo)
+    const result = await updatePipelineStage(studioSlug, {
+      id: stage.id,
+      name: systemName,
+    });
+    
+    if (result.success) {
+      // Actualizar el stage local con los datos del servidor (por si hay cambios adicionales)
+      if (result.data) {
+        onUpdateLocalStage?.(stage.id, result.data);
+      }
+      toast.success('Nombre restaurado');
+      // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
+      // La actualización optimista ya actualizó el DOM
+    } else {
+      // Revertir si falla
+      onUpdateLocalStage?.(stage.id, { name: stage.name });
+      toast.error(result.error || 'Error al restaurar nombre');
+    }
+  };
+  
+  const handleCancel = () => {
+    setEditedName(stage.name);
+    setIsEditing(false);
+  };
+  
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
 
   return (
     <div
@@ -858,17 +1144,67 @@ function KanbanColumn({
     >
       {/* Header de columna */}
       <div
-        className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-700"
+        className="flex items-center justify-between mb-4 pb-2 border-b border-zinc-700 group"
         style={{ borderBottomColor: stage.color + '40' }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <div
-            className="w-3 h-3 rounded-full"
+            className="w-3 h-3 rounded-full shrink-0"
             style={{ backgroundColor: stage.color }}
           />
-          <h3 className="font-medium text-white text-sm">{stage.name}</h3>
+          {isEditing ? (
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <input
+                ref={inputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleSave}
+                onKeyDown={handleKeyDown}
+                className="flex-1 bg-zinc-800 border border-zinc-600 rounded px-2 py-0.5 text-sm text-white font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
+                style={{ maxWidth: '180px' }}
+              />
+              {editedName.trim() !== systemName && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    setEditedName(systemName);
+                    inputRef.current?.focus();
+                  }}
+                  className="shrink-0 p-1 text-zinc-400 hover:text-blue-400 transition-colors rounded hover:bg-zinc-700/50"
+                  title={`Restaurar a "${systemName}"`}
+                  type="button"
+                >
+                  <Undo2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          ) : (
+            <h3 
+              className="font-medium text-white text-sm truncate cursor-pointer hover:text-blue-400 transition-colors flex-1 min-w-0"
+              onClick={() => setIsEditing(true)}
+              title={isRenamed ? `Etapa original: ${systemName}` : 'Clic para editar'}
+            >
+              {stage.name}
+            </h3>
+          )}
+          {!isEditing && isHovered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+              }}
+              className="shrink-0 p-0.5 text-zinc-400 hover:text-blue-400 transition-colors opacity-0 group-hover:opacity-100"
+              title="Editar nombre"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
         </div>
-        <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded">
+        <span className="text-xs text-zinc-400 bg-zinc-800 px-2 py-1 rounded shrink-0 ml-2">
           {promises.length}
         </span>
       </div>
@@ -890,6 +1226,7 @@ function KanbanColumn({
               onArchived={() => promise.promise_id && onPromiseArchived?.(promise.promise_id)}
               onDeleted={() => promise.promise_id && onPromiseDeleted?.(promise.promise_id)}
               onTagsUpdated={onPromiseUpdated}
+              pipelineStages={pipelineStages}
             />
           ))}
         </SortableContext>

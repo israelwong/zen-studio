@@ -15,6 +15,8 @@ import { usePromisePageContext } from '@/components/promise/PromisePageContext';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { usePromiseNavigation } from '@/hooks/usePromiseNavigation';
+import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
+import { createStageNameMap, getStageDisplayName } from '@/lib/utils/pipeline-stage-names';
 
 interface NegociacionViewProps {
   promise: {
@@ -66,6 +68,7 @@ interface NegociacionViewProps {
   shareSettings: PromiseShareSettings;
   studioSlug: string;
   promiseId: string;
+  pipelineStages?: PipelineStage[];
 }
 
 export function NegociacionView({
@@ -77,7 +80,11 @@ export function NegociacionView({
   shareSettings,
   studioSlug,
   promiseId,
+  pipelineStages = [],
 }: NegociacionViewProps) {
+  // Crear mapa de nombres de stages para obtener nombres personalizados
+  const stageNameMap = pipelineStages.length > 0 ? createStageNameMap(pipelineStages) : null;
+  const negociacionStageName = getStageDisplayName('negotiation', stageNameMap);
   const router = useRouter();
   const {
     onSuccess,
@@ -199,7 +206,7 @@ export function NegociacionView({
         {/* Header */}
         <div className="mb-8 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Propuesta de Negociación
+            Propuesta de {negociacionStageName}
           </h2>
           <p className="text-zinc-400">
             Revisa la propuesta especial que hemos preparado para ti

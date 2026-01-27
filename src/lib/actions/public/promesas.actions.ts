@@ -12,6 +12,92 @@ import type { PublicSeccionData, PublicCategoriaData, PublicServicioData, Public
 import type { SeccionData } from "@/lib/actions/schemas/catalogo-schemas";
 import { construirEstructuraJerarquicaCotizacion } from "@/lib/actions/studio/commercial/promises/cotizacion-structure.utils";
 import { calcularCantidadEfectiva } from "@/lib/utils/dynamic-billing-calc";
+import type { PipelineStage } from "@/lib/actions/schemas/promises-schemas";
+
+/**
+ * Obtener pipeline stages del studio (para uso en vistas públicas)
+ * Con caché para evitar consultas repetidas
+ */
+async function _getPublicPipelineStagesInternal(
+  studioId: string
+): Promise<PipelineStage[]> {
+  const stages = await prisma.studio_promise_pipeline_stages.findMany({
+    where: {
+      studio_id: studioId,
+      is_active: true,
+    },
+    orderBy: { order: 'asc' },
+    select: {
+      id: true,
+      studio_id: true,
+      name: true,
+      slug: true,
+      color: true,
+      order: true,
+      is_system: true,
+      is_active: true,
+      created_at: true,
+      updated_at: true,
+    },
+  });
+
+  return stages.map((stage) => ({
+    id: stage.id,
+    studio_id: stage.studio_id,
+    name: stage.name,
+    slug: stage.slug,
+    color: stage.color,
+    order: stage.order,
+    is_system: stage.is_system,
+    is_active: stage.is_active,
+    created_at: stage.created_at,
+    updated_at: stage.updated_at,
+  }));
+}
+
+/**
+ * Obtener pipeline stages del studio para vistas públicas (con caché)
+ */
+export async function getPublicPipelineStages(
+  studioSlug: string
+): Promise<{
+  success: boolean;
+  data?: PipelineStage[];
+  error?: string;
+}> {
+  try {
+    const studio = await prisma.studios.findUnique({
+      where: { slug: studioSlug },
+      select: { id: true },
+    });
+
+    if (!studio) {
+      return { success: false, error: 'Studio no encontrado' };
+    }
+
+    const getCachedStages = unstable_cache(
+      () => _getPublicPipelineStagesInternal(studio.id),
+      ['public-pipeline-stages', studioSlug],
+      {
+        tags: [`pipeline-stages-${studioSlug}`],
+        revalidate: 3600, // Cachear por 1 hora
+      }
+    );
+
+    const stages = await getCachedStages();
+
+    return {
+      success: true,
+      data: stages,
+    };
+  } catch (error) {
+    console.error('[getPublicPipelineStages] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener stages',
+    };
+  }
+}
 
 /**
  * Obtener condiciones comerciales disponibles para promesa pública

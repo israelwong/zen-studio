@@ -2,7 +2,8 @@ import React, { Suspense } from 'react';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
-import { getPublicPromiseRouteState, getPublicPromiseNegociacion, getPublicPromiseMetadata, getPublicPromiseBasicData, getPublicPromiseNegociacionBasic } from '@/lib/actions/public/promesas.actions';
+import { getPublicPromiseRouteState, getPublicPromiseNegociacion, getPublicPromiseMetadata, getPublicPromiseBasicData, getPublicPromiseNegociacionBasic, getPublicPipelineStages } from '@/lib/actions/public/promesas.actions';
+import { createStageNameMap, getStageDisplayName } from '@/lib/utils/pipeline-stage-names';
 import { isRouteValid } from '@/lib/utils/public-promise-routing';
 import { PromisePageSkeleton } from '@/components/promise/PromisePageSkeleton';
 import { PromisePageProvider } from '@/components/promise/PromisePageContext';
@@ -41,9 +42,10 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
 
   // ⚠️ STREAMING: Cargar datos básicos inmediatamente (instantáneo)
   // ⚠️ MANEJO ROBUSTO: Usar Promise.allSettled para evitar abortos de boundaries
-  const [basicDataResult, priceDataResult] = await Promise.allSettled([
+  const [basicDataResult, priceDataResult, stagesResult] = await Promise.allSettled([
     getPublicPromiseBasicData(slug, promiseId),
     getPublicPromiseNegociacionBasic(slug, promiseId),
+    getPublicPipelineStages(slug),
   ]);
 
   const basicData = basicDataResult.status === 'fulfilled' 
@@ -52,6 +54,9 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
   const priceData = priceDataResult.status === 'fulfilled' 
     ? priceDataResult.value 
     : { success: false, error: 'Error al obtener datos de precio' };
+  const stagesData = stagesResult.status === 'fulfilled'
+    ? stagesResult.value
+    : { success: false, error: 'Error al obtener stages' };
 
   if (!basicData.success || !basicData.data || !priceData.success || !priceData.data) {
     redirect(`/${slug}/promise/${promiseId}`);
@@ -60,6 +65,7 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
   // TypeScript: En este punto sabemos que ambos son exitosos
   const { promise: promiseBasic, studio: studioBasic } = basicData.data;
   const { totalPrice } = priceData.data;
+  const pipelineStages = stagesData.success && stagesData.data ? stagesData.data : [];
 
   // ⚠️ STREAMING: Crear promesa para datos pesados (NO await - deferred)
   const deferredDataPromise = getPublicPromiseNegociacion(slug, promiseId);
@@ -82,6 +88,7 @@ export default async function NegociacionPage({ params }: NegociacionPageProps) 
           basicPromise={{ promise: promiseBasic, studio: studioBasic }}
           studioSlug={slug}
           promiseId={promiseId}
+          pipelineStages={pipelineStages}
         />
       </Suspense>
     </PromisePageProvider>
@@ -120,10 +127,15 @@ export async function generateMetadata({
     const eventName = event_name || '';
     const studioName = studio_name;
 
+    // Obtener nombre personalizado del stage de negociación
+    const stagesResult = await getPublicPipelineStages(slug);
+    const stageNameMap = stagesResult.success && stagesResult.data ? createStageNameMap(stagesResult.data) : null;
+    const negociacionStageName = getStageDisplayName('negotiation', stageNameMap);
+
     const title = eventName
       ? `${eventType} ${eventName} | ${studioName}`
       : `${eventType} | ${studioName}`;
-    const description = `Revisa la propuesta de negociación para tu ${event_type_name || 'evento'} con ${studio_name}`;
+    const description = `Revisa la propuesta de ${negociacionStageName.toLowerCase()} para tu ${event_type_name || 'evento'} con ${studio_name}`;
 
     const icons = logo_url
       ? {

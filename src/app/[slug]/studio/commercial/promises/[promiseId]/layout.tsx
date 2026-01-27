@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { determinePromiseState } from '@/lib/actions/studio/commercial/promises/promise-state.actions';
 import { getPipelineStages } from '@/lib/actions/studio/commercial/promises';
 import { PromiseLayoutClient } from './components/PromiseLayoutClient';
 import { PromiseLayoutSkeleton } from './components/PromiseLayoutSkeleton';
-import { PromiseProvider } from './context/PromiseContext';
+
+export const dynamic = 'force-dynamic';
 
 interface PromiseLayoutProps {
   children: React.ReactNode;
@@ -13,12 +15,16 @@ interface PromiseLayoutProps {
   }>;
 }
 
-export default async function PromiseLayout({
+// Componente interno para cargar datos (envuelto en Suspense)
+async function PromiseLayoutContent({
+  studioSlug,
+  promiseId,
   children,
-  params,
-}: PromiseLayoutProps) {
-  const { slug: studioSlug, promiseId } = await params;
-
+}: {
+  studioSlug: string;
+  promiseId: string;
+  children: React.ReactNode;
+}) {
   // Determinar estado y cargar datos en una sola query optimizada
   const [stateResult, stagesResult] = await Promise.all([
     determinePromiseState(promiseId),
@@ -34,9 +40,6 @@ export default async function PromiseLayout({
     ? stagesResult.data
     : [];
 
-  // Redirigir según el estado si no estamos en la ruta correcta
-  // Esto se maneja en el page.tsx base que redirige según el estado
-
   return (
     <PromiseLayoutClient
       studioSlug={studioSlug}
@@ -46,5 +49,23 @@ export default async function PromiseLayout({
     >
       {children}
     </PromiseLayoutClient>
+  );
+}
+
+export default async function PromiseLayout({
+  children,
+  params,
+}: PromiseLayoutProps) {
+  const { slug: studioSlug, promiseId } = await params;
+
+  return (
+    <Suspense fallback={<PromiseLayoutSkeleton />}>
+      <PromiseLayoutContent
+        studioSlug={studioSlug}
+        promiseId={promiseId}
+      >
+        {children}
+      </PromiseLayoutContent>
+    </Suspense>
   );
 }

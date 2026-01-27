@@ -28,17 +28,26 @@ async function getServerSideRouteState(
     evento_id: string | null;
   }>;
 }> {
+  // ✅ OPTIMIZACIÓN: Validar promiseId antes de consultar (evitar consultas innecesarias)
+  if (!promiseId || typeof promiseId !== 'string' || promiseId.trim().length === 0) {
+    throw new Error('PromiseId inválido');
+  }
+
+  console.time('DB_QUERY_STUDIO');
   const studio = await prisma.studios.findUnique({
     where: { slug: studioSlug },
     select: { id: true },
   });
+  console.timeEnd('DB_QUERY_STUDIO');
 
   if (!studio) {
     throw new Error('Studio no encontrado');
   }
 
-  // Consulta directa sin caché - Traer TODAS las cotizaciones asociadas al promiseId
-  const cotizaciones = await prisma.studio_cotizaciones.findMany({
+  // ✅ OPTIMIZACIÓN CRÍTICA: Consulta en dos fases para reducir latencia
+  // Fase 1: Solo los 3 campos esenciales (id, status, visible_to_client)
+  console.time('DB_QUERY_PHASE1');
+  const cotizacionesMinimas = await prisma.studio_cotizaciones.findMany({
     where: {
       promise_id: promiseId,
       studio_id: studio.id,
@@ -49,25 +58,81 @@ async function getServerSideRouteState(
     select: {
       id: true,
       status: true,
-      selected_by_prospect: true,
       visible_to_client: true,
-      evento_id: true,
     },
   });
+  console.timeEnd('DB_QUERY_PHASE1');
+
+  // Fase 2: Solo si hay cotizaciones visibles, obtener campos adicionales necesarios
+  // (selected_by_prospect y evento_id solo para cotizaciones aprobadas/en negociación)
+  const visibleQuotes = cotizacionesMinimas.filter(q => q.visible_to_client === true);
+  let cotizaciones: Array<{
+    id: string;
+    status: string;
+    visible_to_client: boolean;
+    selected_by_prospect?: boolean | null;
+    evento_id?: string | null;
+  }> = cotizacionesMinimas;
+  
+  if (visibleQuotes.length > 0) {
+    // Verificar si necesitamos campos adicionales
+    const needsAdditionalFields = visibleQuotes.some(q => {
+      const status = (q.status || '').toLowerCase();
+      return status === 'aprobada' || status === 'autorizada' || status === 'approved' || status === 'negociacion';
+    });
+
+    if (needsAdditionalFields) {
+      console.time('DB_QUERY_PHASE2');
+      const cotizacionesCompletas = await prisma.studio_cotizaciones.findMany({
+        where: {
+          promise_id: promiseId,
+          studio_id: studio.id,
+          id: { in: visibleQuotes.map(q => q.id) },
+        },
+        select: {
+          id: true,
+          status: true,
+          visible_to_client: true,
+          selected_by_prospect: true,
+          evento_id: true,
+        },
+      });
+      console.timeEnd('DB_QUERY_PHASE2');
+      
+      // Combinar: usar completas para visibles, mínimas para no visibles
+      cotizaciones = cotizacionesMinimas.map(min => {
+        const completa = cotizacionesCompletas.find(c => c.id === min.id);
+        if (completa) {
+          return {
+            id: completa.id,
+            status: completa.status,
+            visible_to_client: completa.visible_to_client,
+            selected_by_prospect: completa.selected_by_prospect,
+            evento_id: completa.evento_id,
+          };
+        }
+        return {
+          id: min.id,
+          status: min.status,
+          visible_to_client: min.visible_to_client,
+        };
+      });
+    }
+  }
 
   // Formatear cotizaciones para determinePromiseRoute
   const cotizacionesFormatted = cotizaciones.map(cot => ({
     id: cot.id,
     status: normalizeStatus(cot.status),
-    selected_by_prospect: cot.selected_by_prospect,
+    selected_by_prospect: cot.selected_by_prospect ?? null,
     visible_to_client: cot.visible_to_client,
-    evento_id: cot.evento_id,
+    evento_id: cot.evento_id ?? null,
   }));
 
   // Calcular ruta objetivo usando determinePromiseRoute
   const targetRoute = determinePromiseRoute(cotizacionesFormatted, studioSlug, promiseId);
 
-  // Preparar quotes para el cliente
+  // Preparar quotes para el cliente (formato mínimo)
   const quotes = cotizacionesFormatted.map(cot => ({
     id: cot.id,
     status: cot.status,

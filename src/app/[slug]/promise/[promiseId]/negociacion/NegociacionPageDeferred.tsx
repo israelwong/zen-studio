@@ -4,6 +4,7 @@ import { use } from 'react';
 import { NegociacionView } from './NegociacionView';
 import type { PublicCotizacion } from '@/types/public-promise';
 import type { PromiseShareSettings } from '@/lib/actions/studio/commercial/promises/promise-share-settings.actions';
+import type { PipelineStage } from '@/lib/actions/schemas/promises-schemas';
 
 interface NegociacionPageDeferredProps {
   dataPromise: Promise<{
@@ -91,6 +92,7 @@ interface NegociacionPageDeferredProps {
   };
   studioSlug: string;
   promiseId: string;
+  pipelineStages?: PipelineStage[];
 }
 
 /**
@@ -102,6 +104,7 @@ export function NegociacionPageDeferred({
   basicPromise,
   studioSlug,
   promiseId,
+  pipelineStages = [],
 }: NegociacionPageDeferredProps) {
   // ⚠️ React 19: use() resuelve la promesa y suspende si no está lista
   const result = use(dataPromise);
@@ -137,6 +140,7 @@ export function NegociacionPageDeferred({
       shareSettings={share_settings}
       studioSlug={studioSlug}
       promiseId={promiseId}
+      pipelineStages={pipelineStages}
     />
   );
 }
