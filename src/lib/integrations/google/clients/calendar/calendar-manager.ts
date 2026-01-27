@@ -148,16 +148,35 @@ export async function obtenerOCrearCalendarioSecundario(
   } catch (error: any) {
     console.error('[Google Calendar] Error creando calendario secundario:', error);
     
+    // Detectar errores de token/autenticación y preservar el mensaje original
+    const errorMessage = error?.message || '';
+    const isTokenError = errorMessage.includes('Error al refrescar access token') ||
+                        errorMessage.includes('invalid_grant') ||
+                        errorMessage.includes('refresh token') ||
+                        error?.code === 401 ||
+                        error?.response?.status === 401;
+    
+    if (isTokenError) {
+      // Preservar el mensaje original del error de token
+      throw error;
+    }
+    
     // Mejorar mensaje de error para permisos insuficientes
-    if (error?.code === 403 || error?.response?.status === 403 || error?.message?.includes('Insufficient Permission')) {
+    if (error?.code === 403 || error?.response?.status === 403 || errorMessage.includes('Insufficient Permission')) {
       throw new Error(
         'Permisos insuficientes para crear calendarios. Se requiere el permiso completo de Google Calendar (no solo calendar.events). Por favor, reconecta tu cuenta de Google con permisos completos de Calendar.'
       );
     }
     
-    throw new Error(
-      `Error al crear calendario secundario: ${error?.message || 'Error desconocido'}`
-    );
+    // Para otros errores, envolver con contexto pero preservar mensaje original si es útil
+    if (errorMessage && !errorMessage.includes('Error al crear calendario secundario')) {
+      throw new Error(
+        `Error al crear calendario secundario: ${errorMessage}`
+      );
+    }
+    
+    // Si el error ya tiene un mensaje útil, relanzarlo directamente
+    throw error;
   }
 }
 

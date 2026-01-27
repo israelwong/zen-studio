@@ -75,8 +75,31 @@ export function PromiseDetailToolbar({
 
                 const shortUrl = `${window.location.origin}/s/${result.data.shortCode}`;
 
-                // Copiar al portapapeles
-                await navigator.clipboard.writeText(shortUrl);
+                // Copiar al portapapeles con fallback
+                try {
+                  await navigator.clipboard.writeText(shortUrl);
+                } catch (clipboardError) {
+                  // Fallback: usar método tradicional si la API moderna falla
+                  if (clipboardError instanceof Error && clipboardError.name === 'NotAllowedError') {
+                    // Intentar método tradicional como fallback
+                    const textArea = document.createElement('textarea');
+                    textArea.value = shortUrl;
+                    textArea.style.position = 'fixed';
+                    textArea.style.left = '-999999px';
+                    textArea.style.top = '-999999px';
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    try {
+                      document.execCommand('copy');
+                    } catch (fallbackError) {
+                      console.debug('Error copiando al portapapeles (fallback):', fallbackError);
+                    }
+                    document.body.removeChild(textArea);
+                  } else {
+                    throw clipboardError;
+                  }
+                }
                 setLinkCopied(true);
                 setTimeout(() => setLinkCopied(false), 2000);
 

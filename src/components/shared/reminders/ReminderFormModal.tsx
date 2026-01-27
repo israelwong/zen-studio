@@ -220,6 +220,30 @@ export function ReminderFormModal({
     setErrors(prev => ({ ...prev, date: undefined }));
   };
 
+  // Verificar si una opción rápida está seleccionada
+  const isQuickDateSelected = (days: number): boolean => {
+    if (!selectedDate) return false;
+    const today = new Date();
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + days);
+    
+    // Normalizar ambas fechas a UTC mediodía para comparar
+    const selectedNormalized = new Date(Date.UTC(
+      selectedDate.getUTCFullYear(),
+      selectedDate.getUTCMonth(),
+      selectedDate.getUTCDate(),
+      12, 0, 0
+    ));
+    const targetNormalized = new Date(Date.UTC(
+      targetDate.getUTCFullYear(),
+      targetDate.getUTCMonth(),
+      targetDate.getUTCDate(),
+      12, 0, 0
+    ));
+    
+    return selectedNormalized.getTime() === targetNormalized.getTime();
+  };
+
   // Sincronizar selectedDate con reminderDate
   useEffect(() => {
     if (selectedDate) {
@@ -498,28 +522,37 @@ export function ReminderFormModal({
             <div className="flex items-center gap-2 flex-wrap">
               <ZenButton
                 type="button"
-                variant="outline"
+                variant={isQuickDateSelected(1) ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleQuickDate(1)}
-                className="text-xs"
+                className={cn(
+                  "text-xs",
+                  isQuickDateSelected(1) && "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-500/30"
+                )}
               >
                 Mañana
               </ZenButton>
               <ZenButton
                 type="button"
-                variant="outline"
+                variant={isQuickDateSelected(3) ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleQuickDate(3)}
-                className="text-xs"
+                className={cn(
+                  "text-xs",
+                  isQuickDateSelected(3) && "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-500/30"
+                )}
               >
                 En 3 días
               </ZenButton>
               <ZenButton
                 type="button"
-                variant="outline"
+                variant={isQuickDateSelected(7) ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleQuickDate(7)}
-                className="text-xs"
+                className={cn(
+                  "text-xs",
+                  isQuickDateSelected(7) && "bg-emerald-500/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-500/30"
+                )}
               >
                 En 1 semana
               </ZenButton>
