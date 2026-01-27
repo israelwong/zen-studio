@@ -89,20 +89,38 @@ export async function getGoogleCalendarClient(studioSlug: string) {
     // Actualizar credenciales con el nuevo access_token si fue refrescado
     oauth2Client.setCredentials(credentials);
   } catch (error: any) {
-    console.error('[getGoogleCalendarClient] Error refrescando token:', error);
+    console.error('[getGoogleCalendarClient] Error refrescando token:', {
+      message: error?.message,
+      code: error?.code,
+      status: error?.response?.status,
+      error: error?.response?.data?.error,
+      errorDescription: error?.response?.data?.error_description,
+    });
     
-    // Verificar si el error es invalid_grant (token revocado/expirado)
-    const isInvalidGrant = error?.message?.includes('invalid_grant') || 
-                          error?.code === 'invalid_grant' ||
-                          error?.response?.data?.error === 'invalid_grant';
+    // Detectar errores de token inválido/revocado/expirado
+    const errorMessage = error?.message || '';
+    const errorCode = error?.code || error?.response?.data?.error || '';
+    const statusCode = error?.response?.status;
+    const errorDescription = error?.response?.data?.error_description || '';
+    
+    const isInvalidGrant = 
+      errorMessage.includes('invalid_grant') ||
+      errorCode === 'invalid_grant' ||
+      errorMessage.includes('Token has been expired or revoked') ||
+      errorMessage.includes('invalid_token') ||
+      errorCode === 'invalid_token' ||
+      statusCode === 401 ||
+      (statusCode === 400 && errorCode === 'invalid_grant');
     
     if (isInvalidGrant) {
-      // Verificar si realmente hay una cuenta conectada antes de pedir reconexión
+      // Verificar si realmente hay una cuenta conectada antes de limpiar
       const studioWithToken = await prisma.studios.findUnique({
         where: { slug: studioSlug },
         select: {
+          id: true,
           google_oauth_refresh_token: true,
           google_oauth_email: true,
+          google_oauth_scopes: true,
         },
       });
       
@@ -111,9 +129,61 @@ export async function getGoogleCalendarClient(studioSlug: string) {
         throw new Error('No hay cuenta de Google Calendar conectada');
       }
       
-      // Si hay refresh token pero falla, necesita reconectar
+      // Limpiar solo los datos de Calendar, mantener otros recursos si existen
+      try {
+        const scopes = studioWithToken.google_oauth_scopes 
+          ? JSON.parse(studioWithToken.google_oauth_scopes) as string[]
+          : [];
+        
+        const hasOtherScopes = scopes.some(
+          (scope) => !scope.includes('calendar') && !scope.includes('calendar.events')
+        );
+        
+        // Si hay otros recursos (Drive, Contacts), solo limpiar Calendar
+        // Si solo Calendar está conectado, limpiar todo
+        if (hasOtherScopes) {
+          // Mantener tokens, solo limpiar scopes de Calendar
+          const scopesFinales = scopes.filter(
+            (scope) => !scope.includes('calendar') && !scope.includes('calendar.events')
+          );
+          
+          await prisma.studios.update({
+            where: { slug: studioSlug },
+            data: {
+              google_oauth_scopes: JSON.stringify(scopesFinales),
+              google_calendar_secondary_id: null,
+            },
+          });
+          
+          console.warn(
+            `[getGoogleCalendarClient] Token inválido detectado. Calendar desconectado, otros recursos mantenidos para ${studioSlug}`
+          );
+        } else {
+          // Solo Calendar estaba conectado, limpiar todo
+          await prisma.studios.update({
+            where: { slug: studioSlug },
+            data: {
+              google_oauth_refresh_token: null,
+              google_oauth_email: null,
+              google_oauth_name: null,
+              google_oauth_scopes: null,
+              google_calendar_secondary_id: null,
+              is_google_connected: false,
+            },
+          });
+          
+          console.warn(
+            `[getGoogleCalendarClient] Token inválido detectado. Google Calendar completamente desconectado para ${studioSlug}`
+          );
+        }
+      } catch (cleanupError) {
+        console.error('[getGoogleCalendarClient] Error limpiando token inválido:', cleanupError);
+        // Continuar con el error original aunque falle la limpieza
+      }
+      
+      // Lanzar error con mensaje claro
       throw new Error(
-        'Error al refrescar access token. Por favor, reconecta tu cuenta de Google Calendar.'
+        'Tu sesión de Google Calendar ha expirado o fue revocada. Por favor, reconecta tu cuenta de Google Calendar desde la configuración de integraciones.'
       );
     }
     

@@ -6,6 +6,7 @@ import { getAgendaCount } from '@/lib/actions/shared/agenda-unified.actions';
 interface UseAgendaCountOptions {
     studioSlug: string;
     enabled?: boolean;
+    initialCount?: number; // ✅ OPTIMIZACIÓN: Pre-cargado en servidor (eliminar POST del cliente)
 }
 
 interface UseAgendaCountReturn {
@@ -18,9 +19,11 @@ interface UseAgendaCountReturn {
 export function useAgendaCount({
     studioSlug,
     enabled = true,
+    initialCount, // ✅ OPTIMIZACIÓN: Pre-cargado en servidor
 }: UseAgendaCountOptions): UseAgendaCountReturn {
-    const [count, setCount] = useState(0);
-    const [loading, setLoading] = useState(true);
+    // ✅ OPTIMIZACIÓN: Inicializar con datos del servidor si están disponibles
+    const [count, setCount] = useState(initialCount ?? 0);
+    const [loading, setLoading] = useState(initialCount === undefined); // Solo loading si no hay datos iniciales
     const [error, setError] = useState<string | null>(null);
 
     const loadCount = useCallback(async () => {
@@ -48,9 +51,12 @@ export function useAgendaCount({
         }
     }, [studioSlug, enabled]);
 
+    // ✅ OPTIMIZACIÓN: Solo hacer fetch si no hay datos iniciales
     useEffect(() => {
-        loadCount();
-    }, [loadCount]);
+        if (initialCount === undefined) {
+            loadCount();
+        }
+    }, [loadCount, initialCount]);
 
     // Escuchar eventos de actualización de agenda
     useEffect(() => {

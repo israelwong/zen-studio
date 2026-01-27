@@ -6,6 +6,7 @@ import { getRemindersDue } from '@/lib/actions/studio/commercial/promises/remind
 interface UseRemindersCountOptions {
   studioSlug: string;
   enabled?: boolean;
+  initialCount?: number; // ✅ OPTIMIZACIÓN: Pre-cargado en servidor (eliminar POSTs del cliente)
 }
 
 interface UseRemindersCountReturn {
@@ -21,9 +22,11 @@ interface UseRemindersCountReturn {
 export function useRemindersCount({
   studioSlug,
   enabled = true,
+  initialCount, // ✅ OPTIMIZACIÓN: Pre-cargado en servidor
 }: UseRemindersCountOptions): UseRemindersCountReturn {
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  // ✅ OPTIMIZACIÓN: Inicializar con datos del servidor si están disponibles
+  const [count, setCount] = useState(initialCount ?? 0);
+  const [loading, setLoading] = useState(initialCount === undefined); // Solo loading si no hay datos iniciales
   const [error, setError] = useState<string | null>(null);
 
   const loadCount = useCallback(async () => {
@@ -69,9 +72,12 @@ export function useRemindersCount({
     }
   }, [studioSlug, enabled]);
 
+  // ✅ OPTIMIZACIÓN: Solo hacer fetch si no hay datos iniciales
   useEffect(() => {
-    loadCount();
-  }, [loadCount]);
+    if (initialCount === undefined) {
+      loadCount();
+    }
+  }, [loadCount, initialCount]);
 
   // Escuchar eventos de actualización de seguimientos
   useEffect(() => {

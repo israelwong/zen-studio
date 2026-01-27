@@ -60,9 +60,18 @@ export function AppHeader({
     // ✅ OPTIMIZACIÓN: Usar datos pre-cargados del servidor primero
     const identidadData = initialIdentidadData || hookIdentidadData;
     const commercialNameShort = useCommercialNameShort();
-    // ✅ PASO 4: Usar conteos pre-cargados del servidor (eliminar POSTs del cliente)
-    const { count: hookAgendaCount } = useAgendaCount({ studioSlug, enabled: isMounted && initialAgendaCount === undefined });
-    const { count: hookRemindersCount } = useRemindersCount({ studioSlug, enabled: isMounted && initialRemindersCount === undefined });
+    // ✅ OPTIMIZACIÓN: Pasar initialCount a los hooks para evitar POSTs en mount
+    const { count: hookAgendaCount } = useAgendaCount({ 
+        studioSlug, 
+        initialCount: initialAgendaCount, // ✅ Pre-cargado en servidor
+        enabled: initialAgendaCount === undefined, // Solo habilitar si no hay datos iniciales
+    });
+    const { count: hookRemindersCount } = useRemindersCount({ 
+        studioSlug, 
+        initialCount: initialRemindersCount, // ✅ Pre-cargado en servidor
+        enabled: initialRemindersCount === undefined, // Solo habilitar si no hay datos iniciales
+    });
+    // ✅ Usar datos iniciales si están disponibles, sino usar del hook
     const agendaCount = initialAgendaCount !== undefined ? initialAgendaCount : hookAgendaCount;
     const remindersCount = initialRemindersCount !== undefined ? initialRemindersCount : hookRemindersCount;
 
@@ -181,30 +190,77 @@ export function AppHeader({
                     </ZenButton>
                 </GoogleStatusPopover>
 
-                {/* Grupo de Agenda */}
-                {(onAgendaClick || onTareasOperativasClick) && (
-                    <div className="flex items-center gap-1 rounded-lg bg-zinc-950/30 px-1 ">
+                {/* Contactos */}
+                {onContactsClick && (
+                    <ZenButton
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                        onClick={onContactsClick}
+                        title="Contactos"
+                    >
+                        <ContactRound className="h-5 w-5" />
+                        <span className="sr-only">Contactos</span>
+                    </ZenButton>
+                )}
+
+                {/* Grupo de Alertas (Recordatorios + Agenda) */}
+                {(onRemindersClick || onAgendaClick || onTareasOperativasClick) && (
+                    <div className="flex items-center gap-1 rounded-full bg-zinc-950/60 px-1 ">
+                        {/* Recordatorios */}
+                        {onRemindersClick && (
+                            <>
+                                <ZenButton
+                                    variant="ghost"
+                                    size="icon"
+                                    className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                                    onClick={onRemindersClick}
+                                    title="Recordatorios"
+                                >
+                                    <AlarmClockCheck className="h-5 w-5" />
+                                    {remindersCount > 0 && (
+                                        <ZenBadge
+                                            variant="destructive"
+                                            size="sm"
+                                            className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
+                                        >
+                                            {remindersCount > 9 ? '9+' : remindersCount}
+                                        </ZenBadge>
+                                    )}
+                                    <span className="sr-only">Recordatorios</span>
+                                </ZenButton>
+                                {(onAgendaClick || onTareasOperativasClick) && (
+                                    <div className="h-4 w-px bg-zinc-700/50" />
+                                )}
+                            </>
+                        )}
+
                         {/* Agenda */}
                         {onAgendaClick && (
-                            <ZenButton
-                                variant="ghost"
-                                size="icon"
-                                className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                                onClick={onAgendaClick}
-                                title="Agenda"
-                            >
-                                <Calendar className="h-5 w-5" />
-                                {agendaCount > 0 && (
-                                    <ZenBadge
-                                        variant="destructive"
-                                        size="sm"
-                                        className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
-                                    >
-                                        {agendaCount > 9 ? '9+' : agendaCount}
-                                    </ZenBadge>
+                            <>
+                                <ZenButton
+                                    variant="ghost"
+                                    size="icon"
+                                    className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
+                                    onClick={onAgendaClick}
+                                    title="Agenda"
+                                >
+                                    <Calendar className="h-5 w-5" />
+                                    {agendaCount > 0 && (
+                                        <ZenBadge
+                                            variant="destructive"
+                                            size="sm"
+                                            className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
+                                        >
+                                            {agendaCount > 9 ? '9+' : agendaCount}
+                                        </ZenBadge>
+                                    )}
+                                    <span className="sr-only">Agenda</span>
+                                </ZenButton>
+                                {onTareasOperativasClick && (
+                                    <div className="h-4 w-px bg-zinc-700/50" />
                                 )}
-                                <span className="sr-only">Agenda</span>
-                            </ZenButton>
+                            </>
                         )}
 
                         {/* Tareas Operativas */}
@@ -221,48 +277,6 @@ export function AppHeader({
                             </ZenButton>
                         )}
                     </div>
-                )}
-
-                {/* Divider */}
-                {/* {onTareasOperativasClick && onContactsClick && (
-                    <div className="h-6 w-px bg-zinc-700" />
-                )} */}
-
-                {/* Contactos */}
-                {onContactsClick && (
-                    <ZenButton
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                        onClick={onContactsClick}
-                        title="Contactos"
-                    >
-                        <ContactRound className="h-5 w-5" />
-                        <span className="sr-only">Contactos</span>
-                    </ZenButton>
-                )}
-
-                {/* Recordatorios */}
-                {onRemindersClick && (
-                    <ZenButton
-                        variant="ghost"
-                        size="icon"
-                        className="relative rounded-full text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50 transition-colors"
-                        onClick={onRemindersClick}
-                        title="Recordatorios"
-                    >
-                        <AlarmClockCheck className="h-5 w-5" />
-                        {remindersCount > 0 && (
-                            <ZenBadge
-                                variant="destructive"
-                                size="sm"
-                                className="absolute -top-0.5 -right-0.5 h-4 w-4 flex items-center justify-center p-0 text-[10px] font-bold"
-                            >
-                                {remindersCount > 9 ? '9+' : remindersCount}
-                            </ZenBadge>
-                        )}
-                        <span className="sr-only">Recordatorios</span>
-                    </ZenButton>
                 )}
 
                 {/* Configurar */}

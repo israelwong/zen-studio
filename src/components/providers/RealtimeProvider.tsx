@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient } from '@/lib/supabase/client'; // ✅ SINGLETON: Usar misma instancia que useStudioNotifications
 
 interface RealtimeContextType {
   isConnected: boolean;

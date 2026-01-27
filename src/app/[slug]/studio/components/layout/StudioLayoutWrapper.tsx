@@ -413,6 +413,9 @@ export function StudioLayoutWrapper({
   children,
   initialIdentidadData,
   initialStorageData,
+  initialAgendaCount, // ✅ PASO 4: Pre-cargado en servidor
+  initialRemindersCount, // ✅ PASO 4: Pre-cargado en servidor
+  initialHeaderUserId, // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
 }: StudioLayoutWrapperProps) {
   return (
     <PromisesConfigProvider>
@@ -420,6 +423,9 @@ export function StudioLayoutWrapper({
         studioSlug={studioSlug}
         initialIdentidadData={initialIdentidadData}
         initialStorageData={initialStorageData}
+        initialAgendaCount={initialAgendaCount} // ✅ PASO 4: Pre-cargado en servidor
+        initialRemindersCount={initialRemindersCount} // ✅ PASO 4: Pre-cargado en servidor
+        initialHeaderUserId={initialHeaderUserId} // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
       >
         {children}
       </StudioLayoutContent>
