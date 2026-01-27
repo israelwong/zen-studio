@@ -22,6 +22,7 @@ export function PromisesKanbanClient({
   onRemoveTestPromisesRef,
 }: PromisesKanbanClientProps) {
   const [promises, setPromises] = useState<PromiseWithContact[]>(initialPromises);
+  // ✅ PRESERVAR ORDEN: El orden viene de la BD, NO reordenar en frontend
   const [pipelineStages] = useState<PipelineStage[]>(initialPipelineStages);
   const [isPromiseFormModalOpen, setIsPromiseFormModalOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState<string | null>(null);

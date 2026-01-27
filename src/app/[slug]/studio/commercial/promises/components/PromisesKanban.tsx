@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback, startTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Archive, X, TableColumnsSplit, Columns2, Pencil, RotateCcw, Eye, Settings, Undo2 } from 'lucide-react';
+import { Search, Archive, X, TableColumnsSplit, Columns2, Pencil, RotateCcw, Eye, Settings, Undo2, Loader2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -75,21 +75,51 @@ function PromisesKanban({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activePromiseStageId, setActivePromiseStageId] = useState<string | null>(null);
   const [localPromises, setLocalPromises] = useState<PromiseWithContact[]>(promises);
+  // ✅ PRESERVAR ORDEN: El orden viene de la BD, NO reordenar en frontend
   const [localPipelineStages, setLocalPipelineStages] = useState<PipelineStage[]>(pipelineStages);
   const prevPromisesRef = useRef<PromiseWithContact[]>(promises);
   const isDraggingRef = useRef(false);
   
   // Sincronizar stages locales cuando cambian desde el padre
-  // Solo actualizar si hay diferencias reales (evitar loops)
+  // ✅ PRESERVAR ORDEN: Mantener el orden que viene de la BD (NO reordenar)
+  // Solo actualizar si hay cambios en el orden o en los valores de order
+  // NO actualizar solo por cambios en el nombre
   useEffect(() => {
-    const hasChanges = pipelineStages.length !== localPipelineStages.length ||
-      pipelineStages.some((stage, index) => {
-        const localStage = localPipelineStages[index];
-        return !localStage || stage.id !== localStage.id || stage.name !== localStage.name;
+    // Verificar que el orden de los IDs sea el mismo (preservar orden local)
+    const pipelineIds = pipelineStages.map(s => s.id);
+    const localIds = localPipelineStages.map(s => s.id);
+    
+    // Verificar si hay cambios en el orden de los IDs o en los valores de order
+    const hasOrderChanges = pipelineIds.length !== localIds.length ||
+      pipelineIds.some((id, index) => id !== localIds[index]) ||
+      pipelineStages.some((stage) => {
+        const localStage = localPipelineStages.find(s => s.id === stage.id);
+        return !localStage || stage.order !== localStage.order;
       });
     
-    if (hasChanges) {
+    if (hasOrderChanges) {
+      // ✅ PRESERVAR ORDEN: Si cambió el orden, usar el orden exacto que viene de la BD
       setLocalPipelineStages(pipelineStages);
+    } else {
+      // ✅ PRESERVAR ORDEN: Si solo cambió el nombre u otros campos, actualizar solo esos campos
+      // manteniendo el orden local (que es el correcto de la BD)
+      setLocalPipelineStages(prev => {
+        // Mantener el orden local y solo actualizar campos que NO afectan el orden
+        return prev.map(localStage => {
+          const updatedStage = pipelineStages.find(s => s.id === localStage.id);
+          if (updatedStage) {
+            // ✅ IMPORTANTE: Actualizar solo name, color, etc. pero PRESERVAR el order local
+            // NO copiar el order del servidor si es diferente (puede ser un problema de sincronización)
+            return { 
+              ...localStage, 
+              name: updatedStage.name,
+              color: updatedStage.color,
+              // NO actualizar order - mantener el order local que es el correcto
+            };
+          }
+          return localStage;
+        });
+      });
     }
   }, [pipelineStages]); // eslint-disable-line react-hooks/exhaustive-deps
   // Cargar preferencias de visibilidad desde localStorage
@@ -414,8 +444,10 @@ function PromisesKanban({
   const CRITICAL_STAGE_SLUGS = ['pending', 'pendiente', 'negotiation', 'negociacion', 'closing', 'cierre', 'en_cierre'];
   
   // Filtrar stages según toggles de vista
+  // ✅ PRESERVAR ORDEN: Mantener el orden que viene de la BD (NO reordenar)
   const visibleStages = useMemo(() => {
-    const filtered = localPipelineStages.filter((stage) => {
+    // Filtrar manteniendo el orden original de la BD
+    return localPipelineStages.filter((stage) => {
       // REGLA DE ORO: Columnas críticas siempre visibles
       if (CRITICAL_STAGE_SLUGS.includes(stage.slug)) {
         return true;
@@ -436,28 +468,37 @@ function PromisesKanban({
       // Mostrar siempre los demás stages
       return true;
     });
-    return filtered;
+    // ✅ NO REORDENAR: El orden viene de la BD, solo filtrar
   }, [localPipelineStages, showArchived, showCanceled, showApproved]);
 
   // Determinar si estamos en "vista completa" (ambos activos) o "vista compacta"
   const isFullView = showArchived && showCanceled;
 
   // Función para actualizar un stage localmente (optimista)
+  // ✅ PRESERVAR ORDEN: Mantener el orden que viene de la BD (NO reordenar)
+  // Solo actualizar campos que no afectan el orden (name, color, etc.) - NUNCA actualizar order
   const updateLocalStage = useCallback((stageId: string, updates: Partial<PipelineStage>) => {
-    setLocalPipelineStages(prev => 
-      prev.map(stage => 
-        stage.id === stageId ? { ...stage, ...updates } : stage
-      )
-    );
+    setLocalPipelineStages(prev => {
+      // Actualizar sin cambiar el orden (el orden viene de la BD)
+      // ✅ IMPORTANTE: NO actualizar el campo 'order' ni cambiar la posición en el array
+      return prev.map(stage => {
+        if (stage.id === stageId) {
+          // Actualizar solo campos permitidos (name, color, etc.) pero preservar order y posición
+          const { order, ...allowedUpdates } = updates;
+          return { ...stage, ...allowedUpdates };
+        }
+        return stage;
+      });
+    });
   }, []);
   
   // Agrupar promises por stage (ya ordenadas)
   // Si una promesa no tiene stage_id, se asigna a la primera etapa disponible (no archivada ni cancelada)
   const promisesByStage = useMemo(() => {
     // Obtener la primera etapa activa (no archivada ni cancelada) para promesas sin stage
+    // ✅ PRESERVAR ORDEN: Usar el primer elemento del array (ya viene ordenado de la BD)
     const defaultStage = visibleStages
-      .filter((s) => s.slug !== 'archived' && s.slug !== 'canceled')
-      .sort((a, b) => a.order - b.order)[0];
+      .filter((s) => s.slug !== 'archived' && s.slug !== 'canceled')[0];
 
     return visibleStages.reduce((acc: Record<string, PromiseWithContact[]>, stage: PipelineStage) => {
       acc[stage.id] = sortedPromises.filter((p: PromiseWithContact) => {
@@ -1024,6 +1065,7 @@ function KanbanColumn({
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(stage.name);
   const [isHovered, setIsHovered] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   
   // Obtener nombre original del sistema
@@ -1058,57 +1100,81 @@ function KanbanColumn({
     
     const newName = editedName.trim();
     
-    // Actualización optimista: actualizar inmediatamente en el DOM
+    // ✅ Actualización optimista: actualizar inmediatamente en el DOM
     onUpdateLocalStage?.(stage.id, { name: newName });
     setIsEditing(false);
+    setIsSaving(true);
     
-    // Luego sincronizar con el servidor (sin recargar todo)
-    const result = await updatePipelineStage(studioSlug, {
-      id: stage.id,
-      name: newName,
-    });
-    
-    if (result.success) {
-      // Actualizar el stage local con los datos del servidor (por si hay cambios adicionales)
-      if (result.data) {
-        onUpdateLocalStage?.(stage.id, result.data);
+    try {
+      // ✅ Sincronizar con el servidor (sin recargar todo)
+      const result = await updatePipelineStage(studioSlug, {
+        id: stage.id,
+        name: newName,
+      });
+      
+      if (result.success) {
+        // ✅ Actualizar solo el nombre (NO el order ni otros campos que puedan afectar el orden)
+        // El servidor devuelve todo el objeto, pero solo necesitamos actualizar el nombre
+        if (result.data) {
+          // Solo pasar el nombre actualizado, NO todo el objeto (para preservar el orden)
+          onUpdateLocalStage?.(stage.id, { name: result.data.name });
+        }
+        toast.success('Nombre actualizado');
+        // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
+        // La actualización optimista ya actualizó el DOM
+      } else {
+        // Revertir si falla
+        onUpdateLocalStage?.(stage.id, { name: stage.name });
+        setEditedName(stage.name);
+        toast.error(result.error || 'Error al actualizar nombre');
       }
-      toast.success('Nombre actualizado');
-      // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
-      // La actualización optimista ya actualizó el DOM
-    } else {
-      // Revertir si falla
+    } catch (error) {
+      // Revertir si hay error
       onUpdateLocalStage?.(stage.id, { name: stage.name });
       setEditedName(stage.name);
-      toast.error(result.error || 'Error al actualizar nombre');
+      toast.error('Error al actualizar nombre');
+      console.error('Error updating stage name:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
   
   const handleReset = async () => {
     if (stage.name === systemName) return;
     
-    // Actualización optimista: actualizar inmediatamente en el DOM
+    // ✅ Actualización optimista: actualizar inmediatamente en el DOM
     onUpdateLocalStage?.(stage.id, { name: systemName });
     setIsEditing(false);
+    setIsSaving(true);
     
-    // Luego sincronizar con el servidor (sin recargar todo)
-    const result = await updatePipelineStage(studioSlug, {
-      id: stage.id,
-      name: systemName,
-    });
-    
-    if (result.success) {
-      // Actualizar el stage local con los datos del servidor (por si hay cambios adicionales)
-      if (result.data) {
-        onUpdateLocalStage?.(stage.id, result.data);
+    try {
+      // ✅ Sincronizar con el servidor (sin recargar todo)
+      const result = await updatePipelineStage(studioSlug, {
+        id: stage.id,
+        name: systemName,
+      });
+      
+      if (result.success) {
+        // ✅ Actualizar solo el nombre (NO el order ni otros campos que puedan afectar el orden)
+        if (result.data) {
+          // Solo pasar el nombre actualizado, NO todo el objeto (para preservar el orden)
+          onUpdateLocalStage?.(stage.id, { name: result.data.name });
+        }
+        toast.success('Nombre restaurado');
+        // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
+        // La actualización optimista ya actualizó el DOM
+      } else {
+        // Revertir si falla
+        onUpdateLocalStage?.(stage.id, { name: stage.name });
+        toast.error(result.error || 'Error al restaurar nombre');
       }
-      toast.success('Nombre restaurado');
-      // NO llamar a onPipelineStagesUpdated para evitar recargas innecesarias
-      // La actualización optimista ya actualizó el DOM
-    } else {
-      // Revertir si falla
+    } catch (error) {
+      // Revertir si hay error
       onUpdateLocalStage?.(stage.id, { name: stage.name });
-      toast.error(result.error || 'Error al restaurar nombre');
+      toast.error('Error al restaurar nombre');
+      console.error('Error resetting stage name:', error);
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -1183,15 +1249,21 @@ function KanbanColumn({
               )}
             </div>
           ) : (
-            <h3 
-              className="font-medium text-white text-sm truncate cursor-pointer hover:text-blue-400 transition-colors flex-1 min-w-0"
-              onClick={() => setIsEditing(true)}
-              title={isRenamed ? `Etapa original: ${systemName}` : 'Clic para editar'}
-            >
-              {stage.name}
-            </h3>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <h3 
+                className="font-medium text-white text-sm truncate cursor-pointer hover:text-blue-400 transition-colors flex-1 min-w-0"
+                onClick={() => setIsEditing(true)}
+                title={isRenamed ? `Etapa original: ${systemName}` : 'Clic para editar'}
+              >
+                {stage.name}
+              </h3>
+              {/* ✅ Spinner pequeño mientras se guarda */}
+              {isSaving && (
+                <Loader2 className="h-3 w-3 text-blue-400 animate-spin shrink-0" />
+              )}
+            </div>
           )}
-          {!isEditing && isHovered && (
+          {!isEditing && !isSaving && isHovered && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

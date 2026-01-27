@@ -90,6 +90,7 @@ const poolMax = isPgbouncer
     ? 20 // ⚠️ OPTIMIZACIÓN: Producción: 20 conexiones para paralelismo
     : 10; // Desarrollo: 10 conexiones para paralelismo
 
+// ✅ Singleton: Reutilizar pool existente o crear uno nuevo
 const pgPool = globalThis.__pgPool || new Pool({
   connectionString,
   max: poolMax,
@@ -100,12 +101,15 @@ const pgPool = globalThis.__pgPool || new Pool({
   statement_timeout: 30000, // 30s timeout por statement
 });
 
-// Aumentar límite de listeners para evitar MaxListenersExceededWarning
+// ✅ Aumentar límite de listeners para evitar MaxListenersExceededWarning
+// El pool puede tener muchos listeners (error, connect, acquire, remove, etc.)
+// En desarrollo con hot reload, se pueden acumular listeners, así que aumentamos a 50
 if (pgPool && !globalThis.__pgPool) {
-  pgPool.setMaxListeners(20);
+  pgPool.setMaxListeners(50);
 }
 
-if (process.env.NODE_ENV !== 'production') {
+// ✅ Singleton: Guardar en global para reutilización (todos los entornos)
+if (!globalThis.__pgPool) {
   globalThis.__pgPool = pgPool;
 }
 
