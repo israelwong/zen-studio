@@ -248,7 +248,11 @@ export function PaquetesSection({
 
     return (
         <>
-            <section className="py-8 md:py-12 px-4">
+            <section className="py-8 md:py-12 px-4 relative">
+                {/* Línea superior con degradado */}
+                <div className="absolute top-0 left-16 right-16 h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent" />
+                {/* Línea inferior con degradado */}
+                <div className="absolute bottom-0 left-16 right-16 h-px bg-gradient-to-r from-transparent via-zinc-800 to-transparent" />
                 <div className="max-w-4xl mx-auto">
                     {/* Header */}
                     <div className="mb-6">

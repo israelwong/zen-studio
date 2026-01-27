@@ -130,10 +130,12 @@ export function CotizacionesSection({
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-2">
               <Sparkles className="h-4 w-4 text-zinc-400" />
-              <h2 className="text-xl md:text-3xl font-bold text-white">
+              <h2 className="text-xl md:text-3xl font-bold text-white flex items-center gap-2 flex-wrap">
                 {cotizacionesOrdenadas.length === 1 ? 'Cotización Personalizada' : 'Cotizaciones Personalizadas'}
                 {durationHours !== null && durationHours !== undefined && durationHours > 0 && (
-                  <span className="text-zinc-400 font-normal"> por {durationHours} {durationHours === 1 ? 'hora' : 'horas'}</span>
+                  <ZenBadge variant="outline" className="text-[10px] px-2.5 py-1 text-zinc-400 border-zinc-700 bg-zinc-900/30 rounded-full">
+                    {durationHours} {durationHours === 1 ? 'hora' : 'horas'}
+                  </ZenBadge>
                 )}
               </h2>
             </div>
