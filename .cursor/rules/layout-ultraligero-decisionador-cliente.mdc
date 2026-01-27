@@ -1,0 +1,195 @@
+---
+# Specify the following for Cursor rules
+description: Patrón arquitectónico Layout Ultraligero + Decisionador Cliente para evitar errores 500 de boundaries
+alwaysApply: false
+---
+
+# Layout Ultraligero + Decisionador Cliente
+
+## Problema que Resuelve
+
+**Error 500 "Aborted or already flushed boundaries"** en Next.js cuando:
+- Un Server Component (Layout) intenta hacer `redirect()` después de que React ya empezó a renderizar
+- Hay conflictos de tiempo entre el servidor calculando rutas y el cliente montando componentes
+- Se intenta ser "demasiado inteligente" en el Layout comparando rutas y redirigiendo
+
+## Patrón: Ley de Separación Total
+
+### Principio Fundamental
+
+**El Layout solo pasa datos. El Cliente decide redirección.**
+
+### Estructura
+
+```
+┌─────────────────────────────────────┐
+│  Layout (Server Component)          │
+│  - Obtiene datos de BD              │
+│  - Calcula ruta objetivo            │
+│  - Pasa datos como props             │
+│  - NO hace redirect() para rutas    │
+└──────────────┬──────────────────────┘
+               │
+               │ Props: initialQuotes, targetRoute
+               ▼
+┌─────────────────────────────────────┐
+│  RouteGuard (Client Component)      │
+│  - useLayoutEffect: compara rutas   │
+│  - Muestra skeleton si !isReady     │
+│  - router.replace() si no coincide  │
+│  - Renderiza children si coincide    │
+└─────────────────────────────────────┘
+```
+
+## Implementación
+
+### 1. Layout Ultraligero (Server)
+
+```typescript
+// ✅ CORRECTO: Layout solo pasa datos
+export default async function PromiseLayout({ children, params }) {
+  const { slug, promiseId } = await params;
+
+  // 1. Obtener datos en servidor
+  const routeState = await getServerSideRouteState(slug, promiseId);
+  const { targetRoute, quotes: initialQuotes } = routeState;
+
+  // 2. NO hacer redirect aquí - solo pasar datos
+  // ❌ PROHIBIDO: redirect(targetRoute) en Layout
+
+  return (
+    <div>
+      <PromiseRouteGuard 
+        initialQuotes={initialQuotes}
+        targetRoute={targetRoute}
+      >
+        {children}
+      </PromiseRouteGuard>
+    </div>
+  );
+}
+```
+
+### 2. Decisionador Cliente (Client)
+
+```typescript
+// ✅ CORRECTO: Cliente decide con useLayoutEffect
+export function PromiseRouteGuard({ 
+  initialQuotes, 
+  targetRoute,
+  children 
+}) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isReady, setIsReady] = useState(false);
+
+  // useLayoutEffect: Compara ANTES del primer render
+  useLayoutEffect(() => {
+    if (initialQuotes && targetRoute) {
+      const normalizedPathname = pathname.split('?')[0];
+      const normalizedTarget = targetRoute.split('?')[0];
+      
+      if (normalizedPathname !== normalizedTarget) {
+        router.replace(targetRoute);
+        return; // No marcar ready si redirigimos
+      }
+      
+      setIsReady(true);
+    }
+  }, [pathname, targetRoute, initialQuotes, router]);
+
+  // MAGIA: Skeleton mientras valida (evita montar hijos prematuramente)
+  if (!isReady) {
+    return <PromisePageSkeleton />;
+  }
+
+  return <>{children}</>;
+}
+```
+
+## Reglas de Oro
+
+### ✅ SIEMPRE HACER
+
+1. **Layout solo calcula y pasa datos**
+   - Obtiene datos de BD en servidor
+   - Calcula ruta objetivo
+   - Pasa como props al cliente
+
+2. **Cliente usa `useLayoutEffect` para comparación**
+   - Se ejecuta ANTES del primer render
+   - Evita parpadeos y conflictos de boundaries
+
+3. **Skeleton preventivo mientras `!isReady`**
+   - Evita que React monte hijos prematuramente
+   - Previene errores 500 de boundaries
+
+4. **Bypass de fetch si hay datos del servidor**
+   - Si `initialQuotes` existe, no hacer fetch inicial
+   - Realtime solo para actualizaciones posteriores
+
+### ❌ NUNCA HACER
+
+1. **NO usar `redirect()` en Layout para comparar rutas**
+   ```typescript
+   // ❌ PROHIBIDO
+   if (currentPath !== targetRoute) {
+     redirect(targetRoute); // Causa error 500
+   }
+   ```
+
+2. **NO hacer fetch inicial si hay datos del servidor**
+   ```typescript
+   // ❌ PROHIBIDO
+   useEffect(() => {
+     if (initialQuotes) {
+       fetchRoute(); // Innecesario, ya tenemos datos
+     }
+   }, []);
+   ```
+
+3. **NO renderizar children antes de validar**
+   ```typescript
+   // ❌ PROHIBIDO
+   return <>{children}</>; // Sin validar isReady
+   ```
+
+## Casos de Uso
+
+### Rutas Públicas con Validación Dinámica
+
+**Ejemplo:** Promesas públicas que redirigen según estado de cotizaciones
+
+```typescript
+// Layout calcula ruta según estado de cotizaciones
+const targetRoute = determinePromiseRoute(cotizaciones, slug, promiseId);
+
+// Cliente compara y redirige si es necesario
+// Sin fetch inicial, sin lag, sin error 500
+```
+
+### Rutas con Validación de Permisos
+
+**Ejemplo:** Rutas que requieren validar permisos antes de mostrar contenido
+
+```typescript
+// Layout obtiene permisos en servidor
+const permissions = await getUserPermissions(userId);
+
+// Cliente valida y redirige si no tiene acceso
+// Muestra skeleton mientras valida
+```
+
+## Beneficios
+
+1. **Elimina Error 500**: No hay conflictos de boundaries
+2. **Elimina Lag**: Sin fetch inicial si hay datos del servidor
+3. **Mejor UX**: Skeleton preventivo evita parpadeos
+4. **Código Limpio**: Separación clara de responsabilidades
+5. **Escalable**: Patrón reutilizable para otras rutas
+
+## Referencias
+
+- Implementación: `src/app/[slug]/promise/[promiseId]/layout.tsx`
+- Componente: `src/components/promise/PromiseRouteGuard.tsx`
+- Master Plan: `.cursor/MASTER_PLAN_OPTIMIZACION.md` (Sección 5)

@@ -1,0 +1,212 @@
+---
+# Specify the following for Cursor rules
+description: Patrón de sincronización inteligente de Short URLs según estado de cotizaciones
+alwaysApply: false
+---
+
+# Sincronización Inteligente de Short URLs
+
+## Problema que Resuelve
+
+**Short URLs apuntaban a rutas incorrectas** cuando cambiaba el estatus de cotizaciones:
+- Usuario comparte `/s/ABC123` cuando la cotización está en "pendiente"
+- Cotización pasa a "negociación" o "cierre"
+- El short URL sigue apuntando a `/pendientes` en lugar de la ruta correcta
+
+## Solución: Sincronización Automática
+
+### Principio Fundamental
+
+**El destino del short URL siempre apunta a la sub-ruta correcta según el estado actual de las cotizaciones.**
+
+### Flujo de Sincronización
+
+```
+┌─────────────────────────────────────┐
+│  Cambio de Estatus de Cotización    │
+│  (toggleNegociacionStatus, etc.)    │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  Server Action                       │
+│  - Actualiza estatus en BD          │
+│  - Llama a syncShortUrlRoute()      │
+└──────────────┬──────────────────────┘
+               │
+               ▼
+┌─────────────────────────────────────┐
+│  syncShortUrlRoute()                 │
+│  1. Obtiene todas las cotizaciones  │
+│  2. Calcula ruta con                │
+│     determinePromiseRoute()          │
+│  3. Actualiza original_url en BD    │
+└─────────────────────────────────────┘
+```
+
+## Implementación
+
+### 1. Función de Sincronización
+
+```typescript
+// ✅ CORRECTO: Sincroniza original_url según estado actual
+export async function syncShortUrlRoute(
+  studioSlug: string,
+  promiseId: string
+): Promise<ActionResponse<{ updated: boolean; targetRoute: string }>> {
+  // 1. Obtener cotizaciones de la promesa
+  const cotizaciones = await prisma.studio_cotizaciones.findMany({
+    where: { promise_id: promiseId, /* ... */ },
+    select: { id, status, selected_by_prospect, visible_to_client, evento_id },
+  });
+
+  // 2. Formatear para determinePromiseRoute
+  const cotizacionesFormatted = cotizaciones.map(cot => ({
+    id: cot.id,
+    status: normalizeStatus(cot.status),
+    selected_by_prospect: cot.selected_by_prospect,
+    visible_to_client: cot.visible_to_client,
+    evento_id: cot.evento_id,
+  }));
+
+  // 3. Calcular ruta objetivo
+  const targetRoute = determinePromiseRoute(
+    cotizacionesFormatted, 
+    studioSlug, 
+    promiseId
+  );
+
+  // 4. Buscar short URL asociado
+  const shortUrl = await prisma.studio_short_urls.findFirst({
+    where: { studio_id, promise_id: promiseId },
+  });
+
+  // 5. Actualizar si cambió
+  if (shortUrl && shortUrl.original_url !== targetRoute) {
+    await prisma.studio_short_urls.update({
+      where: { id: shortUrl.id },
+      data: { original_url: targetRoute },
+    });
+  }
+
+  return { success: true, data: { updated: true, targetRoute } };
+}
+```
+
+### 2. Integración en Acciones
+
+```typescript
+// ✅ CORRECTO: Sincronizar después de cambiar estatus
+export async function toggleNegociacionStatus(
+  cotizacionId: string,
+  studioSlug: string
+) {
+  // ... actualizar estatus ...
+
+  if (cotizacion.promise_id) {
+    // Sincronizar short URL según nuevo estado
+    const { syncShortUrlRoute } = await import('./promise-short-url.actions');
+    await syncShortUrlRoute(studioSlug, cotizacion.promise_id).catch((error) => {
+      console.error('[COTIZACIONES] Error sincronizando short URL:', error);
+    });
+  }
+
+  return { success: true, data: { /* ... */ } };
+}
+```
+
+## Acciones que Sincronizan
+
+| Acción | Cuándo Sincroniza | Estado |
+|--------|-------------------|--------|
+| `toggleNegociacionStatus` | Cambio pendiente ↔ negociación | ✅ |
+| `quitarCancelacionCotizacion` | Cambio cancelada → pendiente | ✅ |
+| `autorizarCotizacion` | Cambio a contract_pending | ✅ |
+| `cancelarCotizacion` | Cambio a cancelada | ✅ |
+| `pasarCotizacionACierre` | Cambio a en_cierre | ✅ |
+| `cancelarCierre` | Cambio de en_cierre → pendiente/negociación | ✅ |
+| `autorizarCotizacionPublica` | Cambio a en_cierre (desde público) | ✅ |
+
+## Reglas de Oro
+
+### ✅ SIEMPRE HACER
+
+1. **Sincronizar después de cambiar estatus**
+   ```typescript
+   // Después de actualizar estatus
+   if (cotizacion.promise_id) {
+     await syncShortUrlRoute(studioSlug, cotizacion.promise_id);
+   }
+   ```
+
+2. **Usar `determinePromiseRoute` como fuente de verdad**
+   - Prioridad: Aprobada > Negociación > Cierre > Pendientes
+   - Filtra por `visible_to_client === true`
+   - Considera `evento_id` para rutas de cliente
+
+3. **Manejar errores silenciosamente**
+   ```typescript
+   await syncShortUrlRoute(...).catch((error) => {
+     console.error('Error sincronizando short URL:', error);
+     // No fallar la acción principal si la sincronización falla
+   });
+   ```
+
+4. **El short code base nunca cambia**
+   - El código `/s/ABC123` siempre apunta al mismo registro
+   - Solo se actualiza el `original_url` en la BD
+
+### ❌ NUNCA HACER
+
+1. **NO actualizar el short code**
+   ```typescript
+   // ❌ PROHIBIDO
+   await prisma.studio_short_urls.update({
+     data: { short_code: 'NEW123' }, // El código nunca cambia
+   });
+   ```
+
+2. **NO sincronizar si no hay promise_id**
+   ```typescript
+   // ❌ PROHIBIDO
+   await syncShortUrlRoute(studioSlug, null); // Debe haber promise_id
+   ```
+
+3. **NO hacer la sincronización bloqueante**
+   ```typescript
+   // ❌ PROHIBIDO
+   await syncShortUrlRoute(...); // Sin catch, bloquea la acción principal
+   ```
+
+## Casos de Uso
+
+### Compartir Enlace en Diferentes Estados
+
+**Escenario 1: Cotización Pendiente**
+- Usuario comparte `/s/ABC123`
+- Short URL apunta a `/slug/promise/id/pendientes`
+- ✅ Correcto
+
+**Escenario 2: Cotización pasa a Negociación**
+- Estatus cambia → `syncShortUrlRoute()` se ejecuta
+- Short URL ahora apunta a `/slug/promise/id/negociacion`
+- Usuario que ya tiene el link ve la ruta correcta
+- ✅ Correcto
+
+**Escenario 3: Cotización Autorizada con Evento**
+- Estatus cambia a "aprobada" con `evento_id`
+- Short URL ahora apunta a `/slug/cliente`
+- ✅ Correcto
+
+## Beneficios
+
+1. **Consistencia**: El short URL siempre apunta a la ruta correcta
+2. **Automatización**: No requiere intervención manual
+3. **UX Mejorada**: Usuarios siempre ven el estado actual
+4. **Mantenibilidad**: Un solo lugar (`determinePromiseRoute`) decide rutas
+
+## Referencias
+
+- Implementación: `src/lib/actions/studio/commercial/promises/promise-short-url.actions.ts`
+- Función maestra: `src/lib/utils/public-promise-routing.ts` - `determinePromiseRoute()`
+- Master Plan: `.cursor/MASTER_PLAN_OPTIMIZACION.md` (Sección 5.2)

@@ -13,6 +13,7 @@
 2. [Estado de Implementación](#2-estado-de-implementación)
 3. [Plan de Vuelo por Fases](#3-plan-de-vuelo-por-fases)
 4. [Checklist de Control](#4-checklist-de-control)
+5. [Rutas Públicas de Promesas](#5-rutas-públicas-de-promesas)
 
 ---
 
@@ -518,5 +519,84 @@ Validaciones Estado:   2/2   (100%) ✅
 
 ---
 
-**Última actualización:** 18 de enero de 2025  
+---
+
+## 5. Rutas Públicas de Promesas
+
+### 5.1 Optimización SSR del Layout
+
+**Ruta:** `/[slug]/promise/[promiseId]/`
+
+**Estado:** ✅ **COMPLETADO** (27/01/2025)
+
+**Problema Resuelto:**
+- Lag de 2 segundos en móviles al cargar promesas públicas
+- Error 500 "Aborted or already flushed boundaries" por conflictos de hidratación
+- Fetch inicial innecesario en el cliente para validar rutas
+
+**Solución Implementada:**
+- **Layout Ultraligero (Server)**: Calcula ruta en servidor y pasa datos al cliente
+- **Decisionador Único (Client)**: `PromiseRouteGuard` usa `useLayoutEffect` para comparación instantánea
+- **Skeleton Preventivo**: Muestra `PromisePageSkeleton` mientras `isReady === false` para evitar montar hijos prematuramente
+
+| Criterio | Estado | Fecha |
+|----------|--------|-------|
+| Server Component con `force-dynamic` | ✅ | 27/01/2025 |
+| Cálculo de ruta en servidor | ✅ | 27/01/2025 |
+| Inyección de datos al cliente | ✅ | 27/01/2025 |
+| `useLayoutEffect` para comparación | ✅ | 27/01/2025 |
+| Skeleton preventivo | ✅ | 27/01/2025 |
+| Sin fetch inicial si hay datos del servidor | ✅ | 27/01/2025 |
+
+**Archivos clave:**
+- `src/app/[slug]/promise/[promiseId]/layout.tsx` - Server Component que calcula ruta
+- `src/components/promise/PromiseRouteGuard.tsx` - Decisionador único con `useLayoutEffect`
+- `src/lib/actions/studio/commercial/promises/promise-short-url.actions.ts` - Sincronización de Short URLs
+
+**Patrón Arquitectónico:**
+- **Ley de Separación Total**: Layout solo pasa datos, cliente decide redirección
+- **Evita Error 500**: No se usa `redirect()` en Layout para comparaciones de ruta
+- **Optimización Móvil**: Elimina lag de 2 segundos mostrando skeleton mientras valida
+
+---
+
+### 5.2 Sincronización Inteligente de Short URLs
+
+**Estado:** ✅ **COMPLETADO** (27/01/2025)
+
+**Problema Resuelto:**
+- Short URLs apuntaban a rutas incorrectas cuando cambiaba el estatus de cotizaciones
+- El `original_url` no se actualizaba automáticamente según el estado actual
+
+**Solución Implementada:**
+- Función `syncShortUrlRoute()` que actualiza `original_url` usando `determinePromiseRoute`
+- Sincronización automática en todas las acciones que cambian estatus de cotizaciones
+- El short code base (`/s/XYZ`) siempre apunta al mismo registro, pero el destino se actualiza
+
+| Acción | Sincronización | Estado |
+|--------|----------------|--------|
+| `toggleNegociacionStatus` | ✅ | 27/01/2025 |
+| `quitarCancelacionCotizacion` | ✅ | 27/01/2025 |
+| `autorizarCotizacion` | ✅ | 27/01/2025 |
+| `cancelarCotizacion` | ✅ | 27/01/2025 |
+| `pasarCotizacionACierre` | ✅ | 27/01/2025 |
+| `cancelarCierre` | ✅ | 27/01/2025 |
+| `autorizarCotizacionPublica` | ✅ | 27/01/2025 |
+
+**Archivos clave:**
+- `src/lib/actions/studio/commercial/promises/promise-short-url.actions.ts` - `syncShortUrlRoute()`
+- `src/lib/actions/studio/commercial/promises/cotizaciones.actions.ts` - Integración en acciones
+- `src/lib/actions/public/cotizaciones.actions.ts` - Integración en autorización pública
+
+**Flujo:**
+1. Usuario cambia estatus de cotización → Server Action ejecuta cambio
+2. Server Action llama a `syncShortUrlRoute()` automáticamente
+3. Se obtienen todas las cotizaciones de la promesa
+4. Se calcula ruta objetivo con `determinePromiseRoute`
+5. Se actualiza `original_url` del short URL en la BD
+6. El short code (`/s/XYZ`) siempre redirige a la ruta correcta
+
+---
+
+**Última actualización:** 27 de enero de 2025  
 **Mantenido por:** Equipo ZEN Platform
