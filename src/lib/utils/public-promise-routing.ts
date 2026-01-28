@@ -24,7 +24,8 @@ type CotizacionConStatus =
 /**
  * Determina la ruta de redirección basada en el estado de las cotizaciones.
  * 
- * Prioridad: Aprobada > Negociación > Cierre > Pendientes
+ * Prioridad: Aprobada > Cierre > Negociación > Pendientes
+ * ✅ CORRECCIÓN: Cierre tiene prioridad sobre Negociación
  * Acepta tanto formato completo (PublicCotizacion) como simplificado (solo estado)
  * 
  * @param cotizaciones - Array de cotizaciones con estado
@@ -60,7 +61,18 @@ export function determinePromiseRoute(
     return `/${slug}/cliente`;
   }
 
-  // PRIORIDAD 2: Buscar cotización en negociación
+  // ✅ PRIORIDAD 2: Buscar cotización en cierre (PRIORIDAD SOBRE NEGOCIACIÓN)
+  // Cierre: status === 'en_cierre' o 'cierre' (acepta selección manual del estudio o del prospecto)
+  const cotizacionEnCierre = visibleQuotes.find((cot) => {
+    const normalizedStatus = normalizeStatus(cot.status);
+    return normalizedStatus === 'en_cierre';
+  });
+
+  if (cotizacionEnCierre) {
+    return `/${slug}/promise/${promiseId}/cierre`;
+  }
+
+  // PRIORIDAD 3: Buscar cotización en negociación
   // Negociación: status === 'negociacion' y NO debe tener selected_by_prospect: true
   // ✅ OPTIMIZACIÓN: Si selected_by_prospect es null/undefined, asumir false (no seleccionado)
   const cotizacionNegociacion = visibleQuotes.find((cot) => {
@@ -71,17 +83,6 @@ export function determinePromiseRoute(
 
   if (cotizacionNegociacion) {
     return `/${slug}/promise/${promiseId}/negociacion`;
-  }
-
-  // PRIORIDAD 3: Buscar cotización en cierre
-  // Cierre: status === 'en_cierre' o 'cierre' (acepta selección manual del estudio o del prospecto)
-  const cotizacionEnCierre = visibleQuotes.find((cot) => {
-    const normalizedStatus = normalizeStatus(cot.status);
-    return normalizedStatus === 'en_cierre';
-  });
-
-  if (cotizacionEnCierre) {
-    return `/${slug}/promise/${promiseId}/cierre`;
   }
 
   // PRIORIDAD 4: Verificar si hay cotizaciones pendientes válidas
@@ -105,7 +106,7 @@ export function determinePromiseRoute(
  * 
  * Esta función es la única autorizada para ejecutar redirecciones basadas en el estado
  * de las cotizaciones. Consulta al servidor (bypass cache) para obtener la ruta correcta
- * según la prioridad: Aprobada > Negociación > Cierre > Pendientes.
+ * según la prioridad: Aprobada > Cierre > Negociación > Pendientes.
  * 
  * @param promiseId - ID de la promesa
  * @param currentPath - Ruta actual del navegador
@@ -208,14 +209,14 @@ export function isRouteValid(
     status: normalizeStatus(cot.status),
   }));
 
-  // Verificar prioridades primero (Negociación > Cierre > Pendientes)
+  // ✅ CORRECCIÓN: Verificar prioridades (Cierre > Negociación > Pendientes)
+  const hasCierre = normalizedCotizaciones.some((cot) => {
+    return cot.status === 'en_cierre';
+  });
+
   const hasNegociacion = normalizedCotizaciones.some((cot) => {
     const selectedByProspect = cot.selected_by_prospect ?? false;
     return cot.status === 'negociacion' && selectedByProspect !== true;
-  });
-
-  const hasCierre = normalizedCotizaciones.some((cot) => {
-    return cot.status === 'en_cierre';
   });
 
   const hasPendientes = normalizedCotizaciones.some((cot) => {
@@ -223,19 +224,19 @@ export function isRouteValid(
   });
 
   switch (routeType) {
-    case 'negociacion': {
-      // Negociación es válida solo si hay cotización en negociación Y no hay nada con mayor prioridad
-      return hasNegociacion;
+    case 'cierre': {
+      // ✅ Cierre es válido solo si hay cotización en cierre (mayor prioridad sobre negociación)
+      return hasCierre;
     }
 
-    case 'cierre': {
-      // Cierre es válido solo si hay cotización en cierre Y no hay negociación (mayor prioridad)
-      return hasCierre && !hasNegociacion;
+    case 'negociacion': {
+      // Negociación es válida solo si hay cotización en negociación Y no hay cierre (mayor prioridad)
+      return hasNegociacion && !hasCierre;
     }
 
     case 'pendientes': {
-      // Pendientes es válido solo si hay cotizaciones pendientes Y no hay negociación ni cierre (mayor prioridad)
-      return hasPendientes && !hasNegociacion && !hasCierre;
+      // Pendientes es válido solo si hay cotizaciones pendientes Y no hay cierre ni negociación (mayor prioridad)
+      return hasPendientes && !hasCierre && !hasNegociacion;
     }
 
     default:

@@ -1,5 +1,5 @@
 import { PublicPromisePageHeader } from '@/components/promise/PublicPromisePageHeader';
-import { PromiseRedirectWrapper } from '@/components/promise/PromiseRedirectWrapper';
+import { PromiseRouteSync } from '@/components/promise/PromiseRouteSync';
 
 interface PendientesPageBasicProps {
   promise: {
@@ -52,7 +52,7 @@ export function PendientesPageBasic({
 }: PendientesPageBasicProps) {
   return (
     <>
-      <PromiseRedirectWrapper studioSlug={studioSlug} promiseId={promiseId} />
+      <PromiseRouteSync studioSlug={studioSlug} promiseId={promiseId} />
       <PublicPromisePageHeader
         prospectName={promise.contact_name}
         eventName={promise.event_name}

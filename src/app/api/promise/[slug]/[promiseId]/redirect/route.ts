@@ -65,7 +65,7 @@ export async function GET(
     const cotizaciones = routeStateResult.data;
 
     // Determinar ruta usando la función maestra (evalúa todas las cotizaciones y filtra por visibilidad)
-    // La función maestra decide la prioridad: Aprobada > Negociación > Cierre > Pendientes
+    // ✅ CORRECCIÓN: La función maestra decide la prioridad: Aprobada > Cierre > Negociación > Pendientes
     // y aplica el filtro de visibilidad obligatorio
     const targetRoute = determinePromiseRoute(cotizaciones, slug, promiseId);
 

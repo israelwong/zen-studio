@@ -369,15 +369,31 @@ export async function getPromiseContractData(
         serviciosLegacy.push({
           categoria: categoria.nombre,
           servicios: categoria.items.map(item => {
+            // ✅ CORRECCIÓN: Calcular cantidad efectiva para items tipo HOUR
+            const itemId = item.item_id || (item as any)['item_id'];
+            let cantidadEfectiva = item.cantidad;
+            
+            if (itemId) {
+              const billingType = billingTypeMap.get(itemId);
+              if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+                cantidadEfectiva = calcularCantidadEfectiva(
+                  billingType,
+                  item.cantidad,
+                  eventDuration
+                );
+              }
+            }
+            
             const servicio: any = {
               nombre: item.nombre,
               descripcion: item.descripcion,
               precio: item.subtotal,
+              cantidad: cantidadEfectiva, // ✅ Agregar cantidad efectiva
             };
             
             // Si el item tiene billing_type HOUR y hay event_duration, agregar horas
-            if (item.item_id) {
-              const billingType = billingTypeMap.get(item.item_id);
+            if (itemId) {
+              const billingType = billingTypeMap.get(itemId);
               if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
                 servicio.horas = eventDuration;
               }
@@ -1113,12 +1129,23 @@ function renderServiciosBlock(servicios: ServiceCategory[] | undefined | null): 
     `;
 
     categoria.servicios.forEach((servicio) => {
-      // Mostrar nombre y horas si es servicio tipo HOUR
+      // ✅ CORRECCIÓN: Mostrar cantidad efectiva y horas si aplica
+      const cantidad = servicio.cantidad || 1;
+      let servicioTexto = servicio.nombre;
+      
+      // Si tiene horas (tipo HOUR), mostrar cantidad efectiva con horas
       if (servicio.horas && servicio.horas > 0) {
-        html += `<li>${servicio.nombre} (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})</li>`;
-      } else {
-        html += `<li>${servicio.nombre}</li>`;
+        if (cantidad > 1) {
+          servicioTexto += ` x${cantidad} (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})`;
+        } else {
+          servicioTexto += ` (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})`;
+        }
+      } else if (cantidad > 1) {
+        // Si no es HOUR pero cantidad > 1, mostrar cantidad
+        servicioTexto += ` x${cantidad}`;
       }
+      
+      html += `<li>${servicioTexto}</li>`;
 
       if (servicio.descripcion) {
         html += `<p class="text-sm text-zinc-500 ml-6">${servicio.descripcion}</p>`;

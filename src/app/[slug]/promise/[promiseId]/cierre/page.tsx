@@ -4,7 +4,9 @@ import { redirect } from 'next/navigation';
 import { unstable_cache } from 'next/cache';
 import { getPublicPromiseRouteState, getPublicPromiseCierre, getPublicPromiseMetadata, getPublicPromiseBasicData } from '@/lib/actions/public/promesas.actions';
 import { isRouteValid } from '@/lib/utils/public-promise-routing';
+import { PromisePageProvider } from '@/components/promise/PromisePageContext';
 import { CierrePageSkeleton } from './CierrePageSkeleton';
+import { CierrePageBasic } from './CierrePageBasic';
 import { CierrePageDeferred } from './CierrePageDeferred';
 
 // ⚠️ FORCE-DYNAMIC: Evitar caché estático en página de validación
@@ -54,7 +56,10 @@ export default async function CierrePage({ params }: CierrePageProps) {
   const deferredDataPromise = getPublicPromiseCierre(slug, promiseId);
 
   return (
-    <>
+    <PromisePageProvider>
+      {/* ⚠️ STREAMING: Parte A - Instantánea (sincronización de ruta) */}
+      <CierrePageBasic studioSlug={slug} promiseId={promiseId} />
+      
       {/* ⚠️ STREAMING: Parte B - Deferred (datos pesados con Suspense) */}
       <Suspense fallback={<CierrePageSkeleton />}>
         <CierrePageDeferred
@@ -64,7 +69,7 @@ export default async function CierrePage({ params }: CierrePageProps) {
           promiseId={promiseId}
         />
       </Suspense>
-    </>
+    </PromisePageProvider>
   );
 }
 
