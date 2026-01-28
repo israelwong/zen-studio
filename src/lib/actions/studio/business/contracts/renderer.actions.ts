@@ -9,6 +9,7 @@ import { construirEstructuraJerarquicaCotizacion, COTIZACION_ITEMS_SELECT_STANDA
 import { obtenerInfoBancariaTransferencia } from "@/lib/actions/shared/metodos-pago.actions";
 import { calcularCantidadEfectiva } from "@/lib/utils/dynamic-billing-calc";
 import { roundPrice } from "@/lib/utils/price-rounding";
+import { formatItemQuantity } from "@/lib/utils/contract-item-formatter";
 
 // Tipo extendido que incluye condiciones comerciales y datos adicionales
 export interface EventContractDataWithConditions extends EventContractData {
@@ -387,34 +388,33 @@ export async function getPromiseContractData(
         serviciosLegacy.push({
           categoria: categoria.nombre,
           servicios: categoria.items.map(item => {
-            // ✅ CORRECCIÓN: Calcular cantidad efectiva para items tipo HOUR
+            // ✅ UNIFICADO: Obtener billing_type y calcular cantidad efectiva
             const itemId = item.item_id || (item as any)['item_id'];
-            let cantidadEfectiva = item.cantidad;
+            const billingType = itemId ? (billingTypeMap.get(itemId) || 'SERVICE') : 'SERVICE';
+            const cantidadBase = item.cantidad;
+            let cantidadEfectiva = cantidadBase;
             
-            if (itemId) {
-              const billingType = billingTypeMap.get(itemId);
-              if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
-                cantidadEfectiva = calcularCantidadEfectiva(
-                  billingType,
-                  item.cantidad,
-                  eventDuration
-                );
-              }
+            // Calcular cantidad efectiva para items tipo HOUR
+            if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+              cantidadEfectiva = calcularCantidadEfectiva(
+                billingType,
+                cantidadBase,
+                eventDuration
+              );
             }
             
             const servicio: any = {
               nombre: item.nombre,
               descripcion: item.descripcion,
               precio: item.subtotal,
-              cantidad: cantidadEfectiva, // ✅ Agregar cantidad efectiva
+              cantidad: cantidadBase, // ✅ Cantidad base
+              cantidadEfectiva: cantidadEfectiva, // ✅ Cantidad efectiva calculada
+              billing_type: billingType, // ✅ Tipo de facturación
             };
             
             // Si el item tiene billing_type HOUR y hay event_duration, agregar horas
-            if (itemId) {
-              const billingType = billingTypeMap.get(itemId);
-              if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
-                servicio.horas = eventDuration;
-              }
+            if (billingType === 'HOUR' && eventDuration && eventDuration > 0) {
+              servicio.horas = eventDuration;
             }
             
             return servicio;
@@ -869,7 +869,7 @@ export async function getEventContractData(
 
         return acc;
       },
-      {} as Record<string, Array<{ nombre: string; descripcion?: string; precio: number; horas?: number }>>
+      {} as Record<string, Array<{ nombre: string; descripcion?: string; precio: number; cantidad?: number; cantidadEfectiva?: number; billing_type?: 'HOUR' | 'SERVICE' | 'UNIT'; horas?: number }>>
     );
 
     const serviciosIncluidos: ServiceCategory[] = Object.entries(serviciosPorCategoria).map(
@@ -1171,20 +1171,24 @@ function renderServiciosBlock(servicios: ServiceCategory[] | undefined | null): 
     `;
 
     categoria.servicios.forEach((servicio) => {
-      // ✅ CORRECCIÓN: Mostrar cantidad efectiva y horas si aplica
-      const cantidad = servicio.cantidad || 1;
+      // ✅ UNIFICADO: Usar formatItemQuantity para renderizado consistente
+      const billingType = servicio.billing_type || 'SERVICE';
+      const quantity = servicio.cantidad || 1;
+      const cantidadEfectiva = servicio.cantidadEfectiva;
+      const eventDurationHours = servicio.horas || null;
+      
+      const formatted = formatItemQuantity({
+        quantity,
+        billingType,
+        eventDurationHours,
+        cantidadEfectiva,
+      });
+      
       let servicioTexto = servicio.nombre;
       
-      // Si tiene horas (tipo HOUR), mostrar cantidad efectiva con horas
-      if (servicio.horas && servicio.horas > 0) {
-        if (cantidad > 1) {
-          servicioTexto += ` x${cantidad} (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})`;
-        } else {
-          servicioTexto += ` (${servicio.horas} ${servicio.horas === 1 ? 'hora' : 'horas'})`;
-        }
-      } else if (cantidad > 1) {
-        // Si no es HOUR pero cantidad > 1, mostrar cantidad
-        servicioTexto += ` x${cantidad}`;
+      // Agregar texto formateado si existe
+      if (formatted.displayText) {
+        servicioTexto += ` <span class="text-zinc-500">${formatted.displayText}</span>`;
       }
       
       html += `<li>${servicioTexto}</li>`;

@@ -113,7 +113,10 @@ export interface ContractService {
   nombre: string;
   descripcion?: string;
   precio: number;
+  cantidad?: number; // Cantidad base (para SERVICE/UNIT) o cantidad efectiva (para HOUR)
   horas?: number; // Horas de duración para servicios tipo HOUR
+  billing_type?: 'HOUR' | 'SERVICE' | 'UNIT'; // Tipo de facturación del catálogo
+  cantidadEfectiva?: number; // Cantidad efectiva calculada (para HOUR: cantidad * horas)
 }
 
 export interface CreateTemplateInput {

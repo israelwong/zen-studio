@@ -1,6 +1,7 @@
 // Renderizado de bloques especiales del contrato
 
 import { CotizacionRenderData, CondicionesComercialesData } from "../types";
+import { formatItemQuantity } from "@/lib/utils/contract-item-formatter";
 
 /**
  * Renderiza bloque de cotización autorizada
@@ -37,20 +38,22 @@ export function renderCotizacionBlock(
         html += `<li class="mb-1">`;
         html += `<span class="font-medium">${item.nombre}</span>`;
         
-        // ✅ SIMPLIFICADO: Solo mostrar /hrs para horas, xCantidad para el resto (solo si > 1)
+        // ✅ UNIFICADO: Usar formatItemQuantity para renderizado consistente
         const billingType = item.billing_type || 'SERVICE';
+        const quantity = item.cantidad || 1;
+        const cantidadEfectiva = (item as any).cantidadEfectiva;
+        const eventDurationHours = item.horas || null;
         
-        if (billingType === 'HOUR' && item.horas && item.horas > 0) {
-          // Item tipo HOUR: siempre mostrar cantidad efectiva con /hrs (incluso si es 1)
-          // Ejemplo: "x8 /hrs" o "x1 /hrs"
-          const cantidadEfectiva = (item as any).cantidadEfectiva ?? (item.cantidad * item.horas);
-          html += ` <span class="text-zinc-500">x${cantidadEfectiva} /hrs</span>`;
-        } else {
-          // Para SERVICE, UNIT o cualquier otro: solo mostrar xCantidad si cantidad > 1
-          // Si cantidad = 1, no mostrar nada
-          if (item.cantidad > 1) {
-            html += ` <span class="text-zinc-500">x${item.cantidad}</span>`;
-          }
+        const formatted = formatItemQuantity({
+          quantity,
+          billingType,
+          eventDurationHours,
+          cantidadEfectiva,
+        });
+        
+        // Agregar texto formateado si existe
+        if (formatted.displayText) {
+          html += ` <span class="text-zinc-500">${formatted.displayText}</span>`;
         }
         
         html += `</li>`;
