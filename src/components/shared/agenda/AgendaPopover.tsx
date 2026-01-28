@@ -2,14 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Calendar, Loader2, AlertCircle, CalendarDays, Handshake, Video, MapPin, CheckSquare } from 'lucide-react';
+import { Calendar, CalendarDays, Handshake, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ZenButton } from '@/components/ui/zen';
 import {
   ZenDropdownMenu,
   ZenDropdownMenuContent,
   ZenDropdownMenuItem,
-  ZenDropdownMenuSeparator,
   ZenDropdownMenuTrigger,
 } from '@/components/ui/zen/overlays/ZenDropdownMenu';
 import { useRelativeTime } from '@/hooks/useRelativeTime';
@@ -106,7 +105,7 @@ export function AgendaPopover({
           className="w-80 max-h-[500px] flex flex-col p-0"
         >
           <div className="px-3 py-2 border-b border-zinc-700 flex-shrink-0">
-            <h3 className="text-sm font-semibold text-zinc-200">Agenda</h3>
+            <h3 className="text-sm font-semibold text-zinc-200">Agenda de eventos programados</h3>
             {count > 0 && (
               <p className="text-xs text-zinc-400 mt-1">
                 {count} {count === 1 ? 'evento próximo' : 'eventos próximos'}
@@ -188,7 +187,7 @@ function AgendaEventItem({
   const metadata = event.metadata as Record<string, unknown> | null;
   const agendaType = metadata?.agenda_type as string | undefined;
   const isCommercialAppointment = agendaType === 'commercial_appointment' || 
-                                   (event.contexto === 'promise' && event.type_scheduling);
+                                 (event.contexto === 'promise' && event.type_scheduling);
   const isEventAppointment = agendaType === 'event_appointment' || 
                             (event.contexto === 'evento' && event.type_scheduling);
   const isEventDate = agendaType === 'main_event_date' || 

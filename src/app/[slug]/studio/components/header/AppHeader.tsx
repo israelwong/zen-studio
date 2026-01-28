@@ -31,7 +31,7 @@ interface AppHeaderProps {
     initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
     initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
     initialAgendaEvents?: AgendaItem[]; // ✅ 6 eventos más próximos para AgendaPopover
-    initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios vencidos + hoy para AlertsPopover
+    initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios de hoy + próximos (sin vencidos) para AlertsPopover
     onCommandOpen?: () => void;
     onAgendaClick?: () => void;
     onTareasOperativasClick?: () => void;

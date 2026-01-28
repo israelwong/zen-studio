@@ -39,7 +39,7 @@ interface StudioLayoutWrapperProps {
   initialRemindersCount?: number; // ✅ PASO 4: Pre-cargado en servidor (eliminar POSTs del cliente)
   initialHeaderUserId?: string | null; // ✅ PASO 4: Pre-cargado en servidor (para useStudioNotifications)
   initialAgendaEvents?: AgendaItem[]; // ✅ 6 eventos más próximos para AgendaPopover
-  initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios vencidos + hoy para AlertsPopover
+  initialRemindersAlerts?: ReminderWithPromise[]; // ✅ Recordatorios de hoy + próximos (sin vencidos) para AlertsPopover
 }
 
 function StudioLayoutContent({
@@ -62,6 +62,7 @@ function StudioLayoutContent({
     remindersCount: initialRemindersCount,
     agendaEvents: initialAgendaEvents,
     remindersAlerts: initialRemindersAlerts,
+    reminders: [] as ReminderWithPromise[],
   });
   const { toggleChat } = useZenMagicChat();
   const { isOpen: contactsOpen, openContactsSheet, closeContactsSheet, initialContactId } = useContactsSheet();
@@ -290,6 +291,7 @@ function StudioLayoutContent({
           initialHeaderUserId={headerData.headerUserId} // ✅ Cargado en cliente después del primer render
           initialAgendaEvents={headerData.agendaEvents} // ✅ Cargado en cliente después del primer render
           initialRemindersAlerts={headerData.remindersAlerts} // ✅ Cargado en cliente después del primer render
+          initialReminders={headerData.reminders} // ✅ Recordatorios de hoy + próximos
           onCommandOpen={() => setCommandOpen(true)}
           onAgendaClick={handleAgendaClick}
           onTareasOperativasClick={handleTareasOperativasClick}

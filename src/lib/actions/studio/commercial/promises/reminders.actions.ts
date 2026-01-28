@@ -57,11 +57,17 @@ export interface Reminder {
 export interface ReminderWithPromise extends Reminder {
   promise: {
     id: string;
+    name: string | null; // Nombre del evento
+    event_date: Date | null; // Fecha del evento
     contact: {
       id: string;
       name: string;
       phone: string | null;
     };
+    event_type: {
+      id: string;
+      name: string;
+    } | null;
   };
 }
 
@@ -652,11 +658,19 @@ export async function getRemindersDue(
         promise: {
           select: {
             id: true,
+            name: true, // Nombre del evento
+            event_date: true, // Fecha del evento
             contact: {
               select: {
                 id: true,
                 name: true,
                 phone: true,
+              },
+            },
+            event_type: {
+              select: {
+                id: true,
+                name: true, // Tipo de evento
               },
             },
           },

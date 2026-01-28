@@ -15,7 +15,7 @@ interface HeaderDataLoaderProps {
     agendaCount: number;
     remindersCount: number;
     agendaEvents: AgendaItem[];
-    remindersAlerts: ReminderWithPromise[];
+    remindersAlerts: ReminderWithPromise[]; // ✅ Recordatorios de hoy + próximos (sin vencidos) para AlertsPopover
   }) => void;
 }
 
@@ -31,18 +31,11 @@ export function HeaderDataLoader({ studioSlug, onDataLoaded }: HeaderDataLoaderP
 
     const loadData = async () => {
       try {
-        const [headerUserIdResult, agendaCountResult, remindersCountResult, agendaEventsResult, remindersAlertsResult] = await Promise.all([
+        const [headerUserIdResult, agendaCountResult, remindersCountResult, agendaEventsResult, remindersAlertsResult, remindersResult] = await Promise.all([
           getCurrentUserId(studioSlug).catch(() => ({ success: false as const, error: 'Error' })),
           getAgendaCount(studioSlug).catch(() => ({ success: false as const, count: 0, error: 'Error' })),
-          Promise.all([
-            getRemindersDueCount(studioSlug, { includeCompleted: false, dateRange: 'overdue' }),
-            getRemindersDueCount(studioSlug, { includeCompleted: false, dateRange: 'today' }),
-          ]).then(([overdue, today]) => {
-            let total = 0;
-            if (overdue.success && overdue.data !== undefined) total += overdue.data;
-            if (today.success && today.data !== undefined) total += today.data;
-            return total;
-          }).catch(() => 0),
+          // El conteo se calculará basado en remindersAlertsResult.length
+          Promise.resolve(0),
           obtenerAgendaUnificada(studioSlug, { filtro: 'all', startDate: new Date() }).then(result => {
             if (result.success && result.data) {
               const now = new Date();
@@ -83,18 +76,68 @@ export function HeaderDataLoader({ studioSlug, onDataLoaded }: HeaderDataLoaderP
             return [];
           }).catch(() => []),
           Promise.all([
-            getRemindersDue(studioSlug, { includeCompleted: false, dateRange: 'overdue' }),
             getRemindersDue(studioSlug, { includeCompleted: false, dateRange: 'today' }),
-          ]).then(([overdue, today]) => {
+            getRemindersDue(studioSlug, { includeCompleted: false, dateRange: 'all' }),
+          ]).then(([today, all]) => {
             const alerts: ReminderWithPromise[] = [];
-            if (overdue.success && overdue.data) alerts.push(...overdue.data);
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setDate(todayEnd.getDate() + 1);
+
+            // Obtener recordatorios de hoy
             if (today.success && today.data) {
+              alerts.push(...today.data);
+            }
+
+            // Obtener recordatorios próximos (futuros, no vencidos)
+            if (all.success && all.data) {
               const todayIds = new Set(alerts.map(r => r.id));
-              today.data.forEach(r => {
-                if (!todayIds.has(r.id)) alerts.push(r);
+              all.data.forEach(r => {
+                const reminderDate = new Date(r.reminder_date);
+                reminderDate.setHours(0, 0, 0, 0);
+                // Solo agregar si es futuro y no está ya en la lista
+                if (reminderDate >= todayEnd && !todayIds.has(r.id)) {
+                  alerts.push(r);
+                }
               });
             }
+
             return alerts.sort((a, b) => {
+              const dateA = new Date(a.reminder_date).getTime();
+              const dateB = new Date(b.reminder_date).getTime();
+              return dateA - dateB;
+            });
+          }).catch(() => []),
+          Promise.all([
+            getRemindersDue(studioSlug, { includeCompleted: false, dateRange: 'today' }),
+            getRemindersDue(studioSlug, { includeCompleted: false, dateRange: 'all' }),
+          ]).then(([today, all]) => {
+            const reminders: ReminderWithPromise[] = [];
+            const now = new Date();
+            now.setHours(0, 0, 0, 0);
+            const todayEnd = new Date(now);
+            todayEnd.setDate(todayEnd.getDate() + 1);
+
+            // Obtener recordatorios de hoy
+            if (today.success && today.data) {
+              reminders.push(...today.data);
+            }
+
+            // Obtener recordatorios próximos (futuros)
+            if (all.success && all.data) {
+              const todayIds = new Set(reminders.map(r => r.id));
+              all.data.forEach(r => {
+                const reminderDate = new Date(r.reminder_date);
+                reminderDate.setHours(0, 0, 0, 0);
+                // Solo agregar si es futuro y no está ya en la lista
+                if (reminderDate >= todayEnd && !todayIds.has(r.id)) {
+                  reminders.push(r);
+                }
+              });
+            }
+
+            return reminders.sort((a, b) => {
               const dateA = new Date(a.reminder_date).getTime();
               const dateB = new Date(b.reminder_date).getTime();
               return dateA - dateB;
@@ -105,9 +148,10 @@ export function HeaderDataLoader({ studioSlug, onDataLoaded }: HeaderDataLoaderP
         const loadedData = {
           headerUserId: headerUserIdResult.success ? headerUserIdResult.data : null,
           agendaCount: agendaCountResult.success ? (agendaCountResult.count || 0) : 0,
-          remindersCount: remindersCountResult,
+          remindersCount: remindersAlertsResult.length, // ✅ Contar solo hoy + próximos (sin vencidos)
           agendaEvents: agendaEventsResult,
           remindersAlerts: remindersAlertsResult,
+          reminders: remindersResult,
         };
         
         onDataLoaded(loadedData);
@@ -122,6 +166,7 @@ export function HeaderDataLoader({ studioSlug, onDataLoaded }: HeaderDataLoaderP
           remindersCount: 0,
           agendaEvents: [],
           remindersAlerts: [],
+          reminders: [],
         });
         setHasLoaded(true);
       }
