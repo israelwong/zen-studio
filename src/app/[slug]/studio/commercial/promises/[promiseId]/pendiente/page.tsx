@@ -3,6 +3,7 @@ import { determinePromiseState } from '@/lib/actions/studio/commercial/promises/
 import { obtenerCondicionesComerciales } from '@/lib/actions/studio/config/condiciones-comerciales.actions';
 import { getPaymentMethodsForAuthorization } from '@/lib/actions/studio/commercial/promises/authorize-legacy.actions';
 import { getCotizacionesByPromiseId } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
+import { getPromiseStats } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
 import { PromisePendienteClient } from './components/PromisePendienteClient';
 
 interface PromisePendientePageProps {
@@ -26,11 +27,12 @@ export default async function PromisePendientePage({ params }: PromisePendienteP
     }
   }
 
-  // Cargar datos de autorización en paralelo
-  const [condicionesResult, paymentMethodsResult, cotizacionesResult] = await Promise.all([
+  // ✅ OPTIMIZACIÓN: Cargar datos en paralelo incluyendo estadísticas
+  const [condicionesResult, paymentMethodsResult, cotizacionesResult, statsResult] = await Promise.all([
     obtenerCondicionesComerciales(studioSlug),
     getPaymentMethodsForAuthorization(studioSlug),
     getCotizacionesByPromiseId(promiseId),
+    getPromiseStats(promiseId), // ✅ Nueva query consolidada
   ]);
 
   const condicionesComerciales = condicionesResult.success && condicionesResult.data
@@ -68,11 +70,26 @@ export default async function PromisePendientePage({ params }: PromisePendienteP
       })()
     : null;
 
+  // ✅ OPTIMIZACIÓN: Preparar estadísticas iniciales
+  const initialStats = statsResult.success && statsResult.data
+    ? statsResult.data
+    : {
+        views: {
+          totalViews: 0,
+          uniqueViews: 0,
+          lastView: null,
+        },
+        cotizaciones: [],
+        paquetes: [],
+      };
+
   return (
     <PromisePendienteClient
       initialCondicionesComerciales={condicionesComerciales}
       initialPaymentMethods={paymentMethods}
       initialSelectedCotizacion={selectedCotizacion}
+      initialCotizaciones={cotizacionesResult.success && cotizacionesResult.data ? cotizacionesResult.data : []}
+      initialStats={initialStats}
     />
   );
 }

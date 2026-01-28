@@ -411,6 +411,7 @@ export async function getPromiseById(
 
 /**
  * Obtener logs de una promesa
+ * ✅ OPTIMIZACIÓN: Orden asc directamente en servidor + límite de seguridad
  */
 export async function getPromiseLogs(
   promiseId: string
@@ -426,7 +427,8 @@ export async function getPromiseLogs(
           },
         },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: { created_at: 'asc' }, // ✅ Orden asc directamente en servidor
+      take: 100, // ✅ Límite de seguridad para evitar traer miles de registros
     });
 
     const promiseLogs: PromiseLog[] = logs.map((log) => ({

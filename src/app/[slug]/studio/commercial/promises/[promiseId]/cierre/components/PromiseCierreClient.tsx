@@ -40,16 +40,17 @@ export function PromiseCierreClient({
   const [cotizacionEnCierre, setCotizacionEnCierre] = React.useState(initialCotizacionEnCierre);
 
   const handleEditSuccess = useCallback(() => {
-    // Los datos se actualizarán automáticamente desde el contexto
-    // Solo necesitamos cerrar el modal
+    // ✅ OPTIMIZACIÓN: Cerrar modal primero, luego refresh sin recarga completa
     setShowEditModal(false);
-    // Forzar recarga de la página para obtener datos actualizados
-    window.location.reload();
-  }, []);
+    router.refresh(); // En lugar de window.location.reload()
+  }, [router]);
+
+  const [reloadingCotizaciones, setReloadingCotizaciones] = useState(false);
 
   const handleCierreCancelado = useCallback(() => {
-    // Recargar cotizaciones cuando se cancela el cierre
+    // ✅ OPTIMIZACIÓN: Estado de carga local solo para esta sección
     const reloadCotizaciones = async () => {
+      setReloadingCotizaciones(true);
       try {
         const result = await getCotizacionesByPromiseId(promiseId);
         if (result.success && result.data) {
@@ -61,6 +62,8 @@ export function PromiseCierreClient({
         }
       } catch (error) {
         console.error('Error reloading cotizaciones:', error);
+      } finally {
+        setReloadingCotizaciones(false);
       }
     };
     reloadCotizaciones();

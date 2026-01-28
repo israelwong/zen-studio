@@ -62,6 +62,7 @@ interface PromiseQuotesPanelProps {
   } | null;
   isLoadingPromiseData?: boolean;
   onAuthorizeClick?: () => void;
+  initialCotizaciones?: CotizacionListItem[]; // ✅ OPTIMIZACIÓN: Datos iniciales del servidor
 }
 
 export function PromiseQuotesPanel({
@@ -73,12 +74,13 @@ export function PromiseQuotesPanel({
   promiseData,
   isLoadingPromiseData = false,
   onAuthorizeClick,
+  initialCotizaciones = [], // ✅ OPTIMIZACIÓN: Usar datos iniciales del servidor
 }: PromiseQuotesPanelProps) {
   const router = useRouter();
   const [packages, setPackages] = useState<Array<{ id: string; name: string; precio: number | null }>>([]);
   const [loadingPackages, setLoadingPackages] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cotizaciones, setCotizaciones] = useState<CotizacionListItem[]>([]);
+  const [cotizaciones, setCotizaciones] = useState<CotizacionListItem[]>(initialCotizaciones); // ✅ OPTIMIZACIÓN: Inicializar con datos del servidor
   const [loadingCotizaciones, setLoadingCotizaciones] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
@@ -147,6 +149,7 @@ export function PromiseQuotesPanel({
     loadPackages();
   }, [studioSlug, eventTypeId]);
 
+  // ✅ OPTIMIZACIÓN: loadCotizaciones solo para recargas desde Realtime, no al montar
   const loadCotizaciones = React.useCallback(async () => {
     if (!promiseId || !isSaved) {
       setCotizaciones([]);
@@ -178,9 +181,8 @@ export function PromiseQuotesPanel({
     }
   }, [promiseId, isSaved]);
 
-  useEffect(() => {
-    loadCotizaciones();
-  }, [loadCotizaciones]);
+  // ❌ ELIMINADO: useEffect que cargaba cotizaciones al montar
+  // Ahora usamos initialCotizaciones del servidor
 
   // Suscribirse a cambios en tiempo real de cotizaciones
   // NOTA: Ignoramos eventos de studio_cotizaciones_cierre (contratos, pagos, etc.)

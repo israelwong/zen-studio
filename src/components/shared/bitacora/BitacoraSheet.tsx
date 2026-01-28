@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import { createPromiseLog, deletePromiseLog } from '@/lib/actions/studio/commercial/promises';
 import { formatDateTime } from '@/lib/actions/utils/formatting';
 import { usePromiseLogs } from '@/hooks/usePromiseLogs';
+import { usePromiseLogsRealtime } from '@/hooks/usePromiseLogsRealtime';
 import type { PromiseLog } from '@/lib/actions/studio/commercial/promises/promise-logs.actions';
 import { cn } from '@/lib/utils';
 
@@ -43,12 +44,29 @@ export function BitacoraSheet({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { logsOldestFirst, loading, addLog, removeLog } = usePromiseLogs({
+  const { logs, loading, addLog, removeLog, refetch } = usePromiseLogs({
     promiseId: open && promiseId ? promiseId : null,
     enabled: open,
   });
 
-  const logs = logsOldestFirst;
+  // ✅ OPTIMIZACIÓN: Realtime para actualizaciones colaborativas
+  usePromiseLogsRealtime({
+    studioSlug,
+    promiseId: open && promiseId ? promiseId : null,
+    enabled: open, // Solo activo cuando el sheet está abierto
+    onLogInserted: (newLog) => {
+      addLog(newLog);
+    },
+    onLogDeleted: (logId) => {
+      removeLog(logId);
+    },
+    onLogsReload: () => {
+      // Recargar desde servidor para obtener logs completos con user
+      refetch();
+    },
+  });
+
+  // ✅ OPTIMIZACIÓN: Los logs ya vienen ordenados asc desde el servidor
   const isInitialLoading = loading && logs.length === 0;
 
   const scrollToBottom = () => {
@@ -163,6 +181,14 @@ export function BitacoraSheet({
               </div>
             ) : (
               <>
+                {/* ✅ OPTIMIZACIÓN: Indicador si se alcanzó el límite de 100 logs */}
+                {logs.length >= 100 && (
+                  <div className="bg-blue-600/10 border border-blue-600/20 rounded-lg p-2.5 mb-2">
+                    <p className="text-xs text-blue-400 text-center">
+                      Mostrando los 100 registros más recientes
+                    </p>
+                  </div>
+                )}
                 {logs.map((log) => {
                   const canDelete = isUserNote(log);
                   const authorLabel = log.user?.full_name || (canDelete ? 'Tú' : 'Sistema');

@@ -14,8 +14,13 @@ interface PromiseCierrePageProps {
 export default async function PromiseCierrePage({ params }: PromiseCierrePageProps) {
   const { slug: studioSlug, promiseId } = await params;
 
+  // ✅ OPTIMIZACIÓN: Paralelizar queries independientes
+  const [stateResult, cotizacionesResult] = await Promise.all([
+    determinePromiseState(promiseId),
+    getCotizacionesByPromiseId(promiseId),
+  ]);
+
   // Validar estado actual de la promesa y redirigir si no está en cierre
-  const stateResult = await determinePromiseState(promiseId);
   if (stateResult.success && stateResult.data) {
     const state = stateResult.data.state;
     if (state === 'pendiente') {
@@ -24,9 +29,6 @@ export default async function PromiseCierrePage({ params }: PromiseCierrePagePro
       redirect(`/${studioSlug}/studio/commercial/promises/${promiseId}/autorizada`);
     }
   }
-
-  // Cargar cotizaciones en el servidor
-  const cotizacionesResult = await getCotizacionesByPromiseId(promiseId);
 
   // Buscar cotización en cierre o aprobada sin evento
   const cotizacionEnCierre: CotizacionListItem | null = cotizacionesResult.success && cotizacionesResult.data

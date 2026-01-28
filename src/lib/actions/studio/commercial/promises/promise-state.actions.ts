@@ -41,6 +41,7 @@ export interface PromiseStateData {
 
 /**
  * Determina el estado de una promesa y carga datos básicos en una sola query optimizada
+ * ✅ OPTIMIZACIÓN: Usa select atómico en lugar de include para cumplir con protocolo de Consultas Atómicas
  */
 export async function determinePromiseState(
   promiseId: string
@@ -48,7 +49,16 @@ export async function determinePromiseState(
   try {
     const promise = await prisma.studio_promises.findUnique({
       where: { id: promiseId },
-      include: {
+      select: {
+        id: true,
+        contact_id: true,
+        event_type_id: true,
+        event_location: true,
+        name: true, // event_name
+        duration_hours: true,
+        tentative_dates: true, // interested_dates
+        event_date: true,
+        pipeline_stage_id: true,
         contact: {
           select: {
             id: true,
@@ -94,7 +104,7 @@ export async function determinePromiseState(
         event: {
           select: {
             id: true,
-            status: true,
+            // status no se usa realmente, solo verificamos existencia
           },
         },
         quotes: {

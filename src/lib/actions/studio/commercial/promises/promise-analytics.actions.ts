@@ -381,3 +381,55 @@ export async function getCotizacionClicks(cotizacionId: string) {
     };
   }
 }
+
+/**
+ * ✅ OPTIMIZACIÓN: Obtener todas las estadísticas de una promesa en una sola acción
+ * Ejecuta las 3 queries en paralelo usando Promise.all
+ */
+export async function getPromiseStats(promiseId: string) {
+  try {
+    const [viewsResult, cotizacionesResult, paquetesResult] = await Promise.all([
+      getPromiseViewStats(promiseId),
+      getCotizacionClickStats(promiseId),
+      getPaqueteClickStats(promiseId),
+    ]);
+
+    return {
+      success: true,
+      data: {
+        views: viewsResult.success && viewsResult.data
+          ? {
+              totalViews: viewsResult.data.totalViews,
+              uniqueViews: viewsResult.data.uniqueViews,
+              lastView: viewsResult.data.lastView,
+            }
+          : {
+              totalViews: 0,
+              uniqueViews: 0,
+              lastView: null,
+            },
+        cotizaciones: cotizacionesResult.success && cotizacionesResult.data
+          ? cotizacionesResult.data
+          : [],
+        paquetes: paquetesResult.success && paquetesResult.data
+          ? paquetesResult.data
+          : [],
+      },
+    };
+  } catch (error) {
+    console.error('[getPromiseStats] Error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error al obtener estadísticas',
+      data: {
+        views: {
+          totalViews: 0,
+          uniqueViews: 0,
+          lastView: null,
+        },
+        cotizaciones: [],
+        paquetes: [],
+      },
+    };
+  }
+}

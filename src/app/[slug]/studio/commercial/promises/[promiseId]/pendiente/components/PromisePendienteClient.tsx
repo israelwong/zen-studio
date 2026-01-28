@@ -33,12 +33,39 @@ interface PromisePendienteClientProps {
       name: string;
     } | null;
   } | null;
+  initialCotizaciones?: Array<{
+    id: string;
+    name: string;
+    price: number;
+    status: string;
+    click_count?: number;
+    [key: string]: unknown;
+  }>;
+  initialStats?: {
+    views: {
+      totalViews: number;
+      uniqueViews: number;
+      lastView: Date | null;
+    };
+    cotizaciones: Array<{
+      cotizacionId: string;
+      cotizacionName: string;
+      clicks: number;
+    }>;
+    paquetes: Array<{
+      paqueteId: string;
+      paqueteName: string;
+      clicks: number;
+    }>;
+  };
 }
 
 export function PromisePendienteClient({
   initialCondicionesComerciales,
   initialPaymentMethods,
   initialSelectedCotizacion,
+  initialCotizaciones = [],
+  initialStats,
 }: PromisePendienteClientProps) {
   const params = useParams();
   const studioSlug = params.slug as string;
@@ -222,6 +249,7 @@ export function PromisePendienteClient({
               }}
               isLoadingPromiseData={false}
               onAuthorizeClick={() => setShowAuthorizeModal(true)}
+              initialCotizaciones={initialCotizaciones}
             />
 
             {/* Etiquetas */}
@@ -253,6 +281,7 @@ export function PromisePendienteClient({
             <PromiseStatsCard
               studioSlug={studioSlug}
               promiseId={promiseId}
+              initialStats={initialStats}
             />
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { ZenButton } from '@/components/ui/zen';
 import { usePromiseLogs } from '@/hooks/usePromiseLogs';
@@ -20,10 +20,17 @@ export function PromiseNotesButton({
   contactId,
 }: PromiseNotesButtonProps) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const { logsRecentFirst, addLog, removeLog, refetch } = usePromiseLogs({
+  const { logs, addLog, removeLog, refetch } = usePromiseLogs({
     promiseId: promiseId,
     enabled: true,
   });
+
+  // ✅ OPTIMIZACIÓN: Ordenar desc solo para preview usando useMemo
+  const logsRecentFirst = useMemo(() => {
+    return [...logs].sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }, [logs]);
 
   // Callbacks para realtime
   const handleLogInserted = useCallback((log: PromiseLog) => {

@@ -756,8 +756,6 @@ export function CotizacionForm({
 
         if (!result.success) {
           toast.error(result.error || 'Error al actualizar cotización');
-          isSubmittingRef.current = false;
-          setLoading(false);
           return;
         }
 
@@ -765,8 +763,11 @@ export function CotizacionForm({
 
         // Ejecutar callback si existe
         if (onAfterSave) {
+          // ✅ CORRECCIÓN DEFENSIVA: Resetear loading antes de ejecutar callback
+          // Si el callback no navega o hay un delay, el botón vuelve a la vida
+          isSubmittingRef.current = false;
+          setLoading(false);
           onAfterSave();
-          // No resetear loading aquí, el callback puede manejar la navegación
           return;
         }
 
@@ -807,8 +808,6 @@ export function CotizacionForm({
 
         if (!revisionResult.success) {
           toast.error(revisionResult.error || 'Error al crear revisión');
-          isSubmittingRef.current = false;
-          setLoading(false);
           return;
         }
 
@@ -860,8 +859,6 @@ export function CotizacionForm({
 
       if (!result.success) {
         toast.error(result.error || 'Error al crear cotización');
-        isSubmittingRef.current = false;
-        setLoading(false);
         return;
       }
 
@@ -892,8 +889,14 @@ export function CotizacionForm({
     } catch (error) {
       console.error('Error saving quote:', error);
       toast.error(`Error al ${isEditMode ? 'actualizar' : 'crear'} cotización`);
-      isSubmittingRef.current = false;
-      setLoading(false);
+    } finally {
+      // ✅ CORRECCIÓN DEFENSIVA: Asegurar que el loading se resetee siempre
+      // Si algo falla, hay un callback, o la navegación tarda, el botón vuelve a la vida
+      // Solo resetear si el componente sigue montado (evitar warnings de React)
+      if (isSubmittingRef.current) {
+        isSubmittingRef.current = false;
+        setLoading(false);
+      }
     }
   };
 

@@ -46,9 +46,15 @@ export function usePromiseLogs({ promiseId, enabled = true }: UsePromiseLogsOpti
     loadLogs();
   }, [loadLogs]);
 
-  // Agregar un log optimísticamente (para actualización inmediata)
+  // ✅ OPTIMIZACIÓN: Agregar log manteniendo orden asc (más viejo primero)
   const addLog = useCallback((newLog: PromiseLog) => {
-    setLogs((prev) => [newLog, ...prev]);
+    setLogs((prev) => {
+      // Insertar en la posición correcta para mantener orden asc
+      const newLogs = [...prev, newLog];
+      return newLogs.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    });
   }, []);
 
   // Remover un log (para eliminación optimista)
@@ -56,29 +62,17 @@ export function usePromiseLogs({ promiseId, enabled = true }: UsePromiseLogsOpti
     setLogs((prev) => prev.filter((log) => log.id !== logId));
   }, []);
 
-  // Obtener logs ordenados por fecha (más reciente primero) - para preview
-  const logsRecentFirst = useCallback(() => {
-    return [...logs].sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-  }, [logs]);
-
-  // Obtener logs ordenados por fecha (más vieja primero) - para trazabilidad en modal
-  const logsOldestFirst = useCallback(() => {
-    return [...logs].sort((a, b) => 
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-  }, [logs]);
+  // ✅ OPTIMIZACIÓN: Eliminado reordenamiento duplicado
+  // Los logs ya vienen ordenados asc desde el servidor
+  // Si se necesita orden desc para preview, usar useMemo en el componente
 
   return {
-    logs,
+    logs, // ✅ Ya viene ordenado asc desde servidor
     loading,
     error,
     refetch: loadLogs,
     addLog,
     removeLog,
-    logsRecentFirst: logsRecentFirst(),
-    logsOldestFirst: logsOldestFirst(),
   };
 }
 

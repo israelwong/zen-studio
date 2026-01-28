@@ -3,36 +3,56 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, TrendingUp, RefreshCw } from 'lucide-react';
 import { ZenCard, ZenCardHeader, ZenCardTitle, ZenCardContent, ZenButton, ZenBadge } from '@/components/ui/zen';
-import { getPromiseViewStats, getCotizacionClickStats, getPaqueteClickStats } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
+// ✅ OPTIMIZACIÓN: No importar funciones que ya no se usan al montar
 import { formatDateTime } from '@/lib/actions/utils/formatting';
 
 interface PromiseStatsCardProps {
   studioSlug: string;
   promiseId: string | null;
+  initialStats?: {
+    views: {
+      totalViews: number;
+      uniqueViews: number;
+      lastView: Date | null;
+    };
+    cotizaciones: Array<{
+      cotizacionId: string;
+      cotizacionName: string;
+      clicks: number;
+    }>;
+    paquetes: Array<{
+      paqueteId: string;
+      paqueteName: string;
+      clicks: number;
+    }>;
+  };
 }
 
 export function PromiseStatsCard({
   studioSlug,
   promiseId,
+  initialStats,
 }: PromiseStatsCardProps) {
+  // ✅ OPTIMIZACIÓN: Usar datos iniciales del servidor
   const [viewStats, setViewStats] = useState<{
     totalViews: number;
     uniqueViews: number;
     lastView: Date | null;
-  } | null>(null);
+  } | null>(initialStats?.views || null);
   const [cotizacionStats, setCotizacionStats] = useState<Array<{
     cotizacionId: string;
     cotizacionName: string;
     clicks: number;
-  }>>([]);
+  }>>(initialStats?.cotizaciones || []);
   const [paqueteStats, setPaqueteStats] = useState<Array<{
     paqueteId: string;
     paqueteName: string;
     clicks: number;
-  }>>([]);
+  }>>(initialStats?.paquetes || []);
   const [loadingStats, setLoadingStats] = useState(false);
   const loadingStatsRef = React.useRef(false);
 
+  // ✅ OPTIMIZACIÓN: Solo recargar manualmente si el usuario lo solicita
   const loadStats = async () => {
     if (!promiseId || loadingStatsRef.current) return;
 
@@ -40,36 +60,13 @@ export function PromiseStatsCard({
     setLoadingStats(true);
 
     try {
-      const [viewsResult, cotizacionesResult, paquetesResult] = await Promise.allSettled([
-        getPromiseViewStats(promiseId),
-        getCotizacionClickStats(promiseId),
-        getPaqueteClickStats(promiseId),
-      ]);
+      const { getPromiseStats } = await import('@/lib/actions/studio/commercial/promises/promise-analytics.actions');
+      const statsResult = await getPromiseStats(promiseId);
 
-      if (viewsResult.status === 'fulfilled' && viewsResult.value.success && viewsResult.value.data) {
-        setViewStats({
-          totalViews: viewsResult.value.data.totalViews,
-          uniqueViews: viewsResult.value.data.uniqueViews,
-          lastView: viewsResult.value.data.lastView,
-        });
-      } else {
-        setViewStats((prev) => prev || {
-          totalViews: 0,
-          uniqueViews: 0,
-          lastView: null,
-        });
-      }
-
-      if (cotizacionesResult.status === 'fulfilled' && cotizacionesResult.value.success) {
-        setCotizacionStats(cotizacionesResult.value.data || []);
-      } else {
-        setCotizacionStats([]);
-      }
-
-      if (paquetesResult.status === 'fulfilled' && paquetesResult.value.success) {
-        setPaqueteStats(paquetesResult.value.data || []);
-      } else {
-        setPaqueteStats([]);
+      if (statsResult.success && statsResult.data) {
+        setViewStats(statsResult.data.views);
+        setCotizacionStats(statsResult.data.cotizaciones);
+        setPaqueteStats(statsResult.data.paquetes);
       }
     } catch (error) {
       console.error('[PromiseStatsCard] Error loading stats:', error);
@@ -79,11 +76,7 @@ export function PromiseStatsCard({
     }
   };
 
-  useEffect(() => {
-    if (promiseId) {
-      loadStats();
-    }
-  }, [promiseId]);
+  // ❌ ELIMINADO: useEffect que cargaba stats al montar
 
   if (!promiseId) {
     return null;

@@ -35,7 +35,7 @@ import {
   type CotizacionListItem,
 } from '@/lib/actions/studio/commercial/promises/cotizaciones.actions';
 import { ClosingProcessInfoModal } from '../../../components/ClosingProcessInfoModal';
-import { getCotizacionClicks } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
+// ✅ OPTIMIZACIÓN: click_count ahora viene en la prop cotizacion
 import { getReminderByPromise, deleteReminder } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 
 interface PromiseQuotesPanelCardProps {
@@ -94,7 +94,8 @@ export function PromiseQuotesPanelCard({
   const [editingName, setEditingName] = useState(cotizacion.name);
   const inputRef = useRef<HTMLInputElement>(null);
   const isProcessingRef = useRef(false);
-  const [clickCount, setClickCount] = useState<number | null>(null);
+  // ✅ OPTIMIZACIÓN: click_count viene en la prop cotizacion desde el servidor
+  const clickCount = cotizacion.click_count ?? 0;
   const [reminder, setReminder] = useState<{
     id: string;
     subject_text: string;
@@ -120,21 +121,8 @@ export function PromiseQuotesPanelCard({
     }
   }, [showEditNameModal]);
 
-  // Cargar contador de clicks
-  useEffect(() => {
-    const loadClickCount = async () => {
-      try {
-        const result = await getCotizacionClicks(cotizacion.id);
-        if (result.success && result.data) {
-          setClickCount(result.data.clicks);
-        }
-      } catch (error) {
-        console.debug('[PromiseQuotesPanelCard] Failed to load click count:', error);
-      }
-    };
-
-    loadClickCount();
-  }, [cotizacion.id]);
+  // ❌ ELIMINADO: useEffect que cargaba click_count individual
+  // ✅ OPTIMIZACIÓN: click_count viene en la prop cotizacion desde el servidor
 
   const {
     attributes,

@@ -48,6 +48,7 @@ export interface CotizacionListItem {
   } | null;
   negociacion_precio_original?: number | null;
   negociacion_precio_personalizado?: number | null;
+  click_count?: number; // ✅ OPTIMIZACIÓN: Incluido desde servidor
 }
 
 export interface CotizacionesListResponse {
@@ -212,6 +213,7 @@ export async function createCotizacion(
 
 /**
  * Obtener cotizaciones por promise_id
+ * ✅ OPTIMIZACIÓN: Incluye click_count mediante subquery para evitar N+1 queries
  */
 export async function getCotizacionesByPromiseId(
   promiseId: string
@@ -267,6 +269,29 @@ export async function getCotizacionesByPromiseId(
       ],
     });
 
+    // ✅ OPTIMIZACIÓN: Obtener click_counts en paralelo para todas las cotizaciones
+    const cotizacionIds = cotizaciones.map(c => c.id);
+    
+    // Ejecutar counts en paralelo (más eficiente que secuencial)
+    const clickCountPromises = cotizacionIds.map(async (cotizacionId) => {
+      const count = await prisma.studio_content_analytics.count({
+        where: {
+          event_type: 'COTIZACION_CLICK',
+          metadata: {
+            path: ['cotizacion_id'],
+            equals: cotizacionId,
+          },
+        },
+      });
+      return { cotizacionId, count };
+    });
+
+    const clickCountResults = await Promise.all(clickCountPromises);
+    const clickCountMap = new Map<string, number>();
+    clickCountResults.forEach(({ cotizacionId, count }) => {
+      clickCountMap.set(cotizacionId, count);
+    });
+
     return {
       success: true,
       data: cotizaciones.map((cot) => ({
@@ -289,6 +314,7 @@ export async function getCotizacionesByPromiseId(
         evento_id: cot.evento_id,
         condiciones_comerciales_id: cot.condiciones_comerciales_id,
         condiciones_comerciales: cot.condiciones_comerciales,
+        click_count: clickCountMap.get(cot.id) || 0, // ✅ OPTIMIZACIÓN: Incluido desde servidor
       })),
     };
   } catch (error) {
