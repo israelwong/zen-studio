@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { withRetry } from '@/lib/database/retry-helper';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import {
   createPipelineStageSchema,
@@ -21,22 +22,28 @@ export async function getPipelineStages(
   studioSlug: string
 ): Promise<PipelineStagesResponse> {
   try {
-    const studio = await prisma.studios.findUnique({
-      where: { slug: studioSlug },
-      select: { id: true },
-    });
+    const studio = await withRetry(
+      () => prisma.studios.findUnique({
+        where: { slug: studioSlug },
+        select: { id: true },
+      }),
+      { maxRetries: 3, baseDelay: 1000, maxDelay: 5000 }
+    );
 
     if (!studio) {
       return { success: false, error: 'Studio no encontrado' };
     }
 
-    const stages = await prisma.studio_promise_pipeline_stages.findMany({
+    const stages = await withRetry(
+      () => prisma.studio_promise_pipeline_stages.findMany({
       where: {
         studio_id: studio.id,
         is_active: true,
       },
       orderBy: { order: 'asc' },
-    });
+    }),
+      { maxRetries: 3, baseDelay: 1000, maxDelay: 5000 }
+    );
 
     const pipelineStages: PipelineStage[] = stages.map((stage) => ({
       id: stage.id,

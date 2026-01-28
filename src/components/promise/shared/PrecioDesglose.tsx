@@ -1,7 +1,7 @@
 'use client';
 
 import React, { forwardRef, useMemo } from 'react';
-import { formatRoundedPrice } from '@/lib/utils/price-rounding';
+import { formatPackagePriceSimple } from '@/lib/utils/package-price-formatter';
 
 interface PrecioDesgloseProps {
   precioBase: number;
@@ -13,19 +13,12 @@ interface PrecioDesgloseProps {
   anticipo: number;
   diferido: number;
   cortesias?: number; // Monto total de cortesías (items marcados como cortesía)
-  useCharmRounding?: boolean; // Si es true, usa redondeo charm (solo para paquetes)
 }
 
-const formatPrice = (price: number, useCharm: boolean = false) => {
-  if (useCharm) {
-    return formatRoundedPrice(price, 'charm');
-  }
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
+const formatPrice = (price: number) => {
+  // El precio base ya viene resuelto del servidor (con o sin charm según el engine)
+  // Los cálculos locales (descuentos, anticipos) son legítimos pero deben formatearse sin charm adicional
+  return formatPackagePriceSimple(price);
 };
 
 export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
@@ -40,7 +33,6 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
       anticipo,
       diferido,
       cortesias = 0,
-      useCharmRounding = false,
     },
     ref
   ) => {
@@ -76,7 +68,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
           <div className="flex justify-between items-center">
             <span className="text-sm text-zinc-400">Precio original</span>
             <span className="text-sm font-medium text-zinc-300">
-              {formatPrice(precioBase, useCharmRounding)}
+              {formatPrice(precioBase)}
             </span>
           </div>
           {tienePrecioNegociado && precioNegociadoNormalizado !== null && (
@@ -84,14 +76,14 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
               <div className="flex justify-between items-center">
                 <span className="text-sm text-zinc-400">Precio negociado</span>
                 <span className="text-sm font-medium text-blue-400">
-                  {formatPrice(precioNegociadoNormalizado, useCharmRounding)}
+                  {formatPrice(precioNegociadoNormalizado)}
                 </span>
               </div>
               {ahorroTotal > 0 && (
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-zinc-400">Ahorro total</span>
                   <span className="text-sm font-medium text-emerald-400">
-                    {formatPrice(ahorroTotal, useCharmRounding)}
+                    {formatPrice(ahorroTotal)}
                   </span>
                 </div>
               )}
@@ -109,14 +101,14 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
             <div className="flex justify-between items-center">
               <span className="text-sm text-zinc-400">Cortesías</span>
                 <span className="text-sm font-medium text-emerald-400">
-                -{formatPrice(cortesias, useCharmRounding)}
+                -{formatPrice(cortesias)}
               </span>
             </div>
           )}
           <div className="flex justify-between items-center pt-2 border-t border-zinc-700">
             <span className="text-sm font-semibold text-white">Total a pagar</span>
             <span className="text-lg font-bold text-emerald-400">
-              {formatPrice(precioFinalAPagar, useCharmRounding)}
+              {formatPrice(precioFinalAPagar)}
             </span>
           </div>
           {anticipo > 0 && (
@@ -128,7 +120,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
                     : `Anticipo (${anticipoPorcentaje ?? 0}%)`}
                 </span>
                 <span className="text-sm font-medium text-blue-400">
-                  {formatPrice(anticipo, useCharmRounding)}
+                  {formatPrice(anticipo)}
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -141,7 +133,7 @@ export const PrecioDesglose = forwardRef<HTMLDivElement, PrecioDesgloseProps>(
                   )}
                 </span>
                 <span className="text-sm font-medium text-zinc-300">
-                  {formatPrice(diferido, useCharmRounding)}
+                  {formatPrice(diferido)}
                 </span>
               </div>
             </>

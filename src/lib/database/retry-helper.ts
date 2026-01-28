@@ -45,10 +45,12 @@ export async function withRetry<T>(
             if (isRecoverableError(error) && attempt < maxRetries) {
                 const delay = calculateDelay(attempt, baseDelay, maxDelay, jitter);
                 
+                if (process.env.NODE_ENV === 'development') {
                 console.warn(
                     `⚠️ Error recuperable en intento ${attempt}/${maxRetries}: ${prismaError.code || 'Unknown'}. ` +
                     `Reintentando en ${delay}ms...`
                 );
+            }
                 
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
@@ -100,7 +102,12 @@ function isRecoverableError(error: unknown): boolean {
         'Connection refused',
         'Network error',
         'ECONNREFUSED',
-        'ETIMEDOUT'
+        'ETIMEDOUT',
+        'terminating connection',
+        'database system is shutting down',
+        'DriverAdapterError',
+        'connection terminated',
+        'the database system is shutting down'
     ];
     
     return (

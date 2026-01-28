@@ -56,6 +56,8 @@ export function PromiseReminderCard({
         const deleteResult = await deleteReminder(studioSlug, reminder.id);
         if (deleteResult.success) {
           setReminder(null);
+          // ✅ Disparar evento para actualizar contador en AppHeader
+          window.dispatchEvent(new CustomEvent('reminder-updated'));
           router.refresh();
         }
       } else {
@@ -79,6 +81,8 @@ export function PromiseReminderCard({
         toast.success('Seguimiento eliminado');
         setReminder(null);
         setShowDeleteModal(false);
+        // ✅ Disparar evento para actualizar contador en AppHeader
+        window.dispatchEvent(new CustomEvent('reminder-updated'));
       } else {
         toast.error(result.error || 'Error al eliminar seguimiento');
       }

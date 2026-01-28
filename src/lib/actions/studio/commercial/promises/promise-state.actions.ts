@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { withRetry } from '@/lib/database/retry-helper';
 import type { ActionResponse } from '@/lib/actions/types';
 
 export type PromiseState = 'pendiente' | 'cierre' | 'autorizada';
@@ -47,7 +48,8 @@ export async function determinePromiseState(
   promiseId: string
 ): Promise<ActionResponse<PromiseStateData>> {
   try {
-    const promise = await prisma.studio_promises.findUnique({
+    const promise = await withRetry(
+      () => prisma.studio_promises.findUnique({
       where: { id: promiseId },
       select: {
         id: true,
@@ -116,7 +118,9 @@ export async function determinePromiseState(
           },
         },
       },
-    });
+    }),
+      { maxRetries: 3, baseDelay: 1000, maxDelay: 5000 }
+    );
 
     if (!promise) {
       return { success: false, error: 'Promesa no encontrada' };

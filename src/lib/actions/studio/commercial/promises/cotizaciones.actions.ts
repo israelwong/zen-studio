@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { withRetry } from '@/lib/database/retry-helper';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import {
   createCotizacionSchema,
@@ -219,7 +220,8 @@ export async function getCotizacionesByPromiseId(
   promiseId: string
 ): Promise<CotizacionesListResponse> {
   try {
-    const cotizaciones = await prisma.studio_cotizaciones.findMany({
+    const cotizaciones = await withRetry(
+      () => prisma.studio_cotizaciones.findMany({
       where: {
         promise_id: promiseId,
         // Incluir: pendiente, negociacion, en_cierre, archivada, cancelada
@@ -262,12 +264,14 @@ export async function getCotizacionesByPromiseId(
           },
         },
       },
-      orderBy: [
-        { archived: 'asc' }, // No archivadas primero
-        { order: 'asc' },
-        { created_at: 'desc' },
-      ],
-    });
+        orderBy: [
+          { archived: 'asc' }, // No archivadas primero
+          { order: 'asc' },
+          { created_at: 'desc' },
+        ],
+      }),
+      { maxRetries: 3, baseDelay: 1000, maxDelay: 5000 }
+    );
 
     // ✅ OPTIMIZACIÓN: Obtener click_counts en paralelo para todas las cotizaciones
     const cotizacionIds = cotizaciones.map(c => c.id);

@@ -88,17 +88,17 @@ const poolMax = isPgbouncer
   ? 1 // Serverless: 1 conexión (pgbouncer)
   : process.env.NODE_ENV === 'production' 
     ? 20 // ⚠️ OPTIMIZACIÓN: Producción: 20 conexiones para paralelismo
-    : 10; // Desarrollo: 10 conexiones para paralelismo
+    : 5; // Desarrollo: 5 conexiones (reducido para evitar saturación en hot reload)
 
 // ✅ Singleton: Reutilizar pool existente o crear uno nuevo
 const pgPool = globalThis.__pgPool || new Pool({
   connectionString,
   max: poolMax,
-  idleTimeoutMillis: 30000, // 30s para liberar conexiones rápidamente
-  connectionTimeoutMillis: 30000, // 30s timeout (aumentado para queries complejas)
+  idleTimeoutMillis: process.env.NODE_ENV === 'development' ? 10000 : 30000, // 10s en dev, 30s en prod
+  connectionTimeoutMillis: 20000, // 20s timeout (reducido para fallar rápido en dev)
   allowExitOnIdle: true, // Permitir que el proceso termine cuando no hay conexiones activas
   // ⚠️ OPTIMIZACIÓN: Configuración adicional para reducir overhead
-  statement_timeout: 30000, // 30s timeout por statement
+  statement_timeout: process.env.NODE_ENV === 'development' ? 20000 : 30000, // 20s en dev, 30s en prod
 });
 
 // ✅ Aumentar límite de listeners para evitar MaxListenersExceededWarning

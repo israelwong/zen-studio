@@ -1,6 +1,7 @@
 'use server';
 
 import { prisma } from '@/lib/prisma';
+import { withRetry } from '@/lib/database/retry-helper';
 import { headers } from 'next/headers';
 import { trackContentEvent } from '@/lib/actions/studio/analytics/analytics.actions';
 
@@ -173,7 +174,8 @@ export async function trackPaqueteClick(
 export async function getPromiseViewStats(promiseId: string) {
   try {
     // Optimizado: Limitar a últimos 500 registros para evitar queries lentas
-    const allViews = await prisma.studio_content_analytics.findMany({
+    const allViews = await withRetry(
+      () => prisma.studio_content_analytics.findMany({
       where: {
         content_type: 'PROMISE',
         content_id: promiseId,
@@ -189,7 +191,9 @@ export async function getPromiseViewStats(promiseId: string) {
         user_agent: true,
         metadata: true,
       },
-    });
+    }),
+      { maxRetries: 3, baseDelay: 1000, maxDelay: 5000 }
+    );
 
     // Filtrar visitas que NO son preview
     const realViews = allViews.filter((view) => {

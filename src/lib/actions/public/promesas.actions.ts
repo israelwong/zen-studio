@@ -12,6 +12,7 @@ import type { PublicSeccionData, PublicCategoriaData, PublicServicioData, Public
 import type { SeccionData } from "@/lib/actions/schemas/catalogo-schemas";
 import { construirEstructuraJerarquicaCotizacion } from "@/lib/actions/studio/commercial/promises/cotizacion-structure.utils";
 import { calcularCantidadEfectiva } from "@/lib/utils/dynamic-billing-calc";
+import { calculatePackagePrice } from "@/lib/utils/package-price-engine";
 import type { PipelineStage } from "@/lib/actions/schemas/promises-schemas";
 
 /**
@@ -1264,14 +1265,13 @@ export async function getPublicPromisePendientes(
       };
     });
 
-    // 8. ⚠️ OPTIMIZACIÓN: Mapear paquetes SIN multimedia de items (solo portada)
+    // 8. Mapear paquetes usando el engine de precios (SSoT)
     const mapearPaquetesStart = Date.now();
     // Obtener duration_hours de la promise
     const promiseDurationHours = promise.duration_hours ?? null;
     const mappedPaquetes: PublicPaquete[] = paquetes.map((paq) => {
       const itemIds = new Set<string>();
       const itemsData = new Map<string, { description?: string | null; quantity?: number; price?: number }>();
-      let precioTotalRecalculado = 0;
 
       if (!paq.paquete_items || paq.paquete_items.length === 0) {
         return {
@@ -1279,28 +1279,20 @@ export async function getPublicPromisePendientes(
           name: paq.name,
           description: paq.description,
           price: paq.precio || 0,
-          cover_url: paq.cover_url, // ⚠️ Solo portada del paquete
+          cover_url: paq.cover_url,
           recomendado: paq.is_featured || false,
           servicios: [],
           tiempo_minimo_contratacion: null,
         };
       }
 
-      paq.paquete_items.forEach((item: {
-        item_id: string | null;
-        status: string;
-        visible_to_client: boolean | null;
-        precio_personalizado: number | null;
-        quantity: number;
-        items: {
-          cost: number | null;
-          expense: number | null;
-          utility_type: string | null;
-        } | null;
-      }) => {
-        if (item.item_id && item.status === 'active' && item.visible_to_client !== false) {
-          itemIds.add(item.item_id);
-
+      // Preparar items para el engine
+      const paqueteItemsForEngine = paq.paquete_items
+        .filter((item) => item.item_id && item.status === 'active' && item.visible_to_client !== false)
+        .map((item) => {
+          itemIds.add(item.item_id!);
+          
+          // Calcular precio del item para itemsData (para mostrar en UI)
           let precioItem: number | undefined = undefined;
           if (item.precio_personalizado !== null && item.precio_personalizado !== undefined) {
             precioItem = item.precio_personalizado;
@@ -1320,13 +1312,11 @@ export async function getPublicPromisePendientes(
             precioItem = precios.precio_final;
           }
 
-          // Obtener billing_type del catálogo
+          // Obtener billing_type del catálogo para itemsData
           const itemCatalogo = catalogo
             .flatMap(s => s.categorias.flatMap(c => c.servicios))
             .find(s => s.id === item.item_id);
           const billingType = (itemCatalogo?.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
-
-          // Calcular cantidad efectiva: usar duration_hours del evento o del paquete
           const horasParaCalculo = promiseDurationHours ?? (paq.base_hours ?? null);
           const cantidadEfectiva = calcularCantidadEfectiva(
             billingType,
@@ -1334,56 +1324,72 @@ export async function getPublicPromisePendientes(
             horasParaCalculo
           );
 
-          // Calcular subtotal dinámico
-          if (precioItem !== undefined) {
-            const subtotal = precioItem * cantidadEfectiva;
-            precioTotalRecalculado += subtotal;
-          }
-
-          itemsData.set(item.item_id, {
+          itemsData.set(item.item_id!, {
             description: null,
-            quantity: cantidadEfectiva, // Usar cantidad efectiva para mostrar correctamente en UI
+            quantity: cantidadEfectiva,
             price: precioItem,
           });
-          // ⚠️ NO incluir multimedia de items del paquete
-        }
-      });
 
-      // ⚠️ Catálogo sin multimedia
+          return {
+            item_id: item.item_id!,
+            quantity: item.quantity,
+            precio_personalizado: item.precio_personalizado,
+            items: item.items,
+          };
+        });
+
       const serviciosFiltrados = filtrarCatalogoPorItems(catalogo, itemIds, itemsData);
 
-      // Lógica de precio: si paquete tiene horas y precio personalizado
-      // - Si las horas del evento coinciden con las del paquete → mantener precio personalizado
-      // - Si las horas son diferentes → recalcular precio dinámico
-      // - Si no hay horas en paquete o no hay precio personalizado → usar lógica estándar
-      const tieneHorasYprecio = paq.base_hours !== null && paq.base_hours !== undefined && paq.precio !== null && paq.precio !== undefined && paq.precio > 0;
-      const horasCoinciden = tieneHorasYprecio && promiseDurationHours !== null && promiseDurationHours === paq.base_hours;
-      
-      let precioFinal: number;
-      if (tieneHorasYprecio && horasCoinciden) {
-        // Mantener precio personalizado si las horas coinciden
-        precioFinal = paq.precio;
-      } else if (tieneHorasYprecio && promiseDurationHours !== null && promiseDurationHours !== paq.base_hours) {
-        // Recalcular precio dinámico si las horas son diferentes
-        precioFinal = precioTotalRecalculado > 0 ? precioTotalRecalculado : (paq.precio || 0);
-      } else if (promiseDurationHours !== null && precioTotalRecalculado > 0) {
-        // Si hay duración del evento y se calculó precio, usarlo
-        precioFinal = precioTotalRecalculado;
-      } else {
-        // Usar precio base del paquete
-        precioFinal = paq.precio || 0;
+      // Usar el engine de precios (SSoT)
+      if (!configPrecios) {
+        // Fallback si no hay configuración de precios
+        console.log('[getPublicPromisePendientes] ⚠️ Sin configPrecios, usando precio base:', paq.precio);
+        return {
+          id: paq.id,
+          name: paq.name,
+          description: paq.description,
+          price: paq.precio || 0,
+          cover_url: paq.cover_url,
+          recomendado: paq.is_featured || false,
+          servicios: serviciosFiltrados,
+          tiempo_minimo_contratacion: null,
+        };
       }
+
+      const priceResult = calculatePackagePrice({
+        paquete: {
+          id: paq.id,
+          precio: paq.precio || 0,
+          base_hours: paq.base_hours,
+        },
+        eventDurationHours: promiseDurationHours,
+        paqueteItems: paqueteItemsForEngine,
+        catalogo: catalogo,
+        configPrecios: configPrecios,
+      });
+
+      // 🔍 LOG: Verificación del engine
+      console.log('[getPublicPromisePendientes] Engine result:', {
+        paqueteId: paq.id,
+        paqueteName: paq.name,
+        base_hours: paq.base_hours,
+        promiseDurationHours: promiseDurationHours,
+        finalPrice: priceResult.finalPrice,
+        basePrice: priceResult.basePrice,
+        recalculatedPrice: priceResult.recalculatedPrice,
+        hoursMatch: priceResult.hoursMatch,
+        priceSource: priceResult.priceSource,
+      });
 
       return {
         id: paq.id,
         name: paq.name,
         description: paq.description,
-        price: precioFinal,
-        cover_url: paq.cover_url, // ⚠️ Solo portada del paquete
+        price: priceResult.finalPrice, // Precio ya resuelto por el engine
+        cover_url: paq.cover_url,
         recomendado: paq.is_featured || false,
         servicios: serviciosFiltrados,
         tiempo_minimo_contratacion: null,
-        // ⚠️ NO incluir items_media - multimedia solo en cotizaciones
       };
     });
 
@@ -2042,11 +2048,10 @@ export async function getPublicPromiseAvailablePackages(
       : [];
 
 
-    // 6. Mapear paquetes con cálculo dinámico de precios
+    // 6. Mapear paquetes usando el engine de precios (SSoT)
     const mappedPaquetes: PublicPaquete[] = paquetes.map((paq) => {
       const itemIds = new Set<string>();
       const itemsData = new Map<string, { description?: string | null; quantity?: number; price?: number }>();
-      let precioTotalRecalculado = 0;
 
       if (!paq.paquete_items || paq.paquete_items.length === 0) {
         return {
@@ -2061,21 +2066,13 @@ export async function getPublicPromiseAvailablePackages(
         };
       }
 
-      paq.paquete_items.forEach((item: {
-        item_id: string | null;
-        status: string;
-        visible_to_client: boolean | null;
-        precio_personalizado: number | null;
-        quantity: number;
-        items: {
-          cost: number | null;
-          expense: number | null;
-          utility_type: string | null;
-        } | null;
-      }) => {
-        if (item.item_id && item.status === 'active' && item.visible_to_client !== false) {
-          itemIds.add(item.item_id);
-
+      // Preparar items para el engine
+      const paqueteItemsForEngine = paq.paquete_items
+        .filter((item) => item.item_id && item.status === 'active' && item.visible_to_client !== false)
+        .map((item) => {
+          itemIds.add(item.item_id!);
+          
+          // Calcular precio del item para itemsData (para mostrar en UI)
           let precioItem: number | undefined = undefined;
           if (item.precio_personalizado !== null && item.precio_personalizado !== undefined) {
             precioItem = item.precio_personalizado;
@@ -2095,14 +2092,11 @@ export async function getPublicPromiseAvailablePackages(
             precioItem = precios.precio_final;
           }
 
-          // Obtener billing_type del catálogo
+          // Obtener billing_type del catálogo para itemsData
           const itemCatalogo = catalogo
             .flatMap(s => s.categorias.flatMap(c => c.servicios))
             .find(s => s.id === item.item_id);
           const billingType = (itemCatalogo?.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
-
-          // Calcular cantidad efectiva usando duración del evento o del paquete
-          // Si hay duration_hours del evento, usarlo; si no, usar las horas del paquete (si existen)
           const horasParaCalculo = durationHours ?? (paq.base_hours ?? null);
           const cantidadEfectiva = calcularCantidadEfectiva(
             billingType,
@@ -2110,49 +2104,68 @@ export async function getPublicPromiseAvailablePackages(
             horasParaCalculo
           );
 
-          // Calcular subtotal dinámico
-          if (precioItem !== undefined) {
-            const subtotal = precioItem * cantidadEfectiva;
-            precioTotalRecalculado += subtotal;
-          }
-
-          itemsData.set(item.item_id, {
+          itemsData.set(item.item_id!, {
             description: null,
-            quantity: cantidadEfectiva, // Usar cantidad efectiva para mostrar correctamente en UI
+            quantity: cantidadEfectiva,
             price: precioItem,
           });
-        }
-      });
+
+          return {
+            item_id: item.item_id!,
+            quantity: item.quantity,
+            precio_personalizado: item.precio_personalizado,
+            items: item.items,
+          };
+        });
 
       const serviciosFiltrados = filtrarCatalogoPorItems(catalogo, itemIds, itemsData);
 
-      // Lógica de precio: si paquete tiene horas y precio personalizado
-      // - Si las horas del evento coinciden con las del paquete → mantener precio personalizado
-      // - Si las horas son diferentes → recalcular precio dinámico
-      // - Si no hay horas en paquete o no hay precio personalizado → usar lógica estándar
-      const tieneHorasYprecio = paq.base_hours !== null && paq.base_hours !== undefined && paq.precio !== null && paq.precio !== undefined && paq.precio > 0;
-      const horasCoinciden = tieneHorasYprecio && durationHours !== null && durationHours === paq.base_hours;
-      
-      let precioFinal: number;
-      if (tieneHorasYprecio && horasCoinciden) {
-        // Mantener precio personalizado si las horas coinciden
-        precioFinal = paq.precio;
-      } else if (tieneHorasYprecio && durationHours !== null && durationHours !== paq.base_hours) {
-        // Recalcular precio dinámico si las horas son diferentes
-        precioFinal = precioTotalRecalculado > 0 ? precioTotalRecalculado : (paq.precio || 0);
-      } else if (durationHours !== null && precioTotalRecalculado > 0) {
-        // Si hay duración del evento y se calculó precio, usarlo
-        precioFinal = precioTotalRecalculado;
-      } else {
-        // Usar precio base del paquete
-        precioFinal = paq.precio || 0;
+      // Usar el engine de precios (SSoT)
+      if (!configPrecios) {
+        // Fallback si no hay configuración de precios
+        console.log('[getPublicPromiseAvailablePackages] ⚠️ Sin configPrecios, usando precio base:', paq.precio);
+        return {
+          id: paq.id,
+          name: paq.name,
+          description: paq.description,
+          price: paq.precio || 0,
+          cover_url: paq.cover_url,
+          recomendado: paq.is_featured || false,
+          servicios: serviciosFiltrados,
+          tiempo_minimo_contratacion: null,
+        };
       }
+
+      const priceResult = calculatePackagePrice({
+        paquete: {
+          id: paq.id,
+          precio: paq.precio || 0,
+          base_hours: paq.base_hours,
+        },
+        eventDurationHours: durationHours,
+        paqueteItems: paqueteItemsForEngine,
+        catalogo: catalogo,
+        configPrecios: configPrecios,
+      });
+
+      // 🔍 LOG: Verificación del engine
+      console.log('[getPublicPromiseAvailablePackages] Engine result:', {
+        paqueteId: paq.id,
+        paqueteName: paq.name,
+        base_hours: paq.base_hours,
+        eventDurationHours: durationHours,
+        finalPrice: priceResult.finalPrice,
+        basePrice: priceResult.basePrice,
+        recalculatedPrice: priceResult.recalculatedPrice,
+        hoursMatch: priceResult.hoursMatch,
+        priceSource: priceResult.priceSource,
+      });
 
       return {
         id: paq.id,
         name: paq.name,
         description: paq.description,
-        price: precioFinal,
+        price: priceResult.finalPrice, // Precio ya resuelto por el engine
         cover_url: paq.cover_url,
         recomendado: paq.is_featured || false,
         servicios: serviciosFiltrados,
@@ -3783,39 +3796,35 @@ export async function getPublicPromiseData(
       };
     });
 
-    // 7. Mapear paquetes con estructura jerárquica y cálculo dinámico de precios
+    // 7. Mapear paquetes usando el engine de precios (SSoT)
     const mappedPaquetes: PublicPaquete[] = paquetes.map((paq) => {
-      // Crear Set de item_ids incluidos en el paquete
       const itemIds = new Set<string>();
       const itemsData = new Map<string, { description?: string | null; quantity?: number; price?: number }>();
-      let precioTotalRecalculado = 0;
 
-      // Verificar que paquete_items existe y tiene datos
       if (!paq.paquete_items || paq.paquete_items.length === 0) {
         return {
           id: paq.id,
           name: paq.name,
           description: paq.description,
           price: paq.precio || 0,
-          cover_url: paq.cover_url, // ⚠️ Solo portada del paquete
+          cover_url: paq.cover_url,
           recomendado: paq.is_featured || false,
           servicios: [],
           tiempo_minimo_contratacion: null,
         };
       }
 
-      // Mapear items del paquete (filtrar activos y visibles al cliente)
-      paq.paquete_items.forEach((item) => {
-        if (item.item_id && item.status === 'active' && item.visible_to_client !== false) {
-          itemIds.add(item.item_id);
-
-          // Calcular precio: usar precio_personalizado si existe, si no calcular desde catálogo
+      // Preparar items para el engine
+      const paqueteItemsForEngine = paq.paquete_items
+        .filter((item) => item.item_id && item.status === 'active' && item.visible_to_client !== false)
+        .map((item) => {
+          itemIds.add(item.item_id!);
+          
+          // Calcular precio del item para itemsData (para mostrar en UI)
           let precioItem: number | undefined = undefined;
-
           if (item.precio_personalizado !== null && item.precio_personalizado !== undefined) {
             precioItem = item.precio_personalizado;
           } else if (item.items && configPrecios) {
-            // Calcular precio desde catálogo
             const tipoUtilidad = item.items.utility_type?.toLowerCase() || 'service';
             const tipoUtilidadFinal = tipoUtilidad.includes('service') || tipoUtilidad.includes('servicio')
               ? 'servicio'
@@ -3831,13 +3840,11 @@ export async function getPublicPromiseData(
             precioItem = precios.precio_final;
           }
 
-          // Obtener billing_type del catálogo
+          // Obtener billing_type del catálogo para itemsData
           const itemCatalogo = catalogo
             .flatMap(s => s.categorias.flatMap(c => c.servicios))
             .find(s => s.id === item.item_id);
           const billingType = (itemCatalogo?.billing_type || 'SERVICE') as 'HOUR' | 'SERVICE' | 'UNIT';
-
-          // Calcular cantidad efectiva: usar duration_hours del evento o del paquete
           const horasParaCalculo = promiseDurationHours ?? (paq.base_hours ?? null);
           const cantidadEfectiva = calcularCantidadEfectiva(
             billingType,
@@ -3845,56 +3852,72 @@ export async function getPublicPromiseData(
             horasParaCalculo
           );
 
-          // Calcular subtotal dinámico
-          if (precioItem !== undefined) {
-            const subtotal = precioItem * cantidadEfectiva;
-            precioTotalRecalculado += subtotal;
-          }
-
-          itemsData.set(item.item_id, {
+          itemsData.set(item.item_id!, {
             description: null,
-            quantity: cantidadEfectiva, // Usar cantidad efectiva para mostrar correctamente en UI
+            quantity: cantidadEfectiva,
             price: precioItem,
           });
-          // ⚠️ NO incluir multimedia de items del paquete
-        }
-      });
 
-      // ⚠️ Catálogo sin multimedia
+          return {
+            item_id: item.item_id!,
+            quantity: item.quantity,
+            precio_personalizado: item.precio_personalizado,
+            items: item.items,
+          };
+        });
+
       const serviciosFiltrados = filtrarCatalogoPorItems(catalogo, itemIds, itemsData);
 
-      // Lógica de precio: si paquete tiene horas y precio personalizado
-      // - Si las horas del evento coinciden con las del paquete → mantener precio personalizado
-      // - Si las horas son diferentes → recalcular precio dinámico
-      // - Si no hay horas en paquete o no hay precio personalizado → usar lógica estándar
-      const tieneHorasYprecio = paq.base_hours !== null && paq.base_hours !== undefined && paq.precio !== null && paq.precio !== undefined && paq.precio > 0;
-      const horasCoinciden = tieneHorasYprecio && promiseDurationHours !== null && promiseDurationHours === paq.base_hours;
-      
-      let precioFinal: number;
-      if (tieneHorasYprecio && horasCoinciden) {
-        // Mantener precio personalizado si las horas coinciden
-        precioFinal = paq.precio;
-      } else if (tieneHorasYprecio && promiseDurationHours !== null && promiseDurationHours !== paq.base_hours) {
-        // Recalcular precio dinámico si las horas son diferentes
-        precioFinal = precioTotalRecalculado > 0 ? precioTotalRecalculado : (paq.precio || 0);
-      } else if (promiseDurationHours !== null && precioTotalRecalculado > 0) {
-        // Si hay duración del evento y se calculó precio, usarlo
-        precioFinal = precioTotalRecalculado;
-      } else {
-        // Usar precio base del paquete
-        precioFinal = paq.precio || 0;
+      // Usar el engine de precios (SSoT)
+      if (!configPrecios) {
+        // Fallback si no hay configuración de precios
+        console.log('[getPublicPromiseData] ⚠️ Sin configPrecios, usando precio base:', paq.precio);
+        return {
+          id: paq.id,
+          name: paq.name,
+          description: paq.description,
+          price: paq.precio || 0,
+          cover_url: paq.cover_url,
+          recomendado: paq.is_featured || false,
+          servicios: serviciosFiltrados,
+          tiempo_minimo_contratacion: null,
+        };
       }
+
+      const priceResult = calculatePackagePrice({
+        paquete: {
+          id: paq.id,
+          precio: paq.precio || 0,
+          base_hours: paq.base_hours,
+        },
+        eventDurationHours: promiseDurationHours,
+        paqueteItems: paqueteItemsForEngine,
+        catalogo: catalogo,
+        configPrecios: configPrecios,
+      });
+
+      // 🔍 LOG: Verificación del engine
+      console.log('[getPublicPromiseData] Engine result:', {
+        paqueteId: paq.id,
+        paqueteName: paq.name,
+        base_hours: paq.base_hours,
+        promiseDurationHours: promiseDurationHours,
+        finalPrice: priceResult.finalPrice,
+        basePrice: priceResult.basePrice,
+        recalculatedPrice: priceResult.recalculatedPrice,
+        hoursMatch: priceResult.hoursMatch,
+        priceSource: priceResult.priceSource,
+      });
 
       return {
         id: paq.id,
         name: paq.name,
         description: paq.description,
-        price: precioFinal,
-        cover_url: paq.cover_url, // ⚠️ Solo portada del paquete
+        price: priceResult.finalPrice, // Precio ya resuelto por el engine
+        cover_url: paq.cover_url,
         recomendado: paq.is_featured || false,
         servicios: serviciosFiltrados,
         tiempo_minimo_contratacion: null,
-        // ⚠️ NO incluir items_media - multimedia solo en cotizaciones
       };
     });
 

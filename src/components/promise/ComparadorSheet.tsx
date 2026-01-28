@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Check, Eye } from 'lucide-react';
 import { ZenBadge, ZenCard, ZenButton } from '@/components/ui/zen';
 import type { PublicCotizacion, PublicPaquete, PublicSeccionData } from '@/types/public-promise';
-import { formatRoundedPrice } from '@/lib/utils/price-rounding';
+import { formatPackagePriceSimple } from '@/lib/utils/package-price-formatter';
 
 interface ComparadorSheetProps {
   cotizaciones: PublicCotizacion[];
@@ -192,7 +192,7 @@ export function ComparadorSheet({
 }: ComparadorSheetProps) {
   const formatPrice = (price: number, isPaquete: boolean = false) => {
     if (isPaquete) {
-      return formatRoundedPrice(price, 'charm');
+      return formatPackagePriceSimple(price);
     }
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',

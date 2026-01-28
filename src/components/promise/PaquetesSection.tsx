@@ -11,7 +11,7 @@ import { ComparadorButton } from './ComparadorButton';
 import { getTotalServicios, getFirstServicios } from '@/lib/utils/public-promise';
 import { cn } from '@/lib/utils';
 import { trackPaqueteClick } from '@/lib/actions/studio/commercial/promises/promise-analytics.actions';
-import { formatRoundedPrice } from '@/lib/utils/price-rounding';
+import { formatPackagePriceSimple } from '@/lib/utils/package-price-formatter';
 
 interface CondicionComercial {
     id: string;
@@ -130,7 +130,7 @@ function PaqueteCard({
                         <div className="mt-auto space-y-2">
                             {/* Precio */}
                             <p className="text-xl font-bold text-blue-400">
-                                {formatRoundedPrice(paquete.price, 'charm')}
+                                {formatPackagePriceSimple(paquete.price)}
                             </p>
                         </div>
                     </div>
@@ -191,9 +191,6 @@ export function PaquetesSection({
         return null;
     }
 
-    const formatPrice = (price: number) => {
-        return formatRoundedPrice(price, 'charm');
-    };
 
     // Detectar scroll para actualizar indicador
     const handleScroll = () => {
