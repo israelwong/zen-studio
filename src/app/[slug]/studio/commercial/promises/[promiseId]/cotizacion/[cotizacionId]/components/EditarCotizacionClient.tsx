@@ -171,15 +171,17 @@ export function EditarCotizacionClient({
               <div>
                 <div className="flex items-center gap-2">
                   <ZenCardTitle>Editar Cotización</ZenCardTitle>
-                  {condicionComercial && (
+                  {condicionComercial && !fromCierre && (
                     <ZenBadge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
                       {condicionComercial.name}
                     </ZenBadge>
                   )}
                 </div>
-                <ZenCardDescription>
-                  {condicionComercial?.description || 'Actualiza la información de la cotización'}
-                </ZenCardDescription>
+                {!fromCierre && (
+                  <ZenCardDescription>
+                    {condicionComercial?.description || 'Actualiza la información de la cotización'}
+                  </ZenCardDescription>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
