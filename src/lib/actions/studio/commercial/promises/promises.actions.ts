@@ -641,18 +641,35 @@ export async function createPromise(
       }
     }
 
-    // Obtener etapa "nuevo" por defecto si no se especifica
+    // ✅ Obtener etapa con order 0 (primera posición) por defecto si no se especifica
     let stageId = validatedData.promise_pipeline_stage_id;
     if (!stageId) {
+      // Buscar el stage con order 0 específicamente (primera posición del pipeline)
       const nuevoStage = await prisma.studio_promise_pipeline_stages.findFirst({
         where: {
           studio_id: studio.id,
-          slug: 'pending',
           is_active: true,
+          order: 0, // ✅ Específicamente order 0
         },
         select: { id: true },
       });
-      stageId = nuevoStage?.id || undefined;
+      
+      // Si no hay stage con order 0, buscar el de order más bajo como fallback
+      if (!nuevoStage) {
+        const fallbackStage = await prisma.studio_promise_pipeline_stages.findFirst({
+          where: {
+            studio_id: studio.id,
+            is_active: true,
+          },
+          orderBy: {
+            order: 'asc', // Obtener el stage con el order más bajo
+          },
+          select: { id: true },
+        });
+        stageId = fallbackStage?.id || undefined;
+      } else {
+        stageId = nuevoStage.id;
+      }
     }
 
     // Crear o encontrar contacto

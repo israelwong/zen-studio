@@ -826,36 +826,31 @@ export function EventFormModal({
                         onSuccess(updatedData);
                     }
                 } else {
-                    // En modo creación, obtener promiseId y redirigir
-                    const contactId = result.data.id;
-                    if (contactId) {
-                        const promiseResult = await getPromiseIdByContactId(contactId);
-                        if (promiseResult.success && promiseResult.data) {
-                            const promiseId = promiseResult.data.promise_id;
-                            
-                            // Cerrar modal antes de redirigir
-                            onClose();
-                            
-                            // Cerrar overlays antes de navegar
-                            window.dispatchEvent(new CustomEvent('close-overlays'));
-                            
-                            // Redirigir usando startTransition para evitar bloqueos
-                            startTransition(() => {
-                                router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
-                                router.refresh(); // Forzar recarga de datos
-                            });
-                            
-                            // Si hay onSuccess, llamarlo después de iniciar la redirección
-                            if (onSuccess) {
-                                onSuccess();
-                            }
-                        } else {
-                            toast.error('Promesa creada pero no se pudo obtener el ID');
-                            // Aún así cerrar el modal y refrescar
-                            onClose();
-                            if (onSuccess) {
-                                onSuccess();
-                            }
+                    // ✅ En modo creación, usar promise_id directamente del resultado
+                    const promiseId = result.data.promise_id;
+                    if (promiseId) {
+                        // Cerrar modal antes de redirigir
+                        onClose();
+                        
+                        // Cerrar overlays antes de navegar
+                        window.dispatchEvent(new CustomEvent('close-overlays'));
+                        
+                        // Redirigir usando startTransition para evitar bloqueos
+                        startTransition(() => {
+                            router.push(`/${studioSlug}/studio/commercial/promises/${promiseId}`);
+                            router.refresh(); // Forzar recarga de datos
+                        });
+                        
+                        // Si hay onSuccess, llamarlo después de iniciar la redirección
+                        if (onSuccess) {
+                            onSuccess();
+                        }
+                    } else {
+                        toast.error('Promesa creada pero no se pudo obtener el ID');
+                        // Aún así cerrar el modal y refrescar
+                        onClose();
+                        if (onSuccess) {
+                            onSuccess();
                         }
                     }
                 }

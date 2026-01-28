@@ -322,28 +322,25 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
 
     // Confirmar eliminar promesa
     const handleConfirmDelete = async () => {
-        // ✅ COMENTADO: Server Action prohibida en prueba de aislamiento
-        // if (!promise.promise_id || !studioSlug) return;
-        // setIsDeleting(true);
-        // try {
-        //     const result = await deletePromise(studioSlug, promise.promise_id);
-        //     if (result.success) {
-        //         setShowDeleteModal(false);
-        //         toast.success('Promesa eliminada');
-        //         setTimeout(() => {
-        //             onDeleted?.();
-        //         }, 0);
-        //     } else {
-        //         toast.error(result.error || 'Error al eliminar promesa');
-        //     }
-        // } catch (error) {
-        //     console.error('Error deleting promise:', error);
-        //     toast.error('Error al eliminar promesa');
-        // } finally {
-        //     setIsDeleting(false);
-        // }
-        setIsDeleting(false);
-        setShowDeleteModal(false);
+        if (!promise.promise_id || !studioSlug) return;
+        setIsDeleting(true);
+        try {
+            const result = await deletePromise(studioSlug, promise.promise_id);
+            if (result.success) {
+                setShowDeleteModal(false);
+                toast.success('Promesa eliminada');
+                setTimeout(() => {
+                    onDeleted?.();
+                }, 0);
+            } else {
+                toast.error(result.error || 'Error al eliminar promesa');
+            }
+        } catch (error) {
+            console.error('Error deleting promise:', error);
+            toast.error('Error al eliminar promesa');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
 
