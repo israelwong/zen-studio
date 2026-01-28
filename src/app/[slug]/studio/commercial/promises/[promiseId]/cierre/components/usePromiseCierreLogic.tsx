@@ -55,6 +55,7 @@ export function usePromiseCierreLogic({
   const [showContratoModal, setShowContratoModal] = useState(false);
   const [showContratoPreview, setShowContratoPreview] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
+  const [showContractEditor, setShowContractEditor] = useState(false);
   const [showContratoOptionsModal, setShowContratoOptionsModal] = useState(false);
   const [showPagoModal, setShowPagoModal] = useState(false);
   const [showCotizacionPreview, setShowCotizacionPreview] = useState(false);
@@ -312,6 +313,44 @@ export function usePromiseCierreLogic({
     }
   }, [selectedTemplate, studioSlug, cotizacion.id, handleContratoSuccess]);
 
+  const handleEditFromPreview = useCallback(() => {
+    setShowContratoPreview(false);
+    setShowContractEditor(true);
+  }, []);
+
+  const handleSaveCustomContract = useCallback(
+    async (data: { content: string }) => {
+      const content = typeof data === 'string' ? data : data.content;
+      if (!selectedTemplate) return;
+      setShowContractEditor(false);
+
+      const result = await actualizarContratoCierre(
+        studioSlug,
+        cotizacion.id,
+        selectedTemplate.id,
+        content
+      );
+
+      if (result.success) {
+        toast.success('Contrato personalizado guardado');
+        const regResult = await obtenerRegistroCierre(studioSlug, cotizacion.id);
+        if (regResult.success && regResult.data) {
+          const datosResult = await obtenerDatosContratoCierre(studioSlug, cotizacion.id);
+          if (datosResult.success && datosResult.data) {
+            setContractData((prev) => ({
+              ...prev,
+              ...datosResult.data!,
+            }));
+          }
+        }
+        setShowContratoPreview(true);
+      } else {
+        toast.error(result.error || 'Error al guardar contrato personalizado');
+      }
+    },
+    [selectedTemplate, studioSlug, cotizacion.id]
+  );
+
   const handleRegistrarPagoClick = useCallback(() => {
     setShowPagoModal(true);
   }, []);
@@ -416,9 +455,12 @@ export function usePromiseCierreLogic({
           // Redirigir a la página del evento creado usando metodología ZEN
           window.dispatchEvent(new CustomEvent('close-overlays'));
           router.refresh();
-          startTransition(() => {
-            router.push(`/${studioSlug}/studio/business/events/${result.data.evento_id}`);
-          });
+          const eventoId = result.data?.evento_id;
+          if (eventoId) {
+            startTransition(() => {
+              router.push(`/${studioSlug}/studio/business/events/${eventoId}`);
+            });
+          }
         } else {
           setAuthorizationError(result.error || 'Error al autorizar cotización');
           toast.error(result.error || 'Error al autorizar cotización');
@@ -473,6 +515,8 @@ export function usePromiseCierreLogic({
     setShowContratoPreview,
     selectedTemplate,
     setSelectedTemplate,
+    showContractEditor,
+    setShowContractEditor,
     showContratoOptionsModal,
     setShowContratoOptionsModal,
     showPagoModal,
@@ -510,6 +554,8 @@ export function usePromiseCierreLogic({
     handleContratoSuccess,
     handleTemplateSelected,
     handlePreviewConfirm,
+    handleEditFromPreview,
+    handleSaveCustomContract,
     handleRegistrarPagoClick,
     handlePagoSuccess,
     handleCancelarCierre,

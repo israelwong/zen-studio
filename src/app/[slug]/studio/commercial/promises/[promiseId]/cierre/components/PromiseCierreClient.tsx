@@ -16,6 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { ContratoDigitalCard } from './ContratoDigitalCard';
 import { ContractTemplateSimpleSelectorModal } from './contratos/ContractTemplateSimpleSelectorModal';
 import { ContractPreviewForPromiseModal } from './contratos/ContractPreviewForPromiseModal';
+import { ContractEditorModal } from '@/components/shared/contracts/ContractEditorModal';
 import { PagoInicialCard } from './PagoInicialCard';
 import { RegistroPagoModal } from './RegistroPagoModal';
 import { CierreActionButtons } from './CierreActionButtons';
@@ -405,7 +406,23 @@ export function PromiseCierreClient({
               promiseId={promiseId}
               cotizacionId={cotizacionEnCierre.id}
               onConfirm={cierreLogic.handlePreviewConfirm}
-              onEdit={() => { }}
+              onEdit={cierreLogic.handleEditFromPreview}
+            />
+          )}
+
+          {/* Modal Editor: personalizar contrato para este cliente */}
+          {cierreLogic.selectedTemplate && (
+            <ContractEditorModal
+              isOpen={cierreLogic.showContractEditor}
+              onClose={() => cierreLogic.setShowContractEditor(false)}
+              mode="edit-event-contract"
+              studioSlug={studioSlug}
+              initialContent={cierreLogic.contractData?.contract_content ?? cierreLogic.selectedTemplate.content ?? ''}
+              onSave={cierreLogic.handleSaveCustomContract}
+              title="Personalizar Contrato"
+              description="Personaliza el contrato para este cliente. Los cambios solo aplicarán a esta cotización."
+              saveLabel="Guardar y volver a preview"
+              zIndex={10090}
             />
           )}
 
