@@ -21,7 +21,6 @@ import { PagoInicialCard } from './PagoInicialCard';
 import { RegistroPagoModal } from './RegistroPagoModal';
 import { CierreActionButtons } from './CierreActionButtons';
 import { ZenConfirmModal } from '@/components/ui/zen';
-import { PromiseAgendamiento } from '../../pendiente/components/eventos/PromiseAgendamiento';
 import { AutorizacionProgressOverlay } from '@/components/promise/AutorizacionProgressOverlay';
 
 interface PromiseCierreClientProps {
@@ -210,18 +209,9 @@ export function PromiseCierreClient({
             />
           </div>
 
-          {/* Columna 2: Agendamiento + Cotización */}
+          {/* Columna 2: Cotización */}
           {cotizacionEnCierre && (
             <div className="lg:col-span-1 flex flex-col h-full space-y-6">
-              {/* Agendamiento */}
-              <PromiseAgendamiento
-                studioSlug={studioSlug}
-                promiseId={promiseId}
-                isSaved={true}
-                eventoId={null} // Aún no hay evento creado en proceso de cierre
-              />
-
-              {/* Cotización */}
               <CotizacionCard
                 cotizacion={cotizacionEnCierre}
                 studioSlug={studioSlug}

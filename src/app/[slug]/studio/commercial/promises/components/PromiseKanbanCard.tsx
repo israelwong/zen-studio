@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Calendar, MessageSquare, Video, MapPin, FileText, Archive, Phone, FlaskRound, Tag, Percent, HandCoins, GripVertical, MoreVertical, Trash2, Clock } from 'lucide-react';
 import type { PromiseWithContact } from '@/lib/actions/schemas/promises-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
-import { formatDisplayDateShort, formatDisplayDate } from '@/lib/utils/date-formatter';
+import { formatDisplayDateShort, formatDisplayDate, getRelativeDateLabel, getRelativeDateDiffDays } from '@/lib/utils/date-formatter';
 import { ZenAvatar, ZenAvatarImage, ZenAvatarFallback, ZenConfirmModal, ZenBadge, ZenDialog, ZenButton, ZenDropdownMenu, ZenDropdownMenuTrigger, ZenDropdownMenuContent, ZenDropdownMenuItem, ZenDropdownMenuSeparator } from '@/components/ui/zen';
 import { PromiseDeleteModal } from '@/components/shared/promises';
 import type { PromiseTag } from '@/lib/actions/studio/commercial/promises';
@@ -104,29 +104,8 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
 
     const eventDate = getEventDate();
 
-    // Calcular días restantes usando métodos UTC exclusivamente
-    const getDaysRemaining = (): number | null => {
-        if (!eventDate) return null;
-
-        // Obtener fecha actual usando componentes UTC
-        const today = new Date();
-        const todayYear = today.getUTCFullYear();
-        const todayMonth = today.getUTCMonth();
-        const todayDay = today.getUTCDate();
-        const todayUtc = new Date(Date.UTC(todayYear, todayMonth, todayDay));
-
-        // Extraer componentes UTC de la fecha del evento
-        const eventYear = eventDate.getUTCFullYear();
-        const eventMonth = eventDate.getUTCMonth();
-        const eventDay = eventDate.getUTCDate();
-        const eventUtc = new Date(Date.UTC(eventYear, eventMonth, eventDay));
-
-        const diffTime = eventUtc.getTime() - todayUtc.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        return diffDays;
-    };
-
-    const daysRemaining = getDaysRemaining();
+    // Días restantes usando fecha local del usuario (getRelativeDateDiffDays)
+    const daysRemaining = eventDate ? getRelativeDateDiffDays(eventDate) : null;
     const isExpired = daysRemaining !== null && daysRemaining < 0;
 
     // Determinar color de fecha según días restantes
@@ -377,55 +356,6 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
     const getDisplayName = (name: string): string => {
         const words = name.trim().split(/\s+/);
         return words.slice(0, 2).join(' ');
-    };
-
-    // Formatear fecha relativa para recordatorios futuros
-    const formatReminderRelativeDate = (date: Date | string): string => {
-        const reminderDate = typeof date === 'string' ? new Date(date) : date;
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        
-        const reminder = new Date(reminderDate);
-        reminder.setHours(0, 0, 0, 0);
-        
-        // Si es vencido
-        if (reminder < today) {
-            const diffDays = Math.floor((today.getTime() - reminder.getTime()) / (1000 * 60 * 60 * 24));
-            if (diffDays === 0) return 'Vencido hoy';
-            return `Vencido hace ${diffDays} ${diffDays === 1 ? 'día' : 'días'}`;
-        }
-        
-        // Si es hoy
-        if (reminder.getTime() === today.getTime()) {
-            return 'Hoy';
-        }
-        
-        // Calcular diferencia en días
-        const diffTime = reminder.getTime() - today.getTime();
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        // Si es mañana
-        if (diffDays === 1) {
-            return 'Mañana';
-        }
-        
-        // Si es en 2-6 días
-        if (diffDays >= 2 && diffDays <= 6) {
-            return `En ${diffDays} días`;
-        }
-        
-        // Si es la próxima semana (7-13 días)
-        if (diffDays >= 7 && diffDays <= 13) {
-            return 'La próxima semana';
-        }
-        
-        // Si es en 2 semanas (14-20 días)
-        if (diffDays >= 14 && diffDays <= 20) {
-            return 'En 2 semanas';
-        }
-        
-        // Si es en más de 2 semanas, mostrar fecha corta
-        return formatDisplayDateShort(reminderDate);
     };
 
     const promiseId = promise.promise_id || promise.id;
@@ -748,7 +678,7 @@ export function PromiseKanbanCard({ promise, onClick, studioSlug, onArchived, on
                                             {reminder.subject_text}
                                         </span>
                                         <span className="text-zinc-400">
-                                            {formatReminderRelativeDate(reminder.reminder_date)}
+                                            {getRelativeDateLabel(reminder.reminder_date, { pastLabel: 'Vencido' }).text}
                                         </span>
                                     </ZenBadge>
                                 </div>

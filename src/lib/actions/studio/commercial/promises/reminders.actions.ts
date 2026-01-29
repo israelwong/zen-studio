@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import { dateToDateOnlyString, toUtcDateOnly } from '@/lib/utils/date-only';
 import { logPromiseAction } from './promise-logs.actions';
 
 // ============================================
@@ -37,7 +38,8 @@ export interface Reminder {
   subject_id: string | null;
   subject_text: string;
   description: string | null;
-  reminder_date: Date;
+  /** Fecha en formato YYYY-MM-DD (serializada desde servidor) o Date */
+  reminder_date: Date | string;
   is_completed: boolean;
   completed_at: Date | null;
   completed_by_user_id: string | null;
@@ -144,6 +146,10 @@ export async function upsertReminder(
 ): Promise<ActionResponse<Reminder>> {
   try {
     const validatedData = upsertReminderSchema.parse(data);
+    const reminderDateNormalized = toUtcDateOnly(validatedData.reminderDate);
+    if (!reminderDateNormalized) {
+      return { success: false, error: 'Fecha de seguimiento inválida' };
+    }
 
     // Obtener studio_id desde slug
     const studio = await prisma.studios.findUnique({
@@ -198,13 +204,13 @@ export async function upsertReminder(
         subject_id: validatedData.subjectId || null,
         subject_text: validatedData.subjectText,
         description: validatedData.description || null,
-        reminder_date: validatedData.reminderDate,
+        reminder_date: reminderDateNormalized,
       },
       update: {
         subject_id: validatedData.subjectId || null,
         subject_text: validatedData.subjectText,
         description: validatedData.description || null,
-        reminder_date: validatedData.reminderDate,
+        reminder_date: reminderDateNormalized,
         is_completed: false, // Resetear si se actualiza
         completed_at: null,
         completed_by_user_id: null,
@@ -249,7 +255,7 @@ export async function upsertReminder(
         subject_id: reminder.subject_id,
         subject_text: reminder.subject_text,
         description: reminder.description,
-        reminder_date: reminder.reminder_date,
+        reminder_date: dateToDateOnlyString(reminder.reminder_date) ?? reminder.reminder_date.toISOString().slice(0, 10),
         is_completed: reminder.is_completed,
         completed_at: reminder.completed_at,
         completed_by_user_id: reminder.completed_by_user_id,
@@ -326,7 +332,7 @@ export async function getReminderByPromise(
         subject_id: reminder.subject_id,
         subject_text: reminder.subject_text,
         description: reminder.description,
-        reminder_date: reminder.reminder_date,
+        reminder_date: dateToDateOnlyString(reminder.reminder_date) ?? String(reminder.reminder_date).slice(0, 10),
         is_completed: reminder.is_completed,
         completed_at: reminder.completed_at,
         completed_by_user_id: reminder.completed_by_user_id,

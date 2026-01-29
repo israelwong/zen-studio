@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { ExternalLink, Copy, Check } from 'lucide-react';
 import { ZenButton } from '@/components/ui/zen';
 import { PromiseNotesButton } from './PromiseNotesButton';
+import { ReminderButton } from './ReminderButton';
+import { AgendaButton } from './AgendaButton';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
 import { logWhatsAppSent, logProfileShared } from '@/lib/actions/studio/commercial/promises';
 import { getOrCreateShortUrl } from '@/lib/actions/studio/commercial/promises/promise-short-url.actions';
@@ -175,7 +177,14 @@ export function PromiseDetailToolbar({
           </div>
         )}
 
-
+        {/* Grupo: Seguimiento y Agenda */}
+        <div className="h-4 w-px bg-zinc-700" />
+        <ReminderButton studioSlug={studioSlug} promiseId={promiseId} />
+        <AgendaButton
+          studioSlug={studioSlug}
+          promiseId={promiseId}
+          eventoId={eventoId}
+        />
       </div>
 
       {/* Botón de bitácora alineado a la derecha */}

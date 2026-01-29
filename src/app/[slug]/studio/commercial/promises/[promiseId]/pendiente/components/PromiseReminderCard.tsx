@@ -8,16 +8,19 @@ import { getPromiseByIdAsPromiseWithContact } from '@/lib/actions/studio/commerc
 import { ReminderFormModal } from '@/components/shared/reminders';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import { formatDisplayDate } from '@/lib/utils/date-formatter';
+import { formatDisplayDate, getRelativeDateLabel } from '@/lib/utils/date-formatter';
 
 interface PromiseReminderCardProps {
   studioSlug: string;
   promiseId: string;
+  /** Variante compacta: una sola línea al final del sidebar */
+  variant?: 'default' | 'compact';
 }
 
 export function PromiseReminderCard({
   studioSlug,
   promiseId,
+  variant = 'default',
 }: PromiseReminderCardProps) {
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,28 +97,17 @@ export function PromiseReminderCard({
     }
   };
 
-  const formatDate = (date: Date) => {
-    return formatDisplayDate(date);
-  };
-
-  const getDateStatus = () => {
-    if (!reminder) return null;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const reminderDate = new Date(reminder.reminder_date);
-    reminderDate.setHours(0, 0, 0, 0);
-
-    if (reminderDate < today) {
-      return { text: 'Vencido', variant: 'destructive' as const };
-    }
-    if (reminderDate.getTime() === today.getTime()) {
-      return { text: 'Hoy', variant: 'warning' as const };
-    }
-    return { text: formatDate(reminder.reminder_date), variant: 'default' as const };
-  };
+  const formatDate = (date: Date | string) => formatDisplayDate(date);
 
   if (loading) {
+    if (variant === 'compact') {
+      return (
+        <div className="flex items-center gap-2 py-2 px-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60">
+          <div className="h-3 w-20 bg-zinc-800 rounded animate-pulse" />
+          <div className="h-3 w-16 bg-zinc-800 rounded animate-pulse ml-auto" />
+        </div>
+      );
+    }
     return (
       <ZenCard>
         <ZenCardHeader className="border-b border-zinc-800 py-2 px-3 shrink-0">
@@ -140,6 +132,86 @@ export function PromiseReminderCard({
           </div>
         </ZenCardContent>
       </ZenCard>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <>
+        <div className="flex items-center justify-between gap-2 py-2 px-3 rounded-lg bg-zinc-900/40 border border-zinc-800/60">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Clock className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+            {reminder ? (
+              <span className="text-xs text-zinc-400 truncate" title={reminder.subject_text}>
+                {formatDate(reminder.reminder_date)}
+              </span>
+            ) : (
+              <span className="text-xs text-zinc-500">Sin seguimiento</span>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            {reminder ? (
+              <>
+                <ZenButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowModal(true)}
+                  className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400"
+                  title="Editar seguimiento"
+                  aria-label="Editar seguimiento"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </ZenButton>
+                <ZenButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleComplete}
+                  disabled={isCompleting}
+                  loading={isCompleting}
+                  className="h-6 w-6 p-0 text-emerald-400 hover:text-emerald-300"
+                  title="Completar seguimiento"
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                </ZenButton>
+              </>
+            ) : (
+              <ZenButton
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowModal(true)}
+                className="h-6 w-6 p-0 text-zinc-400 hover:text-emerald-400"
+                title="Crear seguimiento"
+                aria-label="Crear seguimiento"
+              >
+                <Plus className="h-3 w-3" />
+              </ZenButton>
+            )}
+          </div>
+        </div>
+        <ReminderFormModal
+          isOpen={showModal}
+          onClose={() => setShowModal(false)}
+          studioSlug={studioSlug}
+          promiseId={promiseId}
+          existingReminder={reminder}
+          onSuccess={(updatedReminder) => {
+            setReminder(updatedReminder);
+            setShowModal(false);
+          }}
+        />
+        <ZenConfirmModal
+          isOpen={showDeleteModal}
+          onClose={() => { if (!isDeleting) setShowDeleteModal(false); }}
+          onConfirm={handleDelete}
+          title="Eliminar seguimiento"
+          description="¿Estás seguro de que deseas eliminar este seguimiento? Esta acción no se puede deshacer."
+          confirmText="Eliminar"
+          cancelText="Cancelar"
+          variant="destructive"
+          loading={isDeleting}
+          loadingText="Eliminando..."
+        />
+      </>
     );
   }
 
@@ -212,23 +284,27 @@ export function PromiseReminderCard({
               )}
 
               {/* Fecha y check en la misma línea */}
-              <div className="flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                <span className="text-xs text-amber-400 flex-1">
-                  {formatDate(reminder.reminder_date)}
-                </span>
-                <ZenButton
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleComplete}
-                  disabled={isCompleting}
-                  loading={isCompleting}
-                  className="h-6 w-6 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                  title="Completar seguimiento"
-                >
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                </ZenButton>
-              </div>
+              {(() => {
+                const { text, variant } = getRelativeDateLabel(reminder.reminder_date, { pastLabel: 'Vencido' });
+                const colorClass = variant === 'destructive' ? 'text-rose-400' : variant === 'warning' ? 'text-amber-400' : 'text-zinc-400';
+                return (
+                  <div className="flex items-center gap-2">
+                    <Clock className={`h-3.5 w-3.5 shrink-0 ${colorClass}`} />
+                    <span className={`text-xs flex-1 ${colorClass}`}>{text}</span>
+                    <ZenButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleComplete}
+                      disabled={isCompleting}
+                      loading={isCompleting}
+                      className="h-6 w-6 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                      title="Completar seguimiento"
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    </ZenButton>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </ZenCardContent>

@@ -2,14 +2,16 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Clock, Settings, Edit2, Trash2, X, CalendarIcon } from 'lucide-react';
-import { ZenDialog, ZenInput, ZenButton, ZenTextarea } from '@/components/ui/zen';
+import { ZenDialog, ZenInput, ZenButton, ZenTextarea, ZenConfirmModal } from '@/components/ui/zen';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { formatDisplayDate } from '@/lib/utils/date-formatter';
+import { toUtcDateOnly } from '@/lib/utils/date-only';
 import { es } from 'date-fns/locale';
 import {
   upsertReminder,
   getReminderByPromise,
+  deleteReminder,
   type Reminder
 } from '@/lib/actions/studio/commercial/promises/reminders.actions';
 import {
@@ -29,6 +31,7 @@ interface ReminderFormModalProps {
   promiseId: string;
   existingReminder?: Reminder | null;
   onSuccess?: (reminder: Reminder) => void;
+  onDeleted?: () => void;
   zIndex?: number;
 }
 
@@ -39,11 +42,14 @@ export function ReminderFormModal({
   promiseId,
   existingReminder,
   onSuccess,
+  onDeleted,
   zIndex = 10050,
 }: ReminderFormModalProps) {
   const [loading, setLoading] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [subjects, setSubjects] = useState<ReminderSubject[]>([]);
   const [subjectText, setSubjectText] = useState('');
   const [description, setDescription] = useState('');
@@ -67,34 +73,11 @@ export function ReminderFormModal({
     return `${year}-${month}-${day}`;
   };
 
-  // Helper para parsear fecha de forma segura usando métodos UTC
+  /** Parsea fecha a UTC noon (Calendar-Only, ver MANEJO_FECHAS.md) */
   const parseDateSafe = (date: Date | string | null): Date => {
-    if (!date) {
-      return new Date();
-    }
-    if (typeof date === "string") {
-      const dateMatch = date.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (dateMatch) {
-        const [, year, month, day] = dateMatch;
-        return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), 12, 0, 0));
-      }
-      const isoDate = new Date(date);
-      if (!Number.isNaN(isoDate.getTime())) {
-        return new Date(Date.UTC(
-          isoDate.getUTCFullYear(),
-          isoDate.getUTCMonth(),
-          isoDate.getUTCDate(),
-          12, 0, 0
-        ));
-      }
-      return new Date(date);
-    }
-    return new Date(Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
-      12, 0, 0
-    ));
+    if (!date) return new Date();
+    const parsed = toUtcDateOnly(date);
+    return parsed ?? new Date();
   };
 
   // Cargar asuntos al abrir
@@ -107,7 +90,6 @@ export function ReminderFormModal({
           setSubjectText(existingReminder.subject_text);
           setDescription(existingReminder.description || '');
           setSelectedSubjectId(existingReminder.subject_id);
-          // Parsear fecha del reminder
           const date = parseDateSafe(existingReminder.reminder_date);
           setSelectedDate(date);
           setMonth(date);
@@ -115,22 +97,20 @@ export function ReminderFormModal({
           // No mostrar sugerencias si ya hay un asunto definido
           setShowSuggestions(false);
         } else {
-          // Resetear formulario
+          // Resetear formulario; fecha por defecto: mañana (UTC, ver MANEJO_FECHAS.md)
           setSubjectText('');
           setDescription('');
           setSelectedSubjectId(null);
-          // Fecha por defecto: mañana
-          const tomorrow = new Date();
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          const normalizedTomorrow = new Date(Date.UTC(
-            tomorrow.getUTCFullYear(),
-            tomorrow.getUTCMonth(),
-            tomorrow.getUTCDate(),
+          const now = new Date();
+          const tomorrowUtc = new Date(Date.UTC(
+            now.getUTCFullYear(),
+            now.getUTCMonth(),
+            now.getUTCDate() + 1,
             12, 0, 0
           ));
-          setSelectedDate(normalizedTomorrow);
-          setMonth(normalizedTomorrow);
-          setReminderDate(formatDateForServer(normalizedTomorrow));
+          setSelectedDate(tomorrowUtc);
+          setMonth(tomorrowUtc);
+          setReminderDate(formatDateForServer(tomorrowUtc));
           // No mostrar sugerencias automáticamente
           setShowSuggestions(false);
         }
@@ -205,43 +185,43 @@ export function ReminderFormModal({
     setErrors(prev => ({ ...prev, subject: undefined }));
   };
 
+  /** Hoy en UTC (mediodía) para opciones rápidas (ver MANEJO_FECHAS.md) */
+  const getTodayUtc = () => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+  };
+
   const handleQuickDate = (days: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    const normalizedDate = new Date(Date.UTC(
-      date.getUTCFullYear(),
-      date.getUTCMonth(),
-      date.getUTCDate(),
+    const todayUtc = getTodayUtc();
+    const targetUtc = new Date(Date.UTC(
+      todayUtc.getUTCFullYear(),
+      todayUtc.getUTCMonth(),
+      todayUtc.getUTCDate() + days,
       12, 0, 0
     ));
-    setSelectedDate(normalizedDate);
-    setMonth(normalizedDate);
-    setReminderDate(formatDateForServer(normalizedDate));
+    setSelectedDate(targetUtc);
+    setMonth(targetUtc);
+    setReminderDate(formatDateForServer(targetUtc));
     setErrors(prev => ({ ...prev, date: undefined }));
   };
 
-  // Verificar si una opción rápida está seleccionada
+  // Verificar si una opción rápida está seleccionada (interpretación relativa en UTC)
   const isQuickDateSelected = (days: number): boolean => {
     if (!selectedDate) return false;
-    const today = new Date();
-    const targetDate = new Date(today);
-    targetDate.setDate(today.getDate() + days);
-    
-    // Normalizar ambas fechas a UTC mediodía para comparar
+    const todayUtc = getTodayUtc();
+    const targetUtc = new Date(Date.UTC(
+      todayUtc.getUTCFullYear(),
+      todayUtc.getUTCMonth(),
+      todayUtc.getUTCDate() + days,
+      12, 0, 0
+    ));
     const selectedNormalized = new Date(Date.UTC(
       selectedDate.getUTCFullYear(),
       selectedDate.getUTCMonth(),
       selectedDate.getUTCDate(),
       12, 0, 0
     ));
-    const targetNormalized = new Date(Date.UTC(
-      targetDate.getUTCFullYear(),
-      targetDate.getUTCMonth(),
-      targetDate.getUTCDate(),
-      12, 0, 0
-    ));
-    
-    return selectedNormalized.getTime() === targetNormalized.getTime();
+    return selectedNormalized.getTime() === targetUtc.getTime();
   };
 
   // Sincronizar selectedDate con reminderDate
@@ -262,10 +242,10 @@ export function ReminderFormModal({
     if (!reminderDate) {
       newErrors.date = 'La fecha es requerida';
     } else {
-      const selectedDate = new Date(reminderDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (selectedDate < today) {
+      const selectedUtc = toUtcDateOnly(reminderDate);
+      const now = new Date();
+      const todayUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+      if (selectedUtc && selectedUtc.getTime() < todayUtc.getTime()) {
         newErrors.date = 'La fecha no puede ser en el pasado';
       }
     }
@@ -329,6 +309,30 @@ export function ReminderFormModal({
     }
   };
 
+  const handleDeleteClick = () => setShowDeleteConfirm(true);
+
+  const handleDeleteConfirm = async () => {
+    if (!existingReminder) return;
+    setIsDeleting(true);
+    try {
+      const result = await deleteReminder(studioSlug, existingReminder.id);
+      if (result.success) {
+        toast.success('Seguimiento eliminado');
+        window.dispatchEvent(new CustomEvent('reminder-updated'));
+        setShowDeleteConfirm(false);
+        onDeleted?.();
+        onClose();
+      } else {
+        toast.error(result.error || 'Error al eliminar seguimiento');
+      }
+    } catch (error) {
+      console.error('Error eliminando seguimiento:', error);
+      toast.error('Error al eliminar seguimiento');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <>
       <ZenDialog
@@ -343,6 +347,15 @@ export function ReminderFormModal({
         isLoading={loading}
         maxWidth="md"
         zIndex={zIndex}
+        footerLeftContent={
+          <ZenButton variant="ghost" onClick={onClose} disabled={loading}>
+            Cancelar
+          </ZenButton>
+        }
+        showDeleteButton={!!existingReminder}
+        onDelete={handleDeleteClick}
+        deleteOnRight={!!existingReminder}
+        deleteLabel="Eliminar"
       >
         {initializing ? (
           <div className="space-y-4">
@@ -652,6 +665,20 @@ export function ReminderFormModal({
           </div>
         )}
       </ZenDialog>
+
+      <ZenConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => { if (!isDeleting) setShowDeleteConfirm(false); }}
+        onConfirm={handleDeleteConfirm}
+        title="Eliminar seguimiento"
+        description="¿Estás seguro de que deseas eliminar este seguimiento? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+        variant="destructive"
+        loading={isDeleting}
+        loadingText="Eliminando..."
+        zIndex={zIndex + 100}
+      />
 
       {/* Modal de Gestión de Asuntos */}
       <ManageSubjectsModal

@@ -4,7 +4,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { EventWithContact } from '@/lib/actions/schemas/events-schemas';
 import { formatRelativeTime, formatInitials } from '@/lib/actions/utils/formatting';
-import { formatDisplayDateShort } from '@/lib/utils/date-formatter';
+import { formatDisplayDateShort, getRelativeDateDiffDays } from '@/lib/utils/date-formatter';
 import { ZenAvatar, ZenAvatarFallback } from '@/components/ui/zen';
 
 interface EventKanbanCardProps {
@@ -47,29 +47,10 @@ export function EventKanbanCard({ event, onClick, studioSlug }: EventKanbanCardP
     }
   };
 
-  // Usar formatDisplayDateShort que usa métodos UTC exclusivamente
   const formatDate = formatDisplayDateShort;
 
-  // Calcular días restantes hasta el evento usando métodos UTC
-  const getDaysRemaining = (): number | null => {
-    const today = new Date();
-    const todayYear = today.getUTCFullYear();
-    const todayMonth = today.getUTCMonth();
-    const todayDay = today.getUTCDate();
-    const todayUtc = new Date(Date.UTC(todayYear, todayMonth, todayDay));
-    
-    const eventDate = new Date(event.event_date);
-    const eventYear = eventDate.getUTCFullYear();
-    const eventMonth = eventDate.getUTCMonth();
-    const eventDay = eventDate.getUTCDate();
-    const eventUtc = new Date(Date.UTC(eventYear, eventMonth, eventDay));
-    
-    const diffTime = eventUtc.getTime() - todayUtc.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  const daysRemaining = getDaysRemaining();
+  // Días restantes usando fecha local del usuario (getRelativeDateDiffDays)
+  const daysRemaining = getRelativeDateDiffDays(event.event_date);
   const isExpired = daysRemaining !== null && daysRemaining < 0;
   const isToday = daysRemaining === 0;
 

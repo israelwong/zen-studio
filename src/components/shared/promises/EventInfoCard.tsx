@@ -8,7 +8,7 @@ import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/s
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/shadcn/popover';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { WhatsAppIcon } from '@/components/ui/icons/WhatsAppIcon';
-import { formatDisplayDate } from '@/lib/utils/date-formatter';
+import { formatDisplayDate, getRelativeDateDiffDays } from '@/lib/utils/date-formatter';
 import { getContactById } from '@/lib/actions/studio/commercial/contacts/contacts.actions';
 import { logWhatsAppSent, logCallMade, logEmailSent } from '@/lib/actions/studio/commercial/promises';
 import { EventFormModal } from './EventFormModal';
@@ -17,42 +17,24 @@ import { createRealtimeChannel, subscribeToChannel, setupRealtimeAuth } from '@/
 import { useContactUpdateListener } from '@/hooks/useContactRefresh';
 
 /**
- * Determina el color del badge de fecha según días restantes
+ * Determina el color del badge de fecha según días restantes (fecha local del usuario, ver MANEJO_FECHAS.md)
  */
-function getDateBadgeColor(date: Date): {
+function getDateBadgeColor(date: Date | string): {
   bgColor: string;
   textColor: string;
   borderColor: string;
 } {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const eventDate = new Date(date);
-  eventDate.setHours(0, 0, 0, 0);
-  const diffTime = eventDate.getTime() - today.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) {
-    // Expirada - Rojo
-    return {
-      bgColor: 'bg-red-500/20',
-      textColor: 'text-red-400',
-      borderColor: 'border-red-400/50',
-    };
-  } else if (diffDays <= 7) {
-    // Próxima (7 días o menos) - Ámbar
-    return {
-      bgColor: 'bg-amber-500/20',
-      textColor: 'text-amber-400',
-      borderColor: 'border-amber-400/50',
-    };
-  } else {
-    // Con tiempo (más de 7 días) - Verde
-    return {
-      bgColor: 'bg-emerald-500/20',
-      textColor: 'text-emerald-400',
-      borderColor: 'border-emerald-400/50',
-    };
+  const diffDays = getRelativeDateDiffDays(date);
+  if (diffDays === null) {
+    return { bgColor: 'bg-zinc-500/20', textColor: 'text-zinc-400', borderColor: 'border-zinc-400/50' };
   }
+  if (diffDays < 0) {
+    return { bgColor: 'bg-red-500/20', textColor: 'text-red-400', borderColor: 'border-red-400/50' };
+  }
+  if (diffDays <= 7) {
+    return { bgColor: 'bg-amber-500/20', textColor: 'text-amber-400', borderColor: 'border-amber-400/50' };
+  }
+  return { bgColor: 'bg-emerald-500/20', textColor: 'text-emerald-400', borderColor: 'border-emerald-400/50' };
 }
 
 interface EventInfoCardProps {
@@ -757,9 +739,9 @@ export function EventInfoCard({
                 </label>
                 {(() => {
                   const dateObj = typeof eventData.interested_dates === 'string'
-                    ? new Date(eventData.interested_dates)
+                    ? toUtcDateOnly(eventData.interested_dates)
                     : null;
-                  if (!dateObj || isNaN(dateObj.getTime())) return null;
+                  if (!dateObj) return null;
                   const colors = getDateBadgeColor(dateObj);
                   return (
                     <ZenBadge

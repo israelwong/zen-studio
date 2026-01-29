@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle2 } from 'lucide-react';
-import { ZenButton, ZenBadge } from '@/components/ui/zen';
-import { 
-  getReminderByPromise,
-  type Reminder 
-} from '@/lib/actions/studio/commercial/promises/reminders.actions';
+import { useRouter } from 'next/navigation';
+import { Clock } from 'lucide-react';
+import { ZenButton } from '@/components/ui/zen';
+import { getReminderByPromise, type Reminder } from '@/lib/actions/studio/commercial/promises/reminders.actions';
+import { getRelativeDateLabel } from '@/lib/utils/date-formatter';
 import { ReminderFormModal } from '@/components/shared/reminders';
 
 interface ReminderButtonProps {
@@ -15,6 +14,7 @@ interface ReminderButtonProps {
 }
 
 export function ReminderButton({ studioSlug, promiseId }: ReminderButtonProps) {
+  const router = useRouter();
   const [reminder, setReminder] = useState<Reminder | null>(null);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -37,29 +37,6 @@ export function ReminderButton({ studioSlug, promiseId }: ReminderButtonProps) {
     }
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('es-MX', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }).format(new Date(date));
-  };
-
-  const getDateStatus = (reminderDate: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const date = new Date(reminderDate);
-    date.setHours(0, 0, 0, 0);
-    
-    if (date < today) {
-      return { text: 'Vencido', variant: 'destructive' as const };
-    }
-    if (date.getTime() === today.getTime()) {
-      return { text: 'Hoy', variant: 'warning' as const };
-    }
-    return { text: formatDate(reminderDate), variant: 'default' as const };
-  };
-
   if (loading) {
     return (
       <ZenButton
@@ -75,35 +52,43 @@ export function ReminderButton({ studioSlug, promiseId }: ReminderButtonProps) {
   }
 
   const hasReminder = reminder && !reminder.is_completed;
-  const dateStatus = hasReminder ? getDateStatus(reminder.reminder_date) : null;
+  const dateStatus = hasReminder ? getRelativeDateLabel(reminder.reminder_date, { pastLabel: 'Vencido' }) : null;
+
+  const reminderButtonClass =
+    !hasReminder
+      ? ''
+      : dateStatus?.variant === 'destructive'
+        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/15 hover:border-rose-500/30'
+        : dateStatus?.variant === 'warning'
+          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/15 hover:border-amber-500/30'
+          : 'bg-zinc-800/80 text-zinc-300 border border-zinc-600/50 hover:bg-zinc-700/80 hover:border-zinc-500/50';
 
   return (
     <>
-      <ZenButton
-        variant="ghost"
-        size="sm"
-        onClick={() => setModalOpen(true)}
-        className={`gap-1.5 px-2.5 py-1.5 h-7 text-xs ${
-          hasReminder ? 'hover:bg-blue-500/10 hover:text-blue-400' : ''
-        }`}
-      >
-        {hasReminder ? (
-          <>
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            <span>Seguimiento</span>
-            {dateStatus && (
-              <ZenBadge variant={dateStatus.variant} size="sm" className="ml-1">
-                {dateStatus.text}
-              </ZenBadge>
-            )}
-          </>
-        ) : (
-          <>
-            <Clock className="h-3.5 w-3.5" />
-            <span>Agendar seguimiento</span>
-          </>
-        )}
-      </ZenButton>
+      <div className="flex items-center gap-1.5 cursor-pointer">
+        <ZenButton
+          variant="ghost"
+          size="sm"
+          onClick={() => setModalOpen(true)}
+          className={`gap-1.5 px-2.5 py-1.5 h-7 text-xs rounded-md transition-colors cursor-pointer ${reminderButtonClass}`}
+          title={hasReminder ? 'Editar seguimiento' : 'Agendar seguimiento'}
+        >
+          {hasReminder ? (
+            <>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span className="font-medium">Seguimiento</span>
+              {dateStatus && (
+                <span className="text-white font-normal">{dateStatus.text}</span>
+              )}
+            </>
+          ) : (
+            <>
+              <Clock className="h-3.5 w-3.5 shrink-0" />
+              <span>Agendar seguimiento</span>
+            </>
+          )}
+        </ZenButton>
+      </div>
 
       <ReminderFormModal
         isOpen={modalOpen}
@@ -114,6 +99,12 @@ export function ReminderButton({ studioSlug, promiseId }: ReminderButtonProps) {
         onSuccess={() => {
           loadReminder();
           setModalOpen(false);
+          router.refresh();
+        }}
+        onDeleted={() => {
+          loadReminder();
+          setModalOpen(false);
+          router.refresh();
         }}
       />
     </>

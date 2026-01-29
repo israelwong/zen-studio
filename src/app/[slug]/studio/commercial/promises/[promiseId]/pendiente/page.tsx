@@ -42,6 +42,9 @@ export default async function PromisePendientePage({ params }: PromisePendienteP
         description: cc.description,
         advance_percentage: cc.advance_percentage,
         discount_percentage: cc.discount_percentage,
+        type: cc.type ?? 'standard',
+        advance_type: cc.advance_type ?? null,
+        advance_amount: cc.advance_amount ?? null,
       }))
     : [];
 

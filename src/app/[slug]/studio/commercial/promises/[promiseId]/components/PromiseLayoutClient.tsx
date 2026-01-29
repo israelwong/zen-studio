@@ -63,6 +63,13 @@ export function PromiseLayoutClient({
     window.dispatchEvent(new CustomEvent('close-overlays'));
   }, []);
 
+  // Abrir modal de automatización desde la card "Lo que el prospecto ve"
+  useEffect(() => {
+    const handler = () => setIsShareModalOpen(true);
+    window.addEventListener('open-share-options-modal', handler);
+    return () => window.removeEventListener('open-share-options-modal', handler);
+  }, []);
+
   const handlePipelineStageChange = async (newStageId: string, stageName?: string) => {
     if (!promiseId || newStageId === stateData.promiseData.pipeline_stage_id) return;
 

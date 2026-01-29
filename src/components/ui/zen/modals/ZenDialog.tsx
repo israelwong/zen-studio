@@ -24,6 +24,8 @@ export interface ZenDialogProps {
   onDelete?: () => void;
   deleteLabel?: string;
   showDeleteButton?: boolean;
+  /** Si true, Eliminar se muestra a la derecha (antes de Guardar) en lugar de a la izquierda */
+  deleteOnRight?: boolean;
   zIndex?: number;
   headerActions?: React.ReactNode;
   fullScreen?: boolean;
@@ -60,6 +62,7 @@ export function ZenDialog({
   onDelete,
   deleteLabel = 'Eliminar',
   showDeleteButton = false,
+  deleteOnRight = false,
   zIndex = 10050,
   headerActions,
   fullScreen = false,
@@ -207,10 +210,19 @@ export function ZenDialog({
           {/* Footer */}
           {(onSave || onCancel || showDeleteButton || footerLeftContent) && (
             <div className="flex items-center justify-between px-6 py-4 border-t border-zinc-700">
-              {/* Contenido izquierdo (tips o botón eliminar) */}
+              {/* Izquierda: footerLeftContent o Cancelar */}
               <div className="flex items-center gap-4">
                 {footerLeftContent}
-                {showDeleteButton && onDelete && (
+                {!footerLeftContent && onCancel && (
+                  <ZenButton
+                    variant="ghost"
+                    onClick={handleCancel}
+                    disabled={isLoading}
+                  >
+                    {cancelLabel}
+                  </ZenButton>
+                )}
+                {showDeleteButton && onDelete && !deleteOnRight && (
                   <ZenButton
                     variant="ghost"
                     onClick={onDelete}
@@ -221,15 +233,16 @@ export function ZenDialog({
                   </ZenButton>
                 )}
               </div>
-              {/* Botones de acción a la derecha */}
+              {/* Derecha: Eliminar (si deleteOnRight) + Guardar */}
               <div className="flex items-center gap-3 ml-auto">
-                {onCancel && (
+                {showDeleteButton && onDelete && deleteOnRight && (
                   <ZenButton
                     variant="ghost"
-                    onClick={handleCancel}
+                    onClick={onDelete}
                     disabled={isLoading}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
                   >
-                    {cancelLabel}
+                    {deleteLabel}
                   </ZenButton>
                 )}
                 {onSave && (

@@ -4,10 +4,9 @@ import React, { useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { EventInfoCard } from '@/components/shared/promises';
 import { PromiseQuotesPanel } from './cotizaciones/PromiseQuotesPanel';
-import { PromiseAgendamiento } from './eventos/PromiseAgendamiento';
 import { PromiseTags } from './PromiseTags';
 import { PromiseStatsCard } from './PromiseStatsCard';
-import { PromiseReminderCard } from './PromiseReminderCard';
+import { PromisePublicConfigCard } from './PromisePublicConfigCard';
 import { EventFormModal } from '@/components/shared/promises';
 import { AuthorizeCotizacionModal } from './cotizaciones/AuthorizeCotizacionModal';
 import { usePromiseContext } from '../../context/PromiseContext';
@@ -19,6 +18,9 @@ interface PromisePendienteClientProps {
     description?: string | null;
     advance_percentage?: number | null;
     discount_percentage?: number | null;
+    type?: string | null;
+    advance_type?: string | null;
+    advance_amount?: number | null;
   }>;
   initialPaymentMethods: Array<{ id: string; name: string }>;
   initialSelectedCotizacion: {
@@ -176,10 +178,10 @@ export function PromisePendienteClient({
   return (
     <>
       <div className="space-y-6">
-        {/* Layout de 3 columnas: Info + Cotizaciones + Etiquetas */}
+        {/* Layout de 3 columnas: Info+Etiquetas | Cotizaciones+Estadísticas+Agenda | Config+Recordatorio */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-start">
-          {/* Columna 1: Información */}
-          <div className="lg:col-span-1 flex flex-col h-full">
+          {/* Columna 1: Información + Etiquetas */}
+          <div className="lg:col-span-1 flex flex-col h-full space-y-6">
             <EventInfoCard
               studioSlug={studioSlug}
               contactId={contactId}
@@ -227,9 +229,16 @@ export function PromisePendienteClient({
               onEdit={() => setShowEditModal(true)}
               context="promise"
             />
+            {/* Etiquetas (debajo de Información) */}
+            <PromiseTags
+              studioSlug={studioSlug}
+              promiseId={promiseId}
+              isSaved={true}
+              eventoId={eventoId}
+            />
           </div>
 
-          {/* Columna 2: Cotizaciones + Etiquetas */}
+          {/* Columna 2: Cotizaciones + Estadísticas + Agenda de días */}
           <div className="lg:col-span-1 flex flex-col h-full space-y-6">
             {/* Cotizaciones */}
             <PromiseQuotesPanel
@@ -252,36 +261,20 @@ export function PromisePendienteClient({
               initialCotizaciones={initialCotizaciones}
             />
 
-            {/* Etiquetas */}
-            <PromiseTags
-              studioSlug={studioSlug}
-              promiseId={promiseId}
-              isSaved={true}
-              eventoId={eventoId}
-            />
-          </div>
-
-          {/* Columna 3: Seguimiento + Agendamiento + Estadísticas */}
-          <div className="lg:col-span-1 flex flex-col h-full space-y-6">
-            {/* Seguimiento (Reminder) */}
-            <PromiseReminderCard
-              studioSlug={studioSlug}
-              promiseId={promiseId}
-            />
-
-            {/* Agendamiento */}
-            <PromiseAgendamiento
-              studioSlug={studioSlug}
-              promiseId={promiseId}
-              isSaved={true}
-              eventoId={eventoId}
-            />
-
-            {/* Estadísticas */}
+            {/* Estadísticas (debajo de Cotizaciones) */}
             <PromiseStatsCard
               studioSlug={studioSlug}
               promiseId={promiseId}
               initialStats={initialStats}
+            />
+          </div>
+
+          {/* Columna 3: Configuración pública + Recordatorio (compacto) */}
+          <div className="lg:col-span-1 flex flex-col h-full space-y-6">
+            {/* Lo que el prospecto ve */}
+            <PromisePublicConfigCard
+              studioSlug={studioSlug}
+              promiseId={promiseId}
             />
           </div>
         </div>
